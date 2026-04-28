@@ -12,11 +12,14 @@ def create_app():
     migrate.init_app(app, db)
     login_manager.init_app(app)
 
-    # Configuração temporária do Flask-Login
-    # Será ajustada depois quando criarmos o model Usuario
+    from app.models import Usuario
+
     @login_manager.user_loader
     def load_user(user_id):
-        return None
+        try:
+            return Usuario.query.get(int(user_id))
+        except (TypeError, ValueError):
+            return None
 
     # Importação dos Blueprints
     from app.main.routes import main_bp
