@@ -12,3 +12,23 @@
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
     font-weight: bold;
 }
+.top-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+}
+
+.btn-sair {
+    text-decoration: none;
+    background: #061b33;
+    color: #ffffff;
+    padding: 10px 16px;
+    border-radius: 12px;
+    font-weight: bold;
+}
+
+.card {
+    text-decoration: none;
+    color: #102033;
+}

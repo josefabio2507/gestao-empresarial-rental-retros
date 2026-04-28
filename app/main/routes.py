@@ -1,9 +1,11 @@
 from flask import Blueprint, render_template
+from flask_login import login_required
 
 main_bp = Blueprint("main", __name__)
 
 
 @main_bp.route("/")
+@login_required
 def inicio():
     return render_template("inicio.html")
 
@@ -14,5 +16,6 @@ def status():
 
 
 @main_bp.route("/acesso-negado")
+@login_required
 def acesso_negado():
     return render_template("acesso_negado.html")

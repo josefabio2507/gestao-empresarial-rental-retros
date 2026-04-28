@@ -2,14 +2,20 @@
 
 {% block content %}
 <section class="page">
-    <h1>Gestão Empresarial Rental Retros</h1>
-    <p>Sistema inicial criado com sucesso.</p>
+    <div class="top-bar">
+        <div>
+            <h1>Gestão Empresarial Rental Retros</h1>
+            <p>Bem-vindo, {{ current_user.nome }}.</p>
+        </div>
+
+        <a class="btn-sair" href="{{ url_for('auth.logout') }}">Sair</a>
+    </div>
 
     <div class="cards">
-        <div class="card">Financeiro</div>
-        <div class="card">Operação</div>
-        <div class="card">Departamento Pessoal</div>
-        <div class="card">Segurança do Trabalho</div>
+        <a class="card" href="{{ url_for('financeiro.index') }}">Financeiro</a>
+        <a class="card" href="{{ url_for('operacao.index') }}">Operação</a>
+        <a class="card" href="{{ url_for('departamento_pessoal.index') }}">Departamento Pessoal</a>
+        <a class="card" href="{{ url_for('seguranca_trabalho.index') }}">Segurança do Trabalho</a>
     </div>
 </section>
 {% endblock %}
