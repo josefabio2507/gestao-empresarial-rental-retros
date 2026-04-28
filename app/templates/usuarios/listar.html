@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <h1>Usuários do Sistema</h1>
+            <p>Gerencie os acessos ao sistema Gestão Empresarial Rental Retros.</p>
+        </div>
+
+        <a class="btn btn-primary" href="{{ url_for('usuarios.novo_usuario') }}">
+            + Novo Usuário
+        </a>
+    </div>
+
+    <div class="table-card">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Nome</th>
+                    <th>E-mail</th>
+                    <th>Nível</th>
+                    <th>Status</th>
+                    <th>Criado em</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for usuario in usuarios %}
+                    <tr>
+                        <td>{{ usuario.nome }}</td>
+                        <td>{{ usuario.email }}</td>
+                        <td>
+                            {% if usuario.nivel_acesso %}
+                                {{ usuario.nivel_acesso.nome }}
+                            {% else %}
+                                Sem nível
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if usuario.ativo %}
+                                <span class="badge badge-success">Ativo</span>
+                            {% else %}
+                                <span class="badge badge-danger">Inativo</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {{ usuario.criado_em.strftime("%d/%m/%Y") if usuario.criado_em else "-" }}
+                        </td>
+                        <td class="actions">
+                            <a class="btn btn-secondary" href="{{ url_for('usuarios.detalhes_usuario', usuario_id=usuario.id) }}">
+                                Ver
+                            </a>
+
+                            <a class="btn btn-primary" href="{{ url_for('usuarios.editar_usuario', usuario_id=usuario.id) }}">
+                                Editar
+                            </a>
+
+                            <a class="btn btn-warning" href="{{ url_for('usuarios.alterar_status', usuario_id=usuario.id) }}">
+                                {% if usuario.ativo %}
+                                    Inativar
+                                {% else %}
+                                    Ativar
+                                {% endif %}
+                            </a>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="6">Nenhum usuário cadastrado.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="page-actions">
+        <a class="btn btn-secondary" href="{{ url_for('main.inicio') }}">Voltar ao início</a>
+    </div>
+</section>
+{% endblock %}

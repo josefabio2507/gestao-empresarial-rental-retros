@@ -16,6 +16,13 @@
         <a class="card" href="{{ url_for('operacao.index') }}">Operação</a>
         <a class="card" href="{{ url_for('departamento_pessoal.index') }}">Departamento Pessoal</a>
         <a class="card" href="{{ url_for('seguranca_trabalho.index') }}">Segurança do Trabalho</a>
+
+        {% if current_user.is_admin %}
+            <a class="card card-admin" href="{{ url_for('usuarios.listar_usuarios') }}">
+                Administração<br>
+                <small>Gestão de usuários</small>
+            </a>
+        {% endif %}
     </div>
 </section>
 {% endblock %}
