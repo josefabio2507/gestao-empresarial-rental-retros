@@ -172,3 +172,156 @@ def listar_acoes_liberadas(permissao):
         acoes.append("Exportar")
 
     return acoes
+
+def usuario_tem_permissao(usuario, departamento_slug, modulo_slug, acao="visualizar"):
+    """
+    Verifica se o usuário possui permissão para acessar uma ação em um módulo.
+    Administrador possui acesso total.
+    """
+
+    if not usuario or not usuario.is_authenticated:
+        return False
+
+    if not usuario.ativo:
+        return False
+
+    if usuario.is_admin:
+        return True
+
+    acoes_validas = {
+        "visualizar": "pode_visualizar",
+        "criar": "pode_criar",
+        "editar": "pode_editar",
+        "excluir": "pode_excluir",
+        "aprovar": "pode_aprovar",
+        "exportar": "pode_exportar",
+    }
+
+    campo_acao = acoes_validas.get(acao)
+
+    if not campo_acao:
+        return False
+
+    departamento = Departamento.query.filter_by(
+        slug=departamento_slug,
+        ativo=True,
+    ).first()
+
+    if not departamento:
+        return False
+
+    modulo = Modulo.query.filter_by(
+        departamento_id=departamento.id,
+        slug=modulo_slug,
+        ativo=True,
+    ).first()
+
+    if not modulo:
+        return False
+
+    permissao = PermissaoUsuarioModulo.query.filter_by(
+        usuario_id=usuario.id,
+        modulo_id=modulo.id,
+        ativo=True,
+    ).first()
+
+    if not permissao:
+        return False
+
+    return bool(getattr(permissao, campo_acao, False))
+
+
+def buscar_departamentos_liberados(usuario):
+    """
+    Retorna os departamentos que o usuário pode visualizar.
+    Administrador vê todos os departamentos ativos.
+    Usuário comum vê apenas departamentos com pelo menos um módulo liberado.
+    """
+
+    if not usuario or not usuario.is_authenticated or not usuario.ativo:
+        return []
+
+    if usuario.is_admin:
+        return (
+            Departamento.query
+            .filter_by(ativo=True)
+            .order_by(Departamento.ordem.asc(), Departamento.nome.asc())
+            .all()
+        )
+
+    permissoes = (
+        PermissaoUsuarioModulo.query
+        .join(Modulo)
+        .join(Departamento)
+        .filter(
+            PermissaoUsuarioModulo.usuario_id == usuario.id,
+            PermissaoUsuarioModulo.ativo.is_(True),
+            PermissaoUsuarioModulo.pode_visualizar.is_(True),
+            Modulo.ativo.is_(True),
+            Departamento.ativo.is_(True),
+        )
+        .order_by(Departamento.ordem.asc(), Departamento.nome.asc())
+        .all()
+    )
+
+    departamentos = []
+    ids_adicionados = set()
+
+    for permissao in permissoes:
+        departamento = permissao.modulo.departamento
+
+        if departamento.id not in ids_adicionados:
+            departamentos.append(departamento)
+            ids_adicionados.add(departamento.id)
+
+    return departamentos
+
+
+def buscar_departamento_por_slug(slug_departamento):
+    return Departamento.query.filter_by(
+        slug=slug_departamento,
+        ativo=True,
+    ).first()
+
+
+def buscar_modulos_liberados(usuario, departamento_slug):
+    """
+    Retorna os módulos liberados dentro de um departamento.
+    Administrador vê todos os módulos ativos.
+    Usuário comum vê apenas módulos com pode_visualizar=True.
+    """
+
+    if not usuario or not usuario.is_authenticated or not usuario.ativo:
+        return []
+
+    departamento = buscar_departamento_por_slug(departamento_slug)
+
+    if not departamento:
+        return []
+
+    if usuario.is_admin:
+        return (
+            Modulo.query
+            .filter_by(
+                departamento_id=departamento.id,
+                ativo=True,
+            )
+            .order_by(Modulo.ordem.asc(), Modulo.nome.asc())
+            .all()
+        )
+
+    permissoes = (
+        PermissaoUsuarioModulo.query
+        .join(Modulo)
+        .filter(
+            PermissaoUsuarioModulo.usuario_id == usuario.id,
+            PermissaoUsuarioModulo.ativo.is_(True),
+            PermissaoUsuarioModulo.pode_visualizar.is_(True),
+            Modulo.departamento_id == departamento.id,
+            Modulo.ativo.is_(True),
+        )
+        .order_by(Modulo.ordem.asc(), Modulo.nome.asc())
+        .all()
+    )
+
+    return [permissao.modulo for permissao in permissoes]    

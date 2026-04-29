@@ -11,18 +11,30 @@
         <a class="btn-sair" href="{{ url_for('auth.logout') }}">Sair</a>
     </div>
 
-    <div class="cards">
-        <a class="card" href="{{ url_for('financeiro.index') }}">Financeiro</a>
-        <a class="card" href="{{ url_for('operacao.index') }}">Operação</a>
-        <a class="card" href="{{ url_for('departamento_pessoal.index') }}">Departamento Pessoal</a>
-        <a class="card" href="{{ url_for('seguranca_trabalho.index') }}">Segurança do Trabalho</a>
+    {% if departamentos_liberados %}
+        <div class="cards">
+            {% for departamento in departamentos_liberados %}
+                <a class="card department-card" href="{{ url_for('departamentos.detalhe_departamento', slug_departamento=departamento.slug) }}">
+                    <strong>{{ departamento.nome }}</strong>
+                    <small>{{ departamento.descricao or "Acessar departamento" }}</small>
+                </a>
+            {% endfor %}
 
-        {% if current_user.is_admin %}
-            <a class="card card-admin" href="{{ url_for('usuarios.listar_usuarios') }}">
-                Administração<br>
-                <small>Gestão de usuários</small>
-            </a>
-        {% endif %}
-    </div>
+            {% if current_user.is_admin %}
+                <a class="card card-admin" href="{{ url_for('usuarios.listar_usuarios') }}">
+                    <strong>Administração</strong>
+                    <small>Gestão de usuários e permissões</small>
+                </a>
+            {% endif %}
+        </div>
+    {% else %}
+        <div class="details-card">
+            <h2>Nenhum departamento liberado</h2>
+            <p>
+                Nenhum departamento foi liberado para seu usuário.
+                Entre em contato com o administrador do sistema.
+            </p>
+        </div>
+    {% endif %}
 </section>
 {% endblock %}

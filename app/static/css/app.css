@@ -242,3 +242,69 @@
     margin-top: 14px;
     font-weight: bold;
 }
+
+.department-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.department-card strong {
+    font-size: 18px;
+    color: #061b33;
+}
+
+.department-card small {
+    color: #6b7280;
+    line-height: 1.4;
+}
+
+.modules-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 18px;
+    margin-top: 24px;
+}
+
+.module-card {
+    background: #ffffff;
+    border-radius: 18px;
+    padding: 24px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    border: 1px solid #e5e7eb;
+}
+
+.module-card h2 {
+    margin-top: 0;
+    color: #061b33;
+    font-size: 20px;
+}
+
+.module-card p {
+    color: #6b7280;
+    line-height: 1.4;
+}
+
+.module-status {
+    display: block;
+    margin-top: 12px;
+    color: #6b7280;
+    font-size: 14px;
+}
+
+@media (max-width: 640px) {
+    .top-bar {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .cards,
+    .modules-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .card,
+    .module-card {
+        width: 100%;
+    }
+}

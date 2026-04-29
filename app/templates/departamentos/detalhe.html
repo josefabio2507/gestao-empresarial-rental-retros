@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <h1>{{ departamento.nome }}</h1>
+            <p>{{ departamento.descricao or "Módulos disponíveis neste departamento." }}</p>
+        </div>
+
+        <a class="btn btn-secondary" href="{{ url_for('main.inicio') }}">
+            Voltar ao início
+        </a>
+    </div>
+
+    {% if modulos_liberados %}
+        <div class="modules-grid">
+            {% for modulo in modulos_liberados %}
+                <div class="module-card">
+                    <h2>{{ modulo.nome }}</h2>
+                    <p>{{ modulo.descricao or "Módulo disponível." }}</p>
+                    <span class="badge badge-success">Liberado</span>
+                    <span class="module-status">Funcionalidade em construção</span>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="details-card">
+            <h2>Nenhum módulo liberado</h2>
+            <p>
+                Você não possui módulos liberados neste departamento.
+                Entre em contato com o administrador do sistema.
+            </p>
+        </div>
+    {% endif %}
+</section>
+{% endblock %}
