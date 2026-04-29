@@ -242,3 +242,64 @@ class LogAcesso(db.Model):
 
     def __repr__(self):
         return f"<LogAcesso {self.acao}>"
+
+class Equipe(db.Model):
+    __tablename__ = "equipes"
+
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String(120), nullable=False)
+    slug = db.Column(db.String(120), unique=True, nullable=False)
+    ativo = db.Column(db.Boolean, default=True, nullable=False)
+
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    atualizado_em = db.Column(
+        db.DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False
+    )
+
+    colaboradores = db.relationship(
+        "Colaborador",
+        back_populates="equipe"
+    )
+
+    def __repr__(self):
+        return f"<Equipe {self.slug}>"
+
+
+class Colaborador(db.Model):
+    __tablename__ = "colaboradores"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    matricula = db.Column(db.String(40), unique=True, nullable=False, index=True)
+    nome = db.Column(db.String(150), nullable=False)
+    cpf = db.Column(db.String(11), unique=True, nullable=False, index=True)
+    email = db.Column(db.String(150), nullable=True)
+    telefone = db.Column(db.String(20), nullable=True)
+    cargo = db.Column(db.String(120), nullable=True)
+
+    equipe_id = db.Column(
+        db.Integer,
+        db.ForeignKey("equipes.id"),
+        nullable=False
+    )
+
+    ativo = db.Column(db.Boolean, default=True, nullable=False)
+
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    atualizado_em = db.Column(
+        db.DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False
+    )
+
+    equipe = db.relationship(
+        "Equipe",
+        back_populates="colaboradores"
+    )
+
+    def __repr__(self):
+        return f"<Colaborador {self.matricula} - {self.nome}>"

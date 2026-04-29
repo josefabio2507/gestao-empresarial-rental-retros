@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <h1>Detalhes do Colaborador</h1>
+            <p>Informações cadastrais do colaborador.</p>
+        </div>
+    </div>
+
+    <div class="details-card">
+        <p><strong>Matrícula:</strong> {{ colaborador.matricula }}</p>
+        <p><strong>Nome:</strong> {{ colaborador.nome }}</p>
+        <p><strong>CPF:</strong> {{ formatar_cpf(colaborador.cpf) }}</p>
+        <p><strong>E-mail:</strong> {{ colaborador.email or "-" }}</p>
+        <p><strong>Telefone:</strong> {{ formatar_telefone(colaborador.telefone) }}</p>
+        <p><strong>Cargo:</strong> {{ colaborador.cargo or "-" }}</p>
+        <p><strong>Equipe:</strong> {{ colaborador.equipe.nome if colaborador.equipe else "-" }}</p>
+
+        <p>
+            <strong>Status:</strong>
+            {% if colaborador.ativo %}
+                <span class="badge badge-success">Ativo</span>
+            {% else %}
+                <span class="badge badge-danger">Inativo</span>
+            {% endif %}
+        </p>
+
+        <p>
+            <strong>Criado em:</strong>
+            {{ colaborador.criado_em.strftime("%d/%m/%Y %H:%M") if colaborador.criado_em else "-" }}
+        </p>
+
+        <p>
+            <strong>Atualizado em:</strong>
+            {{ colaborador.atualizado_em.strftime("%d/%m/%Y %H:%M") if colaborador.atualizado_em else "-" }}
+        </p>
+    </div>
+
+    <div class="page-actions">
+        <a class="btn btn-primary" href="{{ url_for('colaboradores.editar_colaborador', colaborador_id=colaborador.id) }}">Editar</a>
+        <a class="btn btn-secondary" href="{{ url_for('colaboradores.listar_colaboradores') }}">Voltar</a>
+    </div>
+</section>
+{% endblock %}

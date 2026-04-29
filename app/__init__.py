@@ -28,6 +28,7 @@ def create_app():
     from app.permissoes.routes import permissoes_bp
     from app.departamentos.routes import departamentos_bp
     from app.departamento_pessoal.routes import departamento_pessoal_bp
+    from app.departamento_pessoal.colaboradores.routes import colaboradores_bp
     from app.financeiro.routes import financeiro_bp
     from app.operacao.routes import operacao_bp
     from app.seguranca_trabalho.routes import seguranca_trabalho_bp
@@ -39,6 +40,7 @@ def create_app():
     app.register_blueprint(permissoes_bp, url_prefix="/permissoes")
     app.register_blueprint(departamentos_bp, url_prefix="/departamentos")
     app.register_blueprint(departamento_pessoal_bp, url_prefix="/departamento-pessoal")
+    app.register_blueprint(colaboradores_bp, url_prefix="/departamento-pessoal/colaboradores")
     app.register_blueprint(financeiro_bp, url_prefix="/financeiro")
     app.register_blueprint(operacao_bp, url_prefix="/operacao")
     app.register_blueprint(seguranca_trabalho_bp, url_prefix="/seguranca-trabalho")

@@ -5,6 +5,7 @@ from app.models import (
     Usuario,
     Departamento,
     Modulo,
+    Equipe,
 )
 
 
@@ -104,6 +105,51 @@ DEPARTAMENTOS = [
     },
 ]
 
+EQUIPES_INICIAIS = [
+    "TMC - INFRAESTRUTURA",
+    "TMC - GUARUJA",
+    "TMC - FIXA PORTO",
+    "TMC - SANTOS",
+    "TMC - CALCETARIA",
+    "TMC - LIMPEZA II",
+    "TMC - FIXA GUARUJA",
+    "OPERACAO",
+    "ADMINISTRACAO",
+    "TMC - LIMPEZA",
+    "TMC - AMV",
+    "TEG TEAG",
+    "TMC - FIXA PARATINGA",
+]
+
+
+def gerar_slug(texto):
+    texto = texto.strip().lower()
+    substituicoes = {
+        "á": "a", "à": "a", "ã": "a", "â": "a",
+        "é": "e", "ê": "e",
+        "í": "i",
+        "ó": "o", "ô": "o", "õ": "o",
+        "ú": "u",
+        "ç": "c",
+    }
+
+    for original, novo in substituicoes.items():
+        texto = texto.replace(original, novo)
+
+    caracteres = []
+    for caractere in texto:
+        if caractere.isalnum():
+            caracteres.append(caractere)
+        else:
+            caracteres.append("_")
+
+    slug = "".join(caracteres)
+
+    while "__" in slug:
+        slug = slug.replace("__", "_")
+
+    return slug.strip("_")
+
 
 ADMIN_EMAIL = "admin@rentalretros.com.br"
 ADMIN_SENHA_TEMPORARIA = "Admin@123"
@@ -195,6 +241,23 @@ def criar_admin_inicial():
     else:
         print("[AVISO] Usuário administrador já existe.")
 
+def criar_equipes_iniciais():
+    for nome_equipe in EQUIPES_INICIAIS:
+        slug = gerar_slug(nome_equipe)
+
+        equipe = Equipe.query.filter_by(slug=slug).first()
+
+        if not equipe:
+            equipe = Equipe(
+                nome=nome_equipe,
+                slug=slug,
+                ativo=True,
+            )
+            db.session.add(equipe)
+            print(f"[OK] Equipe criada: {nome_equipe}")
+        else:
+            print(f"[AVISO] Equipe já existe: {nome_equipe}")
+
 
 def executar_seed():
     with app.app_context():
@@ -205,6 +268,9 @@ def executar_seed():
         db.session.commit()
 
         criar_admin_inicial()
+        db.session.commit()
+
+        criar_equipes_iniciais()
         db.session.commit()
 
         print("=" * 60)

@@ -308,3 +308,36 @@
         width: 100%;
     }
 }
+
+.filter-card {
+    background: #ffffff;
+    border-radius: 18px;
+    padding: 20px;
+    margin-top: 24px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+.filter-grid,
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+    align-items: end;
+}
+
+.filter-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.module-card-link {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+.module-card-link:hover {
+    transform: translateY(-2px);
+    transition: 0.2s ease;
+}

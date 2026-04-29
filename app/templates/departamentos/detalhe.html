@@ -16,12 +16,21 @@
     {% if modulos_liberados %}
         <div class="modules-grid">
             {% for modulo in modulos_liberados %}
-                <div class="module-card">
-                    <h2>{{ modulo.nome }}</h2>
-                    <p>{{ modulo.descricao or "Módulo disponível." }}</p>
-                    <span class="badge badge-success">Liberado</span>
-                    <span class="module-status">Funcionalidade em construção</span>
-                </div>
+                {% if departamento.slug == "departamento_pessoal" and modulo.slug == "colaboradores" %}
+                    <a class="module-card module-card-link" href="{{ url_for('colaboradores.listar_colaboradores') }}">
+                        <h2>{{ modulo.nome }}</h2>
+                        <p>{{ modulo.descricao or "Cadastro e consulta de colaboradores." }}</p>
+                        <span class="badge badge-success">Liberado</span>
+                        <span class="module-status">Acessar módulo</span>
+                    </a>
+                {% else %}
+                    <div class="module-card">
+                        <h2>{{ modulo.nome }}</h2>
+                        <p>{{ modulo.descricao or "Módulo disponível." }}</p>
+                        <span class="badge badge-success">Liberado</span>
+                        <span class="module-status">Funcionalidade em construção</span>
+                    </div>
+                {% endif %}
             {% endfor %}
         </div>
     {% else %}

@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <h1>Colaboradores</h1>
+            <p>Cadastro oficial de colaboradores da Rental Retros.</p>
+        </div>
+
+        {% if pode_criar %}
+            <a class="btn btn-primary" href="{{ url_for('colaboradores.novo_colaborador') }}">
+                + Novo Colaborador
+            </a>
+        {% endif %}
+    </div>
+
+    <form class="filter-card" method="GET">
+        <div class="filter-grid">
+            <div class="form-group">
+                <label for="q">Pesquisar</label>
+                <input
+                    type="text"
+                    name="q"
+                    id="q"
+                    value="{{ filtro_texto }}"
+                    placeholder="Nome, matrícula ou CPF"
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="equipe_id">Equipe</label>
+                <select name="equipe_id" id="equipe_id">
+                    <option value="">Todas as equipes</option>
+
+                    {% for equipe in equipes %}
+                        <option
+                            value="{{ equipe.id }}"
+                            {% if equipe_id_selecionada|string == equipe.id|string %}selected{% endif %}
+                        >
+                            {{ equipe.nome }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="filter-actions">
+                <button class="btn btn-primary" type="submit">Filtrar</button>
+                <a class="btn btn-secondary" href="{{ url_for('colaboradores.listar_colaboradores') }}">
+                    Limpar
+                </a>
+            </div>
+        </div>
+    </form>
+
+    <div class="table-card">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Matrícula</th>
+                    <th>Nome</th>
+                    <th>CPF</th>
+                    <th>Telefone</th>
+                    <th>Cargo</th>
+                    <th>Equipe</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for colaborador in colaboradores %}
+                    <tr>
+                        <td>{{ colaborador.matricula }}</td>
+                        <td>{{ colaborador.nome }}</td>
+                        <td>{{ formatar_cpf(colaborador.cpf) }}</td>
+                        <td>{{ formatar_telefone(colaborador.telefone) }}</td>
+                        <td>{{ colaborador.cargo or "-" }}</td>
+                        <td>{{ colaborador.equipe.nome if colaborador.equipe else "-" }}</td>
+                        <td>
+                            {% if colaborador.ativo %}
+                                <span class="badge badge-success">Ativo</span>
+                            {% else %}
+                                <span class="badge badge-danger">Inativo</span>
+                            {% endif %}
+                        </td>
+                        <td class="actions">
+                            <a class="btn btn-secondary" href="{{ url_for('colaboradores.detalhes_colaborador', colaborador_id=colaborador.id) }}">
+                                Ver
+                            </a>
+
+                            {% if pode_editar %}
+                                <a class="btn btn-primary" href="{{ url_for('colaboradores.editar_colaborador', colaborador_id=colaborador.id) }}">
+                                    Editar
+                                </a>
+                            {% endif %}
+
+                            {% if pode_excluir %}
+                                <a class="btn btn-warning" href="{{ url_for('colaboradores.alterar_status', colaborador_id=colaborador.id) }}">
+                                    {% if colaborador.ativo %}
+                                        Inativar
+                                    {% else %}
+                                        Ativar
+                                    {% endif %}
+                                </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="8">Nenhum colaborador encontrado.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="page-actions">
+        <a class="btn btn-secondary" href="{{ url_for('departamentos.detalhe_departamento', slug_departamento='departamento_pessoal') }}">
+            Voltar ao Departamento Pessoal
+        </a>
+    </div>
+</section>
+{% endblock %}
