@@ -303,3 +303,60 @@ class Colaborador(db.Model):
 
     def __repr__(self):
         return f"<Colaborador {self.matricula} - {self.nome}>"
+
+class Restaurante(db.Model):
+    __tablename__ = "restaurantes"
+
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String(150), nullable=False)
+    telefone = db.Column(db.String(20), nullable=True)
+    ativo = db.Column(db.Boolean, default=True, nullable=False)
+
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    atualizado_em = db.Column(
+        db.DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False
+    )
+
+    itens_cardapio = db.relationship(
+        "ItemCardapio",
+        back_populates="restaurante"
+    )
+
+    def __repr__(self):
+        return f"<Restaurante {self.nome}>"
+
+
+class ItemCardapio(db.Model):
+    __tablename__ = "itens_cardapio"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    restaurante_id = db.Column(
+        db.Integer,
+        db.ForeignKey("restaurantes.id"),
+        nullable=False
+    )
+
+    tipo = db.Column(db.String(30), nullable=False)
+    nome = db.Column(db.String(150), nullable=False)
+    preco = db.Column(db.Numeric(10, 2), nullable=False)
+    ativo = db.Column(db.Boolean, default=True, nullable=False)
+
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    atualizado_em = db.Column(
+        db.DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False
+    )
+
+    restaurante = db.relationship(
+        "Restaurante",
+        back_populates="itens_cardapio"
+    )
+
+    def __repr__(self):
+        return f"<ItemCardapio {self.tipo} - {self.nome}>"

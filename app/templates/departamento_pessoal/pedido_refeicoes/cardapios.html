@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <h1>Cardápio</h1>
+            <p>Cadastro de refeições, bebidas e outros itens por restaurante.</p>
+        </div>
+
+        <div class="actions">
+            {% if pode_criar %}
+                <a class="btn btn-primary" href="{{ url_for('pedido_refeicoes.novo_item_cardapio') }}">
+                    + Novo Item
+                </a>
+            {% endif %}
+
+            <a class="btn btn-secondary" href="{{ url_for('pedido_refeicoes.index') }}">
+                Voltar
+            </a>
+        </div>
+    </div>
+
+    <form class="filter-card" method="GET" action="{{ url_for('pedido_refeicoes.cardapio') }}">
+        <div class="filter-grid">
+            <div class="form-group">
+                <label for="restaurante_id">Restaurante</label>
+                <select name="restaurante_id" id="restaurante_id">
+                    <option value="">Todos os restaurantes</option>
+
+                    {% for restaurante in restaurantes %}
+                        <option
+                            value="{{ restaurante.id }}"
+                            {% if restaurante_id_selecionado|string == restaurante.id|string %}selected{% endif %}
+                        >
+                            {{ restaurante.nome }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="tipo">Tipo</label>
+                <select name="tipo" id="tipo">
+                    <option value="">Todos os tipos</option>
+
+                    {% for tipo_item in tipos %}
+                        <option
+                            value="{{ tipo_item }}"
+                            {% if tipo_selecionado == tipo_item %}selected{% endif %}
+                        >
+                            {{ tipo_item }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="filter-actions">
+                <button class="btn btn-primary" type="submit">Filtrar</button>
+                <a class="btn btn-secondary" href="{{ url_for('pedido_refeicoes.cardapio') }}">
+                    Limpar
+                </a>
+            </div>
+        </div>
+    </form>
+
+    {% if modo in ["novo", "editar"] %}
+        <form class="form-card" method="POST">
+            <h2>
+                {% if modo == "novo" %}
+                    Novo Item de Cardápio
+                {% else %}
+                    Editar Item de Cardápio
+                {% endif %}
+            </h2>
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="restaurante_id_form">Restaurante</label>
+                    <select name="restaurante_id" id="restaurante_id_form" required>
+                        <option value="">Selecione...</option>
+
+                        {% for restaurante in restaurantes %}
+                            <option
+                                value="{{ restaurante.id }}"
+                                {% if item and item.restaurante_id == restaurante.id %}selected{% endif %}
+                            >
+                                {{ restaurante.nome }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="tipo_form">Tipo</label>
+                    <select name="tipo" id="tipo_form" required>
+                        <option value="">Selecione...</option>
+
+                        {% for tipo_item in tipos %}
+                            <option
+                                value="{{ tipo_item }}"
+                                {% if item and item.tipo == tipo_item %}selected{% endif %}
+                            >
+                                {{ tipo_item }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="nome">Nome do item</label>
+                    <input
+                        type="text"
+                        name="nome"
+                        id="nome"
+                        value="{{ item.nome if item else '' }}"
+                        required
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="preco">Preço</label>
+                    <input
+                        type="text"
+                        name="preco"
+                        id="preco"
+                        value="{{ item.preco if item else '' }}"
+                        placeholder="Ex: 25,50"
+                        required
+                    >
+                    <small>Aceita vírgula. Exemplo: 25,50</small>
+                </div>
+
+                <div class="form-group checkbox-group">
+                    <label>
+                        <input
+                            type="checkbox"
+                            name="ativo"
+                            {% if not item or item.ativo %}checked{% endif %}
+                        >
+                        Item ativo
+                    </label>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button class="btn btn-primary" type="submit">Salvar</button>
+                <a class="btn btn-secondary" href="{{ url_for('pedido_refeicoes.cardapio') }}">Cancelar</a>
+            </div>
+        </form>
+    {% endif %}
+
+    <div class="table-card">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Restaurante</th>
+                    <th>Tipo</th>
+                    <th>Item</th>
+                    <th>Preço</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for item_cardapio in itens %}
+                    <tr>
+                        <td>{{ item_cardapio.restaurante.nome if item_cardapio.restaurante else "-" }}</td>
+                        <td>{{ item_cardapio.tipo }}</td>
+                        <td>{{ item_cardapio.nome }}</td>
+                        <td>{{ formatar_moeda(item_cardapio.preco) }}</td>
+                        <td>
+                            {% if item_cardapio.ativo %}
+                                <span class="badge badge-success">Ativo</span>
+                            {% else %}
+                                <span class="badge badge-danger">Inativo</span>
+                            {% endif %}
+                        </td>
+                        <td class="actions">
+                            {% if pode_editar %}
+                                <a class="btn btn-primary" href="{{ url_for('pedido_refeicoes.editar_item_cardapio', item_id=item_cardapio.id) }}">
+                                    Editar
+                                </a>
+                            {% endif %}
+
+                            {% if pode_excluir %}
+                                <a class="btn btn-warning" href="{{ url_for('pedido_refeicoes.alterar_status_item_cardapio_rota', item_id=item_cardapio.id) }}">
+                                    {% if item_cardapio.ativo %}
+                                        Inativar
+                                    {% else %}
+                                        Ativar
+                                    {% endif %}
+                                </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="6">Nenhum item de cardápio cadastrado.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

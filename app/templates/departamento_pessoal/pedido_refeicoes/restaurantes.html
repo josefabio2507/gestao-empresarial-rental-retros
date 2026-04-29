@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <h1>Restaurantes</h1>
+            <p>Cadastro de restaurantes para pedidos de refeição.</p>
+        </div>
+
+        <div class="actions">
+            {% if pode_criar %}
+                <a class="btn btn-primary" href="{{ url_for('pedido_refeicoes.novo_restaurante') }}">
+                    + Novo Restaurante
+                </a>
+            {% endif %}
+
+            <a class="btn btn-secondary" href="{{ url_for('pedido_refeicoes.index') }}">
+                Voltar
+            </a>
+        </div>
+    </div>
+
+    {% if modo in ["novo", "editar"] %}
+        <form class="form-card" method="POST">
+            <h2>
+                {% if modo == "novo" %}
+                    Novo Restaurante
+                {% else %}
+                    Editar Restaurante
+                {% endif %}
+            </h2>
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="nome">Nome do restaurante</label>
+                    <input
+                        type="text"
+                        name="nome"
+                        id="nome"
+                        value="{{ restaurante.nome if restaurante else '' }}"
+                        required
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="telefone">Telefone / WhatsApp</label>
+                    <input
+                        type="text"
+                        name="telefone"
+                        id="telefone"
+                        value="{{ restaurante.telefone if restaurante else '' }}"
+                        placeholder="Ex: 5513999999999"
+                    >
+                    <small>Recomendado: 55 + DDD + número.</small>
+                </div>
+
+                <div class="form-group checkbox-group">
+                    <label>
+                        <input
+                            type="checkbox"
+                            name="ativo"
+                            {% if not restaurante or restaurante.ativo %}checked{% endif %}
+                        >
+                        Restaurante ativo
+                    </label>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button class="btn btn-primary" type="submit">Salvar</button>
+                <a class="btn btn-secondary" href="{{ url_for('pedido_refeicoes.restaurantes') }}">Cancelar</a>
+            </div>
+        </form>
+    {% endif %}
+
+    <div class="table-card">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Restaurante</th>
+                    <th>Telefone</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for restaurante_item in restaurantes %}
+                    <tr>
+                        <td>{{ restaurante_item.nome }}</td>
+                        <td>{{ formatar_telefone(restaurante_item.telefone) }}</td>
+                        <td>
+                            {% if restaurante_item.ativo %}
+                                <span class="badge badge-success">Ativo</span>
+                            {% else %}
+                                <span class="badge badge-danger">Inativo</span>
+                            {% endif %}
+                        </td>
+                        <td class="actions">
+                            {% if pode_editar %}
+                                <a class="btn btn-primary" href="{{ url_for('pedido_refeicoes.editar_restaurante', restaurante_id=restaurante_item.id) }}">
+                                    Editar
+                                </a>
+                            {% endif %}
+
+                            {% if pode_excluir %}
+                                <a class="btn btn-warning" href="{{ url_for('pedido_refeicoes.alterar_status_restaurante_rota', restaurante_id=restaurante_item.id) }}">
+                                    {% if restaurante_item.ativo %}
+                                        Inativar
+                                    {% else %}
+                                        Ativar
+                                    {% endif %}
+                                </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="4">Nenhum restaurante cadastrado.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

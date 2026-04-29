@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <h1>Pedido de Refeições</h1>
+            <p>Gerencie restaurantes, cardápios e pedidos de refeição.</p>
+        </div>
+
+        <a class="btn btn-secondary" href="{{ url_for('departamentos.detalhe_departamento', slug_departamento='departamento_pessoal') }}">
+            Voltar ao Departamento Pessoal
+        </a>
+    </div>
+
+    <div class="modules-grid">
+        <a class="module-card module-card-link" href="{{ url_for('pedido_refeicoes.restaurantes') }}">
+            <h2>Restaurantes</h2>
+            <p>Cadastre restaurantes e telefones para envio via WhatsApp.</p>
+            <span class="badge badge-success">Disponível</span>
+        </a>
+
+        <a class="module-card module-card-link" href="{{ url_for('pedido_refeicoes.cardapio') }}">
+            <h2>Cardápio</h2>
+            <p>Cadastre refeições, bebidas e outros itens por restaurante.</p>
+            <span class="badge badge-success">Disponível</span>
+        </a>
+
+        <div class="module-card">
+            <h2>Pedidos de Refeição</h2>
+            <p>Criação, consumo individual, fechamento e envio via WhatsApp.</p>
+            <span class="badge badge-warning">Próxima fase</span>
+            <span class="module-status">Funcionalidade em construção</span>
+        </div>
+    </div>
+</section>
+{% endblock %}
