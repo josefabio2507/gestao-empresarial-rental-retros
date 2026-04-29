@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <h1>Permissões do Usuário</h1>
+            <p>Resumo das permissões liberadas para este usuário.</p>
+        </div>
+
+        <a class="btn btn-primary" href="{{ url_for('permissoes.editar_permissoes', usuario_id=usuario.id) }}">
+            Editar permissões
+        </a>
+    </div>
+
+    <div class="permission-user-card">
+        <p><strong>Usuário:</strong> {{ usuario.nome }}</p>
+        <p><strong>E-mail:</strong> {{ usuario.email }}</p>
+        <p>
+            <strong>Nível:</strong>
+            {% if usuario.nivel_acesso %}
+                {{ usuario.nivel_acesso.nome }}
+            {% else %}
+                Sem nível
+            {% endif %}
+        </p>
+
+        {% if usuario.is_admin %}
+            <div class="alert-info">
+                Usuários administradores possuem acesso total ao sistema.
+                As permissões abaixo não limitam o acesso deste usuário.
+            </div>
+        {% endif %}
+    </div>
+
+    {% set encontrou_permissao = false %}
+
+    {% for grupo in permissoes_departamentos %}
+        {% set encontrou_permissao = true %}
+
+        <div class="permission-department">
+            <h2>{{ grupo.departamento.nome }}</h2>
+
+            {% for permissao in grupo.permissoes %}
+                <div class="permission-summary">
+                    <strong>{{ permissao.modulo.nome }}</strong>
+
+                    <div class="permission-tags">
+                        {% for acao in listar_acoes_liberadas(permissao) %}
+                            <span class="badge badge-success">{{ acao }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="details-card">
+            <p>Nenhuma permissão cadastrada para este usuário.</p>
+        </div>
+    {% endfor %}
+
+    <div class="page-actions">
+        <a class="btn btn-primary" href="{{ url_for('permissoes.editar_permissoes', usuario_id=usuario.id) }}">
+            Editar permissões
+        </a>
+        <a class="btn btn-secondary" href="{{ url_for('usuarios.listar_usuarios') }}">
+            Voltar para usuários
+        </a>
+    </div>
+</section>
+{% endblock %}

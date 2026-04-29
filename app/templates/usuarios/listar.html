@@ -57,6 +57,10 @@
                                 Editar
                             </a>
 
+                            <a class="btn btn-secondary" href="{{ url_for('permissoes.visualizar_permissoes', usuario_id=usuario.id) }}">
+                                Permissões
+                            </a>
+
                             <a class="btn btn-warning" href="{{ url_for('usuarios.alterar_status', usuario_id=usuario.id) }}">
                                 {% if usuario.ativo %}
                                     Inativar

@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <h1>Editar Permissões</h1>
+            <p>Defina os módulos e ações permitidas para este usuário.</p>
+        </div>
+
+        <a class="btn btn-secondary" href="{{ url_for('permissoes.visualizar_permissoes', usuario_id=usuario.id) }}">
+            Voltar
+        </a>
+    </div>
+
+    <div class="permission-user-card">
+        <p><strong>Usuário:</strong> {{ usuario.nome }}</p>
+        <p><strong>E-mail:</strong> {{ usuario.email }}</p>
+        <p>
+            <strong>Nível:</strong>
+            {% if usuario.nivel_acesso %}
+                {{ usuario.nivel_acesso.nome }}
+            {% else %}
+                Sem nível
+            {% endif %}
+        </p>
+
+        {% if usuario.is_admin %}
+            <div class="alert-info">
+                Usuários administradores possuem acesso total ao sistema.
+                As permissões abaixo não limitam o acesso deste usuário.
+            </div>
+        {% endif %}
+    </div>
+
+    <form method="POST">
+        {% for departamento in departamentos %}
+            <div class="permission-department">
+                <h2>{{ departamento.nome }}</h2>
+                <p>{{ departamento.descricao or "Módulos do departamento." }}</p>
+
+                {% for modulo in departamento.modulos %}
+                    {% if modulo.ativo %}
+                        {% set permissao = permissoes.get(modulo.id) %}
+
+                        <div class="permission-module">
+                            <div class="permission-module-title">
+                                <strong>{{ modulo.nome }}</strong>
+                                <span>{{ modulo.descricao or "" }}</span>
+                            </div>
+
+                            <div class="permission-actions">
+                                <label>
+                                    <input
+                                        type="checkbox"
+                                        name="modulo_{{ modulo.id }}_visualizar"
+                                        {% if permissao and permissao.ativo and permissao.pode_visualizar %}checked{% endif %}
+                                    >
+                                    Visualizar
+                                </label>
+
+                                <label>
+                                    <input
+                                        type="checkbox"
+                                        name="modulo_{{ modulo.id }}_criar"
+                                        {% if permissao and permissao.ativo and permissao.pode_criar %}checked{% endif %}
+                                    >
+                                    Criar
+                                </label>
+
+                                <label>
+                                    <input
+                                        type="checkbox"
+                                        name="modulo_{{ modulo.id }}_editar"
+                                        {% if permissao and permissao.ativo and permissao.pode_editar %}checked{% endif %}
+                                    >
+                                    Editar
+                                </label>
+
+                                <label>
+                                    <input
+                                        type="checkbox"
+                                        name="modulo_{{ modulo.id }}_excluir"
+                                        {% if permissao and permissao.ativo and permissao.pode_excluir %}checked{% endif %}
+                                    >
+                                    Excluir
+                                </label>
+
+                                <label>
+                                    <input
+                                        type="checkbox"
+                                        name="modulo_{{ modulo.id }}_aprovar"
+                                        {% if permissao and permissao.ativo and permissao.pode_aprovar %}checked{% endif %}
+                                    >
+                                    Aprovar
+                                </label>
+
+                                <label>
+                                    <input
+                                        type="checkbox"
+                                        name="modulo_{{ modulo.id }}_exportar"
+                                        {% if permissao and permissao.ativo and permissao.pode_exportar %}checked{% endif %}
+                                    >
+                                    Exportar
+                                </label>
+                            </div>
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        {% endfor %}
+
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Salvar permissões</button>
+            <a class="btn btn-secondary" href="{{ url_for('usuarios.listar_usuarios') }}">Voltar para usuários</a>
+        </div>
+    </form>
+</section>
+{% endblock %}
