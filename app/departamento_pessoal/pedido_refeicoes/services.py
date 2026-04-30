@@ -3,7 +3,14 @@ from decimal import Decimal, InvalidOperation
 
 from app.extensions import db
 from datetime import datetime
-from app.models import Restaurante, ItemCardapio, Equipe, PedidoRefeicao
+from app.models import (
+    Restaurante,
+    ItemCardapio,
+    Equipe,
+    PedidoRefeicao,
+    Colaborador,
+    ConsumoRefeicao,
+)
 
 
 TIPOS_CARDAPIO = [
@@ -390,3 +397,229 @@ def cancelar_pedido_refeicao(pedido):
     db.session.commit()
 
     return True, "Pedido cancelado com sucesso."
+
+def buscar_colaboradores_do_pedido(pedido):
+    if not pedido:
+        return []
+
+    return (
+        Colaborador.query
+        .filter(
+            Colaborador.ativo.is_(True),
+            Colaborador.equipe_id == pedido.equipe_id,
+        )
+        .order_by(Colaborador.nome.asc())
+        .all()
+    )
+
+
+def buscar_itens_do_pedido(pedido):
+    if not pedido:
+        return []
+
+    return (
+        ItemCardapio.query
+        .filter(
+            ItemCardapio.ativo.is_(True),
+            ItemCardapio.restaurante_id == pedido.restaurante_id,
+        )
+        .order_by(
+            ItemCardapio.tipo.asc(),
+            ItemCardapio.nome.asc(),
+        )
+        .all()
+    )
+
+
+def buscar_consumos_do_pedido(pedido):
+    if not pedido:
+        return []
+
+    return (
+        ConsumoRefeicao.query
+        .filter_by(pedido_id=pedido.id)
+        .join(Colaborador)
+        .join(ItemCardapio)
+        .order_by(
+            Colaborador.nome.asc(),
+            ItemCardapio.tipo.asc(),
+            ItemCardapio.nome.asc(),
+        )
+        .all()
+    )
+
+
+def buscar_consumo_por_id(consumo_id):
+    return ConsumoRefeicao.query.get(consumo_id)
+
+
+def converter_quantidade(valor):
+    try:
+        quantidade = int(valor)
+    except (TypeError, ValueError):
+        return None
+
+    if quantidade <= 0:
+        return None
+
+    return quantidade
+
+
+def validar_consumo(pedido, colaborador_id, item_cardapio_id, quantidade):
+    if not pedido:
+        return False, "Pedido não encontrado.", None, None, None
+
+    if not pedido_pode_ser_editado(pedido):
+        return False, "Somente pedidos em aberto podem ter consumo alterado.", None, None, None
+
+    if not colaborador_id:
+        return False, "Colaborador é obrigatório.", None, None, None
+
+    colaborador = Colaborador.query.filter_by(
+        id=colaborador_id,
+        ativo=True,
+    ).first()
+
+    if not colaborador:
+        return False, "Colaborador não encontrado ou inativo.", None, None, None
+
+    if colaborador.equipe_id != pedido.equipe_id:
+        return False, "Colaborador inválido para este pedido.", None, None, None
+
+    if not item_cardapio_id:
+        return False, "Item do cardápio é obrigatório.", None, None, None
+
+    item = ItemCardapio.query.filter_by(
+        id=item_cardapio_id,
+        ativo=True,
+    ).first()
+
+    if not item:
+        return False, "Item do cardápio não encontrado ou inativo.", None, None, None
+
+    if item.restaurante_id != pedido.restaurante_id:
+        return False, "Item inválido para este pedido.", None, None, None
+
+    quantidade_convertida = converter_quantidade(quantidade)
+
+    if not quantidade_convertida:
+        return False, "Quantidade deve ser maior que zero.", None, None, None
+
+    return True, "", colaborador, item, quantidade_convertida
+
+
+def criar_consumo_refeicao(
+    pedido,
+    colaborador_id,
+    item_cardapio_id,
+    quantidade,
+    observacao=None
+):
+    valido, mensagem, colaborador, item, quantidade_convertida = validar_consumo(
+        pedido=pedido,
+        colaborador_id=colaborador_id,
+        item_cardapio_id=item_cardapio_id,
+        quantidade=quantidade,
+    )
+
+    if not valido:
+        return False, mensagem
+
+    valor_unitario = item.preco
+    valor_total = valor_unitario * quantidade_convertida
+
+    consumo = ConsumoRefeicao(
+        pedido_id=pedido.id,
+        colaborador_id=colaborador.id,
+        item_cardapio_id=item.id,
+        quantidade=quantidade_convertida,
+        valor_unitario=valor_unitario,
+        valor_total=valor_total,
+        observacao=observacao.strip() if observacao else "",
+    )
+
+    db.session.add(consumo)
+    db.session.commit()
+
+    return True, "Consumo lançado com sucesso."
+
+
+def atualizar_consumo_refeicao(
+    consumo,
+    colaborador_id,
+    item_cardapio_id,
+    quantidade,
+    observacao=None
+):
+    if not consumo:
+        return False, "Consumo não encontrado."
+
+    pedido = consumo.pedido
+
+    valido, mensagem, colaborador, item, quantidade_convertida = validar_consumo(
+        pedido=pedido,
+        colaborador_id=colaborador_id,
+        item_cardapio_id=item_cardapio_id,
+        quantidade=quantidade,
+    )
+
+    if not valido:
+        return False, mensagem
+
+    valor_unitario = item.preco
+    valor_total = valor_unitario * quantidade_convertida
+
+    consumo.colaborador_id = colaborador.id
+    consumo.item_cardapio_id = item.id
+    consumo.quantidade = quantidade_convertida
+    consumo.valor_unitario = valor_unitario
+    consumo.valor_total = valor_total
+    consumo.observacao = observacao.strip() if observacao else ""
+
+    db.session.commit()
+
+    return True, "Consumo atualizado com sucesso."
+
+
+def remover_consumo_refeicao(consumo):
+    if not consumo:
+        return False, "Consumo não encontrado."
+
+    pedido = consumo.pedido
+
+    if not pedido_pode_ser_editado(pedido):
+        return False, "Somente pedidos em aberto podem ter consumo alterado."
+
+    db.session.delete(consumo)
+    db.session.commit()
+
+    return True, "Consumo removido com sucesso."
+
+
+def calcular_resumo_pedido(pedido):
+    consumos = buscar_consumos_do_pedido(pedido)
+
+    resumo = {}
+    total_geral = Decimal("0.00")
+
+    for consumo in consumos:
+        item = consumo.item_cardapio
+        tipo = item.tipo
+        nome_item = item.nome
+
+        if tipo not in resumo:
+            resumo[tipo] = {}
+
+        if nome_item not in resumo[tipo]:
+            resumo[tipo][nome_item] = {
+                "tipo": tipo,
+                "nome": nome_item,
+                "quantidade": 0,
+                "valor_total": Decimal("0.00"),
+            }
+
+        resumo[tipo][nome_item]["quantidade"] += consumo.quantidade
+        resumo[tipo][nome_item]["valor_total"] += consumo.valor_total
+        total_geral += consumo.valor_total
+
+    return resumo, total_geral

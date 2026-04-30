@@ -405,3 +405,46 @@ class PedidoRefeicao(db.Model):
 
     def __repr__(self):
         return f"<PedidoRefeicao {self.numero_pedido}>"
+ 
+class ConsumoRefeicao(db.Model):
+    __tablename__ = "consumos_refeicao"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    pedido_id = db.Column(
+        db.Integer,
+        db.ForeignKey("pedidos_refeicao.id"),
+        nullable=False
+    )
+
+    colaborador_id = db.Column(
+        db.Integer,
+        db.ForeignKey("colaboradores.id"),
+        nullable=False
+    )
+
+    item_cardapio_id = db.Column(
+        db.Integer,
+        db.ForeignKey("itens_cardapio.id"),
+        nullable=False
+    )
+
+    quantidade = db.Column(db.Integer, nullable=False)
+    valor_unitario = db.Column(db.Numeric(10, 2), nullable=False)
+    valor_total = db.Column(db.Numeric(10, 2), nullable=False)
+    observacao = db.Column(db.Text, nullable=True)
+
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    atualizado_em = db.Column(
+        db.DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False
+    )
+
+    pedido = db.relationship("PedidoRefeicao", backref="consumos")
+    colaborador = db.relationship("Colaborador")
+    item_cardapio = db.relationship("ItemCardapio")
+
+    def __repr__(self):
+        return f"<ConsumoRefeicao pedido={self.pedido_id} colaborador={self.colaborador_id}>" 

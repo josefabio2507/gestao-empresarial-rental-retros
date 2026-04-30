@@ -28,6 +28,14 @@ from app.departamento_pessoal.pedido_refeicoes.services import (
     formatar_data,
     formatar_status_pedido,
     STATUS_PEDIDO_ABERTO,
+    buscar_colaboradores_do_pedido,
+    buscar_itens_do_pedido,
+    buscar_consumos_do_pedido,
+    buscar_consumo_por_id,
+    criar_consumo_refeicao,
+    atualizar_consumo_refeicao,
+    remover_consumo_refeicao,
+    calcular_resumo_pedido,
 )
 
 
@@ -414,6 +422,16 @@ def detalhes_pedido(pedido_id):
         "excluir",
     )
 
+    consumos = buscar_consumos_do_pedido(pedido)
+    resumo_pedido, total_geral = calcular_resumo_pedido(pedido)
+
+    pode_criar = usuario_tem_permissao(
+        current_user,
+        "departamento_pessoal",
+        "pedido_refeicoes",
+        "criar",
+    )
+
     return render_template(
         "departamento_pessoal/pedido_refeicoes/pedido_detalhes.html",
         pedido=pedido,
@@ -422,8 +440,12 @@ def detalhes_pedido(pedido_id):
         pedido_pode_ser_editado=pedido_pode_ser_editado,
         formatar_data=formatar_data,
         formatar_telefone=formatar_telefone,
+        consumos=consumos,
+        resumo_pedido=resumo_pedido,
+        total_geral=total_geral,
+        pode_criar=pode_criar,
+        formatar_moeda=formatar_moeda,
     )
-
 
 @pedido_refeicoes_bp.route("/pedidos/<int:pedido_id>/editar", methods=["GET", "POST"])
 @module_permission_required("departamento_pessoal", "pedido_refeicoes", "editar")
@@ -482,3 +504,109 @@ def cancelar_pedido(pedido_id):
         flash(mensagem, "danger")
 
     return redirect(url_for("pedido_refeicoes.detalhes_pedido", pedido_id=pedido.id))
+
+@pedido_refeicoes_bp.route("/pedidos/<int:pedido_id>/consumos/novo", methods=["GET", "POST"])
+@module_permission_required("departamento_pessoal", "pedido_refeicoes", "criar")
+def novo_consumo(pedido_id):
+    pedido = buscar_pedido_por_id(pedido_id)
+
+    if not pedido:
+        flash("Pedido não encontrado.", "warning")
+        return redirect(url_for("pedido_refeicoes.pedidos"))
+
+    if not pedido_pode_ser_editado(pedido):
+        flash("Somente pedidos em aberto podem ter consumo alterado.", "danger")
+        return redirect(url_for("pedido_refeicoes.detalhes_pedido", pedido_id=pedido.id))
+
+    colaboradores = buscar_colaboradores_do_pedido(pedido)
+    itens = buscar_itens_do_pedido(pedido)
+
+    if request.method == "POST":
+        sucesso, mensagem = criar_consumo_refeicao(
+            pedido=pedido,
+            colaborador_id=request.form.get("colaborador_id"),
+            item_cardapio_id=request.form.get("item_cardapio_id"),
+            quantidade=request.form.get("quantidade"),
+            observacao=request.form.get("observacao", ""),
+        )
+
+        if sucesso:
+            flash(mensagem, "success")
+            return redirect(url_for("pedido_refeicoes.detalhes_pedido", pedido_id=pedido.id))
+
+        flash(mensagem, "danger")
+
+    return render_template(
+        "departamento_pessoal/pedido_refeicoes/consumo_form.html",
+        pedido=pedido,
+        consumo=None,
+        colaboradores=colaboradores,
+        itens=itens,
+        modo="novo",
+        formatar_moeda=formatar_moeda,
+    )
+
+
+@pedido_refeicoes_bp.route("/consumos/<int:consumo_id>/editar", methods=["GET", "POST"])
+@module_permission_required("departamento_pessoal", "pedido_refeicoes", "editar")
+def editar_consumo(consumo_id):
+    consumo = buscar_consumo_por_id(consumo_id)
+
+    if not consumo:
+        flash("Consumo não encontrado.", "warning")
+        return redirect(url_for("pedido_refeicoes.pedidos"))
+
+    pedido = consumo.pedido
+
+    if not pedido_pode_ser_editado(pedido):
+        flash("Somente pedidos em aberto podem ter consumo alterado.", "danger")
+        return redirect(url_for("pedido_refeicoes.detalhes_pedido", pedido_id=pedido.id))
+
+    colaboradores = buscar_colaboradores_do_pedido(pedido)
+    itens = buscar_itens_do_pedido(pedido)
+
+    if request.method == "POST":
+        sucesso, mensagem = atualizar_consumo_refeicao(
+            consumo=consumo,
+            colaborador_id=request.form.get("colaborador_id"),
+            item_cardapio_id=request.form.get("item_cardapio_id"),
+            quantidade=request.form.get("quantidade"),
+            observacao=request.form.get("observacao", ""),
+        )
+
+        if sucesso:
+            flash(mensagem, "success")
+            return redirect(url_for("pedido_refeicoes.detalhes_pedido", pedido_id=pedido.id))
+
+        flash(mensagem, "danger")
+
+    return render_template(
+        "departamento_pessoal/pedido_refeicoes/consumo_form.html",
+        pedido=pedido,
+        consumo=consumo,
+        colaboradores=colaboradores,
+        itens=itens,
+        modo="editar",
+        formatar_moeda=formatar_moeda,
+    )
+
+
+@pedido_refeicoes_bp.route("/consumos/<int:consumo_id>/remover")
+@module_permission_required("departamento_pessoal", "pedido_refeicoes", "excluir")
+def remover_consumo(consumo_id):
+    consumo = buscar_consumo_por_id(consumo_id)
+
+    if not consumo:
+        flash("Consumo não encontrado.", "warning")
+        return redirect(url_for("pedido_refeicoes.pedidos"))
+
+    pedido_id = consumo.pedido_id
+
+    sucesso, mensagem = remover_consumo_refeicao(consumo)
+
+    if sucesso:
+        flash(mensagem, "success")
+    else:
+        flash(mensagem, "danger")
+
+    return redirect(url_for("pedido_refeicoes.detalhes_pedido", pedido_id=pedido_id))

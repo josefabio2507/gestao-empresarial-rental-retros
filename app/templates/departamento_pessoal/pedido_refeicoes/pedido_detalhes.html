@@ -56,11 +56,106 @@
     </div>
 
     <div class="details-card">
-        <h2>Consumo individual</h2>
-        <p>
-            O lançamento de consumo individual por colaborador será implementado na Missão 10.3.
-        </p>
+    <div class="section-header">
+        <div>
+            <h2>Consumo individual</h2>
+            <p>Itens lançados por colaborador neste pedido.</p>
+        </div>
+
+        {% if pode_criar and pedido_pode_ser_editado(pedido) %}
+            <a class="btn btn-primary" href="{{ url_for('pedido_refeicoes.novo_consumo', pedido_id=pedido.id) }}">
+                + Adicionar consumo
+            </a>
+        {% endif %}
     </div>
+
+    <div class="table-card table-card-inner">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Colaborador</th>
+                    <th>Tipo</th>
+                    <th>Item</th>
+                    <th>Qtd.</th>
+                    <th>Valor Unit.</th>
+                    <th>Total</th>
+                    <th>Observação</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for consumo in consumos %}
+                    <tr>
+                        <td>{{ consumo.colaborador.nome if consumo.colaborador else "-" }}</td>
+                        <td>{{ consumo.item_cardapio.tipo if consumo.item_cardapio else "-" }}</td>
+                        <td>{{ consumo.item_cardapio.nome if consumo.item_cardapio else "-" }}</td>
+                        <td>{{ consumo.quantidade }}</td>
+                        <td>{{ formatar_moeda(consumo.valor_unitario) }}</td>
+                        <td>{{ formatar_moeda(consumo.valor_total) }}</td>
+                        <td>{{ consumo.observacao or "-" }}</td>
+                        <td class="actions">
+                            {% if pode_editar and pedido_pode_ser_editado(pedido) %}
+                                <a class="btn btn-primary" href="{{ url_for('pedido_refeicoes.editar_consumo', consumo_id=consumo.id) }}">
+                                    Editar
+                                </a>
+                            {% endif %}
+
+                            {% if pode_excluir and pedido_pode_ser_editado(pedido) %}
+                                <a class="btn btn-warning" href="{{ url_for('pedido_refeicoes.remover_consumo', consumo_id=consumo.id) }}">
+                                    Remover
+                                </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="8">Nenhum consumo lançado neste pedido.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="details-card">
+    <h2>Resumo do pedido</h2>
+
+    {% if resumo_pedido %}
+        {% for tipo, itens in resumo_pedido.items() %}
+            <div class="summary-group">
+                <h3>{{ tipo }}</h3>
+
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Item</th>
+                            <th>Quantidade</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {% for nome_item, dados in itens.items() %}
+                            <tr>
+                                <td>{{ nome_item }}</td>
+                                <td>{{ dados.quantidade }}</td>
+                                <td>{{ formatar_moeda(dados.valor_total) }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% endfor %}
+
+        <div class="total-box">
+            <strong>Total geral:</strong>
+            {{ formatar_moeda(total_geral) }}
+        </div>
+    {% else %}
+        <p>Nenhum item lançado para resumir.</p>
+    {% endif %}
+</div>
 
     <div class="page-actions">
         {% if pode_editar and pedido_pode_ser_editado(pedido) %}
