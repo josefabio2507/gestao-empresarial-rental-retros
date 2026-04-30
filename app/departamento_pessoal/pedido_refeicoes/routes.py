@@ -1,9 +1,18 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file
 from flask_login import current_user
+from io import BytesIO
+from datetime import datetime
+
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4, landscape
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+
 
 from app.decorators import module_permission_required
 from app.services.permissoes_service import usuario_tem_permissao
 from app.departamento_pessoal.pedido_refeicoes.services import (
+
     TIPOS_CARDAPIO,
     buscar_restaurantes,
     buscar_restaurantes_ativos,
@@ -47,6 +56,8 @@ from app.departamento_pessoal.pedido_refeicoes.services import (
     STATUS_PEDIDO_CANCELADO,
     pedido_enviado_com_correcao_permitida,
     pedido_pode_ser_cancelado,
+    montar_relatorio_refeicoes,
+    status_relatorio_opcoes,
 )
 
 
@@ -63,11 +74,19 @@ def index():
         "criar",
     )
 
+    pode_exportar = usuario_tem_permissao(
+        current_user,
+        "departamento_pessoal",
+        "pedido_refeicoes",
+        "exportar",
+    )
+
     return render_template(
         "departamento_pessoal/pedido_refeicoes/index.html",
         pode_criar=pode_criar,
+        pode_exportar=pode_exportar,
     )
-
+    
 
 @pedido_refeicoes_bp.route("/restaurantes")
 @module_permission_required("departamento_pessoal", "pedido_refeicoes", "visualizar")
@@ -705,3 +724,197 @@ def enviar_whatsapp(pedido_id):
 
     flash(mensagem_registro, "success")
     return redirect(link)
+
+def gerar_pdf_relatorio_refeicoes(relatorio, filtros):
+    buffer = BytesIO()
+
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=landscape(A4),
+        rightMargin=24,
+        leftMargin=24,
+        topMargin=24,
+        bottomMargin=24,
+    )
+
+    styles = getSampleStyleSheet()
+    elementos = []
+
+    titulo = Paragraph("<b>Relatório de Pedido de Refeições</b>", styles["Title"])
+    elementos.append(titulo)
+    elementos.append(Spacer(1, 10))
+
+    cabecalho = [
+        f"Empresa: Rental Retros",
+        f"Período: {filtros.get('data_inicial')} a {filtros.get('data_final')}",
+        f"Agrupamento: {relatorio['agrupamento_label']}",
+        f"Status: {filtros.get('status')}",
+        f"Gerado em: {datetime.now().strftime('%d/%m/%Y %H:%M')}",
+    ]
+
+    for linha in cabecalho:
+        elementos.append(Paragraph(linha, styles["Normal"]))
+
+    elementos.append(Spacer(1, 16))
+
+    for grupo in relatorio["grupos"]:
+        elementos.append(Paragraph(f"<b>{grupo['tipo']}: {grupo['titulo']}</b>", styles["Heading2"]))
+        elementos.append(Spacer(1, 8))
+
+        tabela_pedidos = [
+            ["Número", "Data", "Equipe", "Restaurante", "Status", "Envios", "Total"]
+        ]
+
+        for pedido in grupo["pedidos"]:
+            tabela_pedidos.append([
+                pedido["numero"],
+                formatar_data(pedido["data"]),
+                pedido["equipe"],
+                pedido["restaurante"],
+                pedido["status"],
+                str(pedido["quantidade_envios"]),
+                formatar_moeda(pedido["total"]),
+            ])
+
+        tabela = Table(tabela_pedidos, repeatRows=1)
+        tabela.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.black),
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (-1, -1), 8),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ]))
+        elementos.append(tabela)
+        elementos.append(Spacer(1, 10))
+
+        elementos.append(Paragraph("<b>Resumo por item</b>", styles["Heading3"]))
+
+        tabela_resumo = [
+            ["Tipo", "Item", "Quantidade", "Total"]
+        ]
+
+        for item in grupo["resumo_itens"]:
+            tabela_resumo.append([
+                item["tipo"],
+                item["nome"],
+                str(item["quantidade"]),
+                formatar_moeda(item["total"]),
+            ])
+
+        tabela2 = Table(tabela_resumo, repeatRows=1)
+        tabela2.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.whitesmoke),
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (-1, -1), 8),
+        ]))
+        elementos.append(tabela2)
+        elementos.append(Spacer(1, 8))
+
+        elementos.append(Paragraph(
+            f"<b>Total do grupo:</b> {formatar_moeda(grupo['total_grupo'])}",
+            styles["Normal"],
+        ))
+        elementos.append(Spacer(1, 18))
+
+    elementos.append(Spacer(1, 10))
+    elementos.append(Paragraph(
+        f"<b>Total geral:</b> {formatar_moeda(relatorio['total_geral'])}",
+        styles["Heading2"],
+    ))
+
+    doc.build(elementos)
+
+    buffer.seek(0)
+    return buffer
+
+@pedido_refeicoes_bp.route("/relatorios")
+@module_permission_required("departamento_pessoal", "pedido_refeicoes", "exportar")
+def relatorios():
+    data_inicial = request.args.get("data_inicial", "").strip()
+    data_final = request.args.get("data_final", "").strip()
+    equipe_id = request.args.get("equipe_id", "").strip()
+    restaurante_id = request.args.get("restaurante_id", "").strip()
+    status = request.args.get("status", "Enviado").strip() or "Enviado"
+    agrupamento = request.args.get("agrupamento", "restaurante").strip() or "restaurante"
+
+    equipes = buscar_equipes_ativas()
+    restaurantes = buscar_restaurantes_ativos()
+    status_opcoes = status_relatorio_opcoes()
+
+    relatorio = None
+    filtros_aplicados = bool(request.args)
+
+    if filtros_aplicados:
+        if not data_inicial or not data_final:
+            flash("Informar data inicial e data final.", "danger")
+        else:
+            relatorio = montar_relatorio_refeicoes(
+                data_inicial=data_inicial,
+                data_final=data_final,
+                equipe_id=equipe_id if equipe_id else None,
+                restaurante_id=restaurante_id if restaurante_id else None,
+                status=status,
+                agrupamento=agrupamento,
+            )
+
+    return render_template(
+        "departamento_pessoal/pedido_refeicoes/relatorios.html",
+        relatorio=relatorio,
+        equipes=equipes,
+        restaurantes=restaurantes,
+        status_opcoes=status_opcoes,
+        filtros={
+            "data_inicial": data_inicial,
+            "data_final": data_final,
+            "equipe_id": equipe_id,
+            "restaurante_id": restaurante_id,
+            "status": status,
+            "agrupamento": agrupamento,
+        },
+        formatar_data=formatar_data,
+        formatar_moeda=formatar_moeda,
+    )
+
+@pedido_refeicoes_bp.route("/relatorios/pdf")
+@module_permission_required("departamento_pessoal", "pedido_refeicoes", "exportar")
+def relatorios_pdf():
+    data_inicial = request.args.get("data_inicial", "").strip()
+    data_final = request.args.get("data_final", "").strip()
+    equipe_id = request.args.get("equipe_id", "").strip()
+    restaurante_id = request.args.get("restaurante_id", "").strip()
+    status = request.args.get("status", "Enviado").strip() or "Enviado"
+    agrupamento = request.args.get("agrupamento", "restaurante").strip() or "restaurante"
+
+    if not data_inicial or not data_final:
+        flash("Informar data inicial e data final.", "danger")
+        return redirect(url_for("pedido_refeicoes.relatorios"))
+
+    relatorio = montar_relatorio_refeicoes(
+        data_inicial=data_inicial,
+        data_final=data_final,
+        equipe_id=equipe_id if equipe_id else None,
+        restaurante_id=restaurante_id if restaurante_id else None,
+        status=status,
+        agrupamento=agrupamento,
+    )
+
+    pdf_buffer = gerar_pdf_relatorio_refeicoes(
+        relatorio=relatorio,
+        filtros={
+            "data_inicial": data_inicial,
+            "data_final": data_final,
+            "status": status,
+            "agrupamento": agrupamento,
+        },
+    )
+
+    nome_arquivo = f"relatorio_pedidos_refeicoes_{data_inicial}_a_{data_final}.pdf"
+
+    return send_file(
+        pdf_buffer,
+        as_attachment=True,
+        download_name=nome_arquivo,
+        mimetype="application/pdf",
+    )

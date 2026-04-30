@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <h1>Relatórios de Pedido de Refeições</h1>
+            <p>Filtre por período, equipe, restaurante e gere PDF para conferência.</p>
+        </div>
+
+        <a class="btn btn-secondary" href="{{ url_for('pedido_refeicoes.index') }}">
+            Voltar
+        </a>
+    </div>
+
+    <form class="filter-card" method="GET" action="{{ url_for('pedido_refeicoes.relatorios') }}">
+        <div class="filter-grid">
+            <div class="form-group">
+                <label for="data_inicial">Data inicial</label>
+                <input
+                    type="date"
+                    name="data_inicial"
+                    id="data_inicial"
+                    value="{{ filtros.data_inicial }}"
+                    required
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="data_final">Data final</label>
+                <input
+                    type="date"
+                    name="data_final"
+                    id="data_final"
+                    value="{{ filtros.data_final }}"
+                    required
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="equipe_id">Equipe</label>
+                <select name="equipe_id" id="equipe_id">
+                    <option value="">Todas</option>
+                    {% for equipe in equipes %}
+                        <option value="{{ equipe.id }}" {% if filtros.equipe_id|string == equipe.id|string %}selected{% endif %}>
+                            {{ equipe.nome }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="restaurante_id">Restaurante</label>
+                <select name="restaurante_id" id="restaurante_id">
+                    <option value="">Todos</option>
+                    {% for restaurante in restaurantes %}
+                        <option value="{{ restaurante.id }}" {% if filtros.restaurante_id|string == restaurante.id|string %}selected{% endif %}>
+                            {{ restaurante.nome }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="status">Status</label>
+                <select name="status" id="status">
+                    {% for status_item in status_opcoes %}
+                        <option value="{{ status_item }}" {% if filtros.status == status_item %}selected{% endif %}>
+                            {{ status_item }}
+                        </option>
+                    {% endfor %}
+                </select>
+                <small>Padrão financeiro: Enviado.</small>
+            </div>
+
+            <div class="form-group">
+                <label for="agrupamento">Agrupamento</label>
+                <select name="agrupamento" id="agrupamento">
+                    <option value="restaurante" {% if filtros.agrupamento == "restaurante" %}selected{% endif %}>
+                        Restaurante
+                    </option>
+                    <option value="equipe" {% if filtros.agrupamento == "equipe" %}selected{% endif %}>
+                        Equipe
+                    </option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Aplicar filtros</button>
+
+            {% if relatorio %}
+                <a
+                    class="btn btn-success"
+                    href="{{ url_for(
+                        'pedido_refeicoes.relatorios_pdf',
+                        data_inicial=filtros.data_inicial,
+                        data_final=filtros.data_final,
+                        equipe_id=filtros.equipe_id,
+                        restaurante_id=filtros.restaurante_id,
+                        status=filtros.status,
+                        agrupamento=filtros.agrupamento
+                    ) }}"
+                >
+                    Gerar PDF
+                </a>
+            {% endif %}
+        </div>
+    </form>
+
+    {% if relatorio %}
+        <div class="details-card">
+            <h2>Resultado do relatório</h2>
+
+            <p><strong>Período:</strong> {{ filtros.data_inicial }} a {{ filtros.data_final }}</p>
+            <p><strong>Status:</strong> {{ filtros.status }}</p>
+            <p><strong>Agrupamento:</strong> {{ relatorio.agrupamento_label }}</p>
+            <p><strong>Quantidade de pedidos:</strong> {{ relatorio.quantidade_pedidos }}</p>
+            <p><strong>Total geral:</strong> {{ formatar_moeda(relatorio.total_geral) }}</p>
+        </div>
+
+        {% if relatorio.grupos %}
+            {% for grupo in relatorio.grupos %}
+                <div class="details-card">
+                    <h2>{{ grupo.tipo }}: {{ grupo.titulo }}</h2>
+
+                    <h3>Pedidos</h3>
+
+                    <div class="table-card table-card-inner">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Número</th>
+                                    <th>Data</th>
+                                    {% if filtros.agrupamento == "restaurante" %}
+                                        <th>Equipe</th>
+                                    {% else %}
+                                        <th>Restaurante</th>
+                                    {% endif %}
+                                    <th>Status</th>
+                                    <th>Envios</th>
+                                    <th>Total</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                {% for pedido in grupo.pedidos %}
+                                    <tr>
+                                        <td>{{ pedido.numero }}</td>
+                                        <td>{{ formatar_data(pedido.data) }}</td>
+                                        {% if filtros.agrupamento == "restaurante" %}
+                                            <td>{{ pedido.equipe }}</td>
+                                        {% else %}
+                                            <td>{{ pedido.restaurante }}</td>
+                                        {% endif %}
+                                        <td>{{ pedido.status }}</td>
+                                        <td>{{ pedido.quantidade_envios }}</td>
+                                        <td>{{ formatar_moeda(pedido.total) }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <h3>Resumo por item</h3>
+
+                    <div class="table-card table-card-inner">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Tipo</th>
+                                    <th>Item</th>
+                                    <th>Quantidade</th>
+                                    <th>Total</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                {% for item in grupo.resumo_itens %}
+                                    <tr>
+                                        <td>{{ item.tipo }}</td>
+                                        <td>{{ item.nome }}</td>
+                                        <td>{{ item.quantidade }}</td>
+                                        <td>{{ formatar_moeda(item.total) }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="total-box">
+                        <strong>Total do grupo:</strong>
+                        {{ formatar_moeda(grupo.total_grupo) }}
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="details-card">
+                <p>Nenhum pedido encontrado para os filtros selecionados.</p>
+            </div>
+        {% endif %}
+    {% endif %}
+</section>
+{% endblock %}

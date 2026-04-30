@@ -849,3 +849,216 @@ def status_whatsapp_pedido(pedido):
         return "Limite atingido"
 
     return "Não enviado"
+
+def buscar_pedidos_relatorio_refeicoes(
+    data_inicial,
+    data_final,
+    equipe_id=None,
+    restaurante_id=None,
+    status="Enviado",
+):
+    data_inicio = converter_data(data_inicial)
+    data_fim = converter_data(data_final)
+
+    if not data_inicio or not data_fim:
+        return []
+
+    query = (
+        PedidoRefeicao.query
+        .join(ConsumoRefeicao, ConsumoRefeicao.pedido_id == PedidoRefeicao.id)
+        .filter(PedidoRefeicao.data_pedido >= data_inicio)
+        .filter(PedidoRefeicao.data_pedido <= data_fim)
+    )
+
+    if equipe_id:
+        query = query.filter(PedidoRefeicao.equipe_id == equipe_id)
+
+    if restaurante_id:
+        query = query.filter(PedidoRefeicao.restaurante_id == restaurante_id)
+
+    if status and status != "Todos":
+        query = query.filter(PedidoRefeicao.status == status)
+
+        if status == STATUS_PEDIDO_ENVIADO:
+            query = query.filter(PedidoRefeicao.quantidade_envios >= 1)
+
+    return (
+        query
+        .distinct()
+        .order_by(PedidoRefeicao.data_pedido.asc(), PedidoRefeicao.id.asc())
+        .all()
+    )
+
+
+def calcular_total_pedido_relatorio(pedido):
+    if not pedido:
+        return Decimal("0.00")
+
+    total = Decimal("0.00")
+
+    for consumo in pedido.consumos:
+        total += consumo.valor_total or Decimal("0.00")
+
+    return total
+
+
+def calcular_resumo_itens_relatorio(pedidos):
+    resumo = {}
+
+    for pedido in pedidos:
+        for consumo in pedido.consumos:
+            item = consumo.item_cardapio
+
+            if not item:
+                continue
+
+            chave = (item.tipo, item.nome)
+
+            if chave not in resumo:
+                resumo[chave] = {
+                    "tipo": item.tipo,
+                    "nome": item.nome,
+                    "quantidade": 0,
+                    "total": Decimal("0.00"),
+                }
+
+            resumo[chave]["quantidade"] += consumo.quantidade
+            resumo[chave]["total"] += consumo.valor_total or Decimal("0.00")
+
+    return list(resumo.values())
+
+
+def agrupar_relatorio_por_restaurante(pedidos):
+    grupos = {}
+
+    for pedido in pedidos:
+        restaurante = pedido.restaurante
+        grupo_id = restaurante.id if restaurante else 0
+        nome_grupo = restaurante.nome if restaurante else "Sem restaurante"
+
+        if grupo_id not in grupos:
+            grupos[grupo_id] = {
+                "titulo": nome_grupo,
+                "tipo": "Restaurante",
+                "pedidos": [],
+                "resumo_itens": [],
+                "total_grupo": Decimal("0.00"),
+            }
+
+        total_pedido = calcular_total_pedido_relatorio(pedido)
+
+        grupos[grupo_id]["pedidos"].append({
+            "numero": pedido.numero_pedido,
+            "data": pedido.data_pedido,
+            "equipe": pedido.equipe.nome if pedido.equipe else "-",
+            "restaurante": nome_grupo,
+            "status": pedido.status,
+            "quantidade_envios": pedido.quantidade_envios,
+            "total": total_pedido,
+        })
+
+        grupos[grupo_id]["total_grupo"] += total_pedido
+
+    for grupo in grupos.values():
+        pedidos_do_grupo = [
+            pedido
+            for pedido in pedidos
+            if (pedido.restaurante.nome if pedido.restaurante else "Sem restaurante") == grupo["titulo"]
+        ]
+        grupo["resumo_itens"] = calcular_resumo_itens_relatorio(pedidos_do_grupo)
+
+    return list(grupos.values())
+
+
+def agrupar_relatorio_por_equipe(pedidos):
+    grupos = {}
+
+    for pedido in pedidos:
+        equipe = pedido.equipe
+        grupo_id = equipe.id if equipe else 0
+        nome_grupo = equipe.nome if equipe else "Sem equipe"
+
+        if grupo_id not in grupos:
+            grupos[grupo_id] = {
+                "titulo": nome_grupo,
+                "tipo": "Equipe",
+                "pedidos": [],
+                "resumo_itens": [],
+                "total_grupo": Decimal("0.00"),
+            }
+
+        total_pedido = calcular_total_pedido_relatorio(pedido)
+
+        grupos[grupo_id]["pedidos"].append({
+            "numero": pedido.numero_pedido,
+            "data": pedido.data_pedido,
+            "equipe": nome_grupo,
+            "restaurante": pedido.restaurante.nome if pedido.restaurante else "-",
+            "status": pedido.status,
+            "quantidade_envios": pedido.quantidade_envios,
+            "total": total_pedido,
+        })
+
+        grupos[grupo_id]["total_grupo"] += total_pedido
+
+    for grupo in grupos.values():
+        pedidos_do_grupo = [
+            pedido
+            for pedido in pedidos
+            if (pedido.equipe.nome if pedido.equipe else "Sem equipe") == grupo["titulo"]
+        ]
+        grupo["resumo_itens"] = calcular_resumo_itens_relatorio(pedidos_do_grupo)
+
+    return list(grupos.values())
+
+
+def montar_relatorio_refeicoes(
+    data_inicial,
+    data_final,
+    equipe_id=None,
+    restaurante_id=None,
+    status="Enviado",
+    agrupamento="restaurante",
+):
+    pedidos = buscar_pedidos_relatorio_refeicoes(
+        data_inicial=data_inicial,
+        data_final=data_final,
+        equipe_id=equipe_id,
+        restaurante_id=restaurante_id,
+        status=status,
+    )
+
+    if agrupamento == "equipe":
+        grupos = agrupar_relatorio_por_equipe(pedidos)
+        agrupamento_label = "Equipe"
+    else:
+        grupos = agrupar_relatorio_por_restaurante(pedidos)
+        agrupamento_label = "Restaurante"
+
+    total_geral = Decimal("0.00")
+
+    for grupo in grupos:
+        total_geral += grupo["total_grupo"]
+
+    return {
+        "periodo": {
+            "data_inicial": data_inicial,
+            "data_final": data_final,
+        },
+        "status": status,
+        "agrupamento": agrupamento,
+        "agrupamento_label": agrupamento_label,
+        "grupos": grupos,
+        "total_geral": total_geral,
+        "quantidade_pedidos": len(pedidos),
+    }
+
+
+def status_relatorio_opcoes():
+    return [
+        "Enviado",
+        "Aberto",
+        "Fechado",
+        "Cancelado",
+        "Todos",
+    ]
