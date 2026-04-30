@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <h1>Detalhes do Pedido</h1>
+            <p>Informações principais do pedido de refeição.</p>
+        </div>
+
+        <a class="btn btn-secondary" href="{{ url_for('pedido_refeicoes.pedidos') }}">
+            Voltar
+        </a>
+    </div>
+
+    <div class="details-card">
+        <p><strong>Número:</strong> {{ pedido.numero_pedido }}</p>
+        <p><strong>Equipe:</strong> {{ pedido.equipe.nome if pedido.equipe else "-" }}</p>
+        <p><strong>Restaurante:</strong> {{ pedido.restaurante.nome if pedido.restaurante else "-" }}</p>
+        <p><strong>Telefone do restaurante:</strong> {{ formatar_telefone(pedido.restaurante.telefone) if pedido.restaurante else "-" }}</p>
+        <p><strong>Data:</strong> {{ formatar_data(pedido.data_pedido) }}</p>
+
+        <p>
+            <strong>Status:</strong>
+            {% if pedido.status == "Aberto" %}
+                <span class="badge badge-success">Aberto</span>
+            {% elif pedido.status == "Cancelado" %}
+                <span class="badge badge-danger">Cancelado</span>
+            {% else %}
+                <span class="badge badge-warning">{{ pedido.status }}</span>
+            {% endif %}
+        </p>
+
+        <p><strong>Observação:</strong> {{ pedido.observacao or "-" }}</p>
+
+        <p>
+            <strong>WhatsApp:</strong>
+            {% if pedido.enviado_whatsapp %}
+                <span class="badge badge-success">Enviado</span>
+            {% else %}
+                <span class="badge badge-warning">Não enviado</span>
+            {% endif %}
+        </p>
+
+        <p><strong>Quantidade de envios:</strong> {{ pedido.quantidade_envios }}</p>
+
+        <p>
+            <strong>Criado em:</strong>
+            {{ pedido.criado_em.strftime("%d/%m/%Y %H:%M") if pedido.criado_em else "-" }}
+        </p>
+
+        <p>
+            <strong>Atualizado em:</strong>
+            {{ pedido.atualizado_em.strftime("%d/%m/%Y %H:%M") if pedido.atualizado_em else "-" }}
+        </p>
+    </div>
+
+    <div class="details-card">
+        <h2>Consumo individual</h2>
+        <p>
+            O lançamento de consumo individual por colaborador será implementado na Missão 10.3.
+        </p>
+    </div>
+
+    <div class="page-actions">
+        {% if pode_editar and pedido_pode_ser_editado(pedido) %}
+            <a class="btn btn-primary" href="{{ url_for('pedido_refeicoes.editar_pedido', pedido_id=pedido.id) }}">
+                Editar
+            </a>
+        {% endif %}
+
+        {% if pode_excluir and pedido_pode_ser_editado(pedido) %}
+            <a class="btn btn-warning" href="{{ url_for('pedido_refeicoes.cancelar_pedido', pedido_id=pedido.id) }}">
+                Cancelar pedido
+            </a>
+        {% endif %}
+
+        <a class="btn btn-secondary" href="{{ url_for('pedido_refeicoes.pedidos') }}">
+            Voltar para pedidos
+        </a>
+    </div>
+</section>
+{% endblock %}

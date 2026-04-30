@@ -2,7 +2,8 @@ import re
 from decimal import Decimal, InvalidOperation
 
 from app.extensions import db
-from app.models import Restaurante, ItemCardapio
+from datetime import datetime
+from app.models import Restaurante, ItemCardapio, Equipe, PedidoRefeicao
 
 
 TIPOS_CARDAPIO = [
@@ -243,3 +244,149 @@ def alterar_status_item_cardapio(item):
         return True, "Item de cardápio ativado com sucesso."
 
     return True, "Item de cardápio inativado com sucesso."
+
+STATUS_PEDIDO_ABERTO = "Aberto"
+STATUS_PEDIDO_FECHADO = "Fechado"
+STATUS_PEDIDO_ENVIADO = "Enviado"
+STATUS_PEDIDO_CANCELADO = "Cancelado"
+
+
+def buscar_equipes_ativas():
+    return (
+        Equipe.query
+        .filter_by(ativo=True)
+        .order_by(Equipe.nome.asc())
+        .all()
+    )
+
+
+def buscar_pedidos():
+    return (
+        PedidoRefeicao.query
+        .order_by(
+            PedidoRefeicao.data_pedido.desc(),
+            PedidoRefeicao.id.desc()
+        )
+        .all()
+    )
+
+
+def buscar_pedido_por_id(pedido_id):
+    return PedidoRefeicao.query.get(pedido_id)
+
+
+def gerar_numero_pedido(pedido_id):
+    return f"PED-{pedido_id:06d}"
+
+
+def pedido_pode_ser_editado(pedido):
+    return pedido and pedido.status == STATUS_PEDIDO_ABERTO
+
+
+def converter_data(data_texto):
+    if not data_texto:
+        return None
+
+    try:
+        return datetime.strptime(data_texto, "%Y-%m-%d").date()
+    except ValueError:
+        return None
+
+
+def formatar_data(data):
+    if not data:
+        return "-"
+
+    return data.strftime("%d/%m/%Y")
+
+
+def formatar_status_pedido(status):
+    return status or "-"
+
+
+def validar_dados_pedido(equipe_id, restaurante_id, data_pedido):
+    if not equipe_id:
+        return False, "Equipe é obrigatória."
+
+    equipe = Equipe.query.filter_by(id=equipe_id, ativo=True).first()
+
+    if not equipe:
+        return False, "Equipe inválida ou inativa."
+
+    if not restaurante_id:
+        return False, "Restaurante é obrigatório."
+
+    restaurante = Restaurante.query.filter_by(id=restaurante_id, ativo=True).first()
+
+    if not restaurante:
+        return False, "Restaurante inválido ou inativo."
+
+    data_convertida = converter_data(data_pedido)
+
+    if not data_convertida:
+        return False, "Data do pedido é obrigatória ou inválida."
+
+    return True, ""
+
+
+def criar_pedido_refeicao(equipe_id, restaurante_id, data_pedido, observacao=None):
+    valido, mensagem = validar_dados_pedido(
+        equipe_id=equipe_id,
+        restaurante_id=restaurante_id,
+        data_pedido=data_pedido,
+    )
+
+    if not valido:
+        return False, mensagem, None
+
+    pedido = PedidoRefeicao(
+        equipe_id=equipe_id,
+        restaurante_id=restaurante_id,
+        data_pedido=converter_data(data_pedido),
+        status=STATUS_PEDIDO_ABERTO,
+        observacao=observacao.strip() if observacao else "",
+        enviado_whatsapp=False,
+        quantidade_envios=0,
+    )
+
+    db.session.add(pedido)
+    db.session.flush()
+
+    pedido.numero_pedido = gerar_numero_pedido(pedido.id)
+
+    db.session.commit()
+
+    return True, "Pedido criado com sucesso.", pedido
+
+
+def atualizar_pedido_refeicao(pedido, equipe_id, restaurante_id, data_pedido, observacao=None):
+    if not pedido_pode_ser_editado(pedido):
+        return False, "Somente pedidos em aberto podem ser editados."
+
+    valido, mensagem = validar_dados_pedido(
+        equipe_id=equipe_id,
+        restaurante_id=restaurante_id,
+        data_pedido=data_pedido,
+    )
+
+    if not valido:
+        return False, mensagem
+
+    pedido.equipe_id = equipe_id
+    pedido.restaurante_id = restaurante_id
+    pedido.data_pedido = converter_data(data_pedido)
+    pedido.observacao = observacao.strip() if observacao else ""
+
+    db.session.commit()
+
+    return True, "Pedido atualizado com sucesso."
+
+
+def cancelar_pedido_refeicao(pedido):
+    if not pedido_pode_ser_editado(pedido):
+        return False, "Somente pedidos em aberto podem ser cancelados."
+
+    pedido.status = STATUS_PEDIDO_CANCELADO
+    db.session.commit()
+
+    return True, "Pedido cancelado com sucesso."

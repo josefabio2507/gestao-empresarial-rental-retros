@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            {% if modo == "novo" %}
+                <h1>Novo Pedido de Refeição</h1>
+                <p>Crie o cabeçalho do pedido.</p>
+            {% else %}
+                <h1>Editar Pedido de Refeição</h1>
+                <p>Atualize os dados do pedido em aberto.</p>
+            {% endif %}
+        </div>
+
+        <a class="btn btn-secondary" href="{{ url_for('pedido_refeicoes.pedidos') }}">
+            Voltar
+        </a>
+    </div>
+
+    <form class="form-card" method="POST">
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="equipe_id">Equipe</label>
+                <select name="equipe_id" id="equipe_id" required>
+                    <option value="">Selecione...</option>
+
+                    {% for equipe in equipes %}
+                        <option
+                            value="{{ equipe.id }}"
+                            {% if pedido and pedido.equipe_id == equipe.id %}selected{% endif %}
+                        >
+                            {{ equipe.nome }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="restaurante_id">Restaurante</label>
+                <select name="restaurante_id" id="restaurante_id" required>
+                    <option value="">Selecione...</option>
+
+                    {% for restaurante in restaurantes %}
+                        <option
+                            value="{{ restaurante.id }}"
+                            {% if pedido and pedido.restaurante_id == restaurante.id %}selected{% endif %}
+                        >
+                            {{ restaurante.nome }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="data_pedido">Data do pedido</label>
+                <input
+                    type="date"
+                    name="data_pedido"
+                    id="data_pedido"
+                    value="{{ pedido.data_pedido if pedido else '' }}"
+                    required
+                >
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="observacao">Observação geral</label>
+            <textarea
+                name="observacao"
+                id="observacao"
+                rows="4"
+                placeholder="Ex: Entregar às 11h30 na frente de serviço."
+            >{{ pedido.observacao if pedido else '' }}</textarea>
+        </div>
+
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Salvar</button>
+            <a class="btn btn-secondary" href="{{ url_for('pedido_refeicoes.pedidos') }}">Cancelar</a>
+        </div>
+    </form>
+</section>
+{% endblock %}

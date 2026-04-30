@@ -360,3 +360,48 @@ class ItemCardapio(db.Model):
 
     def __repr__(self):
         return f"<ItemCardapio {self.tipo} - {self.nome}>"
+    
+class PedidoRefeicao(db.Model):
+    __tablename__ = "pedidos_refeicao"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    numero_pedido = db.Column(
+        db.String(30),
+        unique=True,
+        nullable=True,
+        index=True
+    )
+
+    equipe_id = db.Column(
+        db.Integer,
+        db.ForeignKey("equipes.id"),
+        nullable=False
+    )
+
+    restaurante_id = db.Column(
+        db.Integer,
+        db.ForeignKey("restaurantes.id"),
+        nullable=False
+    )
+
+    data_pedido = db.Column(db.Date, nullable=False)
+    status = db.Column(db.String(30), default="Aberto", nullable=False)
+    observacao = db.Column(db.Text, nullable=True)
+
+    enviado_whatsapp = db.Column(db.Boolean, default=False, nullable=False)
+    quantidade_envios = db.Column(db.Integer, default=0, nullable=False)
+
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    atualizado_em = db.Column(
+        db.DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False
+    )
+
+    equipe = db.relationship("Equipe")
+    restaurante = db.relationship("Restaurante")
+
+    def __repr__(self):
+        return f"<PedidoRefeicao {self.numero_pedido}>"
