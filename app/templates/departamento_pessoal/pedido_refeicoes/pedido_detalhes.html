@@ -158,6 +158,7 @@
 </div>
 
     <div class="page-actions">
+    {% if pedido.status == "Aberto" %}
         {% if pode_editar and pedido_pode_ser_editado(pedido) %}
             <a class="btn btn-primary" href="{{ url_for('pedido_refeicoes.editar_pedido', pedido_id=pedido.id) }}">
                 Editar
@@ -170,9 +171,32 @@
             </a>
         {% endif %}
 
-        <a class="btn btn-secondary" href="{{ url_for('pedido_refeicoes.pedidos') }}">
-            Voltar para pedidos
-        </a>
+        {% if pode_aprovar %}
+            <a class="btn btn-success" href="{{ url_for('pedido_refeicoes.fechar_pedido', pedido_id=pedido.id) }}">
+                Fechar pedido
+            </a>
+        {% endif %}
+    {% endif %}
+
+    {% if pedido.status == "Fechado" %}
+        {% if pode_exportar %}
+            <a class="btn btn-whatsapp" href="{{ url_for('pedido_refeicoes.enviar_whatsapp', pedido_id=pedido.id) }}" target="_blank">
+                Enviar WhatsApp
+            </a>
+        {% endif %}
+    {% endif %}
+
+    {% if pedido.status == "Enviado" and pedido.quantidade_envios < 2 %}
+        {% if pode_exportar %}
+            <a class="btn btn-whatsapp" href="{{ url_for('pedido_refeicoes.enviar_whatsapp', pedido_id=pedido.id) }}" target="_blank">
+                Reenviar WhatsApp
+            </a>
+        {% endif %}
+    {% endif %}
+
+    <a class="btn btn-secondary" href="{{ url_for('pedido_refeicoes.pedidos') }}">
+        Voltar para pedidos
+    </a>
     </div>
 </section>
 {% endblock %}

@@ -1,4 +1,5 @@
 import re
+from urllib.parse import quote
 from decimal import Decimal, InvalidOperation
 
 from app.extensions import db
@@ -623,3 +624,203 @@ def calcular_resumo_pedido(pedido):
         total_geral += consumo.valor_total
 
     return resumo, total_geral
+
+def pedido_tem_consumo(pedido):
+    if not pedido:
+        return False
+
+    return ConsumoRefeicao.query.filter_by(pedido_id=pedido.id).first() is not None
+
+
+def pedido_pode_ser_fechado(pedido):
+    if not pedido:
+        return False, "Pedido não encontrado."
+
+    if pedido.status != STATUS_PEDIDO_ABERTO:
+        return False, "Somente pedidos em aberto podem ser fechados."
+
+    if not pedido_tem_consumo(pedido):
+        return False, "Não é possível fechar um pedido sem consumo lançado."
+
+    return True, ""
+
+
+def fechar_pedido_refeicao(pedido):
+    permitido, mensagem = pedido_pode_ser_fechado(pedido)
+
+    if not permitido:
+        return False, mensagem
+
+    pedido.status = STATUS_PEDIDO_FECHADO
+    db.session.commit()
+
+    return True, "Pedido fechado com sucesso."
+
+
+def pedido_pode_enviar_whatsapp(pedido):
+    if not pedido:
+        return False, "Pedido não encontrado."
+
+    if pedido.status == STATUS_PEDIDO_CANCELADO:
+        return False, "Pedido cancelado não pode ser enviado por WhatsApp."
+
+    if pedido.status not in [STATUS_PEDIDO_FECHADO, STATUS_PEDIDO_ENVIADO]:
+        return False, "Somente pedidos fechados ou enviados podem ser enviados por WhatsApp."
+
+    if not pedido_tem_consumo(pedido):
+        return False, "Pedido sem consumo não pode ser enviado por WhatsApp."
+
+    if not pedido.restaurante or not pedido.restaurante.telefone:
+        return False, "O restaurante não possui telefone cadastrado para WhatsApp."
+
+    if pedido.quantidade_envios >= 2:
+        return False, "Limite de envios atingido para este pedido."
+
+    return True, ""
+
+
+def icone_item_por_tipo(tipo):
+    if tipo == "Refeição":
+        return "🍽️"
+
+    if tipo == "Bebida":
+        return "🥤"
+
+    return "▫️"
+
+
+def titulo_resumo_por_tipo(tipo):
+    if tipo == "Refeição":
+        return "🍽️ *Refeições*"
+
+    if tipo == "Bebida":
+        return "🥤 *Bebidas*"
+
+    return "*Outros*"
+
+
+def gerar_mensagem_whatsapp(pedido):
+    consumos = buscar_consumos_do_pedido(pedido)
+    resumo_pedido, total_geral = calcular_resumo_pedido(pedido)
+
+    linhas = []
+
+    linhas.append("📝 *Pedido de Refeição - Rental Retros*")
+    linhas.append("")
+    linhas.append(f"🆔 Pedido: {pedido.numero_pedido}")
+    linhas.append(f"Data: {formatar_data(pedido.data_pedido)}")
+    linhas.append(f"Equipe: {pedido.equipe.nome if pedido.equipe else '-'}")
+    linhas.append(f"Restaurante: {pedido.restaurante.nome if pedido.restaurante else '-'}")
+    linhas.append("")
+    linhas.append("━━━━━━━━━━━━━━━━━━━━")
+    linhas.append("")
+    linhas.append("👤 *Consumo por colaborador*")
+    linhas.append("")
+
+    consumos_por_colaborador = {}
+
+    for consumo in consumos:
+        colaborador = consumo.colaborador
+
+        if not colaborador:
+            continue
+
+        if colaborador.id not in consumos_por_colaborador:
+            consumos_por_colaborador[colaborador.id] = {
+                "colaborador": colaborador,
+                "consumos": [],
+            }
+
+        consumos_por_colaborador[colaborador.id]["consumos"].append(consumo)
+
+    contador = 1
+
+    for grupo in consumos_por_colaborador.values():
+        colaborador = grupo["colaborador"]
+        linhas.append(f"{contador}. *{colaborador.nome}*")
+
+        observacoes = []
+
+        for consumo in grupo["consumos"]:
+            item = consumo.item_cardapio
+
+            if not item:
+                continue
+
+            icone = icone_item_por_tipo(item.tipo)
+            linhas.append(f"{icone} {item.nome} | Qtd: {consumo.quantidade}")
+
+            if consumo.observacao:
+                observacoes.append(consumo.observacao)
+
+        for observacao in observacoes:
+            linhas.append(f"💬 Obs: {observacao}")
+
+        linhas.append("")
+        contador += 1
+
+    linhas.append("━━━━━━━━━━━━━━━━━━━━")
+    linhas.append("")
+    linhas.append("🧮 *Resumo do Pedido*")
+    linhas.append("")
+
+    for tipo, itens in resumo_pedido.items():
+        linhas.append(titulo_resumo_por_tipo(tipo))
+
+        for nome_item, dados in itens.items():
+            linhas.append(
+                f"- {nome_item} | Qtd: {dados['quantidade']} | Valor: {formatar_moeda(dados['valor_total'])}"
+            )
+
+        linhas.append("")
+
+    linhas.append(f"💰 *Total geral:* {formatar_moeda(total_geral)}")
+
+    return "\n".join(linhas)
+
+
+def gerar_link_whatsapp(pedido):
+    permitido, mensagem = pedido_pode_enviar_whatsapp(pedido)
+
+    if not permitido:
+        return False, mensagem, None
+
+    telefone = limpar_telefone(pedido.restaurante.telefone)
+
+    if not telefone:
+        return False, "O restaurante não possui telefone cadastrado para WhatsApp.", None
+
+    mensagem_whatsapp = gerar_mensagem_whatsapp(pedido)
+    mensagem_codificada = quote(mensagem_whatsapp)
+
+    link = f"https://api.whatsapp.com/send/?phone={telefone}&text={mensagem_codificada}"
+
+    return True, "Link do WhatsApp gerado com sucesso.", link
+
+
+def registrar_envio_whatsapp(pedido):
+    permitido, mensagem = pedido_pode_enviar_whatsapp(pedido)
+
+    if not permitido:
+        return False, mensagem
+
+    pedido.enviado_whatsapp = True
+    pedido.quantidade_envios = (pedido.quantidade_envios or 0) + 1
+    pedido.status = STATUS_PEDIDO_ENVIADO
+
+    db.session.commit()
+
+    return True, "Envio por WhatsApp registrado com sucesso."
+
+
+def status_whatsapp_pedido(pedido):
+    if not pedido.enviado_whatsapp:
+        return "Não enviado"
+
+    if pedido.quantidade_envios == 1:
+        return "Reenvio disponível"
+
+    if pedido.quantidade_envios >= 2:
+        return "Limite atingido"
+
+    return "Não enviado"

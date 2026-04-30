@@ -36,6 +36,15 @@ from app.departamento_pessoal.pedido_refeicoes.services import (
     atualizar_consumo_refeicao,
     remover_consumo_refeicao,
     calcular_resumo_pedido,
+    fechar_pedido_refeicao,
+    gerar_link_whatsapp,
+    registrar_envio_whatsapp,
+    pedido_pode_ser_fechado,
+    pedido_pode_enviar_whatsapp,
+    status_whatsapp_pedido,
+    STATUS_PEDIDO_FECHADO,
+    STATUS_PEDIDO_ENVIADO,
+    STATUS_PEDIDO_CANCELADO,
 )
 
 
@@ -359,6 +368,20 @@ def pedidos():
         "excluir",
     )
 
+    pode_aprovar = usuario_tem_permissao(
+        current_user,
+        "departamento_pessoal",
+        "pedido_refeicoes",
+        "aprovar",
+    )
+
+    pode_exportar = usuario_tem_permissao(
+        current_user,
+        "departamento_pessoal",
+        "pedido_refeicoes",
+        "exportar",
+    )
+
     return render_template(
         "departamento_pessoal/pedido_refeicoes/pedidos.html",
         pedidos=pedidos_lista,
@@ -367,6 +390,11 @@ def pedidos():
         pode_excluir=pode_excluir,
         pedido_pode_ser_editado=pedido_pode_ser_editado,
         formatar_data=formatar_data,
+        pode_aprovar=pode_aprovar,
+        pode_exportar=pode_exportar,
+        pedido_pode_ser_fechado=pedido_pode_ser_fechado,
+        pedido_pode_enviar_whatsapp=pedido_pode_enviar_whatsapp,
+        status_whatsapp_pedido=status_whatsapp_pedido,
     )
 
 
@@ -422,6 +450,20 @@ def detalhes_pedido(pedido_id):
         "excluir",
     )
 
+    pode_aprovar = usuario_tem_permissao(
+        current_user,
+        "departamento_pessoal",
+        "pedido_refeicoes",
+        "aprovar",
+    )
+
+    pode_exportar = usuario_tem_permissao(
+        current_user,
+        "departamento_pessoal",
+        "pedido_refeicoes",
+        "exportar",
+    )
+
     consumos = buscar_consumos_do_pedido(pedido)
     resumo_pedido, total_geral = calcular_resumo_pedido(pedido)
 
@@ -445,6 +487,10 @@ def detalhes_pedido(pedido_id):
         total_geral=total_geral,
         pode_criar=pode_criar,
         formatar_moeda=formatar_moeda,
+        pode_aprovar=pode_aprovar,
+        pode_exportar=pode_exportar,
+        pedido_pode_ser_fechado=pedido_pode_ser_fechado,
+        pedido_pode_enviar_whatsapp=pedido_pode_enviar_whatsapp,
     )
 
 @pedido_refeicoes_bp.route("/pedidos/<int:pedido_id>/editar", methods=["GET", "POST"])
@@ -610,3 +656,46 @@ def remover_consumo(consumo_id):
         flash(mensagem, "danger")
 
     return redirect(url_for("pedido_refeicoes.detalhes_pedido", pedido_id=pedido_id))
+
+@pedido_refeicoes_bp.route("/pedidos/<int:pedido_id>/fechar")
+@module_permission_required("departamento_pessoal", "pedido_refeicoes", "aprovar")
+def fechar_pedido(pedido_id):
+    pedido = buscar_pedido_por_id(pedido_id)
+
+    if not pedido:
+        flash("Pedido não encontrado.", "warning")
+        return redirect(url_for("pedido_refeicoes.pedidos"))
+
+    sucesso, mensagem = fechar_pedido_refeicao(pedido)
+
+    if sucesso:
+        flash(mensagem, "success")
+    else:
+        flash(mensagem, "danger")
+
+    return redirect(url_for("pedido_refeicoes.detalhes_pedido", pedido_id=pedido.id))
+
+
+@pedido_refeicoes_bp.route("/pedidos/<int:pedido_id>/whatsapp")
+@module_permission_required("departamento_pessoal", "pedido_refeicoes", "exportar")
+def enviar_whatsapp(pedido_id):
+    pedido = buscar_pedido_por_id(pedido_id)
+
+    if not pedido:
+        flash("Pedido não encontrado.", "warning")
+        return redirect(url_for("pedido_refeicoes.pedidos"))
+
+    sucesso, mensagem, link = gerar_link_whatsapp(pedido)
+
+    if not sucesso:
+        flash(mensagem, "danger")
+        return redirect(url_for("pedido_refeicoes.detalhes_pedido", pedido_id=pedido.id))
+
+    sucesso_registro, mensagem_registro = registrar_envio_whatsapp(pedido)
+
+    if not sucesso_registro:
+        flash(mensagem_registro, "danger")
+        return redirect(url_for("pedido_refeicoes.detalhes_pedido", pedido_id=pedido.id))
+
+    flash(mensagem_registro, "success")
+    return redirect(link)

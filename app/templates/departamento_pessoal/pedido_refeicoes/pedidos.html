@@ -53,10 +53,16 @@
                             {% endif %}
                         </td>
                         <td>
-                            {% if pedido.enviado_whatsapp %}
-                                <span class="badge badge-success">Enviado</span>
-                            {% else %}
+                            {% set status_whatsapp = status_whatsapp_pedido(pedido) %}
+
+                            {% if status_whatsapp == "Não enviado" %}
                                 <span class="badge badge-warning">Não enviado</span>
+                            {% elif status_whatsapp == "Reenvio disponível" %}
+                                <span class="badge badge-success">Reenvio disponível</span>
+                            {% elif status_whatsapp == "Limite atingido" %}
+                                <span class="badge badge-danger">Limite atingido</span>
+                            {% else %}
+                                <span class="badge badge-secondary">{{ status_whatsapp }}</span>
                             {% endif %}
                         </td>
                         <td>{{ pedido.quantidade_envios }}</td>
@@ -76,6 +82,24 @@
                                     Cancelar
                                 </a>
                             {% endif %}
+
+                            {% if pode_aprovar and pedido.status == "Aberto" %}
+                                <a class="btn btn-success" href="{{ url_for('pedido_refeicoes.fechar_pedido', pedido_id=pedido.id) }}">
+                                    Fechar
+                                </a>
+                            {% endif %}
+
+                            {% if pode_exportar and pedido.status == "Fechado" %}
+                                <a class="btn btn-whatsapp" href="{{ url_for('pedido_refeicoes.enviar_whatsapp', pedido_id=pedido.id) }}" target="_blank">
+                                    WhatsApp
+                                </a>
+                            {% endif %}
+
+                            {% if pode_exportar and pedido.status == "Enviado" and pedido.quantidade_envios < 2 %}
+                                <a class="btn btn-whatsapp" href="{{ url_for('pedido_refeicoes.enviar_whatsapp', pedido_id=pedido.id) }}" target="_blank">
+                                    Reenviar
+                                </a>
+                            {% endif %}        
                         </td>
                     </tr>
                 {% else %}
