@@ -287,8 +287,33 @@ def gerar_numero_pedido(pedido_id):
     return f"PED-{pedido_id:06d}"
 
 
+def pedido_enviado_com_correcao_permitida(pedido):
+    if not pedido:
+        return False
+
+    return (
+        pedido.status == STATUS_PEDIDO_ENVIADO
+        and pedido.quantidade_envios == 1
+    )
+
+
 def pedido_pode_ser_editado(pedido):
-    return pedido and pedido.status == STATUS_PEDIDO_ABERTO
+    if not pedido:
+        return False
+
+    if pedido.status == STATUS_PEDIDO_ABERTO:
+        return True
+
+    if pedido_enviado_com_correcao_permitida(pedido):
+        return True
+
+    return False
+
+def pedido_pode_ser_cancelado(pedido):
+    if not pedido:
+        return False
+
+    return pedido.status == STATUS_PEDIDO_ABERTO
 
 
 def converter_data(data_texto):
@@ -391,7 +416,7 @@ def atualizar_pedido_refeicao(pedido, equipe_id, restaurante_id, data_pedido, ob
 
 
 def cancelar_pedido_refeicao(pedido):
-    if not pedido_pode_ser_editado(pedido):
+    if not pedido_pode_ser_cancelado(pedido):
         return False, "Somente pedidos em aberto podem ser cancelados."
 
     pedido.status = STATUS_PEDIDO_CANCELADO
@@ -471,7 +496,7 @@ def validar_consumo(pedido, colaborador_id, item_cardapio_id, quantidade):
         return False, "Pedido não encontrado.", None, None, None
 
     if not pedido_pode_ser_editado(pedido):
-        return False, "Somente pedidos em aberto podem ter consumo alterado.", None, None, None
+        return False, "Este pedido não permite mais alterações de consumo."
 
     if not colaborador_id:
         return False, "Colaborador é obrigatório.", None, None, None
@@ -589,7 +614,7 @@ def remover_consumo_refeicao(consumo):
     pedido = consumo.pedido
 
     if not pedido_pode_ser_editado(pedido):
-        return False, "Somente pedidos em aberto podem ter consumo alterado."
+        return False, "Este pedido não permite mais alterações de consumo."
 
     db.session.delete(consumo)
     db.session.commit()

@@ -45,6 +45,8 @@ from app.departamento_pessoal.pedido_refeicoes.services import (
     STATUS_PEDIDO_FECHADO,
     STATUS_PEDIDO_ENVIADO,
     STATUS_PEDIDO_CANCELADO,
+    pedido_enviado_com_correcao_permitida,
+    pedido_pode_ser_cancelado,
 )
 
 
@@ -395,6 +397,8 @@ def pedidos():
         pedido_pode_ser_fechado=pedido_pode_ser_fechado,
         pedido_pode_enviar_whatsapp=pedido_pode_enviar_whatsapp,
         status_whatsapp_pedido=status_whatsapp_pedido,
+        pedido_enviado_com_correcao_permitida=pedido_enviado_com_correcao_permitida,
+        pedido_pode_ser_cancelado=pedido_pode_ser_cancelado,
     )
 
 
@@ -491,6 +495,8 @@ def detalhes_pedido(pedido_id):
         pode_exportar=pode_exportar,
         pedido_pode_ser_fechado=pedido_pode_ser_fechado,
         pedido_pode_enviar_whatsapp=pedido_pode_enviar_whatsapp,
+        pedido_enviado_com_correcao_permitida=pedido_enviado_com_correcao_permitida,
+        pedido_pode_ser_cancelado=pedido_pode_ser_cancelado,
     )
 
 @pedido_refeicoes_bp.route("/pedidos/<int:pedido_id>/editar", methods=["GET", "POST"])
@@ -503,7 +509,7 @@ def editar_pedido(pedido_id):
         return redirect(url_for("pedido_refeicoes.pedidos"))
 
     if not pedido_pode_ser_editado(pedido):
-        flash("Somente pedidos em aberto podem ser editados.", "danger")
+        flash("Este pedido não permite mais alterações.", "danger")
         return redirect(url_for("pedido_refeicoes.detalhes_pedido", pedido_id=pedido.id))
 
     equipes = buscar_equipes_ativas()
@@ -561,7 +567,7 @@ def novo_consumo(pedido_id):
         return redirect(url_for("pedido_refeicoes.pedidos"))
 
     if not pedido_pode_ser_editado(pedido):
-        flash("Somente pedidos em aberto podem ter consumo alterado.", "danger")
+        flash("Este pedido não permite mais alterações de consumo.", "danger")
         return redirect(url_for("pedido_refeicoes.detalhes_pedido", pedido_id=pedido.id))
 
     colaboradores = buscar_colaboradores_do_pedido(pedido)

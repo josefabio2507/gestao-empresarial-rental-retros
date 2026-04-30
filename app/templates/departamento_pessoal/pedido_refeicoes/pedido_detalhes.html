@@ -118,6 +118,14 @@
     </div>
 </div>
 
+{% if pedido_enviado_com_correcao_permitida(pedido) %}
+    <div class="alert-warning-box">
+        <strong>Atenção:</strong>
+        Este pedido já foi enviado uma vez. Você ainda pode realizar correções e reenviar o pedido ao restaurante.
+        Após o reenvio, novas alterações serão bloqueadas.
+    </div>
+{% endif %}
+
 <div class="details-card">
     <h2>Resumo do pedido</h2>
 
@@ -165,7 +173,7 @@
             </a>
         {% endif %}
 
-        {% if pode_excluir and pedido_pode_ser_editado(pedido) %}
+        {% if pode_excluir and pedido_pode_ser_cancelado(pedido) %}
             <a class="btn btn-warning" href="{{ url_for('pedido_refeicoes.cancelar_pedido', pedido_id=pedido.id) }}">
                 Cancelar pedido
             </a>

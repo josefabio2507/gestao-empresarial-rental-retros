@@ -77,7 +77,7 @@
                                 </a>
                             {% endif %}
 
-                            {% if pode_excluir and pedido_pode_ser_editado(pedido) %}
+                            {% if pode_excluir and pedido_pode_ser_cancelado(pedido) %}
                                 <a class="btn btn-warning" href="{{ url_for('pedido_refeicoes.cancelar_pedido', pedido_id=pedido.id) }}">
                                     Cancelar
                                 </a>
