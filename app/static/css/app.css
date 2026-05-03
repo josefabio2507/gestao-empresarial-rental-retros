@@ -444,3 +444,25 @@ textarea {
     margin-top: 12px;
     margin-bottom: 18px;
 }
+
+.user-actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.user-actions a {
+    text-decoration: none;
+    color: #061b33;
+    font-weight: 600;
+}
+
+.user-actions a:hover {
+    text-decoration: underline;
+}
+
+.login-card p {
+    color: #475569;
+    margin-bottom: 20px;
+}

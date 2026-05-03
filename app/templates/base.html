@@ -10,6 +10,13 @@
 </head>
 <body>
 
+    {% if current_user.is_authenticated %}
+        <div class="user-actions">
+            <a href="{{ url_for('auth.minha_senha') }}">Alterar minha senha</a>
+            <a href="{{ url_for('auth.logout') }}">Sair</a>
+        </div>
+    {% endif %}    
+
     <main>
         {% with mensagens = get_flashed_messages(with_categories=true) %}
             {% if mensagens %}
@@ -28,4 +35,5 @@
 
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 </body>
+
 </html>

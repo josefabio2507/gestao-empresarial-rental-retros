@@ -63,15 +63,20 @@
                     required
                 >
             </div>
+            
         {% else %}
             <div class="form-group">
                 <label for="nova_senha">Nova senha</label>
-                <input 
-                    type="password" 
-                    name="nova_senha" 
+                <input
+                    type="password"
+                    name="nova_senha"
                     id="nova_senha"
                 >
-                <small>Deixe em branco para manter a senha atual.</small>
+
+                <small>
+                    Deixe em branco para manter a senha atual.
+                    Se preencher uma nova senha, o usuário deverá trocá-la no próximo acesso.
+                </small>
             </div>
         {% endif %}
 

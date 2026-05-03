@@ -44,6 +44,7 @@ class Usuario(UserMixin, db.Model):
     )
 
     ativo = db.Column(db.Boolean, default=True, nullable=False)
+    precisa_trocar_senha = db.Column(db.Boolean, default=True, nullable=False)
 
     criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     atualizado_em = db.Column(

@@ -58,6 +58,7 @@ def criar_usuario(nome, email, senha, nivel_acesso_id, ativo=True):
         email=email,
         nivel_acesso_id=nivel_acesso_id,
         ativo=ativo,
+        precisa_trocar_senha=True
     )
     usuario.definir_senha(senha)
 
@@ -90,6 +91,7 @@ def atualizar_usuario(usuario, nome, email, nivel_acesso_id, ativo=True, nova_se
 
     if nova_senha:
         usuario.definir_senha(nova_senha)
+        usuario.precisa_trocar_senha = True
 
     db.session.commit()
 

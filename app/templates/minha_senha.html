@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <h1>Alterar minha senha</h1>
+            <p>Atualize sua senha de acesso ao sistema.</p>
+        </div>
+
+        <a class="btn btn-secondary" href="{{ url_for('main.inicio') }}">
+            Voltar
+        </a>
+    </div>
+
+    <form class="form-card" method="POST">
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="senha_atual">Senha atual</label>
+                <input
+                    type="password"
+                    name="senha_atual"
+                    id="senha_atual"
+                    required
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="nova_senha">Nova senha</label>
+                <input
+                    type="password"
+                    name="nova_senha"
+                    id="nova_senha"
+                    required
+                    minlength="6"
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="confirmar_senha">Confirmar nova senha</label>
+                <input
+                    type="password"
+                    name="confirmar_senha"
+                    id="confirmar_senha"
+                    required
+                    minlength="6"
+                >
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">
+                Salvar nova senha
+            </button>
+
+            <a class="btn btn-secondary" href="{{ url_for('main.inicio') }}">
+                Cancelar
+            </a>
+        </div>
+    </form>
+</section>
+{% endblock %}
