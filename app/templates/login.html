@@ -48,8 +48,18 @@
                     placeholder="Digite sua senha"
                     required
                 >
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">
+                        Entrar
+                    </button>
+                </div>
 
-                <button type="submit">Entrar</button>
+                <div class="login-help">
+                    <a href="{{ url_for('auth.esqueci_senha') }}">
+                        Esqueci a senha
+                    </a>
+                </div>    
+
             </form>
 
             <small>Acesso restrito por perfil de usuário</small>

@@ -41,6 +41,10 @@ def login():
 
     return render_template("login.html")
 
+@auth_bp.route("/esqueci-senha")
+def esqueci_senha():
+    return render_template("recuperar_senha.html")
+
 @auth_bp.before_app_request
 def bloquear_navegacao_com_troca_pendente():
     if not current_user.is_authenticated:

@@ -466,3 +466,18 @@ textarea {
     color: #475569;
     margin-bottom: 20px;
 }
+
+.login-help {
+    margin-top: 14px;
+    text-align: center;
+}
+
+.login-help a {
+    color: #061b33;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.login-help a:hover {
+    text-decoration: underline;
+}

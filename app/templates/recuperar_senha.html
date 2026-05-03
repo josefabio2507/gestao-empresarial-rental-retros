@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="login-page">
+    <div class="login-card">
+        <h1>Recuperação de senha</h1>
+
+        <p>
+            A recuperação automática de senha por e-mail será disponibilizada em uma próxima etapa.
+        </p>
+
+        <p>
+            Neste momento, solicite ao administrador a redefinição da sua senha.
+        </p>
+
+        <div class="form-actions">
+            <a class="btn btn-primary" href="{{ url_for('auth.login') }}">
+                Voltar para login
+            </a>
+        </div>
+    </div>
+</section>
+{% endblock %}
