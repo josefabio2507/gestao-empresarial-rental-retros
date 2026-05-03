@@ -34,7 +34,7 @@ def upgrade():
         )
 
     op.execute(
-        "UPDATE usuarios SET precisa_trocar_senha = 1 WHERE precisa_trocar_senha IS NULL"
+        "UPDATE usuarios SET precisa_trocar_senha = TRUE WHERE precisa_trocar_senha IS NULL"
     )
 
     if bind.dialect.name != "sqlite":
