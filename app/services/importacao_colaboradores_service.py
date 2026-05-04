@@ -7,6 +7,10 @@ from sqlalchemy import func
 
 from app.extensions import db
 from app.models import Colaborador, Equipe
+from app.utils.mascaras_lgpd import (
+    MENSAGEM_TELEFONE_INVALIDO,
+    normalizar_telefone_brasil,
+)
 
 
 CABECALHO_ESPERADO = [
@@ -55,8 +59,7 @@ def normalizar_cpf(valor):
 
 
 def normalizar_telefone(valor):
-    telefone = re.sub(r"\D", "", normalizar_texto(valor))
-    return telefone or None
+    return normalizar_telefone_brasil(valor)
 
 
 def normalizar_email(valor):
@@ -207,6 +210,12 @@ def validar_linha(linha, numero_linha, resumo, cpfs_por_matricula):
         rejeitar_linha(resumo, numero_linha, "CPF já cadastrado para outra matrícula.")
         return None
 
+    try:
+        telefone = normalizar_telefone(linha.get("telefone"))
+    except ValueError:
+        rejeitar_linha(resumo, numero_linha, MENSAGEM_TELEFONE_INVALIDO)
+        return None
+
     cpfs_por_matricula[cpf] = matricula
 
     return {
@@ -214,7 +223,7 @@ def validar_linha(linha, numero_linha, resumo, cpfs_por_matricula):
         "nome": nome,
         "cpf": cpf,
         "email": normalizar_email(linha.get("email")),
-        "telefone": normalizar_telefone(linha.get("telefone")),
+        "telefone": telefone,
         "cargo": normalizar_texto(linha.get("cargo")) or None,
         "equipe_id": equipe.id,
         "ativo": interpretar_ativo(linha.get("ativo")),

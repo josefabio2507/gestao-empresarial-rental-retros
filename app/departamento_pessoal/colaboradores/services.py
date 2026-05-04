@@ -4,6 +4,12 @@ from sqlalchemy import or_
 
 from app.extensions import db
 from app.models import Colaborador, Equipe
+from app.utils.mascaras_lgpd import (
+    MENSAGEM_TELEFONE_INVALIDO,
+    formatar_cpf_completo,
+    formatar_telefone_completo,
+    normalizar_telefone_brasil,
+)
 
 
 def limpar_numeros(valor):
@@ -22,33 +28,11 @@ def limpar_telefone(telefone):
 
 
 def formatar_cpf(cpf):
-    cpf = limpar_cpf(cpf)
-
-    if len(cpf) != 11:
-        return cpf or "-"
-
-    return f"{cpf[:3]}.{cpf[3:6]}.{cpf[6:9]}-{cpf[9:]}"
+    return formatar_cpf_completo(cpf)
 
 
 def formatar_telefone(telefone):
-    telefone = limpar_telefone(telefone)
-
-    if not telefone:
-        return "-"
-
-    if len(telefone) == 13 and telefone.startswith("55"):
-        return f"+{telefone[:2]} ({telefone[2:4]}) {telefone[4:9]}-{telefone[9:]}"
-
-    if len(telefone) == 12 and telefone.startswith("55"):
-        return f"+{telefone[:2]} ({telefone[2:4]}) {telefone[4:8]}-{telefone[8:]}"
-
-    if len(telefone) == 11:
-        return f"({telefone[:2]}) {telefone[2:7]}-{telefone[7:]}"
-
-    if len(telefone) == 10:
-        return f"({telefone[:2]}) {telefone[2:6]}-{telefone[6:]}"
-
-    return telefone
+    return formatar_telefone_completo(telefone)
 
 
 def normalizar_email(email):
@@ -118,6 +102,7 @@ def validar_dados_colaborador(
     nome,
     cpf,
     equipe_id,
+    telefone=None,
     colaborador_id_ignorado=None
 ):
     matricula = matricula.strip()
@@ -150,6 +135,11 @@ def validar_dados_colaborador(
     if not equipe:
         return False, "Equipe inválida ou inativa."
 
+    try:
+        normalizar_telefone_brasil(telefone)
+    except ValueError:
+        return False, MENSAGEM_TELEFONE_INVALIDO
+
     return True, ""
 
 
@@ -168,6 +158,7 @@ def criar_colaborador(
         nome=nome,
         cpf=cpf,
         equipe_id=equipe_id,
+        telefone=telefone,
     )
 
     if not valido:
@@ -178,7 +169,7 @@ def criar_colaborador(
         nome=nome.strip(),
         cpf=limpar_cpf(cpf),
         email=normalizar_email(email),
-        telefone=limpar_telefone(telefone),
+        telefone=normalizar_telefone_brasil(telefone),
         cargo=cargo.strip() if cargo else "",
         equipe_id=equipe_id,
         ativo=ativo,
@@ -206,6 +197,7 @@ def atualizar_colaborador(
         nome=nome,
         cpf=cpf,
         equipe_id=equipe_id,
+        telefone=telefone,
         colaborador_id_ignorado=colaborador.id,
     )
 
@@ -216,7 +208,7 @@ def atualizar_colaborador(
     colaborador.nome = nome.strip()
     colaborador.cpf = limpar_cpf(cpf)
     colaborador.email = normalizar_email(email)
-    colaborador.telefone = limpar_telefone(telefone)
+    colaborador.telefone = normalizar_telefone_brasil(telefone)
     colaborador.cargo = cargo.strip() if cargo else ""
     colaborador.equipe_id = equipe_id
     colaborador.ativo = ativo

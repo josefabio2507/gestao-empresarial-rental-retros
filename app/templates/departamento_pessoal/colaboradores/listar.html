@@ -24,6 +24,10 @@
     </div>
 
     <form class="filter-card" method="GET">
+        <p>
+            Dados pessoais protegidos. O acesso e uso destas informaÃ§Ãµes devem respeitar as polÃ­ticas internas da empresa e a legislaÃ§Ã£o aplicÃ¡vel.
+        </p>
+
         <div class="filter-grid">
             <div class="form-group">
                 <label for="q">Pesquisar</label>
@@ -81,8 +85,8 @@
                     <tr>
                         <td>{{ colaborador.matricula }}</td>
                         <td>{{ colaborador.nome }}</td>
-                        <td>{{ formatar_cpf(colaborador.cpf) }}</td>
-                        <td>{{ formatar_telefone(colaborador.telefone) }}</td>
+                        <td>{{ exibir_cpf(colaborador.cpf, pode_ver_dados_sensiveis) }}</td>
+                        <td>{{ exibir_telefone(colaborador.telefone, pode_ver_dados_sensiveis) }}</td>
                         <td>{{ colaborador.cargo or "-" }}</td>
                         <td>{{ colaborador.equipe.nome if colaborador.equipe else "-" }}</td>
                         <td>

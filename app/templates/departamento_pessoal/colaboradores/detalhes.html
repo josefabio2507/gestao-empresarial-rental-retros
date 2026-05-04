@@ -5,16 +5,20 @@
     <div class="top-bar">
         <div>
             <h1>Detalhes do Colaborador</h1>
-            <p>Informações cadastrais do colaborador.</p>
+            <p>Informacoes cadastrais do colaborador.</p>
         </div>
     </div>
 
     <div class="details-card">
-        <p><strong>Matrícula:</strong> {{ colaborador.matricula }}</p>
+        <p>
+            Dados pessoais protegidos. O acesso e uso destas informacoes devem respeitar as politicas internas da empresa e a legislacao aplicavel.
+        </p>
+
+        <p><strong>Matricula:</strong> {{ colaborador.matricula }}</p>
         <p><strong>Nome:</strong> {{ colaborador.nome }}</p>
-        <p><strong>CPF:</strong> {{ formatar_cpf(colaborador.cpf) }}</p>
-        <p><strong>E-mail:</strong> {{ colaborador.email or "-" }}</p>
-        <p><strong>Telefone:</strong> {{ formatar_telefone(colaborador.telefone) }}</p>
+        <p><strong>CPF:</strong> {{ exibir_cpf(colaborador.cpf, pode_ver_dados_sensiveis) }}</p>
+        <p><strong>E-mail:</strong> {{ exibir_email(colaborador.email, pode_ver_dados_sensiveis) }}</p>
+        <p><strong>Telefone:</strong> {{ exibir_telefone(colaborador.telefone, pode_ver_dados_sensiveis) }}</p>
         <p><strong>Cargo:</strong> {{ colaborador.cargo or "-" }}</p>
         <p><strong>Equipe:</strong> {{ colaborador.equipe.nome if colaborador.equipe else "-" }}</p>
 
@@ -39,7 +43,9 @@
     </div>
 
     <div class="page-actions">
-        <a class="btn btn-primary" href="{{ url_for('colaboradores.editar_colaborador', colaborador_id=colaborador.id) }}">Editar</a>
+        {% if pode_editar %}
+            <a class="btn btn-primary" href="{{ url_for('colaboradores.editar_colaborador', colaborador_id=colaborador.id) }}">Editar</a>
+        {% endif %}
         <a class="btn btn-secondary" href="{{ url_for('colaboradores.listar_colaboradores') }}">Voltar</a>
     </div>
 </section>
