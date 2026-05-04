@@ -8,11 +8,19 @@
             <p>Cadastro oficial de colaboradores da Rental Retros.</p>
         </div>
 
-        {% if pode_criar %}
-            <a class="btn btn-primary" href="{{ url_for('colaboradores.novo_colaborador') }}">
-                + Novo Colaborador
-            </a>
-        {% endif %}
+        <div class="actions">
+            {% if pode_importar %}
+                <a class="btn btn-secondary" href="{{ url_for('colaboradores.importar_colaboradores') }}">
+                    Importar CSV
+                </a>
+            {% endif %}
+
+            {% if pode_criar %}
+                <a class="btn btn-primary" href="{{ url_for('colaboradores.novo_colaborador') }}">
+                    + Novo Colaborador
+                </a>
+            {% endif %}
+        </div>
     </div>
 
     <form class="filter-card" method="GET">

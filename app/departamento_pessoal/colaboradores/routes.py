@@ -3,6 +3,7 @@ from flask_login import current_user
 
 from app.decorators import module_permission_required
 from app.services.permissoes_service import usuario_tem_permissao
+from app.services.importacao_colaboradores_service import importar_colaboradores_csv
 from app.departamento_pessoal.colaboradores.services import (
     buscar_colaboradores,
     buscar_colaborador_por_id,
@@ -52,6 +53,8 @@ def listar_colaboradores():
         "excluir",
     )
 
+    pode_importar = pode_criar or pode_editar
+
     return render_template(
         "departamento_pessoal/colaboradores/listar.html",
         colaboradores=colaboradores,
@@ -63,6 +66,51 @@ def listar_colaboradores():
         pode_criar=pode_criar,
         pode_editar=pode_editar,
         pode_excluir=pode_excluir,
+        pode_importar=pode_importar,
+    )
+
+
+@colaboradores_bp.route("/importar", methods=["GET", "POST"])
+@module_permission_required("departamento_pessoal", "colaboradores", "visualizar")
+def importar_colaboradores():
+    pode_importar = (
+        usuario_tem_permissao(
+            current_user,
+            "departamento_pessoal",
+            "colaboradores",
+            "criar",
+        )
+        or usuario_tem_permissao(
+            current_user,
+            "departamento_pessoal",
+            "colaboradores",
+            "editar",
+        )
+    )
+
+    if not pode_importar:
+        flash("Você não tem permissão para importar colaboradores.", "danger")
+        return redirect(url_for("main.acesso_negado"))
+
+    resumo = None
+
+    if request.method == "POST":
+        arquivo_csv = request.files.get("arquivo_csv")
+
+        if not arquivo_csv or not arquivo_csv.filename:
+            flash("Selecione um arquivo CSV para importar.", "danger")
+            return redirect(url_for("colaboradores.importar_colaboradores"))
+
+        if not arquivo_csv.filename.lower().endswith(".csv"):
+            flash("O arquivo deve estar no formato CSV.", "danger")
+            return redirect(url_for("colaboradores.importar_colaboradores"))
+
+        resumo = importar_colaboradores_csv(arquivo_csv)
+        flash("Importação concluída.", "success")
+
+    return render_template(
+        "departamento_pessoal/colaboradores/importar.html",
+        resumo=resumo,
     )
 
 

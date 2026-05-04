@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <h1>Importar Colaboradores</h1>
+            <p>Envie um arquivo CSV para criar ou atualizar colaboradores em massa.</p>
+        </div>
+    </div>
+
+    <form class="form-card" method="POST" enctype="multipart/form-data">
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="arquivo_csv">Arquivo CSV</label>
+                <input
+                    type="file"
+                    name="arquivo_csv"
+                    id="arquivo_csv"
+                    accept=".csv,text/csv"
+                    required
+                >
+                <small>O arquivo CSV deve conter as colunas: matricula,nome,cpf,email,telefone,cargo,equipe,ativo</small>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Importar CSV</button>
+            <a class="btn btn-secondary" href="{{ url_for('colaboradores.listar_colaboradores') }}">
+                Voltar à lista de colaboradores
+            </a>
+        </div>
+    </form>
+
+    {% if resumo %}
+        <div class="table-card">
+            <h2>Importação concluída.</h2>
+
+            <table class="table">
+                <tbody>
+                    <tr>
+                        <th>Total de linhas lidas</th>
+                        <td>{{ resumo.total_linhas }}</td>
+                    </tr>
+                    <tr>
+                        <th>Criados</th>
+                        <td>{{ resumo.criados }}</td>
+                    </tr>
+                    <tr>
+                        <th>Atualizados</th>
+                        <td>{{ resumo.atualizados }}</td>
+                    </tr>
+                    <tr>
+                        <th>Rejeitados</th>
+                        <td>{{ resumo.rejeitados }}</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            {% if resumo.erros %}
+                <h3>Erros</h3>
+                <ul>
+                    {% for erro in resumo.erros %}
+                        <li>{{ erro }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        </div>
+    {% endif %}
+</section>
+{% endblock %}
