@@ -65,57 +65,59 @@
         </div>
     </form>
 
-    <div class="table-card">
+    <div class="table-card table-responsive">
         <table class="table">
             <thead>
                 <tr>
-                    <th>Matrícula</th>
+                    <th class="col-nowrap">Matrícula</th>
                     <th>Nome</th>
-                    <th>CPF</th>
-                    <th>Telefone</th>
+                    <th class="col-nowrap">CPF</th>
+                    <th class="col-nowrap">Telefone</th>
                     <th>Cargo</th>
                     <th>Equipe</th>
-                    <th>Status</th>
-                    <th>Ações</th>
+                    <th class="col-nowrap">Status</th>
+                    <th class="col-acoes">Ações</th>
                 </tr>
             </thead>
 
             <tbody>
                 {% for colaborador in colaboradores %}
                     <tr>
-                        <td>{{ colaborador.matricula }}</td>
+                        <td class="col-nowrap">{{ colaborador.matricula }}</td>
                         <td>{{ colaborador.nome }}</td>
-                        <td>{{ exibir_cpf(colaborador.cpf, pode_ver_dados_sensiveis) }}</td>
-                        <td>{{ exibir_telefone(colaborador.telefone, pode_ver_dados_sensiveis) }}</td>
+                        <td class="col-nowrap">{{ exibir_cpf(colaborador.cpf, pode_ver_dados_sensiveis) }}</td>
+                        <td class="col-nowrap">{{ exibir_telefone(colaborador.telefone, pode_ver_dados_sensiveis) }}</td>
                         <td>{{ colaborador.cargo or "-" }}</td>
                         <td>{{ colaborador.equipe.nome if colaborador.equipe else "-" }}</td>
-                        <td>
+                        <td class="col-nowrap">
                             {% if colaborador.ativo %}
                                 <span class="badge badge-success">Ativo</span>
                             {% else %}
                                 <span class="badge badge-danger">Inativo</span>
                             {% endif %}
                         </td>
-                        <td class="actions">
-                            <a class="btn btn-secondary" href="{{ url_for('colaboradores.detalhes_colaborador', colaborador_id=colaborador.id) }}">
-                                Ver
-                            </a>
-
-                            {% if pode_editar %}
-                                <a class="btn btn-primary" href="{{ url_for('colaboradores.editar_colaborador', colaborador_id=colaborador.id) }}">
-                                    Editar
+                        <td class="col-acoes">
+                            <div class="acoes-botoes">
+                                <a class="btn btn-secondary" href="{{ url_for('colaboradores.detalhes_colaborador', colaborador_id=colaborador.id) }}">
+                                    Ver
                                 </a>
-                            {% endif %}
 
-                            {% if pode_excluir %}
-                                <a class="btn btn-warning" href="{{ url_for('colaboradores.alterar_status', colaborador_id=colaborador.id) }}">
-                                    {% if colaborador.ativo %}
-                                        Inativar
-                                    {% else %}
-                                        Ativar
-                                    {% endif %}
-                                </a>
-                            {% endif %}
+                                {% if pode_editar %}
+                                    <a class="btn btn-primary" href="{{ url_for('colaboradores.editar_colaborador', colaborador_id=colaborador.id) }}">
+                                        Editar
+                                    </a>
+                                {% endif %}
+
+                                {% if pode_excluir %}
+                                    <a class="btn btn-warning" href="{{ url_for('colaboradores.alterar_status', colaborador_id=colaborador.id) }}">
+                                        {% if colaborador.ativo %}
+                                            Inativar
+                                        {% else %}
+                                            Ativar
+                                        {% endif %}
+                                    </a>
+                                {% endif %}
+                            </div>
                         </td>
                     </tr>
                 {% else %}

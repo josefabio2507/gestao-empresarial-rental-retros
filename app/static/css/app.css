@@ -42,9 +42,29 @@
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
 }
 
+.table-responsive {
+    overflow-x: auto;
+}
+
 .table {
     width: 100%;
     border-collapse: collapse;
+}
+
+.col-nowrap {
+    white-space: nowrap;
+}
+
+.col-acoes {
+    min-width: 160px;
+    white-space: nowrap;
+}
+
+.acoes-botoes {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: nowrap;
 }
 
 .table th,
