@@ -188,6 +188,11 @@ def usuario_tem_permissao(usuario, departamento_slug, modulo_slug, acao="visuali
     if usuario.is_admin:
         return True
 
+    nivel_acesso = getattr(usuario, "nivel_acesso", None)
+
+    if nivel_acesso and (nivel_acesso.slug or "").lower() == "administrador":
+        return True
+
     acoes_validas = {
         "visualizar": "pode_visualizar",
         "criar": "pode_criar",
