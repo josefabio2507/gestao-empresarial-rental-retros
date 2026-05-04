@@ -1,8 +1,10 @@
 from flask import Blueprint, render_template
 from flask_login import login_required, current_user
 
-from app.services.permissoes_service import buscar_departamentos_liberados
-
+from app.services.permissoes_service import (
+    usuario_tem_permissao,
+    buscar_departamentos_liberados_usuario,
+)
 
 main_bp = Blueprint("main", __name__)
 
@@ -10,13 +12,12 @@ main_bp = Blueprint("main", __name__)
 @main_bp.route("/")
 @login_required
 def inicio():
-    departamentos_liberados = buscar_departamentos_liberados(current_user)
+    departamentos_liberados = buscar_departamentos_liberados_usuario(current_user)
 
     return render_template(
         "inicio.html",
-        departamentos_liberados=departamentos_liberados,
+        departamentos_liberados=departamentos_liberados
     )
-
 
 @main_bp.route("/status")
 def status():

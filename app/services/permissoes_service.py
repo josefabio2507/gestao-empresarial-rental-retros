@@ -1,3 +1,4 @@
+from app.models import Departamento, Modulo, PermissaoUsuarioModulo
 from app.extensions import db
 from app.models import (
     Usuario,
@@ -173,6 +174,29 @@ def listar_acoes_liberadas(permissao):
 
     return acoes
 
+def usuario_eh_administrador(usuario):
+    """
+    Verifica se o usuário possui perfil de administrador.
+    Administrador tem acesso total ao sistema.
+    """
+
+    if not usuario:
+        return False
+
+    if not getattr(usuario, "is_authenticated", False):
+        return False
+
+    if getattr(usuario, "is_admin", False):
+        return True
+
+    nivel_acesso = getattr(usuario, "nivel_acesso", None)
+
+    if nivel_acesso and (nivel_acesso.slug or "").lower() == "administrador":
+        return True
+
+    return False
+
+
 def usuario_tem_permissao(usuario, departamento_slug, modulo_slug, acao="visualizar"):
     """
     Verifica se o usuário possui permissão para acessar uma ação em um módulo.
@@ -185,12 +209,7 @@ def usuario_tem_permissao(usuario, departamento_slug, modulo_slug, acao="visuali
     if not usuario.ativo:
         return False
 
-    if usuario.is_admin:
-        return True
-
-    nivel_acesso = getattr(usuario, "nivel_acesso", None)
-
-    if nivel_acesso and (nivel_acesso.slug or "").lower() == "administrador":
+    if usuario_eh_administrador(usuario):
         return True
 
     acoes_validas = {
@@ -329,4 +348,42 @@ def buscar_modulos_liberados(usuario, departamento_slug):
         .all()
     )
 
-    return [permissao.modulo for permissao in permissoes]    
+    return [permissao.modulo for permissao in permissoes]
+
+def buscar_departamentos_liberados_usuario(usuario):
+    """
+    Retorna os departamentos liberados para o usuário.
+
+    Administrador:
+        retorna todos os departamentos ativos.
+
+    Usuário comum:
+        retorna apenas departamentos que possuem módulos com permissão ativa.
+    """
+
+    if not usuario or not usuario.is_authenticated:
+        return []
+
+    if not usuario.ativo:
+        return []
+
+    if usuario_eh_administrador(usuario):
+        return Departamento.query.filter_by(ativo=True).order_by(Departamento.nome).all()
+
+    departamentos = (
+        Departamento.query
+        .join(Modulo, Modulo.departamento_id == Departamento.id)
+        .join(PermissaoUsuarioModulo, PermissaoUsuarioModulo.modulo_id == Modulo.id)
+        .filter(
+            Departamento.ativo == True,
+            Modulo.ativo == True,
+            PermissaoUsuarioModulo.usuario_id == usuario.id,
+            PermissaoUsuarioModulo.ativo == True,
+            PermissaoUsuarioModulo.pode_visualizar == True,
+        )
+        .distinct()
+        .order_by(Departamento.nome)
+        .all()
+    )
+
+    return departamentos    
