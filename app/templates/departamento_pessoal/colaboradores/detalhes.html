@@ -5,16 +5,16 @@
     <div class="top-bar">
         <div>
             <h1>Detalhes do Colaborador</h1>
-            <p>Informacoes cadastrais do colaborador.</p>
+            <p>Informações cadastrais do colaborador.</p>
         </div>
     </div>
 
     <div class="details-card">
         <p>
-            Dados pessoais protegidos. O acesso e uso destas informacoes devem respeitar as politicas internas da empresa e a legislacao aplicavel.
+            Dados pessoais protegidos. O acesso e uso destas informações devem respeitar as políticas internas da empresa e a legislação aplicável.
         </p>
 
-        <p><strong>Matricula:</strong> {{ colaborador.matricula }}</p>
+        <p><strong>Matrícula:</strong> {{ colaborador.matricula }}</p>
         <p><strong>Nome:</strong> {{ colaborador.nome }}</p>
         <p><strong>CPF:</strong> {{ exibir_cpf(colaborador.cpf, pode_ver_dados_sensiveis) }}</p>
         <p><strong>E-mail:</strong> {{ exibir_email(colaborador.email, pode_ver_dados_sensiveis) }}</p>
