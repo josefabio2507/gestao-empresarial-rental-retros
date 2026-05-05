@@ -205,7 +205,7 @@
     {% endif %}
 
     {% if pedido.status == "Fechado" %}
-        {% if pode_exportar %}
+        {% if pode_enviar_whatsapp %}
             <a class="btn btn-whatsapp" href="{{ url_for('pedido_refeicoes.enviar_whatsapp', pedido_id=pedido.id) }}" target="_blank">
                 Enviar WhatsApp
             </a>
@@ -213,7 +213,7 @@
     {% endif %}
 
     {% if pedido.status == "Enviado" and pedido.quantidade_envios < 2 %}
-        {% if pode_exportar %}
+        {% if pode_enviar_whatsapp %}
             <a class="btn btn-whatsapp" href="{{ url_for('pedido_refeicoes.enviar_whatsapp', pedido_id=pedido.id) }}" target="_blank">
                 Reenviar WhatsApp
             </a>

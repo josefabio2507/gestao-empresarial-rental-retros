@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file
-from flask_login import current_user
+from flask_login import current_user, login_required
 from io import BytesIO
 from datetime import datetime
 
@@ -64,54 +64,80 @@ from app.departamento_pessoal.pedido_refeicoes.services import (
 
 pedido_refeicoes_bp = Blueprint("pedido_refeicoes", __name__)
 
+DEPARTAMENTO_PESSOAL_SLUG = "departamento_pessoal"
+MODULO_REFEICOES_RESTAURANTES = "pedido-refeicoes-restaurantes"
+MODULO_REFEICOES_CARDAPIO = "pedido-refeicoes-cardapio"
+MODULO_REFEICOES_PEDIDOS = "pedido-refeicoes-pedidos"
+MODULO_REFEICOES_RELATORIOS = "pedido-refeicoes-relatorios"
+
+SUBMODULOS_REFEICOES = [
+    MODULO_REFEICOES_RESTAURANTES,
+    MODULO_REFEICOES_CARDAPIO,
+    MODULO_REFEICOES_PEDIDOS,
+    MODULO_REFEICOES_RELATORIOS,
+]
+
+
+def pode_acessar_submodulo_refeicoes(modulo_slug, acao="visualizar"):
+    return usuario_tem_permissao(
+        current_user,
+        DEPARTAMENTO_PESSOAL_SLUG,
+        modulo_slug,
+        acao,
+    )
+
+
+def pode_visualizar_algum_submodulo_refeicoes():
+    return any(
+        pode_acessar_submodulo_refeicoes(modulo_slug, "visualizar")
+        for modulo_slug in SUBMODULOS_REFEICOES
+    )
+
 
 @pedido_refeicoes_bp.route("/")
-@module_permission_required("departamento_pessoal", "pedido_refeicoes", "visualizar")
+@login_required
 def index():
-    pode_criar = usuario_tem_permissao(
-        current_user,
-        "departamento_pessoal",
-        "pedido_refeicoes",
-        "criar",
-    )
+    if not pode_visualizar_algum_submodulo_refeicoes():
+        flash("Você não tem permissão para acessar esta área.", "danger")
+        return redirect(url_for("main.acesso_negado"))
 
-    pode_exportar = usuario_tem_permissao(
-        current_user,
-        "departamento_pessoal",
-        "pedido_refeicoes",
-        "exportar",
-    )
+    pode_visualizar_restaurantes = pode_acessar_submodulo_refeicoes(MODULO_REFEICOES_RESTAURANTES)
+    pode_visualizar_cardapio = pode_acessar_submodulo_refeicoes(MODULO_REFEICOES_CARDAPIO)
+    pode_visualizar_pedidos = pode_acessar_submodulo_refeicoes(MODULO_REFEICOES_PEDIDOS)
+    pode_visualizar_relatorios = pode_acessar_submodulo_refeicoes(MODULO_REFEICOES_RELATORIOS)
 
     return render_template(
         "departamento_pessoal/pedido_refeicoes/index.html",
-        pode_criar=pode_criar,
-        pode_exportar=pode_exportar,
+        pode_visualizar_restaurantes=pode_visualizar_restaurantes,
+        pode_visualizar_cardapio=pode_visualizar_cardapio,
+        pode_visualizar_pedidos=pode_visualizar_pedidos,
+        pode_visualizar_relatorios=pode_visualizar_relatorios,
     )
     
 
 @pedido_refeicoes_bp.route("/restaurantes")
-@module_permission_required("departamento_pessoal", "pedido_refeicoes", "visualizar")
+@module_permission_required(DEPARTAMENTO_PESSOAL_SLUG, MODULO_REFEICOES_RESTAURANTES, "visualizar")
 def restaurantes():
     restaurantes_lista = buscar_restaurantes()
 
     pode_criar = usuario_tem_permissao(
         current_user,
-        "departamento_pessoal",
-        "pedido_refeicoes",
+        DEPARTAMENTO_PESSOAL_SLUG,
+        MODULO_REFEICOES_RESTAURANTES,
         "criar",
     )
 
     pode_editar = usuario_tem_permissao(
         current_user,
-        "departamento_pessoal",
-        "pedido_refeicoes",
+        DEPARTAMENTO_PESSOAL_SLUG,
+        MODULO_REFEICOES_RESTAURANTES,
         "editar",
     )
 
     pode_excluir = usuario_tem_permissao(
         current_user,
-        "departamento_pessoal",
-        "pedido_refeicoes",
+        DEPARTAMENTO_PESSOAL_SLUG,
+        MODULO_REFEICOES_RESTAURANTES,
         "excluir",
     )
 
@@ -128,7 +154,7 @@ def restaurantes():
 
 
 @pedido_refeicoes_bp.route("/restaurantes/novo", methods=["GET", "POST"])
-@module_permission_required("departamento_pessoal", "pedido_refeicoes", "criar")
+@module_permission_required(DEPARTAMENTO_PESSOAL_SLUG, MODULO_REFEICOES_RESTAURANTES, "criar")
 def novo_restaurante():
     if request.method == "POST":
         sucesso, mensagem = criar_restaurante(
@@ -156,13 +182,13 @@ def novo_restaurante():
         modo="novo",
         formatar_telefone=formatar_telefone,
         pode_criar=True,
-        pode_editar=usuario_tem_permissao(current_user, "departamento_pessoal", "pedido_refeicoes", "editar"),
-        pode_excluir=usuario_tem_permissao(current_user, "departamento_pessoal", "pedido_refeicoes", "excluir"),
+        pode_editar=pode_acessar_submodulo_refeicoes(MODULO_REFEICOES_RESTAURANTES, "editar"),
+        pode_excluir=pode_acessar_submodulo_refeicoes(MODULO_REFEICOES_RESTAURANTES, "excluir"),
     )
 
 
 @pedido_refeicoes_bp.route("/restaurantes/<int:restaurante_id>/editar", methods=["GET", "POST"])
-@module_permission_required("departamento_pessoal", "pedido_refeicoes", "editar")
+@module_permission_required(DEPARTAMENTO_PESSOAL_SLUG, MODULO_REFEICOES_RESTAURANTES, "editar")
 def editar_restaurante(restaurante_id):
     restaurante = buscar_restaurante_por_id(restaurante_id)
 
@@ -196,14 +222,14 @@ def editar_restaurante(restaurante_id):
         restaurante=restaurante,
         modo="editar",
         formatar_telefone=formatar_telefone,
-        pode_criar=usuario_tem_permissao(current_user, "departamento_pessoal", "pedido_refeicoes", "criar"),
+        pode_criar=pode_acessar_submodulo_refeicoes(MODULO_REFEICOES_RESTAURANTES, "criar"),
         pode_editar=True,
-        pode_excluir=usuario_tem_permissao(current_user, "departamento_pessoal", "pedido_refeicoes", "excluir"),
+        pode_excluir=pode_acessar_submodulo_refeicoes(MODULO_REFEICOES_RESTAURANTES, "excluir"),
     )
 
 
 @pedido_refeicoes_bp.route("/restaurantes/<int:restaurante_id>/status")
-@module_permission_required("departamento_pessoal", "pedido_refeicoes", "excluir")
+@module_permission_required(DEPARTAMENTO_PESSOAL_SLUG, MODULO_REFEICOES_RESTAURANTES, "excluir")
 def alterar_status_restaurante_rota(restaurante_id):
     restaurante = buscar_restaurante_por_id(restaurante_id)
 
@@ -226,7 +252,7 @@ def alterar_status_restaurante_rota(restaurante_id):
 
 
 @pedido_refeicoes_bp.route("/cardapio")
-@module_permission_required("departamento_pessoal", "pedido_refeicoes", "visualizar")
+@module_permission_required(DEPARTAMENTO_PESSOAL_SLUG, MODULO_REFEICOES_CARDAPIO, "visualizar")
 def cardapio():
     restaurante_id = request.args.get("restaurante_id", "").strip()
     tipo = request.args.get("tipo", "").strip()
@@ -240,22 +266,22 @@ def cardapio():
 
     pode_criar = usuario_tem_permissao(
         current_user,
-        "departamento_pessoal",
-        "pedido_refeicoes",
+        DEPARTAMENTO_PESSOAL_SLUG,
+        MODULO_REFEICOES_CARDAPIO,
         "criar",
     )
 
     pode_editar = usuario_tem_permissao(
         current_user,
-        "departamento_pessoal",
-        "pedido_refeicoes",
+        DEPARTAMENTO_PESSOAL_SLUG,
+        MODULO_REFEICOES_CARDAPIO,
         "editar",
     )
 
     pode_excluir = usuario_tem_permissao(
         current_user,
-        "departamento_pessoal",
-        "pedido_refeicoes",
+        DEPARTAMENTO_PESSOAL_SLUG,
+        MODULO_REFEICOES_CARDAPIO,
         "excluir",
     )
 
@@ -276,7 +302,7 @@ def cardapio():
 
 
 @pedido_refeicoes_bp.route("/cardapio/novo", methods=["GET", "POST"])
-@module_permission_required("departamento_pessoal", "pedido_refeicoes", "criar")
+@module_permission_required(DEPARTAMENTO_PESSOAL_SLUG, MODULO_REFEICOES_CARDAPIO, "criar")
 def novo_item_cardapio():
     restaurantes_ativos = buscar_restaurantes_ativos()
 
@@ -312,13 +338,13 @@ def novo_item_cardapio():
         tipo_selecionado="",
         formatar_moeda=formatar_moeda,
         pode_criar=True,
-        pode_editar=usuario_tem_permissao(current_user, "departamento_pessoal", "pedido_refeicoes", "editar"),
-        pode_excluir=usuario_tem_permissao(current_user, "departamento_pessoal", "pedido_refeicoes", "excluir"),
+        pode_editar=pode_acessar_submodulo_refeicoes(MODULO_REFEICOES_CARDAPIO, "editar"),
+        pode_excluir=pode_acessar_submodulo_refeicoes(MODULO_REFEICOES_CARDAPIO, "excluir"),
     )
 
 
 @pedido_refeicoes_bp.route("/cardapio/<int:item_id>/editar", methods=["GET", "POST"])
-@module_permission_required("departamento_pessoal", "pedido_refeicoes", "editar")
+@module_permission_required(DEPARTAMENTO_PESSOAL_SLUG, MODULO_REFEICOES_CARDAPIO, "editar")
 def editar_item_cardapio(item_id):
     item = buscar_item_cardapio_por_id(item_id)
 
@@ -360,14 +386,14 @@ def editar_item_cardapio(item_id):
         restaurante_id_selecionado="",
         tipo_selecionado="",
         formatar_moeda=formatar_moeda,
-        pode_criar=usuario_tem_permissao(current_user, "departamento_pessoal", "pedido_refeicoes", "criar"),
+        pode_criar=pode_acessar_submodulo_refeicoes(MODULO_REFEICOES_CARDAPIO, "criar"),
         pode_editar=True,
-        pode_excluir=usuario_tem_permissao(current_user, "departamento_pessoal", "pedido_refeicoes", "excluir"),
+        pode_excluir=pode_acessar_submodulo_refeicoes(MODULO_REFEICOES_CARDAPIO, "excluir"),
     )
 
 
 @pedido_refeicoes_bp.route("/cardapio/<int:item_id>/status")
-@module_permission_required("departamento_pessoal", "pedido_refeicoes", "excluir")
+@module_permission_required(DEPARTAMENTO_PESSOAL_SLUG, MODULO_REFEICOES_CARDAPIO, "excluir")
 def alterar_status_item_cardapio_rota(item_id):
     item = buscar_item_cardapio_por_id(item_id)
 
@@ -389,43 +415,36 @@ def alterar_status_item_cardapio_rota(item_id):
     return redirect(url_for("pedido_refeicoes.cardapio"))
 
 @pedido_refeicoes_bp.route("/pedidos")
-@module_permission_required("departamento_pessoal", "pedido_refeicoes", "visualizar")
+@module_permission_required(DEPARTAMENTO_PESSOAL_SLUG, MODULO_REFEICOES_PEDIDOS, "visualizar")
 def pedidos():
     pedidos_lista = buscar_pedidos()
 
     pode_criar = usuario_tem_permissao(
         current_user,
-        "departamento_pessoal",
-        "pedido_refeicoes",
+        DEPARTAMENTO_PESSOAL_SLUG,
+        MODULO_REFEICOES_PEDIDOS,
         "criar",
     )
 
     pode_editar = usuario_tem_permissao(
         current_user,
-        "departamento_pessoal",
-        "pedido_refeicoes",
+        DEPARTAMENTO_PESSOAL_SLUG,
+        MODULO_REFEICOES_PEDIDOS,
         "editar",
     )
 
     pode_excluir = usuario_tem_permissao(
         current_user,
-        "departamento_pessoal",
-        "pedido_refeicoes",
+        DEPARTAMENTO_PESSOAL_SLUG,
+        MODULO_REFEICOES_PEDIDOS,
         "excluir",
     )
 
     pode_aprovar = usuario_tem_permissao(
         current_user,
-        "departamento_pessoal",
-        "pedido_refeicoes",
+        DEPARTAMENTO_PESSOAL_SLUG,
+        MODULO_REFEICOES_PEDIDOS,
         "aprovar",
-    )
-
-    pode_exportar = usuario_tem_permissao(
-        current_user,
-        "departamento_pessoal",
-        "pedido_refeicoes",
-        "exportar",
     )
 
     return render_template(
@@ -437,7 +456,7 @@ def pedidos():
         pedido_pode_ser_editado=pedido_pode_ser_editado,
         formatar_data=formatar_data,
         pode_aprovar=pode_aprovar,
-        pode_exportar=pode_exportar,
+        pode_enviar_whatsapp=pode_aprovar,
         pedido_pode_ser_fechado=pedido_pode_ser_fechado,
         pedido_pode_enviar_whatsapp=pedido_pode_enviar_whatsapp,
         status_whatsapp_pedido=status_whatsapp_pedido,
@@ -447,7 +466,7 @@ def pedidos():
 
 
 @pedido_refeicoes_bp.route("/pedidos/novo", methods=["GET", "POST"])
-@module_permission_required("departamento_pessoal", "pedido_refeicoes", "criar")
+@module_permission_required(DEPARTAMENTO_PESSOAL_SLUG, MODULO_REFEICOES_PEDIDOS, "criar")
 def novo_pedido():
     equipes = buscar_equipes_ativas()
     restaurantes = buscar_restaurantes_ativos()
@@ -480,7 +499,7 @@ def novo_pedido():
 
 
 @pedido_refeicoes_bp.route("/pedidos/<int:pedido_id>")
-@module_permission_required("departamento_pessoal", "pedido_refeicoes", "visualizar")
+@module_permission_required(DEPARTAMENTO_PESSOAL_SLUG, MODULO_REFEICOES_PEDIDOS, "visualizar")
 def detalhes_pedido(pedido_id):
     pedido = buscar_pedido_por_id(pedido_id)
 
@@ -490,30 +509,23 @@ def detalhes_pedido(pedido_id):
 
     pode_editar = usuario_tem_permissao(
         current_user,
-        "departamento_pessoal",
-        "pedido_refeicoes",
+        DEPARTAMENTO_PESSOAL_SLUG,
+        MODULO_REFEICOES_PEDIDOS,
         "editar",
     )
 
     pode_excluir = usuario_tem_permissao(
         current_user,
-        "departamento_pessoal",
-        "pedido_refeicoes",
+        DEPARTAMENTO_PESSOAL_SLUG,
+        MODULO_REFEICOES_PEDIDOS,
         "excluir",
     )
 
     pode_aprovar = usuario_tem_permissao(
         current_user,
-        "departamento_pessoal",
-        "pedido_refeicoes",
+        DEPARTAMENTO_PESSOAL_SLUG,
+        MODULO_REFEICOES_PEDIDOS,
         "aprovar",
-    )
-
-    pode_exportar = usuario_tem_permissao(
-        current_user,
-        "departamento_pessoal",
-        "pedido_refeicoes",
-        "exportar",
     )
 
     consumos = buscar_consumos_do_pedido(pedido)
@@ -521,8 +533,8 @@ def detalhes_pedido(pedido_id):
 
     pode_criar = usuario_tem_permissao(
         current_user,
-        "departamento_pessoal",
-        "pedido_refeicoes",
+        DEPARTAMENTO_PESSOAL_SLUG,
+        MODULO_REFEICOES_PEDIDOS,
         "criar",
     )
 
@@ -540,7 +552,7 @@ def detalhes_pedido(pedido_id):
         pode_criar=pode_criar,
         formatar_moeda=formatar_moeda,
         pode_aprovar=pode_aprovar,
-        pode_exportar=pode_exportar,
+        pode_enviar_whatsapp=pode_aprovar,
         pedido_pode_ser_fechado=pedido_pode_ser_fechado,
         pedido_pode_enviar_whatsapp=pedido_pode_enviar_whatsapp,
         pedido_enviado_com_correcao_permitida=pedido_enviado_com_correcao_permitida,
@@ -548,7 +560,7 @@ def detalhes_pedido(pedido_id):
     )
 
 @pedido_refeicoes_bp.route("/pedidos/<int:pedido_id>/editar", methods=["GET", "POST"])
-@module_permission_required("departamento_pessoal", "pedido_refeicoes", "editar")
+@module_permission_required(DEPARTAMENTO_PESSOAL_SLUG, MODULO_REFEICOES_PEDIDOS, "editar")
 def editar_pedido(pedido_id):
     pedido = buscar_pedido_por_id(pedido_id)
 
@@ -592,7 +604,7 @@ def editar_pedido(pedido_id):
 
 
 @pedido_refeicoes_bp.route("/pedidos/<int:pedido_id>/cancelar")
-@module_permission_required("departamento_pessoal", "pedido_refeicoes", "excluir")
+@module_permission_required(DEPARTAMENTO_PESSOAL_SLUG, MODULO_REFEICOES_PEDIDOS, "excluir")
 def cancelar_pedido(pedido_id):
     pedido = buscar_pedido_por_id(pedido_id)
 
@@ -614,7 +626,7 @@ def cancelar_pedido(pedido_id):
     return redirect(url_for("pedido_refeicoes.detalhes_pedido", pedido_id=pedido.id))
 
 @pedido_refeicoes_bp.route("/pedidos/<int:pedido_id>/consumos/novo", methods=["GET", "POST"])
-@module_permission_required("departamento_pessoal", "pedido_refeicoes", "criar")
+@module_permission_required(DEPARTAMENTO_PESSOAL_SLUG, MODULO_REFEICOES_PEDIDOS, "criar")
 def novo_consumo(pedido_id):
     pedido = buscar_pedido_por_id(pedido_id)
 
@@ -656,7 +668,7 @@ def novo_consumo(pedido_id):
 
 
 @pedido_refeicoes_bp.route("/consumos/<int:consumo_id>/editar", methods=["GET", "POST"])
-@module_permission_required("departamento_pessoal", "pedido_refeicoes", "editar")
+@module_permission_required(DEPARTAMENTO_PESSOAL_SLUG, MODULO_REFEICOES_PEDIDOS, "editar")
 def editar_consumo(consumo_id):
     consumo = buscar_consumo_por_id(consumo_id)
 
@@ -700,7 +712,7 @@ def editar_consumo(consumo_id):
 
 
 @pedido_refeicoes_bp.route("/consumos/<int:consumo_id>/remover")
-@module_permission_required("departamento_pessoal", "pedido_refeicoes", "excluir")
+@module_permission_required(DEPARTAMENTO_PESSOAL_SLUG, MODULO_REFEICOES_PEDIDOS, "excluir")
 def remover_consumo(consumo_id):
     consumo = buscar_consumo_por_id(consumo_id)
 
@@ -724,7 +736,7 @@ def remover_consumo(consumo_id):
     return redirect(url_for("pedido_refeicoes.detalhes_pedido", pedido_id=pedido_id))
 
 @pedido_refeicoes_bp.route("/pedidos/<int:pedido_id>/fechar")
-@module_permission_required("departamento_pessoal", "pedido_refeicoes", "aprovar")
+@module_permission_required(DEPARTAMENTO_PESSOAL_SLUG, MODULO_REFEICOES_PEDIDOS, "aprovar")
 def fechar_pedido(pedido_id):
     pedido = buscar_pedido_por_id(pedido_id)
 
@@ -743,7 +755,7 @@ def fechar_pedido(pedido_id):
 
 
 @pedido_refeicoes_bp.route("/pedidos/<int:pedido_id>/whatsapp")
-@module_permission_required("departamento_pessoal", "pedido_refeicoes", "exportar")
+@module_permission_required(DEPARTAMENTO_PESSOAL_SLUG, MODULO_REFEICOES_PEDIDOS, "aprovar")
 def enviar_whatsapp(pedido_id):
     pedido = buscar_pedido_por_id(pedido_id)
 
@@ -880,7 +892,7 @@ def gerar_pdf_relatorio_refeicoes(relatorio, filtros):
     return buffer
 
 @pedido_refeicoes_bp.route("/relatorios")
-@module_permission_required("departamento_pessoal", "pedido_refeicoes", "exportar")
+@module_permission_required(DEPARTAMENTO_PESSOAL_SLUG, MODULO_REFEICOES_RELATORIOS, "visualizar")
 def relatorios():
     data_inicial = request.args.get("data_inicial", "").strip()
     data_final = request.args.get("data_final", "").strip()
@@ -892,6 +904,7 @@ def relatorios():
     equipes = buscar_equipes_ativas()
     restaurantes = buscar_restaurantes_ativos()
     status_opcoes = status_relatorio_opcoes()
+    pode_exportar = pode_acessar_submodulo_refeicoes(MODULO_REFEICOES_RELATORIOS, "exportar")
 
     relatorio = None
     filtros_aplicados = bool(request.args)
@@ -925,10 +938,11 @@ def relatorios():
         },
         formatar_data=formatar_data,
         formatar_moeda=formatar_moeda,
+        pode_exportar=pode_exportar,
     )
 
 @pedido_refeicoes_bp.route("/relatorios/pdf")
-@module_permission_required("departamento_pessoal", "pedido_refeicoes", "exportar")
+@module_permission_required(DEPARTAMENTO_PESSOAL_SLUG, MODULO_REFEICOES_RELATORIOS, "exportar")
 def relatorios_pdf():
     data_inicial = request.args.get("data_inicial", "").strip()
     data_final = request.args.get("data_final", "").strip()

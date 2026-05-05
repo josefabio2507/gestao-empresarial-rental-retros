@@ -91,13 +91,13 @@
                                     </a>
                                 {% endif %}
 
-                                {% if pode_exportar and pedido.status == "Fechado" %}
+                                {% if pode_enviar_whatsapp and pedido.status == "Fechado" %}
                                     <a class="btn btn-whatsapp" href="{{ url_for('pedido_refeicoes.enviar_whatsapp', pedido_id=pedido.id) }}" target="_blank">
                                         WhatsApp
                                     </a>
                                 {% endif %}
 
-                                {% if pode_exportar and pedido.status == "Enviado" and pedido.quantidade_envios < 2 %}
+                                {% if pode_enviar_whatsapp and pedido.status == "Enviado" and pedido.quantidade_envios < 2 %}
                                     <a class="btn btn-whatsapp" href="{{ url_for('pedido_refeicoes.enviar_whatsapp', pedido_id=pedido.id) }}" target="_blank">
                                         Reenviar
                                     </a>

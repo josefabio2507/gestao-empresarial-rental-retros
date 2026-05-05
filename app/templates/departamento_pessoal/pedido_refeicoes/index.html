@@ -15,36 +15,41 @@
     </div>
 
     <div class="modules-grid">
-        <a class="module-card module-card-link" href="{{ url_for('pedido_refeicoes.restaurantes') }}">
-            <span class="module-card-icon">R</span>
-            <h2>Restaurantes</h2>
-            <p>Cadastre restaurantes e telefones para envio via WhatsApp.</p>
-            <span class="badge badge-success">Disponível</span>
-        </a>
-
-        <a class="module-card module-card-link" href="{{ url_for('pedido_refeicoes.cardapio') }}">
-            <span class="module-card-icon">C</span>
-            <h2>Cardápio</h2>
-            <p>Cadastre refeições, bebidas e outros itens por restaurante.</p>
-            <span class="badge badge-success">Disponível</span>
-        </a>
-
-        <a class="module-card module-card-link" href="{{ url_for('pedido_refeicoes.pedidos') }}">
-            <span class="module-card-icon">P</span>
-            <h2>Pedidos de Refeição</h2>
-            <p>Crie pedidos, acompanhe status e prepare o consumo individual.</p>
-            <span class="badge badge-success">Disponível</span>
-        </a>
-        
-        {% if pode_exportar %}
-            <a class="module-card module-card-link" href="{{ url_for('pedido_refeicoes.relatorios') }}">
-                <span class="module-card-icon">PDF</span>
-                <h2>Relatórios</h2>
-                <p>Consulte pedidos por período, equipe ou restaurante e gere PDF.</p>
+        {% if pode_visualizar_restaurantes %}
+            <a class="module-card module-card-link" href="{{ url_for('pedido_refeicoes.restaurantes') }}">
+                <span class="module-card-icon">R</span>
+                <h2>Restaurantes</h2>
+                <p>Cadastre restaurantes e telefones para envio via WhatsApp.</p>
                 <span class="badge badge-success">Disponível</span>
             </a>
         {% endif %}
 
+        {% if pode_visualizar_cardapio %}
+            <a class="module-card module-card-link" href="{{ url_for('pedido_refeicoes.cardapio') }}">
+                <span class="module-card-icon">C</span>
+                <h2>Cardápio</h2>
+                <p>Cadastre refeições, bebidas e outros itens por restaurante.</p>
+                <span class="badge badge-success">Disponível</span>
+            </a>
+        {% endif %}
+
+        {% if pode_visualizar_pedidos %}
+            <a class="module-card module-card-link" href="{{ url_for('pedido_refeicoes.pedidos') }}">
+                <span class="module-card-icon">P</span>
+                <h2>Pedidos de Refeição</h2>
+                <p>Crie pedidos, acompanhe status e prepare o consumo individual.</p>
+                <span class="badge badge-success">Disponível</span>
+            </a>
+        {% endif %}
+
+        {% if pode_visualizar_relatorios %}
+            <a class="module-card module-card-link" href="{{ url_for('pedido_refeicoes.relatorios') }}">
+                <span class="module-card-icon">PDF</span>
+                <h2>Relatórios</h2>
+                <p>Consulte pedidos por período, equipe ou restaurante.</p>
+                <span class="badge badge-success">Disponível</span>
+            </a>
+        {% endif %}
     </div>
 </section>
 {% endblock %}

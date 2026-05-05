@@ -90,7 +90,7 @@
         <div class="form-actions">
             <button class="btn btn-primary" type="submit">Aplicar filtros</button>
 
-            {% if relatorio %}
+            {% if relatorio and pode_exportar %}
                 <a
                     class="btn btn-success"
                     href="{{ url_for(
