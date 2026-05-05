@@ -21,7 +21,7 @@
             {% endfor %}
 
             {% if current_user.is_admin %}
-                <a class="card card-admin" href="{{ url_for('usuarios.listar_usuarios') }}">
+                <a class="card card-admin" href="{{ url_for('admin.index') }}">
                     <strong>Administração</strong>
                     <small>Gestão de usuários e permissões</small>
                 </a>

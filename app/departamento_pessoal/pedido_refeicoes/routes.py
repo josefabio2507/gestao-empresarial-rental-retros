@@ -10,6 +10,7 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Tabl
 
 
 from app.decorators import module_permission_required
+from app.services.logs_service import registrar_log
 from app.services.permissoes_service import usuario_tem_permissao
 from app.departamento_pessoal.pedido_refeicoes.services import (
 
@@ -137,6 +138,10 @@ def novo_restaurante():
         )
 
         if sucesso:
+            registrar_log(
+                "restaurante_criado",
+                "Restaurante criado.",
+            )
             flash(mensagem, "success")
             return redirect(url_for("pedido_refeicoes.restaurantes"))
 
@@ -174,6 +179,10 @@ def editar_restaurante(restaurante_id):
         )
 
         if sucesso:
+            registrar_log(
+                "restaurante_atualizado",
+                f"Restaurante atualizado. ID: {restaurante.id}.",
+            )
             flash(mensagem, "success")
             return redirect(url_for("pedido_refeicoes.restaurantes"))
 
@@ -205,6 +214,10 @@ def alterar_status_restaurante_rota(restaurante_id):
     sucesso, mensagem = alterar_status_restaurante(restaurante)
 
     if sucesso:
+        registrar_log(
+            "restaurante_status_alterado",
+            f"Restaurante {'ativado' if restaurante.ativo else 'inativado'}. ID: {restaurante.id}.",
+        )
         flash(mensagem, "success")
     else:
         flash(mensagem, "danger")
@@ -277,6 +290,10 @@ def novo_item_cardapio():
         )
 
         if sucesso:
+            registrar_log(
+                "item_cardapio_criado",
+                "Item de cardapio criado.",
+            )
             flash(mensagem, "success")
             return redirect(url_for("pedido_refeicoes.cardapio"))
 
@@ -322,6 +339,10 @@ def editar_item_cardapio(item_id):
         )
 
         if sucesso:
+            registrar_log(
+                "item_cardapio_atualizado",
+                f"Item de cardapio atualizado. ID: {item.id}.",
+            )
             flash(mensagem, "success")
             return redirect(url_for("pedido_refeicoes.cardapio"))
 
@@ -357,6 +378,10 @@ def alterar_status_item_cardapio_rota(item_id):
     sucesso, mensagem = alterar_status_item_cardapio(item)
 
     if sucesso:
+        registrar_log(
+            "item_cardapio_status_alterado",
+            f"Item de cardapio {'ativado' if item.ativo else 'inativado'}. ID: {item.id}.",
+        )
         flash(mensagem, "success")
     else:
         flash(mensagem, "danger")
@@ -436,6 +461,10 @@ def novo_pedido():
         )
 
         if sucesso:
+            registrar_log(
+                "pedido_refeicao_criado",
+                f"Pedido de refeicao criado. Pedido ID: {pedido.id}.",
+            )
             flash(mensagem, "success")
             return redirect(url_for("pedido_refeicoes.detalhes_pedido", pedido_id=pedido.id))
 
@@ -544,6 +573,10 @@ def editar_pedido(pedido_id):
         )
 
         if sucesso:
+            registrar_log(
+                "pedido_refeicao_atualizado",
+                f"Pedido de refeicao atualizado. Pedido ID: {pedido.id}.",
+            )
             flash(mensagem, "success")
             return redirect(url_for("pedido_refeicoes.detalhes_pedido", pedido_id=pedido.id))
 
@@ -570,6 +603,10 @@ def cancelar_pedido(pedido_id):
     sucesso, mensagem = cancelar_pedido_refeicao(pedido)
 
     if sucesso:
+        registrar_log(
+            "pedido_refeicao_cancelado",
+            f"Pedido de refeicao cancelado. Pedido ID: {pedido.id}.",
+        )
         flash(mensagem, "success")
     else:
         flash(mensagem, "danger")
@@ -676,6 +713,10 @@ def remover_consumo(consumo_id):
     sucesso, mensagem = remover_consumo_refeicao(consumo)
 
     if sucesso:
+        registrar_log(
+            "pedido_refeicao_fechado",
+            f"Pedido de refeicao fechado. Pedido ID: {pedido.id}.",
+        )
         flash(mensagem, "success")
     else:
         flash(mensagem, "danger")
@@ -723,6 +764,15 @@ def enviar_whatsapp(pedido_id):
         return redirect(url_for("pedido_refeicoes.detalhes_pedido", pedido_id=pedido.id))
 
     flash(mensagem_registro, "success")
+    acao = (
+        "pedido_refeicao_reenviado_whatsapp"
+        if (pedido.quantidade_envios or 0) > 1
+        else "pedido_refeicao_enviado_whatsapp"
+    )
+    registrar_log(
+        acao,
+        f"Pedido de refeicao enviado via WhatsApp. Pedido: {pedido.numero_pedido or pedido.id}.",
+    )
     return redirect(link)
 
 def gerar_pdf_relatorio_refeicoes(relatorio, filtros):
@@ -911,6 +961,10 @@ def relatorios_pdf():
     )
 
     nome_arquivo = f"relatorio_pedidos_refeicoes_{data_inicial}_a_{data_final}.pdf"
+    registrar_log(
+        "relatorio_refeicoes_pdf_exportado",
+        "Relatorio de refeicoes exportado em PDF.",
+    )
 
     return send_file(
         pdf_buffer,

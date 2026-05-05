@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <h1>Administração</h1>
+            <p>Módulos administrativos do sistema.</p>
+        </div>
+
+        <a class="btn btn-secondary" href="{{ url_for('main.inicio') }}">
+            Voltar ao início
+        </a>
+    </div>
+
+    <div class="modules-grid">
+        <a class="module-card module-card-link" href="{{ url_for('usuarios.listar_usuarios') }}">
+            <h2>Usuários</h2>
+            <p>Cadastro e gestão de usuários do sistema.</p>
+            <span class="badge badge-success">Liberado</span>
+            <span class="module-status">Acessar módulo</span>
+        </a>
+
+        <a class="module-card module-card-link" href="{{ url_for('permissoes.listar_permissoes') }}">
+            <h2>Permissões</h2>
+            <p>Gestão de permissões por usuário, departamento, módulo e ação.</p>
+            <span class="badge badge-success">Liberado</span>
+            <span class="module-status">Acessar módulo</span>
+        </a>
+
+        {% if current_user.is_admin %}
+            <a class="module-card module-card-link" href="{{ url_for('admin.logs') }}">
+                <h2>Auditoria / Logs</h2>
+                <p>Consulta de logs operacionais e ações relevantes do sistema.</p>
+                <span class="badge badge-success">Administrador</span>
+                <span class="module-status">Acessar logs</span>
+            </a>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

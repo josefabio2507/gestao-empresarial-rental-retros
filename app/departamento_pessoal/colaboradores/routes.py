@@ -4,6 +4,7 @@ from flask_login import current_user
 from app.decorators import module_permission_required
 from app.services.permissoes_service import usuario_tem_permissao
 from app.services.importacao_colaboradores_service import importar_colaboradores_csv
+from app.services.logs_service import registrar_log
 from app.utils.mascaras_lgpd import (
     exibir_cpf,
     exibir_email,
@@ -116,6 +117,14 @@ def importar_colaboradores():
             return redirect(url_for("colaboradores.importar_colaboradores"))
 
         resumo = importar_colaboradores_csv(arquivo_csv)
+        registrar_log(
+            "colaboradores_importacao_csv",
+            (
+                "Importacao CSV de colaboradores concluida. "
+                f"Total: {resumo['total_linhas']}, criados: {resumo['criados']}, "
+                f"atualizados: {resumo['atualizados']}, rejeitados: {resumo['rejeitados']}."
+            ),
+        )
         flash("Importação concluída.", "success")
 
     return render_template(
@@ -142,6 +151,10 @@ def novo_colaborador():
         )
 
         if sucesso:
+            registrar_log(
+                "colaborador_criado",
+                f"Colaborador criado. Matricula: {request.form.get('matricula', '').strip()}.",
+            )
             flash(mensagem, "success")
             return redirect(url_for("colaboradores.listar_colaboradores"))
 
@@ -210,6 +223,10 @@ def editar_colaborador(colaborador_id):
         )
 
         if sucesso:
+            registrar_log(
+                "colaborador_atualizado",
+                f"Colaborador atualizado. Matricula: {colaborador.matricula}.",
+            )
             flash(mensagem, "success")
             return redirect(url_for("colaboradores.listar_colaboradores"))
 
@@ -235,6 +252,12 @@ def alterar_status(colaborador_id):
     sucesso, mensagem = alterar_status_colaborador(colaborador)
 
     if sucesso:
+        acao = "colaborador_ativado" if colaborador.ativo else "colaborador_inativado"
+        descricao = (
+            f"Colaborador {'ativado' if colaborador.ativo else 'inativado'}. "
+            f"Matricula: {colaborador.matricula}."
+        )
+        registrar_log(acao, descricao)
         flash(mensagem, "success")
     else:
         flash(mensagem, "danger")

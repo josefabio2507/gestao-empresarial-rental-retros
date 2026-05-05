@@ -4,6 +4,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from app.models import Usuario
 from app.extensions import db
+from app.services.logs_service import registrar_log
 
 
 auth_bp = Blueprint("auth", __name__)
@@ -32,6 +33,11 @@ def login():
             return redirect(url_for("auth.login"))
 
         login_user(usuario)
+        registrar_log(
+            "login_sucesso",
+            f"Login realizado com sucesso. Usuario ID: {usuario.id}.",
+            usuario=usuario,
+        )
 
         if usuario.precisa_trocar_senha:
             return redirect(url_for("auth.trocar_senha"))
@@ -69,6 +75,12 @@ def bloquear_navegacao_com_troca_pendente():
 @auth_bp.route("/logout")
 @login_required
 def logout():
+    usuario = current_user
+    registrar_log(
+        "logout",
+        f"Logout realizado. Usuario ID: {usuario.id}.",
+        usuario=usuario,
+    )
     logout_user()
     flash("Você saiu do sistema.", "success")
     return redirect(url_for("auth.login"))

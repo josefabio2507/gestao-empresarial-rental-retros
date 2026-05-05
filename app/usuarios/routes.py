@@ -2,6 +2,8 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 
 from app.decorators import admin_required
+from app.models import Usuario
+from app.services.logs_service import registrar_log
 from app.services.usuarios_service import (
     buscar_usuarios,
     buscar_usuario_por_id,
@@ -45,6 +47,13 @@ def novo_usuario():
         )
 
         if sucesso:
+            usuario_criado = Usuario.query.filter_by(email=email.strip().lower()).first()
+            descricao = "Usuario criado."
+
+            if usuario_criado:
+                descricao = f"Usuario criado. ID: {usuario_criado.id}."
+
+            registrar_log("usuario_criado", descricao)
             flash(mensagem, "success")
             return redirect(url_for("usuarios.listar_usuarios"))
 
@@ -100,6 +109,12 @@ def editar_usuario(usuario_id):
         )
 
         if sucesso:
+            descricao = f"Usuario atualizado. ID: {usuario.id}."
+
+            if nova_senha:
+                descricao += " Senha redefinida pelo administrador."
+
+            registrar_log("usuario_atualizado", descricao)
             flash(mensagem, "success")
             return redirect(url_for("usuarios.listar_usuarios"))
 
@@ -126,6 +141,11 @@ def alterar_status(usuario_id):
     sucesso, mensagem = alterar_status_usuario(usuario, current_user)
 
     if sucesso:
+        acao = "usuario_ativado" if usuario.ativo else "usuario_inativado"
+        registrar_log(
+            acao,
+            f"Usuario {'ativado' if usuario.ativo else 'inativado'}. ID: {usuario.id}.",
+        )
         flash(mensagem, "success")
     else:
         flash(mensagem, "danger")

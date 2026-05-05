@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <h1>Auditoria e Logs</h1>
+            <p>Consulta administrativa de ações operacionais registradas no sistema.</p>
+        </div>
+
+        <a class="btn btn-secondary" href="{{ url_for('main.inicio') }}">Voltar</a>
+    </div>
+
+    <form class="filter-card" method="GET">
+        <div class="filter-grid">
+            <div class="form-group">
+                <label for="usuario_id">Usuário</label>
+                <select name="usuario_id" id="usuario_id">
+                    <option value="">Todos</option>
+                    {% for usuario in usuarios %}
+                        <option value="{{ usuario.id }}" {% if filtros.usuario_id|string == usuario.id|string %}selected{% endif %}>
+                            {{ usuario.nome }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="acao">Ação</label>
+                <input type="text" name="acao" id="acao" value="{{ filtros.acao }}" placeholder="Ex: colaborador_criado">
+            </div>
+
+            <div class="form-group">
+                <label for="data_inicial">Data inicial</label>
+                <input type="date" name="data_inicial" id="data_inicial" value="{{ filtros.data_inicial }}">
+            </div>
+
+            <div class="form-group">
+                <label for="data_final">Data final</label>
+                <input type="date" name="data_final" id="data_final" value="{{ filtros.data_final }}">
+            </div>
+
+            <div class="filter-actions">
+                <button class="btn btn-primary" type="submit">Filtrar</button>
+                <a class="btn btn-secondary" href="{{ url_for('admin.logs') }}">Limpar</a>
+            </div>
+        </div>
+    </form>
+
+    <div class="table-card table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th class="col-nowrap">Data/Hora</th>
+                    <th>Usuário</th>
+                    <th class="col-nowrap">Ação</th>
+                    <th>Descrição</th>
+                    <th>Rota</th>
+                    <th class="col-nowrap">IP</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in logs %}
+                    <tr>
+                        <td class="col-nowrap">{{ log.criado_em.strftime("%d/%m/%Y %H:%M:%S") if log.criado_em else "-" }}</td>
+                        <td>{{ log.usuario.nome if log.usuario else "-" }}</td>
+                        <td class="col-nowrap">{{ log.acao }}</td>
+                        <td>{{ log.descricao or "-" }}</td>
+                        <td>{{ log.rota or "-" }}</td>
+                        <td class="col-nowrap">{{ log.ip or "-" }}</td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="6">Nenhum log encontrado.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

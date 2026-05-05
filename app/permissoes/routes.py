@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_required
 
 from app.decorators import admin_required
+from app.services.logs_service import registrar_log
 from app.services.permissoes_service import (
     buscar_usuario_com_permissoes,
     buscar_departamentos_com_modulos,
@@ -57,6 +58,10 @@ def editar_permissoes(usuario_id):
         sucesso, mensagem = salvar_permissoes_usuario(usuario.id, request.form)
 
         if sucesso:
+            registrar_log(
+                "permissoes_atualizadas",
+                f"Permissoes atualizadas para usuario ID {usuario.id}.",
+            )
             flash(mensagem, "success")
             return redirect(url_for("permissoes.visualizar_permissoes", usuario_id=usuario.id))
 
