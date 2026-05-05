@@ -504,24 +504,51 @@ textarea {
 
 /* Rental Retros visual system */
 .top-bar {
+    --page-header-logo-width: clamp(234px, 28vw, 396px);
+    --page-header-logo-height: clamp(102px, 11.45vw, 162px);
+    --page-header-line-right: clamp(99px, 13.5vw, 180px);
+    --page-header-line-offset: clamp(33px, 4.4vw, 63px);
     background: linear-gradient(135deg, var(--rr-navy), var(--rr-blue));
     color: #ffffff;
     border-radius: 14px;
-    padding: 22px 24px;
+    padding: 22px calc(var(--page-header-logo-width) + 72px) 22px 24px;
     box-shadow: var(--rr-shadow);
     position: relative;
     overflow: hidden;
+    min-height: calc(var(--page-header-logo-height) + 64px);
+}
+
+.top-bar:hover {
+    transform: none;
+}
+
+.top-bar > * {
+    position: relative;
+    z-index: 1;
+}
+
+.top-bar::before {
+    content: "";
+    position: absolute;
+    right: 28px;
+    top: 50%;
+    width: var(--page-header-logo-width);
+    height: var(--page-header-logo-height);
+    background: url("../img/logo-rental-retros.png") center / contain no-repeat;
+    transform: translateY(-62%);
+    z-index: 0;
 }
 
 .top-bar::after {
     content: "";
     position: absolute;
-    right: 24px;
-    bottom: 0;
-    width: 120px;
-    height: 5px;
-    border-radius: 999px 999px 0 0;
+    right: var(--page-header-line-right);
+    top: calc(50% + var(--page-header-line-offset));
+    width: 92px;
+    height: 6px;
+    border-radius: 999px;
     background: var(--rr-gold);
+    z-index: 0;
 }
 
 .top-bar h1 {
@@ -629,7 +656,8 @@ textarea {
     margin-bottom: 16px;
 }
 
-.card:hover,
+.department-card:hover,
+.card-admin:hover,
 .module-card-link:hover {
     transform: translateY(-3px);
     box-shadow: 0 18px 42px rgba(7, 26, 47, 0.14);
@@ -724,11 +752,31 @@ textarea:focus {
     }
 
     .top-bar {
+        --page-header-logo-width: clamp(150px, 42vw, 234px);
+        --page-header-logo-height: clamp(65px, 17.2vw, 102px);
+        --page-header-line-right: clamp(59px, 21vw, 101px);
+        --page-header-line-offset: clamp(18px, 7.5vw, 37px);
         padding: 20px;
+        padding-right: calc(var(--page-header-logo-width) + 34px);
+        min-height: calc(var(--page-header-logo-height) + 56px);
     }
 
     .top-bar h1 {
         font-size: 24px;
+    }
+
+    .top-bar::before {
+        right: 16px;
+        width: var(--page-header-logo-width);
+        height: var(--page-header-logo-height);
+        transform: translateY(-68%);
+    }
+
+    .top-bar::after {
+        right: var(--page-header-line-right);
+        top: calc(50% + var(--page-header-line-offset));
+        width: 64px;
+        height: 5px;
     }
 
     .table-card,
