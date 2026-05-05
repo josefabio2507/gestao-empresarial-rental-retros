@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Administração</span>
+            <h1>Permissões</h1>
+            <p>Selecione um usuário para consultar ou ajustar as permissões de acesso aos módulos.</p>
+        </div>
+
+        <a class="btn btn-secondary" href="{{ url_for('admin.index') }}">
+            Voltar para Administração
+        </a>
+    </div>
+
+    <div class="table-card table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Usuário</th>
+                    <th>E-mail</th>
+                    <th>Nível</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for usuario in usuarios %}
+                    <tr>
+                        <td>{{ usuario.nome }}</td>
+                        <td>{{ usuario.email }}</td>
+                        <td>
+                            {% if usuario.nivel_acesso %}
+                                {{ usuario.nivel_acesso.nome }}
+                            {% else %}
+                                Sem nível
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if usuario.ativo %}
+                                <span class="badge badge-success">Ativo</span>
+                            {% else %}
+                                <span class="badge badge-danger">Inativo</span>
+                            {% endif %}
+                        </td>
+                        <td class="col-acoes">
+                            <div class="acoes-botoes">
+                                <a class="btn btn-secondary" href="{{ url_for('permissoes.visualizar_permissoes', usuario_id=usuario.id) }}">
+                                    Ver permissões
+                                </a>
+
+                                <a class="btn btn-primary" href="{{ url_for('permissoes.editar_permissoes', usuario_id=usuario.id) }}">
+                                    Editar
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td class="empty-state" colspan="5">Nenhum usuário cadastrado.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

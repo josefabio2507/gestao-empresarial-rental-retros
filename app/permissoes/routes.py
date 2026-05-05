@@ -11,6 +11,7 @@ from app.services.permissoes_service import (
     permissoes_por_departamento,
     listar_acoes_liberadas,
 )
+from app.services.usuarios_service import buscar_usuarios
 
 
 permissoes_bp = Blueprint("permissoes", __name__)
@@ -20,8 +21,8 @@ permissoes_bp = Blueprint("permissoes", __name__)
 @login_required
 @admin_required
 def listar_permissoes():
-    flash("A gestão de permissões é feita a partir da lista de usuários.", "info")
-    return redirect(url_for("usuarios.listar_usuarios"))
+    usuarios = buscar_usuarios()
+    return render_template("permissoes/listar.html", usuarios=usuarios)
 
 
 @permissoes_bp.route("/usuario/<int:usuario_id>")

@@ -504,10 +504,10 @@ textarea {
 
 /* Rental Retros visual system */
 .top-bar {
-    --page-header-logo-width: clamp(234px, 28vw, 396px);
-    --page-header-logo-height: clamp(102px, 11.45vw, 162px);
-    --page-header-line-right: clamp(99px, 13.5vw, 180px);
-    --page-header-line-offset: clamp(33px, 4.4vw, 63px);
+    --page-header-logo-width: clamp(210px, 22vw, 330px);
+    --page-header-logo-height: clamp(86px, 9vw, 135px);
+    --page-header-line-right: clamp(87px, 10.5vw, 147px);
+    --page-header-line-offset: clamp(26px, 3.45vw, 50px);
     background: linear-gradient(135deg, var(--rr-navy), var(--rr-blue));
     color: #ffffff;
     border-radius: 14px;
@@ -752,17 +752,22 @@ textarea:focus {
     }
 
     .top-bar {
-        --page-header-logo-width: clamp(150px, 42vw, 234px);
-        --page-header-logo-height: clamp(65px, 17.2vw, 102px);
-        --page-header-line-right: clamp(59px, 21vw, 101px);
-        --page-header-line-offset: clamp(18px, 7.5vw, 37px);
+        --page-header-logo-width: clamp(92px, 28vw, 128px);
+        --page-header-logo-height: clamp(38px, 11.45vw, 53px);
+        --page-header-line-right: clamp(30px, 10vw, 48px);
+        --page-header-line-offset: clamp(8px, 3.5vw, 14px);
         padding: 20px;
-        padding-right: calc(var(--page-header-logo-width) + 34px);
-        min-height: calc(var(--page-header-logo-height) + 56px);
+        padding-right: calc(var(--page-header-logo-width) + 28px);
+        min-height: 154px;
     }
 
     .top-bar h1 {
-        font-size: 24px;
+        font-size: 22px;
+        max-width: 220px;
+    }
+
+    .top-bar p {
+        max-width: 210px;
     }
 
     .top-bar::before {

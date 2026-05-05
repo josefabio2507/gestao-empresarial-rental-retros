@@ -17,7 +17,34 @@
     {% if modulos_liberados %}
         <div class="modules-grid">
             {% for modulo in modulos_liberados %}
-                {% if departamento.slug == "departamento_pessoal" and modulo.slug == "colaboradores" %}
+                {% if departamento.slug == "administracao" and modulo.slug in ["usuarios", "usuario"] %}
+                    <a class="module-card module-card-link" href="{{ url_for('usuarios.listar_usuarios') }}">
+                        <span class="module-card-icon">U</span>
+                        <h2>{{ modulo.nome }}</h2>
+                        <p>{{ modulo.descricao or "Cadastro e gestão de usuários do sistema." }}</p>
+                        <span class="badge badge-success">Liberado</span>
+                        <span class="module-status">Acessar módulo</span>
+                    </a>
+
+                {% elif departamento.slug == "administracao" and modulo.slug in ["permissoes", "permissao"] %}
+                    <a class="module-card module-card-link" href="{{ url_for('permissoes.listar_permissoes') }}">
+                        <span class="module-card-icon">P</span>
+                        <h2>{{ modulo.nome }}</h2>
+                        <p>{{ modulo.descricao or "Gestão de permissões por usuário e módulo." }}</p>
+                        <span class="badge badge-success">Liberado</span>
+                        <span class="module-status">Acessar módulo</span>
+                    </a>
+
+                {% elif departamento.slug == "administracao" and modulo.slug in ["auditoria", "logs", "auditoria_logs"] and current_user.is_admin %}
+                    <a class="module-card module-card-link" href="{{ url_for('admin.logs') }}">
+                        <span class="module-card-icon">A</span>
+                        <h2>{{ modulo.nome }}</h2>
+                        <p>{{ modulo.descricao or "Consulta de logs operacionais do sistema." }}</p>
+                        <span class="badge badge-success">Administrador</span>
+                        <span class="module-status">Acessar logs</span>
+                    </a>
+
+                {% elif departamento.slug == "departamento_pessoal" and modulo.slug == "colaboradores" %}
                     <a class="module-card module-card-link" href="{{ url_for('colaboradores.listar_colaboradores') }}">
                         <span class="module-card-icon">C</span>
                         <h2>{{ modulo.nome }}</h2>
