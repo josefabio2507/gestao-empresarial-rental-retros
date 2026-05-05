@@ -4,8 +4,9 @@
 <section class="page">
     <div class="top-bar">
         <div>
+            <span class="page-kicker">Auditoria</span>
             <h1>Auditoria e Logs</h1>
-            <p>Consulta administrativa de ações operacionais registradas no sistema.</p>
+            <p>Registre e consulte ações relevantes realizadas no sistema.</p>
         </div>
 
         <a class="btn btn-secondary" href="{{ url_for('main.inicio') }}">Voltar</a>
@@ -64,14 +65,14 @@
                     <tr>
                         <td class="col-nowrap">{{ formatar_data_hora_brasil(log.criado_em) }}</td>
                         <td>{{ log.usuario.nome if log.usuario else "-" }}</td>
-                        <td class="col-nowrap">{{ log.acao }}</td>
+                        <td class="col-nowrap"><span class="audit-action-badge">{{ log.acao }}</span></td>
                         <td>{{ log.descricao or "-" }}</td>
                         <td>{{ log.rota or "-" }}</td>
                         <td class="col-nowrap">{{ log.ip or "-" }}</td>
                     </tr>
                 {% else %}
                     <tr>
-                        <td colspan="6">Nenhum log encontrado.</td>
+                        <td class="empty-state" colspan="6">Nenhum log encontrado para os filtros selecionados.</td>
                     </tr>
                 {% endfor %}
             </tbody>

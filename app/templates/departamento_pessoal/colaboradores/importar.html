@@ -4,12 +4,14 @@
 <section class="page">
     <div class="top-bar">
         <div>
+            <span class="page-kicker">Importação</span>
             <h1>Importar Colaboradores</h1>
             <p>Envie um arquivo CSV para criar ou atualizar colaboradores em massa.</p>
         </div>
     </div>
 
     <form class="form-card" method="POST" enctype="multipart/form-data">
+        <h2 class="section-title">Arquivo de importação</h2>
         <p>
             Atenção: este módulo trata dados pessoais de colaboradores. Utilize arquivos CSV apenas para finalidade administrativa autorizada. Não mantenha arquivos com dados pessoais dentro da pasta do projeto ou no GitHub.
         </p>
@@ -40,26 +42,24 @@
         <div class="table-card">
             <h2>Importação concluída.</h2>
 
-            <table class="table">
-                <tbody>
-                    <tr>
-                        <th>Total de linhas lidas</th>
-                        <td>{{ resumo.total_linhas }}</td>
-                    </tr>
-                    <tr>
-                        <th>Criados</th>
-                        <td>{{ resumo.criados }}</td>
-                    </tr>
-                    <tr>
-                        <th>Atualizados</th>
-                        <td>{{ resumo.atualizados }}</td>
-                    </tr>
-                    <tr>
-                        <th>Rejeitados</th>
-                        <td>{{ resumo.rejeitados }}</td>
-                    </tr>
-                </tbody>
-            </table>
+            <div class="stat-grid">
+                <div class="stat-card">
+                    <span>Total de linhas</span>
+                    <strong>{{ resumo.total_linhas }}</strong>
+                </div>
+                <div class="stat-card">
+                    <span>Criados</span>
+                    <strong>{{ resumo.criados }}</strong>
+                </div>
+                <div class="stat-card">
+                    <span>Atualizados</span>
+                    <strong>{{ resumo.atualizados }}</strong>
+                </div>
+                <div class="stat-card">
+                    <span>Rejeitados</span>
+                    <strong>{{ resumo.rejeitados }}</strong>
+                </div>
+            </div>
 
             {% if resumo.erros %}
                 <h3>Erros</h3>

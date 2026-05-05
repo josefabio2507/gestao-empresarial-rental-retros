@@ -4,6 +4,7 @@
 <section class="page">
     <div class="top-bar">
         <div>
+            <span class="page-kicker">Relatórios</span>
             <h1>Relatórios de Pedido de Refeições</h1>
             <p>Filtre por período, equipe, restaurante e gere PDF para conferência.</p>
         </div>
@@ -112,11 +113,24 @@
         <div class="details-card">
             <h2>Resultado do relatório</h2>
 
-            <p><strong>Período:</strong> {{ filtros.data_inicial }} a {{ filtros.data_final }}</p>
-            <p><strong>Status:</strong> {{ filtros.status }}</p>
-            <p><strong>Agrupamento:</strong> {{ relatorio.agrupamento_label }}</p>
-            <p><strong>Quantidade de pedidos:</strong> {{ relatorio.quantidade_pedidos }}</p>
-            <p><strong>Total geral:</strong> {{ formatar_moeda(relatorio.total_geral) }}</p>
+            <div class="stat-grid">
+                <div class="stat-card">
+                    <span>Período</span>
+                    <strong>{{ filtros.data_inicial }} a {{ filtros.data_final }}</strong>
+                </div>
+                <div class="stat-card">
+                    <span>Status</span>
+                    <strong>{{ filtros.status }}</strong>
+                </div>
+                <div class="stat-card">
+                    <span>Pedidos</span>
+                    <strong>{{ relatorio.quantidade_pedidos }}</strong>
+                </div>
+                <div class="stat-card">
+                    <span>Total geral</span>
+                    <strong>{{ formatar_moeda(relatorio.total_geral) }}</strong>
+                </div>
+            </div>
         </div>
 
         {% if relatorio.grupos %}
@@ -126,7 +140,7 @@
 
                     <h3>Pedidos</h3>
 
-                    <div class="table-card table-card-inner">
+                    <div class="table-card table-card-inner table-responsive">
                         <table class="table">
                             <thead>
                                 <tr>
@@ -164,7 +178,7 @@
 
                     <h3>Resumo por item</h3>
 
-                    <div class="table-card table-card-inner">
+                    <div class="table-card table-card-inner table-responsive">
                         <table class="table">
                             <thead>
                                 <tr>
@@ -196,7 +210,7 @@
             {% endfor %}
         {% else %}
             <div class="details-card">
-                <p>Nenhum pedido encontrado para os filtros selecionados.</p>
+                <p class="empty-state">Nenhum pedido encontrado para os filtros selecionados.</p>
             </div>
         {% endif %}
     {% endif %}

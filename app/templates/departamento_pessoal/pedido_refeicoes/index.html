@@ -4,6 +4,7 @@
 <section class="page">
     <div class="top-bar">
         <div>
+            <span class="page-kicker">Departamento Pessoal</span>
             <h1>Pedido de Refeições</h1>
             <p>Gerencie restaurantes, cardápios e pedidos de refeição.</p>
         </div>
@@ -15,18 +16,21 @@
 
     <div class="modules-grid">
         <a class="module-card module-card-link" href="{{ url_for('pedido_refeicoes.restaurantes') }}">
+            <span class="module-card-icon">R</span>
             <h2>Restaurantes</h2>
             <p>Cadastre restaurantes e telefones para envio via WhatsApp.</p>
             <span class="badge badge-success">Disponível</span>
         </a>
 
         <a class="module-card module-card-link" href="{{ url_for('pedido_refeicoes.cardapio') }}">
+            <span class="module-card-icon">C</span>
             <h2>Cardápio</h2>
             <p>Cadastre refeições, bebidas e outros itens por restaurante.</p>
             <span class="badge badge-success">Disponível</span>
         </a>
 
         <a class="module-card module-card-link" href="{{ url_for('pedido_refeicoes.pedidos') }}">
+            <span class="module-card-icon">P</span>
             <h2>Pedidos de Refeição</h2>
             <p>Crie pedidos, acompanhe status e prepare o consumo individual.</p>
             <span class="badge badge-success">Disponível</span>
@@ -34,6 +38,7 @@
         
         {% if pode_exportar %}
             <a class="module-card module-card-link" href="{{ url_for('pedido_refeicoes.relatorios') }}">
+                <span class="module-card-icon">PDF</span>
                 <h2>Relatórios</h2>
                 <p>Consulte pedidos por período, equipe ou restaurante e gere PDF.</p>
                 <span class="badge badge-success">Disponível</span>

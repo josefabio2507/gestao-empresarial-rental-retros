@@ -4,6 +4,7 @@
 <section class="page">
     <div class="top-bar">
         <div>
+            <span class="page-kicker">Departamento</span>
             <h1>{{ departamento.nome }}</h1>
             <p>{{ departamento.descricao or "Módulos disponíveis neste departamento." }}</p>
         </div>
@@ -18,6 +19,7 @@
             {% for modulo in modulos_liberados %}
                 {% if departamento.slug == "departamento_pessoal" and modulo.slug == "colaboradores" %}
                     <a class="module-card module-card-link" href="{{ url_for('colaboradores.listar_colaboradores') }}">
+                        <span class="module-card-icon">C</span>
                         <h2>{{ modulo.nome }}</h2>
                         <p>{{ modulo.descricao or "Cadastro e consulta de colaboradores." }}</p>
                         <span class="badge badge-success">Liberado</span>
@@ -26,6 +28,7 @@
 
                 {% elif departamento.slug == "departamento_pessoal" and modulo.slug == "pedido_refeicoes" %}
                     <a class="module-card module-card-link" href="{{ url_for('pedido_refeicoes.index') }}">
+                        <span class="module-card-icon">P</span>
                         <h2>{{ modulo.nome }}</h2>
                         <p>{{ modulo.descricao or "Controle de refeições, restaurantes e cardápios." }}</p>
                         <span class="badge badge-success">Liberado</span>
@@ -34,6 +37,7 @@
 
                 {% else %}
                     <div class="module-card">
+                        <span class="module-card-icon">M</span>
                         <h2>{{ modulo.nome }}</h2>
                         <p>{{ modulo.descricao or "Módulo disponível." }}</p>
                         <span class="badge badge-success">Liberado</span>

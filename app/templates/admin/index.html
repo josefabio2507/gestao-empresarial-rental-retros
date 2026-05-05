@@ -4,8 +4,9 @@
 <section class="page">
     <div class="top-bar">
         <div>
+            <span class="page-kicker">Painel administrativo</span>
             <h1>Administração</h1>
-            <p>Módulos administrativos do sistema.</p>
+            <p>Gerencie usuários, permissões e auditoria do sistema.</p>
         </div>
 
         <a class="btn btn-secondary" href="{{ url_for('main.inicio') }}">
@@ -15,6 +16,7 @@
 
     <div class="modules-grid">
         <a class="module-card module-card-link" href="{{ url_for('usuarios.listar_usuarios') }}">
+            <span class="module-card-icon">U</span>
             <h2>Usuários</h2>
             <p>Cadastro e gestão de usuários do sistema.</p>
             <span class="badge badge-success">Liberado</span>
@@ -22,6 +24,7 @@
         </a>
 
         <a class="module-card module-card-link" href="{{ url_for('permissoes.listar_permissoes') }}">
+            <span class="module-card-icon">P</span>
             <h2>Permissões</h2>
             <p>Gestão de permissões por usuário, departamento, módulo e ação.</p>
             <span class="badge badge-success">Liberado</span>
@@ -30,6 +33,7 @@
 
         {% if current_user.is_admin %}
             <a class="module-card module-card-link" href="{{ url_for('admin.logs') }}">
+                <span class="module-card-icon">A</span>
                 <h2>Auditoria / Logs</h2>
                 <p>Consulta de logs operacionais e ações relevantes do sistema.</p>
                 <span class="badge badge-success">Administrador</span>

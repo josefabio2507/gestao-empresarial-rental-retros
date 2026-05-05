@@ -4,11 +4,12 @@
 <section class="page">
     <div class="top-bar">
         <div>
+            <span class="page-kicker">Departamento Pessoal</span>
             <h1>Colaboradores</h1>
             <p>Cadastro oficial de colaboradores da Rental Retros.</p>
         </div>
 
-        <div class="actions">
+        <div class="action-bar">
             {% if pode_importar %}
                 <a class="btn btn-secondary" href="{{ url_for('colaboradores.importar_colaboradores') }}">
                     Importar CSV
@@ -122,7 +123,7 @@
                     </tr>
                 {% else %}
                     <tr>
-                        <td colspan="8">Nenhum colaborador encontrado.</td>
+                        <td class="empty-state" colspan="8">Nenhum colaborador encontrado para os filtros informados.</td>
                     </tr>
                 {% endfor %}
             </tbody>

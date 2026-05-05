@@ -4,6 +4,7 @@
 <section class="page">
     <div class="top-bar">
         <div>
+            <span class="page-kicker">Pedido de Refeições</span>
             <h1>Detalhes do Pedido</h1>
             <p>Informações principais do pedido de refeição.</p>
         </div>
@@ -14,11 +15,26 @@
     </div>
 
     <div class="details-card">
-        <p><strong>Número:</strong> {{ pedido.numero_pedido }}</p>
-        <p><strong>Equipe:</strong> {{ pedido.equipe.nome if pedido.equipe else "-" }}</p>
-        <p><strong>Restaurante:</strong> {{ pedido.restaurante.nome if pedido.restaurante else "-" }}</p>
+        <div class="stat-grid">
+            <div class="stat-card">
+                <span>Número</span>
+                <strong>{{ pedido.numero_pedido }}</strong>
+            </div>
+            <div class="stat-card">
+                <span>Equipe</span>
+                <strong>{{ pedido.equipe.nome if pedido.equipe else "-" }}</strong>
+            </div>
+            <div class="stat-card">
+                <span>Restaurante</span>
+                <strong>{{ pedido.restaurante.nome if pedido.restaurante else "-" }}</strong>
+            </div>
+            <div class="stat-card">
+                <span>Data</span>
+                <strong>{{ formatar_data(pedido.data_pedido) }}</strong>
+            </div>
+        </div>
+
         <p><strong>Telefone do restaurante:</strong> {{ formatar_telefone(pedido.restaurante.telefone) if pedido.restaurante else "-" }}</p>
-        <p><strong>Data:</strong> {{ formatar_data(pedido.data_pedido) }}</p>
 
         <p>
             <strong>Status:</strong>
@@ -69,7 +85,7 @@
         {% endif %}
     </div>
 
-    <div class="table-card table-card-inner">
+    <div class="table-card table-card-inner table-responsive">
         <table class="table">
             <thead>
                 <tr>
@@ -94,7 +110,8 @@
                         <td>{{ formatar_moeda(consumo.valor_unitario) }}</td>
                         <td>{{ formatar_moeda(consumo.valor_total) }}</td>
                         <td>{{ consumo.observacao or "-" }}</td>
-                        <td class="actions">
+                        <td class="col-acoes">
+                            <div class="acoes-botoes">
                             {% if pode_editar and pedido_pode_ser_editado(pedido) %}
                                 <a class="btn btn-primary" href="{{ url_for('pedido_refeicoes.editar_consumo', consumo_id=consumo.id) }}">
                                     Editar
@@ -106,11 +123,12 @@
                                     Remover
                                 </a>
                             {% endif %}
+                            </div>
                         </td>
                     </tr>
                 {% else %}
                     <tr>
-                        <td colspan="8">Nenhum consumo lançado neste pedido.</td>
+                        <td class="empty-state" colspan="8">Nenhum consumo lançado neste pedido.</td>
                     </tr>
                 {% endfor %}
             </tbody>

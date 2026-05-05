@@ -4,6 +4,7 @@
 <section class="page">
     <div class="top-bar">
         <div>
+            <span class="page-kicker">Controle de acesso</span>
             <h1>Permissões do Usuário</h1>
             <p>Resumo das permissões liberadas para este usuário.</p>
         </div>
@@ -13,7 +14,8 @@
         </a>
     </div>
 
-    <div class="permission-user-card">
+    <div class="permission-user-card content-card">
+        <h2 class="section-title">Usuário selecionado</h2>
         <p><strong>Usuário:</strong> {{ usuario.nome }}</p>
         <p><strong>E-mail:</strong> {{ usuario.email }}</p>
         <p>
@@ -55,7 +57,7 @@
         </div>
     {% else %}
         <div class="details-card">
-            <p>Nenhuma permissão cadastrada para este usuário.</p>
+            <p class="empty-state">Nenhuma permissão cadastrada para este usuário.</p>
         </div>
     {% endfor %}
 

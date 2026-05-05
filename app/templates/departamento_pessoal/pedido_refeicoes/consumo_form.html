@@ -4,6 +4,7 @@
 <section class="page">
     <div class="top-bar">
         <div>
+            <span class="page-kicker">Pedido de Refeições</span>
             {% if modo == "novo" %}
                 <h1>Adicionar Consumo</h1>
                 <p>Lance um item para um colaborador do pedido.</p>
@@ -19,9 +20,20 @@
     </div>
 
     <div class="details-card">
-        <p><strong>Pedido:</strong> {{ pedido.numero_pedido }}</p>
-        <p><strong>Equipe:</strong> {{ pedido.equipe.nome if pedido.equipe else "-" }}</p>
-        <p><strong>Restaurante:</strong> {{ pedido.restaurante.nome if pedido.restaurante else "-" }}</p>
+        <div class="stat-grid">
+            <div class="stat-card">
+                <span>Pedido</span>
+                <strong>{{ pedido.numero_pedido }}</strong>
+            </div>
+            <div class="stat-card">
+                <span>Equipe</span>
+                <strong>{{ pedido.equipe.nome if pedido.equipe else "-" }}</strong>
+            </div>
+            <div class="stat-card">
+                <span>Restaurante</span>
+                <strong>{{ pedido.restaurante.nome if pedido.restaurante else "-" }}</strong>
+            </div>
+        </div>
     </div>
 
     <form class="form-card" method="POST">

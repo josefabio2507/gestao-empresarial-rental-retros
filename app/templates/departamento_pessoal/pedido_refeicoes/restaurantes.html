@@ -4,6 +4,7 @@
 <section class="page">
     <div class="top-bar">
         <div>
+            <span class="page-kicker">Pedido de Refeições</span>
             <h1>Restaurantes</h1>
             <p>Cadastro de restaurantes para pedidos de refeição.</p>
         </div>
@@ -74,7 +75,7 @@
         </form>
     {% endif %}
 
-    <div class="table-card">
+    <div class="table-card table-responsive">
         <table class="table">
             <thead>
                 <tr>
@@ -89,35 +90,37 @@
                 {% for restaurante_item in restaurantes %}
                     <tr>
                         <td>{{ restaurante_item.nome }}</td>
-                        <td>{{ formatar_telefone(restaurante_item.telefone) }}</td>
-                        <td>
+                        <td class="col-nowrap">{{ formatar_telefone(restaurante_item.telefone) }}</td>
+                        <td class="col-nowrap">
                             {% if restaurante_item.ativo %}
                                 <span class="badge badge-success">Ativo</span>
                             {% else %}
                                 <span class="badge badge-danger">Inativo</span>
                             {% endif %}
                         </td>
-                        <td class="actions">
-                            {% if pode_editar %}
-                                <a class="btn btn-primary" href="{{ url_for('pedido_refeicoes.editar_restaurante', restaurante_id=restaurante_item.id) }}">
-                                    Editar
-                                </a>
-                            {% endif %}
+                        <td class="col-acoes">
+                            <div class="acoes-botoes">
+                                {% if pode_editar %}
+                                    <a class="btn btn-primary" href="{{ url_for('pedido_refeicoes.editar_restaurante', restaurante_id=restaurante_item.id) }}">
+                                        Editar
+                                    </a>
+                                {% endif %}
 
-                            {% if pode_excluir %}
-                                <a class="btn btn-warning" href="{{ url_for('pedido_refeicoes.alterar_status_restaurante_rota', restaurante_id=restaurante_item.id) }}">
-                                    {% if restaurante_item.ativo %}
-                                        Inativar
-                                    {% else %}
-                                        Ativar
-                                    {% endif %}
-                                </a>
-                            {% endif %}
+                                {% if pode_excluir %}
+                                    <a class="btn btn-warning" href="{{ url_for('pedido_refeicoes.alterar_status_restaurante_rota', restaurante_id=restaurante_item.id) }}">
+                                        {% if restaurante_item.ativo %}
+                                            Inativar
+                                        {% else %}
+                                            Ativar
+                                        {% endif %}
+                                    </a>
+                                {% endif %}
+                            </div>
                         </td>
                     </tr>
                 {% else %}
                     <tr>
-                        <td colspan="4">Nenhum restaurante cadastrado.</td>
+                        <td class="empty-state" colspan="4">Nenhum restaurante cadastrado.</td>
                     </tr>
                 {% endfor %}
             </tbody>
