@@ -4,6 +4,7 @@ from flask_login import login_required
 from app.admin import admin_bp
 from app.decorators import admin_required
 from app.services.logs_service import buscar_logs, buscar_usuarios_com_logs
+from app.utils.datas import formatar_data_hora_brasil
 
 
 @admin_bp.route("/")
@@ -41,4 +42,5 @@ def logs():
             "data_inicial": data_inicial,
             "data_final": data_final,
         },
+        formatar_data_hora_brasil=formatar_data_hora_brasil,
     )

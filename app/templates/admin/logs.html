@@ -62,7 +62,7 @@
             <tbody>
                 {% for log in logs %}
                     <tr>
-                        <td class="col-nowrap">{{ log.criado_em.strftime("%d/%m/%Y %H:%M:%S") if log.criado_em else "-" }}</td>
+                        <td class="col-nowrap">{{ formatar_data_hora_brasil(log.criado_em) }}</td>
                         <td>{{ log.usuario.nome if log.usuario else "-" }}</td>
                         <td class="col-nowrap">{{ log.acao }}</td>
                         <td>{{ log.descricao or "-" }}</td>
