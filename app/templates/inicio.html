@@ -14,10 +14,12 @@
     {% if departamentos_liberados %}
         <div class="cards">
             {% for departamento in departamentos_liberados %}
-                <a class="card department-card" href="{{ url_for('departamentos.detalhe_departamento', slug_departamento=departamento.slug) }}">
-                    <strong>{{ departamento.nome }}</strong>
-                    <small>{{ departamento.descricao or "Acessar departamento" }}</small>
-                </a>
+                {% if not (current_user.is_admin and departamento.slug == "administracao") %}
+                    <a class="card department-card" href="{{ url_for('departamentos.detalhe_departamento', slug_departamento=departamento.slug) }}">
+                        <strong>{{ departamento.nome }}</strong>
+                        <small>{{ departamento.descricao or "Acessar departamento" }}</small>
+                    </a>
+                {% endif %}
             {% endfor %}
 
             {% if current_user.is_admin %}
