@@ -42,6 +42,12 @@ class Usuario(UserMixin, db.Model):
         db.ForeignKey("niveis_acesso.id"),
         nullable=False
     )
+    colaborador_id = db.Column(
+        db.Integer,
+        db.ForeignKey("colaboradores.id"),
+        nullable=True,
+        index=True
+    )
 
     ativo = db.Column(db.Boolean, default=True, nullable=False)
     precisa_trocar_senha = db.Column(db.Boolean, default=True, nullable=False)
@@ -55,6 +61,7 @@ class Usuario(UserMixin, db.Model):
     )
 
     nivel_acesso = db.relationship("NivelAcesso", back_populates="usuarios")
+    colaborador = db.relationship("Colaborador", back_populates="usuarios")
     permissoes = db.relationship(
         "PermissaoUsuarioModulo",
         back_populates="usuario",
@@ -338,6 +345,10 @@ class Colaborador(db.Model):
     equipe = db.relationship(
         "Equipe",
         back_populates="colaboradores"
+    )
+    usuarios = db.relationship(
+        "Usuario",
+        back_populates="colaborador"
     )
 
     def __repr__(self):

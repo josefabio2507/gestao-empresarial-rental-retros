@@ -55,6 +55,25 @@
             </select>
         </div>
 
+        <div class="form-group">
+            <label for="colaborador_id">Colaborador vinculado</label>
+            <select name="colaborador_id" id="colaborador_id">
+                <option value="">Nenhum colaborador vinculado</option>
+
+                {% for colaborador in colaboradores %}
+                    <option
+                        value="{{ colaborador.id }}"
+                        {% if usuario and usuario.colaborador_id == colaborador.id %}selected{% endif %}
+                    >
+                        {{ colaborador.matricula }} - {{ colaborador.nome }}{% if colaborador.equipe %} - {{ colaborador.equipe.nome }}{% endif %}
+                    </option>
+                {% endfor %}
+            </select>
+            <small>
+                O vínculo é opcional e não altera as permissões do usuário.
+            </small>
+        </div>
+
         {% if modo == "novo" %}
             <div class="form-group">
                 <label for="senha">Senha inicial</label>

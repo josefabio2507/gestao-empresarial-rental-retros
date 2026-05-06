@@ -21,6 +21,7 @@
                     <th>Nome</th>
                     <th>E-mail</th>
                     <th>Nível</th>
+                    <th>Colaborador</th>
                     <th>Status</th>
                     <th>Criado em</th>
                     <th>Ações</th>
@@ -37,6 +38,13 @@
                                 {{ usuario.nivel_acesso.nome }}
                             {% else %}
                                 Sem nível
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if usuario.colaborador %}
+                                {{ usuario.colaborador.matricula }} - {{ usuario.colaborador.nome }}
+                            {% else %}
+                                Não vinculado
                             {% endif %}
                         </td>
                         <td>
@@ -75,7 +83,7 @@
                     </tr>
                 {% else %}
                     <tr>
-                        <td class="empty-state" colspan="6">Nenhum usuário cadastrado.</td>
+                        <td class="empty-state" colspan="7">Nenhum usuário cadastrado.</td>
                     </tr>
                 {% endfor %}
             </tbody>

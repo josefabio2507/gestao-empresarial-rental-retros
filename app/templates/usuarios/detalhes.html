@@ -25,6 +25,18 @@
         </p>
 
         <p>
+            <strong>Colaborador vinculado:</strong>
+            {% if usuario.colaborador %}
+                {{ usuario.colaborador.matricula }} - {{ usuario.colaborador.nome }}
+                {% if usuario.colaborador.equipe %}
+                    - {{ usuario.colaborador.equipe.nome }}
+                {% endif %}
+            {% else %}
+                Não vinculado
+            {% endif %}
+        </p>
+
+        <p>
             <strong>Status:</strong>
             {% if usuario.ativo %}
                 <span class="badge badge-success">Ativo</span>
