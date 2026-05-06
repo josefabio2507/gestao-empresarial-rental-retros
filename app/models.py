@@ -61,6 +61,11 @@ class Usuario(UserMixin, db.Model):
         cascade="all, delete-orphan"
     )
     logs = db.relationship("LogAcesso", back_populates="usuario")
+    tokens_recuperacao_senha = db.relationship(
+        "TokenRecuperacaoSenha",
+        back_populates="usuario",
+        cascade="all, delete-orphan"
+    )
 
     def definir_senha(self, senha):
         self.senha_hash = generate_password_hash(senha)
@@ -243,6 +248,39 @@ class LogAcesso(db.Model):
 
     def __repr__(self):
         return f"<LogAcesso {self.acao}>"
+
+
+class TokenRecuperacaoSenha(db.Model):
+    __tablename__ = "tokens_recuperacao_senha"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    usuario_id = db.Column(
+        db.Integer,
+        db.ForeignKey("usuarios.id"),
+        nullable=False,
+        index=True
+    )
+
+    token_hash = db.Column(db.String(64), unique=True, nullable=False, index=True)
+    expira_em = db.Column(db.DateTime, nullable=False, index=True)
+    usado_em = db.Column(db.DateTime, nullable=True)
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    ip_solicitacao = db.Column(db.String(80), nullable=True)
+    user_agent = db.Column(db.Text, nullable=True)
+
+    usuario = db.relationship("Usuario", back_populates="tokens_recuperacao_senha")
+
+    @property
+    def foi_usado(self):
+        return self.usado_em is not None
+
+    @property
+    def expirou(self):
+        return datetime.utcnow() > self.expira_em
+
+    def __repr__(self):
+        return f"<TokenRecuperacaoSenha usuario={self.usuario_id}>"
 
 class Equipe(db.Model):
     __tablename__ = "equipes"
