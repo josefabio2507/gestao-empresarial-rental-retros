@@ -8,6 +8,7 @@ from app.services.usuarios_service import (
     buscar_usuarios,
     buscar_usuario_por_id,
     buscar_niveis_ativos,
+    buscar_colaboradores_ativos_para_vinculo,
     criar_usuario,
     atualizar_usuario,
     alterar_status_usuario,
@@ -15,6 +16,16 @@ from app.services.usuarios_service import (
 
 
 usuarios_bp = Blueprint("usuarios", __name__)
+
+
+def incluir_colaborador_atual(colaboradores, usuario):
+    if not usuario or not usuario.colaborador:
+        return colaboradores
+
+    if any(colaborador.id == usuario.colaborador.id for colaborador in colaboradores):
+        return colaboradores
+
+    return [usuario.colaborador] + colaboradores
 
 
 @usuarios_bp.route("/")
@@ -30,12 +41,14 @@ def listar_usuarios():
 @admin_required
 def novo_usuario():
     niveis = buscar_niveis_ativos()
+    colaboradores = buscar_colaboradores_ativos_para_vinculo()
 
     if request.method == "POST":
         nome = request.form.get("nome", "")
         email = request.form.get("email", "")
         senha = request.form.get("senha", "")
         nivel_acesso_id = request.form.get("nivel_acesso_id")
+        colaborador_id = request.form.get("colaborador_id")
         ativo = request.form.get("ativo") == "on"
 
         sucesso, mensagem = criar_usuario(
@@ -43,6 +56,7 @@ def novo_usuario():
             email=email,
             senha=senha,
             nivel_acesso_id=nivel_acesso_id,
+            colaborador_id=colaborador_id,
             ativo=ativo,
         )
 
@@ -54,6 +68,16 @@ def novo_usuario():
                 descricao = f"Usuario criado. ID: {usuario_criado.id}."
 
             registrar_log("usuario_criado", descricao)
+
+            if usuario_criado and usuario_criado.colaborador_id:
+                registrar_log(
+                    "usuario_colaborador_vinculado",
+                    (
+                        f"Usuario ID {usuario_criado.id} vinculado ao "
+                        f"colaborador ID {usuario_criado.colaborador_id}."
+                    ),
+                )
+
             flash(mensagem, "success")
             return redirect(url_for("usuarios.listar_usuarios"))
 
@@ -63,6 +87,7 @@ def novo_usuario():
         "usuarios/form.html",
         usuario=None,
         niveis=niveis,
+        colaboradores=colaboradores,
         modo="novo",
     )
 
@@ -91,11 +116,17 @@ def editar_usuario(usuario_id):
         return redirect(url_for("usuarios.listar_usuarios"))
 
     niveis = buscar_niveis_ativos()
+    colaboradores = incluir_colaborador_atual(
+        buscar_colaboradores_ativos_para_vinculo(),
+        usuario,
+    )
 
     if request.method == "POST":
+        colaborador_id_anterior = usuario.colaborador_id
         nome = request.form.get("nome", "")
         email = request.form.get("email", "")
         nivel_acesso_id = request.form.get("nivel_acesso_id")
+        colaborador_id = request.form.get("colaborador_id")
         ativo = request.form.get("ativo") == "on"
         nova_senha = request.form.get("nova_senha", "").strip()
 
@@ -104,6 +135,7 @@ def editar_usuario(usuario_id):
             nome=nome,
             email=email,
             nivel_acesso_id=nivel_acesso_id,
+            colaborador_id=colaborador_id,
             ativo=ativo,
             nova_senha=nova_senha,
         )
@@ -115,6 +147,27 @@ def editar_usuario(usuario_id):
                 descricao += " Senha redefinida pelo administrador."
 
             registrar_log("usuario_atualizado", descricao)
+
+            if colaborador_id_anterior != usuario.colaborador_id:
+                if colaborador_id_anterior and usuario.colaborador_id:
+                    registrar_log(
+                        "usuario_colaborador_alterado",
+                        f"Vinculo de colaborador alterado no usuario ID {usuario.id}.",
+                    )
+                elif usuario.colaborador_id:
+                    registrar_log(
+                        "usuario_colaborador_vinculado",
+                        (
+                            f"Usuario ID {usuario.id} vinculado ao "
+                            f"colaborador ID {usuario.colaborador_id}."
+                        ),
+                    )
+                else:
+                    registrar_log(
+                        "usuario_colaborador_removido",
+                        f"Vinculo de colaborador removido do usuario ID {usuario.id}.",
+                    )
+
             flash(mensagem, "success")
             return redirect(url_for("usuarios.listar_usuarios"))
 
@@ -124,6 +177,7 @@ def editar_usuario(usuario_id):
         "usuarios/form.html",
         usuario=usuario,
         niveis=niveis,
+        colaboradores=colaboradores,
         modo="editar",
     )
 
