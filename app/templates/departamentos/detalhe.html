@@ -16,8 +16,51 @@
 
     {% if modulos_liberados %}
         <div class="modules-grid">
+            {% set navegacao = namespace(refeicoes_exibido=false) %}
             {% for modulo in modulos_liberados %}
-                {% if departamento.slug == "administracao" and modulo.slug in ["usuarios", "usuario"] %}
+                {% set modulo_slug = (modulo.slug or "")|lower %}
+                {% set modulo_nome = (modulo.nome or "")|lower %}
+                {% set modulo_refeicoes = departamento.slug == "departamento_pessoal" and (
+                    modulo_slug.startswith("pedido-refeicoes")
+                    or modulo_slug.startswith("pedido_refeicoes")
+                    or modulo_slug in [
+                        "restaurante",
+                        "restaurantes",
+                        "cardapio",
+                        "cardápio",
+                        "pedidos",
+                        "pedido",
+                        "relatorios",
+                        "relatórios",
+                        "relatorios-refeicoes",
+                        "relatorios_refeicoes"
+                    ]
+                    or ("pedido" in modulo_nome and "refei" in modulo_nome)
+                    or modulo_nome in [
+                        "restaurantes",
+                        "cardapio",
+                        "cardápio",
+                        "pedidos",
+                        "pedidos de refeição",
+                        "relatorios",
+                        "relatórios",
+                        "relatórios de refeições"
+                    ]
+                ) %}
+
+                {% if modulo_refeicoes %}
+                    {% if not navegacao.refeicoes_exibido %}
+                        <a class="module-card module-card-link" href="{{ url_for('pedido_refeicoes.index') }}">
+                            <span class="module-card-icon">P</span>
+                            <h2>Pedidos de Refeição</h2>
+                            <p>Controle de restaurantes, cardápio, pedidos e relatórios de refeições.</p>
+                            <span class="badge badge-success">Liberado</span>
+                            <span class="module-status">Acessar módulo</span>
+                        </a>
+                        {% set navegacao.refeicoes_exibido = true %}
+                    {% endif %}
+
+                {% elif departamento.slug == "administracao" and modulo_slug in ["usuarios", "usuario"] %}
                     <a class="module-card module-card-link" href="{{ url_for('usuarios.listar_usuarios') }}">
                         <span class="module-card-icon">U</span>
                         <h2>{{ modulo.nome }}</h2>
@@ -26,7 +69,7 @@
                         <span class="module-status">Acessar módulo</span>
                     </a>
 
-                {% elif departamento.slug == "administracao" and modulo.slug in ["permissoes", "permissao"] %}
+                {% elif departamento.slug == "administracao" and modulo_slug in ["permissoes", "permissao"] %}
                     <a class="module-card module-card-link" href="{{ url_for('permissoes.listar_permissoes') }}">
                         <span class="module-card-icon">P</span>
                         <h2>{{ modulo.nome }}</h2>
@@ -35,7 +78,7 @@
                         <span class="module-status">Acessar módulo</span>
                     </a>
 
-                {% elif departamento.slug == "administracao" and modulo.slug in ["auditoria", "logs", "auditoria_logs"] and current_user.is_admin %}
+                {% elif departamento.slug == "administracao" and modulo_slug in ["auditoria", "logs", "auditoria_logs"] and current_user.is_admin %}
                     <a class="module-card module-card-link" href="{{ url_for('admin.logs') }}">
                         <span class="module-card-icon">A</span>
                         <h2>{{ modulo.nome }}</h2>
@@ -44,7 +87,7 @@
                         <span class="module-status">Acessar logs</span>
                     </a>
 
-                {% elif departamento.slug == "departamento_pessoal" and modulo.slug == "colaboradores" %}
+                {% elif departamento.slug == "departamento_pessoal" and modulo_slug == "colaboradores" %}
                     <a class="module-card module-card-link" href="{{ url_for('colaboradores.listar_colaboradores') }}">
                         <span class="module-card-icon">C</span>
                         <h2>{{ modulo.nome }}</h2>
@@ -52,45 +95,6 @@
                         <span class="badge badge-success">Liberado</span>
                         <span class="module-status">Acessar módulo</span>
                     </a>
-
-                {% elif departamento.slug == "departamento_pessoal" and modulo.slug == "pedido-refeicoes-restaurantes" %}
-                    <a class="module-card module-card-link" href="{{ url_for('pedido_refeicoes.restaurantes') }}">
-                        <span class="module-card-icon">R</span>
-                        <h2>Restaurantes</h2>
-                        <p>{{ modulo.descricao or "Cadastro e gestão de restaurantes utilizados nos pedidos de refeições." }}</p>
-                        <span class="badge badge-success">Liberado</span>
-                        <span class="module-status">Acessar módulo</span>
-                    </a>
-
-                {% elif departamento.slug == "departamento_pessoal" and modulo.slug == "pedido-refeicoes-cardapio" %}
-                    <a class="module-card module-card-link" href="{{ url_for('pedido_refeicoes.cardapio') }}">
-                        <span class="module-card-icon">C</span>
-                        <h2>Cardápio</h2>
-                        <p>{{ modulo.descricao or "Cadastro e gestão de pratos, bebidas e itens de cardápio por restaurante." }}</p>
-                        <span class="badge badge-success">Liberado</span>
-                        <span class="module-status">Acessar módulo</span>
-                    </a>
-
-                {% elif departamento.slug == "departamento_pessoal" and modulo.slug == "pedido-refeicoes-pedidos" %}
-                    <a class="module-card module-card-link" href="{{ url_for('pedido_refeicoes.pedidos') }}">
-                        <span class="module-card-icon">P</span>
-                        <h2>Pedidos de Refeição</h2>
-                        <p>{{ modulo.descricao or "Criação, edição, fechamento e envio de pedidos de refeição." }}</p>
-                        <span class="badge badge-success">Liberado</span>
-                        <span class="module-status">Acessar módulo</span>
-                    </a>
-
-                {% elif departamento.slug == "departamento_pessoal" and modulo.slug == "pedido-refeicoes-relatorios" %}
-                    <a class="module-card module-card-link" href="{{ url_for('pedido_refeicoes.relatorios') }}">
-                        <span class="module-card-icon">PDF</span>
-                        <h2>Relatórios de Refeições</h2>
-                        <p>{{ modulo.descricao or "Consulta, análise e exportação dos relatórios de refeições." }}</p>
-                        <span class="badge badge-success">Liberado</span>
-                        <span class="module-status">Acessar módulo</span>
-                    </a>
-
-                {% elif departamento.slug == "departamento_pessoal" and modulo.slug == "pedido_refeicoes" %}
-                    {# Módulo legado mantido no banco, mas oculto na navegação após a segregação. #}
 
                 {% else %}
                     <div class="module-card">
