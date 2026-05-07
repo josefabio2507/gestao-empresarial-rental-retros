@@ -794,7 +794,7 @@ def gerar_mensagem_whatsapp(pedido):
 
         for nome_item, dados in itens.items():
             linhas.append(
-                f"- {nome_item} | Qtd: {dados['quantidade']} | Valor: {formatar_moeda(dados['valor_total'])}"
+                f"- {nome_item} | Qtd: {dados['quantidade']}"
             )
 
         linhas.append("")
