@@ -656,7 +656,8 @@ def novo_consumo(pedido_id):
             colaborador_id=request.form.get("colaborador_id"),
             refeicao_id=request.form.get("refeicao_id"),
             bebida_id=request.form.get("bebida_id"),
-            quantidade=request.form.get("quantidade"),
+            quantidade_refeicao=request.form.get("quantidade_refeicao"),
+            quantidade_bebida=request.form.get("quantidade_bebida"),
             observacao=request.form.get("observacao", ""),
         )
 

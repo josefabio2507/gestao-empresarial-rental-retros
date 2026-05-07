@@ -575,30 +575,48 @@ def criar_consumos_refeicao_bebida(
     colaborador_id,
     refeicao_id=None,
     bebida_id=None,
-    quantidade=1,
+    quantidade_refeicao=1,
+    quantidade_bebida=1,
     observacao=None
 ):
-    itens_selecionados = [
-        item_id
-        for item_id in [refeicao_id, bebida_id]
-        if item_id
-    ]
+    itens_para_lancar = []
 
-    if not itens_selecionados:
+    if refeicao_id:
+        itens_para_lancar.append(
+            {
+                "item_id": refeicao_id,
+                "quantidade": quantidade_refeicao,
+                "tipo_esperado": "Refeição",
+            }
+        )
+
+    if bebida_id:
+        itens_para_lancar.append(
+            {
+                "item_id": bebida_id,
+                "quantidade": quantidade_bebida,
+                "tipo_esperado": "Bebida",
+            }
+        )
+
+    if not itens_para_lancar:
         return False, "Selecione uma refeição ou uma bebida para cadastrar o consumo."
 
     consumos_validados = []
 
-    for item_id in itens_selecionados:
+    for dados_item in itens_para_lancar:
         valido, mensagem, colaborador, item, quantidade_convertida = validar_consumo(
             pedido=pedido,
             colaborador_id=colaborador_id,
-            item_cardapio_id=item_id,
-            quantidade=quantidade,
+            item_cardapio_id=dados_item["item_id"],
+            quantidade=dados_item["quantidade"],
         )
 
         if not valido:
             return False, mensagem
+
+        if item.tipo != dados_item["tipo_esperado"]:
+            return False, "Item selecionado inválido para este campo."
 
         consumos_validados.append(
             {
@@ -610,15 +628,15 @@ def criar_consumos_refeicao_bebida(
 
     observacao_normalizada = observacao.strip() if observacao else ""
 
-    for dados in consumos_validados:
-        item = dados["item"]
-        quantidade_convertida = dados["quantidade"]
+    for dados_consumo in consumos_validados:
+        item = dados_consumo["item"]
+        quantidade_convertida = dados_consumo["quantidade"]
         valor_unitario = item.preco
         valor_total = valor_unitario * quantidade_convertida
 
         consumo = ConsumoRefeicao(
             pedido_id=pedido.id,
-            colaborador_id=dados["colaborador"].id,
+            colaborador_id=dados_consumo["colaborador"].id,
             item_cardapio_id=item.id,
             quantidade=quantidade_convertida,
             valor_unitario=valor_unitario,
