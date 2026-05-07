@@ -570,6 +570,71 @@ def criar_consumo_refeicao(
     return True, "Consumo lançado com sucesso."
 
 
+def criar_consumos_refeicao_bebida(
+    pedido,
+    colaborador_id,
+    refeicao_id=None,
+    bebida_id=None,
+    quantidade=1,
+    observacao=None
+):
+    itens_selecionados = [
+        item_id
+        for item_id in [refeicao_id, bebida_id]
+        if item_id
+    ]
+
+    if not itens_selecionados:
+        return False, "Selecione uma refeição ou uma bebida para cadastrar o consumo."
+
+    consumos_validados = []
+
+    for item_id in itens_selecionados:
+        valido, mensagem, colaborador, item, quantidade_convertida = validar_consumo(
+            pedido=pedido,
+            colaborador_id=colaborador_id,
+            item_cardapio_id=item_id,
+            quantidade=quantidade,
+        )
+
+        if not valido:
+            return False, mensagem
+
+        consumos_validados.append(
+            {
+                "colaborador": colaborador,
+                "item": item,
+                "quantidade": quantidade_convertida,
+            }
+        )
+
+    observacao_normalizada = observacao.strip() if observacao else ""
+
+    for dados in consumos_validados:
+        item = dados["item"]
+        quantidade_convertida = dados["quantidade"]
+        valor_unitario = item.preco
+        valor_total = valor_unitario * quantidade_convertida
+
+        consumo = ConsumoRefeicao(
+            pedido_id=pedido.id,
+            colaborador_id=dados["colaborador"].id,
+            item_cardapio_id=item.id,
+            quantidade=quantidade_convertida,
+            valor_unitario=valor_unitario,
+            valor_total=valor_total,
+            observacao=observacao_normalizada,
+        )
+        db.session.add(consumo)
+
+    db.session.commit()
+
+    if len(consumos_validados) == 1:
+        return True, "Consumo lançado com sucesso."
+
+    return True, "Consumos lançados com sucesso."
+
+
 def atualizar_consumo_refeicao(
     consumo,
     colaborador_id,
