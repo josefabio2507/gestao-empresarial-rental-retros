@@ -43,6 +43,7 @@ from app.departamento_pessoal.pedido_refeicoes.services import (
     buscar_consumos_do_pedido,
     buscar_consumo_por_id,
     criar_consumo_refeicao,
+    criar_consumos_refeicao_bebida,
     atualizar_consumo_refeicao,
     remover_consumo_refeicao,
     calcular_resumo_pedido,
@@ -92,6 +93,13 @@ def pode_visualizar_algum_submodulo_refeicoes():
         pode_acessar_submodulo_refeicoes(modulo_slug, "visualizar")
         for modulo_slug in SUBMODULOS_REFEICOES
     )
+
+
+def separar_itens_consumo(itens):
+    refeicoes = [item for item in itens if item.tipo == "Refeição"]
+    bebidas = [item for item in itens if item.tipo == "Bebida"]
+
+    return refeicoes, bebidas
 
 
 @pedido_refeicoes_bp.route("/")
@@ -640,12 +648,14 @@ def novo_consumo(pedido_id):
 
     colaboradores = buscar_colaboradores_do_pedido(pedido)
     itens = buscar_itens_do_pedido(pedido)
+    refeicoes, bebidas = separar_itens_consumo(itens)
 
     if request.method == "POST":
-        sucesso, mensagem = criar_consumo_refeicao(
+        sucesso, mensagem = criar_consumos_refeicao_bebida(
             pedido=pedido,
             colaborador_id=request.form.get("colaborador_id"),
-            item_cardapio_id=request.form.get("item_cardapio_id"),
+            refeicao_id=request.form.get("refeicao_id"),
+            bebida_id=request.form.get("bebida_id"),
             quantidade=request.form.get("quantidade"),
             observacao=request.form.get("observacao", ""),
         )
@@ -662,6 +672,8 @@ def novo_consumo(pedido_id):
         consumo=None,
         colaboradores=colaboradores,
         itens=itens,
+        refeicoes=refeicoes,
+        bebidas=bebidas,
         modo="novo",
         formatar_moeda=formatar_moeda,
     )
