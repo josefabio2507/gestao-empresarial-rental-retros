@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Documentos</span>
+            <h1>Holerites</h1>
+            <p>Listagem documental de holerites vinculados aos colaboradores.</p>
+        </div>
+
+        <a class="btn btn-secondary" href="{{ url_for('documentos.index') }}">
+            Voltar
+        </a>
+    </div>
+
+    <div class="details-card">
+        <p>
+            Dados pessoais protegidos. A consulta destes documentos deve respeitar
+            finalidade administrativa autorizada e as políticas internas da empresa.
+        </p>
+    </div>
+
+    <div class="table-card table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Colaborador</th>
+                    <th>Matrícula</th>
+                    <th>Competência</th>
+                    <th>Tipo</th>
+                    <th>Arquivo</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for holerite in holerites %}
+                    <tr>
+                        <td>{{ holerite.colaborador.nome if holerite.colaborador else "-" }}</td>
+                        <td class="col-nowrap">{{ holerite.colaborador.matricula if holerite.colaborador else "-" }}</td>
+                        <td class="col-nowrap">{{ holerite.competencia }}</td>
+                        <td>{{ holerite.tipo }}</td>
+                        <td>{{ holerite.nome_arquivo }}</td>
+                        <td class="col-nowrap">
+                            {% if holerite.ativo %}
+                                <span class="badge badge-success">Ativo</span>
+                            {% else %}
+                                <span class="badge badge-danger">Inativo</span>
+                            {% endif %}
+                        </td>
+                        <td class="col-acoes">
+                            <div class="acoes-botoes">
+                                {% if pode_exportar %}
+                                    <a class="btn btn-secondary" href="{{ url_for('documentos.exportar_holerite', holerite_id=holerite.id) }}">
+                                        Exportar
+                                    </a>
+                                {% else %}
+                                    <span class="badge badge-warning">Exportação bloqueada</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td class="empty-state" colspan="7">
+                            {% if apenas_proprios %}
+                                Nenhum holerite disponível para o seu usuário.
+                            {% else %}
+                                Nenhum holerite cadastrado até o momento.
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

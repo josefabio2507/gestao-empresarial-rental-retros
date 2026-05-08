@@ -30,6 +30,7 @@ def create_app():
     from app.departamento_pessoal.routes import departamento_pessoal_bp
     from app.departamento_pessoal.colaboradores.routes import colaboradores_bp
     from app.departamento_pessoal.pedido_refeicoes.routes import pedido_refeicoes_bp
+    from app.departamento_pessoal.documentos.routes import documentos_bp
     from app.financeiro.routes import financeiro_bp
     from app.operacao.routes import operacao_bp
     from app.seguranca_trabalho.routes import seguranca_trabalho_bp
@@ -44,6 +45,7 @@ def create_app():
     app.register_blueprint(departamento_pessoal_bp, url_prefix="/departamento-pessoal")
     app.register_blueprint(colaboradores_bp, url_prefix="/departamento-pessoal/colaboradores")
     app.register_blueprint(pedido_refeicoes_bp, url_prefix="/departamento-pessoal/pedido-refeicoes")
+    app.register_blueprint(documentos_bp, url_prefix="/departamento-pessoal/documentos")
     app.register_blueprint(financeiro_bp, url_prefix="/financeiro")
     app.register_blueprint(operacao_bp, url_prefix="/operacao")
     app.register_blueprint(seguranca_trabalho_bp, url_prefix="/seguranca-trabalho")

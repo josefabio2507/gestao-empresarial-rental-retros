@@ -73,6 +73,11 @@ class Usuario(UserMixin, db.Model):
         back_populates="usuario",
         cascade="all, delete-orphan"
     )
+    holerites_criados = db.relationship(
+        "HoleriteColaborador",
+        back_populates="criado_por",
+        foreign_keys="HoleriteColaborador.criado_por_usuario_id"
+    )
 
     def definir_senha(self, senha):
         self.senha_hash = generate_password_hash(senha)
@@ -350,9 +355,62 @@ class Colaborador(db.Model):
         "Usuario",
         back_populates="colaborador"
     )
+    holerites = db.relationship(
+        "HoleriteColaborador",
+        back_populates="colaborador"
+    )
 
     def __repr__(self):
         return f"<Colaborador {self.matricula} - {self.nome}>"
+
+
+class HoleriteColaborador(db.Model):
+    __tablename__ = "holerites_colaboradores"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    colaborador_id = db.Column(
+        db.Integer,
+        db.ForeignKey("colaboradores.id"),
+        nullable=False,
+        index=True
+    )
+
+    competencia = db.Column(db.String(7), nullable=False, index=True)
+    tipo = db.Column(db.String(80), nullable=False)
+    nome_arquivo = db.Column(db.String(255), nullable=False)
+    origem_arquivo = db.Column(db.String(50), nullable=True)
+    google_drive_file_id = db.Column(db.String(255), nullable=True)
+    google_drive_url = db.Column(db.Text, nullable=True)
+    ativo = db.Column(db.Boolean, default=True, nullable=False, index=True)
+
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    atualizado_em = db.Column(
+        db.DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False
+    )
+
+    criado_por_usuario_id = db.Column(
+        db.Integer,
+        db.ForeignKey("usuarios.id"),
+        nullable=True,
+        index=True
+    )
+
+    colaborador = db.relationship(
+        "Colaborador",
+        back_populates="holerites"
+    )
+    criado_por = db.relationship(
+        "Usuario",
+        back_populates="holerites_criados",
+        foreign_keys=[criado_por_usuario_id]
+    )
+
+    def __repr__(self):
+        return f"<HoleriteColaborador colaborador={self.colaborador_id} competencia={self.competencia}>"
 
 class Restaurante(db.Model):
     __tablename__ = "restaurantes"

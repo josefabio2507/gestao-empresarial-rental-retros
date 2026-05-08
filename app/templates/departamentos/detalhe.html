@@ -96,6 +96,15 @@
                         <span class="module-status">Acessar módulo</span>
                     </a>
 
+                {% elif departamento.slug == "departamento_pessoal" and modulo_slug == "documentos" %}
+                    <a class="module-card module-card-link" href="{{ url_for('documentos.index') }}">
+                        <span class="module-card-icon">D</span>
+                        <h2>{{ modulo.nome }}</h2>
+                        <p>{{ modulo.descricao or "Consulta segura de documentos pessoais." }}</p>
+                        <span class="badge badge-success">Liberado</span>
+                        <span class="module-status">Acessar documentos</span>
+                    </a>
+
                 {% else %}
                     <div class="module-card">
                         <span class="module-card-icon">M</span>

@@ -17,6 +17,10 @@ ACOES_PERMISSAO = [
     "exportar",
 ]
 
+DEPARTAMENTO_PESSOAL_SLUG = "departamento_pessoal"
+DEPARTAMENTO_DOCUMENTOS_PESSOAIS_SLUG = "documentos_pessoais"
+MODULO_HOLERITES_SLUG = "holerites"
+
 
 def buscar_usuario_com_permissoes(usuario_id):
     return Usuario.query.get(usuario_id)
@@ -268,7 +272,10 @@ def buscar_departamentos_liberados(usuario):
     if usuario.is_admin:
         return (
             Departamento.query
-            .filter_by(ativo=True)
+            .filter(
+                Departamento.ativo.is_(True),
+                Departamento.slug != DEPARTAMENTO_DOCUMENTOS_PESSOAIS_SLUG,
+            )
             .order_by(Departamento.ordem.asc(), Departamento.nome.asc())
             .all()
         )
@@ -283,6 +290,7 @@ def buscar_departamentos_liberados(usuario):
             PermissaoUsuarioModulo.pode_visualizar.is_(True),
             Modulo.ativo.is_(True),
             Departamento.ativo.is_(True),
+            Departamento.slug != DEPARTAMENTO_DOCUMENTOS_PESSOAIS_SLUG,
         )
         .order_by(Departamento.ordem.asc(), Departamento.nome.asc())
         .all()
@@ -297,6 +305,24 @@ def buscar_departamentos_liberados(usuario):
         if departamento.id not in ids_adicionados:
             departamentos.append(departamento)
             ids_adicionados.add(departamento.id)
+
+    if usuario_tem_permissao(
+        usuario,
+        DEPARTAMENTO_DOCUMENTOS_PESSOAIS_SLUG,
+        MODULO_HOLERITES_SLUG,
+    ):
+        departamento_pessoal = Departamento.query.filter_by(
+            slug=DEPARTAMENTO_PESSOAL_SLUG,
+            ativo=True,
+        ).first()
+
+        if (
+            departamento_pessoal
+            and departamento_pessoal.id not in ids_adicionados
+        ):
+            departamentos.append(departamento_pessoal)
+
+    departamentos.sort(key=lambda departamento: (departamento.ordem, departamento.nome))
 
     return departamentos
 
@@ -348,7 +374,29 @@ def buscar_modulos_liberados(usuario, departamento_slug):
         .all()
     )
 
-    return [permissao.modulo for permissao in permissoes]
+    modulos = [permissao.modulo for permissao in permissoes]
+
+    if (
+        departamento_slug == DEPARTAMENTO_PESSOAL_SLUG
+        and usuario_tem_permissao(
+            usuario,
+            DEPARTAMENTO_DOCUMENTOS_PESSOAIS_SLUG,
+            MODULO_HOLERITES_SLUG,
+        )
+    ):
+        modulo_documentos = Modulo.query.filter_by(
+            departamento_id=departamento.id,
+            slug="documentos",
+            ativo=True,
+        ).first()
+
+        if (
+            modulo_documentos
+            and all(modulo.id != modulo_documentos.id for modulo in modulos)
+        ):
+            modulos.append(modulo_documentos)
+
+    return modulos
 
 def buscar_departamentos_liberados_usuario(usuario):
     """
@@ -368,7 +416,15 @@ def buscar_departamentos_liberados_usuario(usuario):
         return []
 
     if usuario_eh_administrador(usuario):
-        return Departamento.query.filter_by(ativo=True).order_by(Departamento.nome).all()
+        return (
+            Departamento.query
+            .filter(
+                Departamento.ativo == True,
+                Departamento.slug != DEPARTAMENTO_DOCUMENTOS_PESSOAIS_SLUG,
+            )
+            .order_by(Departamento.nome)
+            .all()
+        )
 
     departamentos = (
         Departamento.query
@@ -376,6 +432,7 @@ def buscar_departamentos_liberados_usuario(usuario):
         .join(PermissaoUsuarioModulo, PermissaoUsuarioModulo.modulo_id == Modulo.id)
         .filter(
             Departamento.ativo == True,
+            Departamento.slug != DEPARTAMENTO_DOCUMENTOS_PESSOAIS_SLUG,
             Modulo.ativo == True,
             PermissaoUsuarioModulo.usuario_id == usuario.id,
             PermissaoUsuarioModulo.ativo == True,
@@ -385,5 +442,23 @@ def buscar_departamentos_liberados_usuario(usuario):
         .order_by(Departamento.nome)
         .all()
     )
+
+    if usuario_tem_permissao(
+        usuario,
+        DEPARTAMENTO_DOCUMENTOS_PESSOAIS_SLUG,
+        MODULO_HOLERITES_SLUG,
+    ):
+        departamento_pessoal = Departamento.query.filter_by(
+            slug=DEPARTAMENTO_PESSOAL_SLUG,
+            ativo=True,
+        ).first()
+
+        if (
+            departamento_pessoal
+            and all(departamento.id != departamento_pessoal.id for departamento in departamentos)
+        ):
+            departamentos.append(departamento_pessoal)
+
+    departamentos.sort(key=lambda departamento: (departamento.ordem, departamento.nome))
 
     return departamentos    
