@@ -22,6 +22,25 @@
         </div>
     </div>
 
+    <div class="filter-card">
+        <form class="filter-form" method="get" action="{{ url_for('pedido_refeicoes.pedidos') }}">
+            <div class="form-group">
+                <label for="status">Status do pedido</label>
+                <select name="status" id="status">
+                    {% for opcao in status_opcoes %}
+                        <option value="{{ opcao.valor }}" {% if status_filtro == opcao.valor %}selected{% endif %}>
+                            {{ opcao.rotulo }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-actions">
+                <button class="btn btn-primary" type="submit">Filtrar</button>
+            </div>
+        </form>
+    </div>
+
     <div class="table-card table-responsive">
         <table class="table">
             <thead>
@@ -107,7 +126,13 @@
                     </tr>
                 {% else %}
                     <tr>
-                        <td class="empty-state" colspan="8">Nenhum pedido cadastrado.</td>
+                        <td class="empty-state" colspan="8">
+                            {% if status_filtro == status_filtro_novo_pedido %}
+                                Selecione um status para consultar os pedidos.
+                            {% else %}
+                                Nenhum pedido encontrado para o status selecionado.
+                            {% endif %}
+                        </td>
                     </tr>
                 {% endfor %}
             </tbody>

@@ -78,6 +78,18 @@ SUBMODULOS_REFEICOES = [
     MODULO_REFEICOES_RELATORIOS,
 ]
 
+STATUS_FILTRO_NOVO_PEDIDO = "novo_pedido"
+STATUS_FILTRO_TODOS = "todos"
+
+STATUS_PEDIDOS_FILTRO_OPCOES = [
+    {"valor": STATUS_FILTRO_NOVO_PEDIDO, "rotulo": "Novo Pedido"},
+    {"valor": STATUS_PEDIDO_ABERTO, "rotulo": STATUS_PEDIDO_ABERTO},
+    {"valor": STATUS_PEDIDO_FECHADO, "rotulo": STATUS_PEDIDO_FECHADO},
+    {"valor": STATUS_PEDIDO_ENVIADO, "rotulo": STATUS_PEDIDO_ENVIADO},
+    {"valor": STATUS_PEDIDO_CANCELADO, "rotulo": STATUS_PEDIDO_CANCELADO},
+    {"valor": STATUS_FILTRO_TODOS, "rotulo": "Todos"},
+]
+
 
 def pode_acessar_submodulo_refeicoes(modulo_slug, acao="visualizar"):
     return usuario_tem_permissao(
@@ -425,7 +437,18 @@ def alterar_status_item_cardapio_rota(item_id):
 @pedido_refeicoes_bp.route("/pedidos")
 @module_permission_required(DEPARTAMENTO_PESSOAL_SLUG, MODULO_REFEICOES_PEDIDOS, "visualizar")
 def pedidos():
-    pedidos_lista = buscar_pedidos()
+    status_filtro = request.args.get("status", STATUS_FILTRO_NOVO_PEDIDO).strip()
+    status_opcoes_validas = {opcao["valor"] for opcao in STATUS_PEDIDOS_FILTRO_OPCOES}
+
+    if status_filtro not in status_opcoes_validas:
+        status_filtro = STATUS_FILTRO_NOVO_PEDIDO
+
+    if status_filtro == STATUS_FILTRO_NOVO_PEDIDO:
+        pedidos_lista = []
+    elif status_filtro == STATUS_FILTRO_TODOS:
+        pedidos_lista = buscar_pedidos()
+    else:
+        pedidos_lista = buscar_pedidos(status=status_filtro)
 
     pode_criar = usuario_tem_permissao(
         current_user,
@@ -470,6 +493,9 @@ def pedidos():
         status_whatsapp_pedido=status_whatsapp_pedido,
         pedido_enviado_com_correcao_permitida=pedido_enviado_com_correcao_permitida,
         pedido_pode_ser_cancelado=pedido_pode_ser_cancelado,
+        status_filtro=status_filtro,
+        status_opcoes=STATUS_PEDIDOS_FILTRO_OPCOES,
+        status_filtro_novo_pedido=STATUS_FILTRO_NOVO_PEDIDO,
     )
 
 
