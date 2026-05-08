@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Departamento Pessoal</span>
+            <h1>Documentos</h1>
+            <p>Consulta segura de documentos pessoais dos colaboradores.</p>
+        </div>
+
+        <a class="btn btn-secondary" href="{{ url_for('departamentos.detalhe_departamento', slug_departamento='departamento_pessoal') }}">
+            Voltar
+        </a>
+    </div>
+
+    <div class="modules-grid">
+        {% if pode_visualizar_holerites %}
+            <a class="module-card module-card-link" href="{{ url_for('documentos.holerites') }}">
+                <span class="module-card-icon">H</span>
+                <h2>Holerites</h2>
+                <p>Consulte holerites vinculados ao colaborador.</p>
+                <span class="badge badge-success">Liberado</span>
+                <span class="module-status">Acessar holerites</span>
+            </a>
+        {% else %}
+            <div class="details-card">
+                <h2>Nenhum documento liberado</h2>
+                <p>Você não possui documentos disponíveis para consulta.</p>
+            </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}
