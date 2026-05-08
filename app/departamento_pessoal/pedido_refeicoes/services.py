@@ -268,9 +268,14 @@ def buscar_equipes_ativas():
     )
 
 
-def buscar_pedidos():
+def buscar_pedidos(status=None):
+    query = PedidoRefeicao.query
+
+    if status:
+        query = query.filter(PedidoRefeicao.status == status)
+
     return (
-        PedidoRefeicao.query
+        query
         .order_by(
             PedidoRefeicao.data_pedido.desc(),
             PedidoRefeicao.id.desc()
