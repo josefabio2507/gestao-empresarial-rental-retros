@@ -67,7 +67,19 @@
                             </option>
                         {% endfor %}
                     </select>
-                    <small>Opcional quando houver bebida selecionada.</small>
+                    <small>Opcional quando uma bebida for selecionada.</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="quantidade_refeicao">Quantidade da refeição</label>
+                    <input
+                        type="number"
+                        name="quantidade_refeicao"
+                        id="quantidade_refeicao"
+                        min="1"
+                        step="1"
+                        value="1"
+                    >
                 </div>
 
                 <div class="form-group">
@@ -81,7 +93,19 @@
                             </option>
                         {% endfor %}
                     </select>
-                    <small>Opcional quando houver refeição selecionada.</small>
+                    <small>Opcional quando uma refeição for selecionada.</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="quantidade_bebida">Quantidade da bebida</label>
+                    <input
+                        type="number"
+                        name="quantidade_bebida"
+                        id="quantidade_bebida"
+                        min="1"
+                        step="1"
+                        value="1"
+                    >
                 </div>
             {% else %}
                 <div class="form-group">
@@ -100,20 +124,20 @@
                     </select>
                     <small>O preço vem automaticamente do cadastro do cardápio.</small>
                 </div>
-            {% endif %}
 
-            <div class="form-group">
-                <label for="quantidade">Quantidade</label>
-                <input
-                    type="number"
-                    name="quantidade"
-                    id="quantidade"
-                    min="1"
-                    step="1"
-                    value="{{ consumo.quantidade if consumo else 1 }}"
-                    required
-                >
-            </div>
+                <div class="form-group">
+                    <label for="quantidade">Quantidade</label>
+                    <input
+                        type="number"
+                        name="quantidade"
+                        id="quantidade"
+                        min="1"
+                        step="1"
+                        value="{{ consumo.quantidade if consumo else 1 }}"
+                        required
+                    >
+                </div>
+            {% endif %}
         </div>
 
         <div class="form-group">
