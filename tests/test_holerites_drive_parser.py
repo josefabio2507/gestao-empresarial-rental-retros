@@ -87,6 +87,16 @@ class ParserHoleritesDriveTest(unittest.TestCase):
         self.assertEqual(extrair_matricula_pasta("000079 - William Lino"), "000079")
         self.assertTrue(matriculas_equivalentes("79", "000079"))
 
+    def test_numero_inicial_do_pdf_nao_define_colaborador(self):
+        resultado = analisar_nome_arquivo_holerite(
+            "79 -Holerite Salário 08.2025 - João da Silva.pdf"
+        )
+
+        self.assertTrue(resultado["valido"])
+        self.assertEqual(resultado["matricula"], "79")
+        self.assertEqual(resultado["tipo"], "Holerite Mensal")
+        self.assertEqual(resultado["competencia"], "08/2025")
+
     def test_tipos_de_holerite_sao_normalizados(self):
         self.assertArquivoValido(
             "10-Holerite Salário 08.2025 - Fulano.pdf",
