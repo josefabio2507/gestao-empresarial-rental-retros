@@ -24,3 +24,10 @@ class Config:
     RECUPERACAO_SENHA_EXPIRACAO_MINUTOS = int(
         os.getenv("RECUPERACAO_SENHA_EXPIRACAO_MINUTOS", "60")
     )
+
+    GOOGLE_DRIVE_HOLERITES_FOLDER_ID = os.getenv(
+        "GOOGLE_DRIVE_HOLERITES_FOLDER_ID",
+        "",
+    ).strip()
+    GOOGLE_SERVICE_ACCOUNT_JSON = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON", "").strip()
+    GOOGLE_SERVICE_ACCOUNT_FILE = os.getenv("GOOGLE_SERVICE_ACCOUNT_FILE", "").strip()
