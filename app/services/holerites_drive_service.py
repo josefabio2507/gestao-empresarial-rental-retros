@@ -7,14 +7,17 @@ from flask import current_app
 from app.extensions import db
 from app.models import Colaborador, HoleriteColaborador
 from app.services.google_drive_service import (
+    GOOGLE_DRIVE_FOLDER_MIME_TYPE,
     GOOGLE_DRIVE_PDF_MIME_TYPE,
     GoogleDriveConfiguracaoErro,
     criar_google_drive_client,
-    listar_itens_da_pasta,
-    listar_pastas_da_pasta,
+    listar_itens_da_pasta_pagina,
 )
 
 
+TAMANHO_LOTE_PADRAO = 200
+TAMANHO_PAGINA_PASTAS = 1
+TAMANHO_PAGINA_ARQUIVOS = 100
 PADRAO_PASTA_COLABORADOR = re.compile(r"^\s*(?P<matricula>\d+)")
 PADRAO_MATRICULA_ARQUIVO = re.compile(r"^\s*(?P<matricula>\d+)\s*[-_\s]*")
 PADROES_COMPETENCIA = [
@@ -43,6 +46,11 @@ class ResumoSincronizacaoHolerites:
     ignorados_tipo_nao_aceito: int = 0
     competencia_nao_identificada: int = 0
     colaboradores_inativos: int = 0
+    arquivos_processados_lote: int = 0
+    pastas_processadas: int = 0
+    tamanho_lote: int = TAMANHO_LOTE_PADRAO
+    concluido: bool = False
+    proximo_estado: dict | None = None
     erros: int = 0
     mensagens: list[str] = field(default_factory=list)
 
@@ -62,6 +70,11 @@ class ResumoSincronizacaoHolerites:
             "ignorados_tipo_nao_aceito": self.ignorados_tipo_nao_aceito,
             "competencia_nao_identificada": self.competencia_nao_identificada,
             "colaboradores_inativos": self.colaboradores_inativos,
+            "arquivos_processados_lote": self.arquivos_processados_lote,
+            "pastas_processadas": self.pastas_processadas,
+            "tamanho_lote": self.tamanho_lote,
+            "concluido": self.concluido,
+            "proximo_estado": self.proximo_estado,
             "erros": self.erros,
             "mensagens": self.mensagens,
         }
@@ -213,7 +226,57 @@ def interpretar_nome_arquivo_holerite(nome_arquivo):
 
 
 def holerite_ja_importado(colaborador_id, dados_arquivo, arquivo_drive):
+    return holerite_ja_importado_com_cache(None, colaborador_id, dados_arquivo, arquivo_drive)
+
+
+def carregar_cache_holerites_colaborador(colaborador_id):
+    holerites = HoleriteColaborador.query.filter_by(
+        colaborador_id=colaborador_id,
+    ).all()
+
+    return {
+        "google_drive_file_ids": {
+            holerite.google_drive_file_id
+            for holerite in holerites
+            if holerite.google_drive_file_id
+        },
+        "chaves_fallback": {
+            (holerite.competencia, holerite.tipo, holerite.nome_arquivo)
+            for holerite in holerites
+        },
+    }
+
+
+def registrar_holerite_no_cache(cache, dados_arquivo, arquivo_drive):
+    if cache is None:
+        return
+
     google_drive_file_id = arquivo_drive.get("id")
+
+    if google_drive_file_id:
+        cache["google_drive_file_ids"].add(google_drive_file_id)
+
+    cache["chaves_fallback"].add(
+        (
+            dados_arquivo["competencia"],
+            dados_arquivo["tipo"],
+            arquivo_drive.get("name"),
+        )
+    )
+
+
+def holerite_ja_importado_com_cache(cache, colaborador_id, dados_arquivo, arquivo_drive):
+    google_drive_file_id = arquivo_drive.get("id")
+
+    if cache is not None:
+        if google_drive_file_id and google_drive_file_id in cache["google_drive_file_ids"]:
+            return True
+
+        return (
+            dados_arquivo["competencia"],
+            dados_arquivo["tipo"],
+            arquivo_drive.get("name"),
+        ) in cache["chaves_fallback"]
 
     if google_drive_file_id:
         existente = HoleriteColaborador.query.filter_by(
@@ -252,9 +315,43 @@ def criar_holerite(colaborador, dados_arquivo, arquivo_drive, usuario_id=None):
     return holerite
 
 
-def sincronizar_holerites_google_drive(usuario_id=None, drive_service=None, folder_id=None):
+def _novo_estado():
+    return {
+        "folder_page_token": None,
+        "folder_scan_concluido": False,
+        "current_folder": None,
+        "file_page_token": None,
+        "pastas_processadas": 0,
+    }
+
+
+def _listar_proxima_pasta(service, folder_id, folder_page_token):
+    pastas, proximo_folder_page_token = listar_itens_da_pasta_pagina(
+        service,
+        folder_id,
+        mime_type=GOOGLE_DRIVE_FOLDER_MIME_TYPE,
+        page_token=folder_page_token,
+        page_size=TAMANHO_PAGINA_PASTAS,
+    )
+
+    if not pastas:
+        return None, proximo_folder_page_token
+
+    return pastas[0], proximo_folder_page_token
+
+
+def sincronizar_holerites_google_drive(
+    usuario_id=None,
+    drive_service=None,
+    folder_id=None,
+    estado=None,
+    limite_arquivos=TAMANHO_LOTE_PADRAO,
+):
     resumo = ResumoSincronizacaoHolerites()
+    resumo.tamanho_lote = limite_arquivos
     folder_id = folder_id or current_app.config.get("GOOGLE_DRIVE_HOLERITES_FOLDER_ID")
+    estado_atual = estado.copy() if estado else _novo_estado()
+    caches_holerites = {}
 
     if not folder_id:
         resumo.erros += 1
@@ -263,7 +360,6 @@ def sincronizar_holerites_google_drive(usuario_id=None, drive_service=None, fold
 
     try:
         service = drive_service or criar_google_drive_client()
-        pastas = listar_pastas_da_pasta(service, folder_id)
     except GoogleDriveConfiguracaoErro as exc:
         resumo.erros += 1
         resumo.adicionar_mensagem(str(exc))
@@ -273,13 +369,46 @@ def sincronizar_holerites_google_drive(usuario_id=None, drive_service=None, fold
         resumo.adicionar_mensagem("Não foi possível acessar a pasta principal de Holerites.")
         return resumo.como_dict()
 
-    for pasta in pastas:
+    while resumo.arquivos_processados_lote < limite_arquivos:
+        pasta = estado_atual.get("current_folder")
+
+        if not pasta:
+            if estado_atual.get("folder_scan_concluido"):
+                resumo.concluido = True
+                estado_atual = None
+                break
+
+            try:
+                pasta, proximo_folder_page_token = _listar_proxima_pasta(
+                    service,
+                    folder_id,
+                    estado_atual.get("folder_page_token"),
+                )
+            except Exception:
+                resumo.erros += 1
+                resumo.adicionar_mensagem("Não foi possível acessar a próxima pasta de Holerites.")
+                break
+
+            estado_atual["folder_page_token"] = proximo_folder_page_token
+            estado_atual["folder_scan_concluido"] = proximo_folder_page_token is None
+            estado_atual["current_folder"] = pasta
+            estado_atual["file_page_token"] = None
+
+            if not pasta:
+                resumo.concluido = True
+                estado_atual = None
+                break
+
         nome_pasta = pasta.get("name") or ""
         matricula = extrair_matricula_pasta(nome_pasta)
 
         if not matricula:
             resumo.pastas_ignoradas += 1
             resumo.adicionar_mensagem(f"Pasta ignorada fora do padrão: {nome_pasta}")
+            resumo.pastas_processadas += 1
+            estado_atual["pastas_processadas"] = estado_atual.get("pastas_processadas", 0) + 1
+            estado_atual["current_folder"] = None
+            estado_atual["file_page_token"] = None
             continue
 
         colaborador = buscar_colaborador_por_matricula(matricula)
@@ -287,23 +416,51 @@ def sincronizar_holerites_google_drive(usuario_id=None, drive_service=None, fold
         if not colaborador:
             resumo.colaboradores_nao_encontrados += 1
             resumo.adicionar_mensagem(f"Colaborador não encontrado para matrícula {matricula}.")
+            resumo.pastas_processadas += 1
+            estado_atual["pastas_processadas"] = estado_atual.get("pastas_processadas", 0) + 1
+            estado_atual["current_folder"] = None
+            estado_atual["file_page_token"] = None
             continue
 
         if hasattr(colaborador, "ativo") and not colaborador.ativo:
             resumo.colaboradores_inativos += 1
             resumo.adicionar_mensagem(f"Colaborador inativo ignorado. Matrícula: {matricula}.")
+            resumo.pastas_processadas += 1
+            estado_atual["pastas_processadas"] = estado_atual.get("pastas_processadas", 0) + 1
+            estado_atual["current_folder"] = None
+            estado_atual["file_page_token"] = None
             continue
 
         try:
-            arquivos = listar_itens_da_pasta(service, pasta.get("id"))
+            tamanho_pagina = min(
+                TAMANHO_PAGINA_ARQUIVOS,
+                max(1, limite_arquivos - resumo.arquivos_processados_lote),
+            )
+            arquivos, proximo_file_page_token = listar_itens_da_pasta_pagina(
+                service,
+                pasta.get("id"),
+                page_token=estado_atual.get("file_page_token"),
+                page_size=tamanho_pagina,
+            )
         except Exception:
             resumo.erros += 1
             resumo.adicionar_mensagem(f"Não foi possível ler a pasta da matrícula {matricula}.")
+            resumo.pastas_processadas += 1
+            estado_atual["pastas_processadas"] = estado_atual.get("pastas_processadas", 0) + 1
+            estado_atual["current_folder"] = None
+            estado_atual["file_page_token"] = None
             continue
+
+        cache_holerites = caches_holerites.get(colaborador.id)
+
+        if cache_holerites is None:
+            cache_holerites = carregar_cache_holerites_colaborador(colaborador.id)
+            caches_holerites[colaborador.id] = cache_holerites
 
         for arquivo in arquivos:
             nome_arquivo = arquivo.get("name") or ""
             resumo.arquivos_encontrados += 1
+            resumo.arquivos_processados_lote += 1
 
             if (
                 arquivo.get("mimeType") != GOOGLE_DRIVE_PDF_MIME_TYPE
@@ -336,7 +493,12 @@ def sincronizar_holerites_google_drive(usuario_id=None, drive_service=None, fold
                 "nome": analise_arquivo["nome"],
             }
 
-            if holerite_ja_importado(colaborador.id, dados_arquivo, arquivo):
+            if holerite_ja_importado_com_cache(
+                cache_holerites,
+                colaborador.id,
+                dados_arquivo,
+                arquivo,
+            ):
                 resumo.ja_existentes += 1
                 continue
 
@@ -346,7 +508,23 @@ def sincronizar_holerites_google_drive(usuario_id=None, drive_service=None, fold
                 arquivo,
                 usuario_id=usuario_id,
             )
+            registrar_holerite_no_cache(cache_holerites, dados_arquivo, arquivo)
             resumo.importados += 1
 
+        if proximo_file_page_token:
+            estado_atual["current_folder"] = pasta
+            estado_atual["file_page_token"] = proximo_file_page_token
+        else:
+            resumo.pastas_processadas += 1
+            estado_atual["pastas_processadas"] = estado_atual.get("pastas_processadas", 0) + 1
+            estado_atual["current_folder"] = None
+            estado_atual["file_page_token"] = None
+
     db.session.commit()
+
+    if estado_atual and not resumo.concluido:
+        resumo.proximo_estado = estado_atual
+    else:
+        resumo.concluido = True
+
     return resumo.como_dict()

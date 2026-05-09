@@ -63,7 +63,7 @@ def _escapar_query_drive(valor):
     return valor.replace("\\", "\\\\").replace("'", "\\'")
 
 
-def listar_itens_da_pasta(service, folder_id, mime_type=None):
+def _montar_query_itens(folder_id, mime_type=None):
     query = [
         f"'{_escapar_query_drive(folder_id)}' in parents",
         "trashed = false",
@@ -72,6 +72,37 @@ def listar_itens_da_pasta(service, folder_id, mime_type=None):
     if mime_type:
         query.append(f"mimeType = '{_escapar_query_drive(mime_type)}'")
 
+    return " and ".join(query)
+
+
+def listar_itens_da_pasta_pagina(
+    service,
+    folder_id,
+    mime_type=None,
+    page_token=None,
+    page_size=100,
+):
+    campos = (
+        "nextPageToken,"
+        "files(id,name,mimeType,webViewLink,webContentLink)"
+    )
+    resposta = (
+        service.files()
+        .list(
+            q=_montar_query_itens(folder_id, mime_type=mime_type),
+            fields=campos,
+            pageToken=page_token,
+            pageSize=page_size,
+            supportsAllDrives=True,
+            includeItemsFromAllDrives=True,
+        )
+        .execute()
+    )
+
+    return resposta.get("files", []), resposta.get("nextPageToken")
+
+
+def listar_itens_da_pasta(service, folder_id, mime_type=None):
     campos = (
         "nextPageToken,"
         "files(id,name,mimeType,webViewLink,webContentLink)"
@@ -83,7 +114,7 @@ def listar_itens_da_pasta(service, folder_id, mime_type=None):
         resposta = (
             service.files()
             .list(
-                q=" and ".join(query),
+                q=_montar_query_itens(folder_id, mime_type=mime_type),
                 fields=campos,
                 pageToken=page_token,
                 pageSize=1000,
