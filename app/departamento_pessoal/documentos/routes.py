@@ -1,5 +1,6 @@
-from flask import Blueprint, flash, redirect, render_template, url_for
+from flask import Blueprint, current_app, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
+from itsdangerous import BadSignature, URLSafeSerializer
 
 from app.services.logs_service import registrar_log
 from app.services.permissoes_service import (
@@ -16,6 +17,34 @@ from app.services.holerites_drive_service import sincronizar_holerites_google_dr
 
 
 documentos_bp = Blueprint("documentos", __name__)
+
+SYNC_CURSOR_SALT = "holerites-google-drive-sync"
+
+
+def _cursor_serializer():
+    return URLSafeSerializer(
+        current_app.config["SECRET_KEY"],
+        salt=SYNC_CURSOR_SALT,
+    )
+
+
+def codificar_cursor_sincronizacao(estado):
+    if not estado:
+        return None
+
+    return _cursor_serializer().dumps(estado)
+
+
+def decodificar_cursor_sincronizacao(token):
+    if not token:
+        return None
+
+    try:
+        return _cursor_serializer().loads(token)
+    except BadSignature:
+        flash("A continuação da sincronização expirou. Inicie um novo lote.", "warning")
+        return None
+
 
 def pode_visualizar_holerites():
     return usuario_tem_permissao_holerites(current_user, "visualizar")
@@ -93,22 +122,33 @@ def sincronizar_holerites():
         flash("A sincronização de holerites é restrita ao administrador.", "danger")
         return redirect(url_for("main.acesso_negado"))
 
-    resumo = sincronizar_holerites_google_drive(usuario_id=current_user.id)
+    estado = decodificar_cursor_sincronizacao(request.form.get("cursor"))
+    resumo = sincronizar_holerites_google_drive(
+        usuario_id=current_user.id,
+        estado=estado,
+    )
+    resumo["proximo_cursor"] = codificar_cursor_sincronizacao(
+        resumo.get("proximo_estado"),
+    )
 
     registrar_log(
         "holerites_sincronizados_google_drive",
         (
             f"Usuário ID {current_user.id} sincronizou holerites. "
+            f"Lote: {resumo['arquivos_processados_lote']}, "
             f"Importados: {resumo['importados']}, "
             f"já existentes: {resumo['ja_existentes']}, "
-            f"erros: {resumo['erros']}."
+            f"erros: {resumo['erros']}, "
+            f"concluído: {resumo['concluido']}."
         ),
     )
 
     if resumo["erros"]:
-        flash("Sincronização concluída com pendências.", "warning")
-    else:
+        flash("Lote de sincronização concluído com pendências.", "warning")
+    elif resumo["concluido"]:
         flash("Sincronização concluída.", "success")
+    else:
+        flash("Lote de sincronização processado. Continue para avançar.", "info")
 
     return renderizar_holerites(resumo_sincronizacao=resumo)
 

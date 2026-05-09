@@ -37,6 +37,18 @@
 
             <div class="stat-grid">
                 <div class="stat-card">
+                    <span>Processados no lote</span>
+                    <strong>{{ resumo_sincronizacao.arquivos_processados_lote }}</strong>
+                </div>
+                <div class="stat-card">
+                    <span>Tamanho do lote</span>
+                    <strong>{{ resumo_sincronizacao.tamanho_lote }}</strong>
+                </div>
+                <div class="stat-card">
+                    <span>Pastas concluídas no lote</span>
+                    <strong>{{ resumo_sincronizacao.pastas_processadas }}</strong>
+                </div>
+                <div class="stat-card">
                     <span>Arquivos encontrados</span>
                     <strong>{{ resumo_sincronizacao.arquivos_encontrados }}</strong>
                 </div>
@@ -82,6 +94,19 @@
                             <li>{{ mensagem }}</li>
                         {% endfor %}
                     </ul>
+                </div>
+            {% endif %}
+
+            {% if resumo_sincronizacao.proximo_cursor %}
+                <form method="post" action="{{ url_for('documentos.sincronizar_holerites') }}" class="page-actions">
+                    <input type="hidden" name="cursor" value="{{ resumo_sincronizacao.proximo_cursor }}">
+                    <button class="btn btn-primary" type="submit">
+                        Continuar sincronização
+                    </button>
+                </form>
+            {% else %}
+                <div class="alert alert-info">
+                    Sincronização concluída para as pastas disponíveis.
                 </div>
             {% endif %}
         </div>

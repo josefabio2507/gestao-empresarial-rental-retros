@@ -7,6 +7,7 @@ from app.services.holerites_drive_service import (
     extrair_matricula_pasta,
     holerite_ja_importado,
     matriculas_equivalentes,
+    sincronizar_holerites_google_drive,
 )
 
 
@@ -38,6 +39,12 @@ class ColaboradorQueryFake:
 
 class ColaboradorModelFake:
     query = ColaboradorQueryFake()
+
+
+class ColaboradorFake:
+    id = 123
+    matricula = "000123"
+    ativo = True
 
 
 class ParserHoleritesDriveTest(unittest.TestCase):
@@ -177,6 +184,49 @@ class ParserHoleritesDriveTest(unittest.TestCase):
             colaborador = buscar_colaborador_por_matricula("999999")
 
         self.assertIsNone(colaborador)
+
+    def test_sincronizacao_em_lote_retorna_cursor_de_continuacao(self):
+        arquivo = {
+            "id": "drive-1",
+            "name": "79 -Holerite Salário 08.2025 - João da Silva.pdf",
+            "mimeType": "application/pdf",
+            "webViewLink": "https://drive.example/drive-1",
+        }
+
+        with patch(
+            "app.services.holerites_drive_service._listar_proxima_pasta",
+            return_value=(
+                {"id": "folder-1", "name": "000123 - João da Silva"},
+                None,
+            ),
+        ), patch(
+            "app.services.holerites_drive_service.listar_itens_da_pasta_pagina",
+            return_value=([arquivo], "next-file-page"),
+        ), patch(
+            "app.services.holerites_drive_service.buscar_colaborador_por_matricula",
+            return_value=ColaboradorFake(),
+        ), patch(
+            "app.services.holerites_drive_service.carregar_cache_holerites_colaborador",
+            return_value={"google_drive_file_ids": set(), "chaves_fallback": set()},
+        ), patch(
+            "app.services.holerites_drive_service.criar_holerite",
+        ) as criar_holerite, patch(
+            "app.services.holerites_drive_service.db.session.commit",
+        ):
+            resumo = sincronizar_holerites_google_drive(
+                drive_service=object(),
+                folder_id="root",
+                limite_arquivos=1,
+            )
+
+        self.assertEqual(resumo["arquivos_processados_lote"], 1)
+        self.assertEqual(resumo["importados"], 1)
+        self.assertFalse(resumo["concluido"])
+        self.assertEqual(
+            resumo["proximo_estado"]["file_page_token"],
+            "next-file-page",
+        )
+        criar_holerite.assert_called_once()
 
 
 if __name__ == "__main__":
