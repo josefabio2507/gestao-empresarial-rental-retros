@@ -1,4 +1,5 @@
 import re
+import unicodedata
 from dataclasses import dataclass, field
 
 from flask import current_app
@@ -14,14 +15,20 @@ from app.services.google_drive_service import (
 )
 
 
-PADRAO_PASTA_COLABORADOR = re.compile(r"^\s*(?P<matricula>[^-\s][^-]*)\s+-\s+.+$")
-PADRAO_ARQUIVO_HOLERITE = re.compile(
-    r"^\s*(?P<matricula>[^-\s][^-]*)\s+-\s+"
-    r"(?P<tipo>.+?)\s+-\s+"
-    r"(?P<competencia>\d{2}\.\d{4})\s+-\s+"
-    r"(?P<nome>.+)\.pdf\s*$",
-    re.IGNORECASE,
-)
+PADRAO_PASTA_COLABORADOR = re.compile(r"^\s*(?P<matricula>\d+)")
+PADRAO_MATRICULA_ARQUIVO = re.compile(r"^\s*(?P<matricula>\d+)\s*[-_\s]*")
+PADROES_COMPETENCIA = [
+    re.compile(r"(?<!\d)(?P<mes>0?[1-9]|1[0-2])\s*[./]\s*(?P<ano>19\d{2}|20\d{2})(?!\d)"),
+    re.compile(r"(?<!\d)(?P<ano>19\d{2}|20\d{2})\s*-\s*(?P<mes>0?[1-9]|1[0-2])(?!\d)"),
+    re.compile(r"(?<!\d)(?P<mes>0?[1-9]|1[0-2])\s+(?P<ano>19\d{2}|20\d{2})(?!\d)"),
+]
+
+TIPOS_PONTO_NAO_ACEITOS = [
+    "cartao de ponto",
+    "cartoes de ponto",
+    "espelho de ponto",
+    "ponto",
+]
 
 
 @dataclass
@@ -33,6 +40,9 @@ class ResumoSincronizacaoHolerites:
     colaboradores_nao_encontrados: int = 0
     arquivos_fora_padrao: int = 0
     arquivos_nao_pdf: int = 0
+    ignorados_tipo_nao_aceito: int = 0
+    competencia_nao_identificada: int = 0
+    colaboradores_inativos: int = 0
     erros: int = 0
     mensagens: list[str] = field(default_factory=list)
 
@@ -49,9 +59,34 @@ class ResumoSincronizacaoHolerites:
             "colaboradores_nao_encontrados": self.colaboradores_nao_encontrados,
             "arquivos_fora_padrao": self.arquivos_fora_padrao,
             "arquivos_nao_pdf": self.arquivos_nao_pdf,
+            "ignorados_tipo_nao_aceito": self.ignorados_tipo_nao_aceito,
+            "competencia_nao_identificada": self.competencia_nao_identificada,
+            "colaboradores_inativos": self.colaboradores_inativos,
             "erros": self.erros,
             "mensagens": self.mensagens,
         }
+
+
+def normalizar_texto(valor):
+    texto = str(valor or "").strip().lower()
+    texto = unicodedata.normalize("NFKD", texto)
+    texto = "".join(caractere for caractere in texto if not unicodedata.combining(caractere))
+    texto = re.sub(r"[_\-]+", " ", texto)
+    texto = re.sub(r"\s+", " ", texto)
+    return texto.strip()
+
+
+def normalizar_matricula(valor):
+    matricula = re.sub(r"\D+", "", str(valor or ""))
+
+    if not matricula:
+        return ""
+
+    return matricula.lstrip("0") or "0"
+
+
+def matriculas_equivalentes(matricula_a, matricula_b):
+    return normalizar_matricula(matricula_a) == normalizar_matricula(matricula_b)
 
 
 def extrair_matricula_pasta(nome_pasta):
@@ -63,17 +98,117 @@ def extrair_matricula_pasta(nome_pasta):
     return correspondencia.group("matricula").strip()
 
 
-def interpretar_nome_arquivo_holerite(nome_arquivo):
-    correspondencia = PADRAO_ARQUIVO_HOLERITE.match(nome_arquivo or "")
+def buscar_colaborador_por_matricula(matricula):
+    colaborador = Colaborador.query.filter_by(matricula=matricula).first()
+
+    if colaborador:
+        return colaborador
+
+    matricula_normalizada = normalizar_matricula(matricula)
+
+    if not matricula_normalizada:
+        return None
+
+    colaboradores = Colaborador.query.all()
+
+    for colaborador in colaboradores:
+        if normalizar_matricula(colaborador.matricula) == matricula_normalizada:
+            return colaborador
+
+    return None
+
+
+def extrair_matricula_arquivo(nome_base):
+    correspondencia = PADRAO_MATRICULA_ARQUIVO.match(nome_base or "")
 
     if not correspondencia:
         return None
 
+    return correspondencia.group("matricula").strip()
+
+
+def normalizar_competencia(mes, ano):
+    return f"{int(mes):02d}/{ano}"
+
+
+def extrair_competencia(nome_base):
+    for padrao in PADROES_COMPETENCIA:
+        correspondencia = padrao.search(nome_base or "")
+
+        if correspondencia:
+            return normalizar_competencia(
+                correspondencia.group("mes"),
+                correspondencia.group("ano"),
+            )
+
+    return None
+
+
+def normalizar_tipo_documento(nome_base):
+    texto = normalizar_texto(nome_base)
+
+    if any(tipo in texto for tipo in TIPOS_PONTO_NAO_ACEITOS):
+        return None
+
+    if "adiantamento" in texto:
+        return "Adiantamento Salarial"
+
+    if "holerite" in texto or "holerites" in texto:
+        return "Holerite Mensal"
+
+    return None
+
+
+def analisar_nome_arquivo_holerite(nome_arquivo):
+    nome_arquivo = nome_arquivo or ""
+
+    if not nome_arquivo.lower().endswith(".pdf"):
+        return {
+            "valido": False,
+            "motivo": "nao_pdf",
+        }
+
+    nome_base = re.sub(r"\.pdf\s*$", "", nome_arquivo, flags=re.IGNORECASE).strip()
+    matricula = extrair_matricula_arquivo(nome_base)
+    tipo = normalizar_tipo_documento(nome_base)
+
+    if not tipo:
+        return {
+            "valido": False,
+            "motivo": "tipo_nao_aceito",
+            "matricula": matricula,
+        }
+
+    competencia = extrair_competencia(nome_base)
+
+    if not competencia:
+        return {
+            "valido": False,
+            "motivo": "competencia_nao_identificada",
+            "matricula": matricula,
+            "tipo": tipo,
+        }
+
     return {
-        "matricula": correspondencia.group("matricula").strip(),
-        "tipo": correspondencia.group("tipo").strip(),
-        "competencia": correspondencia.group("competencia").strip(),
-        "nome": correspondencia.group("nome").strip(),
+        "valido": True,
+        "matricula": matricula,
+        "tipo": tipo,
+        "competencia": competencia,
+        "nome": nome_base,
+    }
+
+
+def interpretar_nome_arquivo_holerite(nome_arquivo):
+    resultado = analisar_nome_arquivo_holerite(nome_arquivo)
+
+    if not resultado.get("valido"):
+        return None
+
+    return {
+        "matricula": resultado.get("matricula"),
+        "tipo": resultado["tipo"],
+        "competencia": resultado["competencia"],
+        "nome": resultado["nome"],
     }
 
 
@@ -147,11 +282,16 @@ def sincronizar_holerites_google_drive(usuario_id=None, drive_service=None, fold
             resumo.adicionar_mensagem(f"Pasta ignorada fora do padrão: {nome_pasta}")
             continue
 
-        colaborador = Colaborador.query.filter_by(matricula=matricula).first()
+        colaborador = buscar_colaborador_por_matricula(matricula)
 
         if not colaborador:
             resumo.colaboradores_nao_encontrados += 1
             resumo.adicionar_mensagem(f"Colaborador não encontrado para matrícula {matricula}.")
+            continue
+
+        if hasattr(colaborador, "ativo") and not colaborador.ativo:
+            resumo.colaboradores_inativos += 1
+            resumo.adicionar_mensagem(f"Colaborador inativo ignorado. Matrícula: {matricula}.")
             continue
 
         try:
@@ -172,14 +312,34 @@ def sincronizar_holerites_google_drive(usuario_id=None, drive_service=None, fold
                 resumo.arquivos_nao_pdf += 1
                 continue
 
-            dados_arquivo = interpretar_nome_arquivo_holerite(nome_arquivo)
+            analise_arquivo = analisar_nome_arquivo_holerite(nome_arquivo)
 
-            if not dados_arquivo:
+            if analise_arquivo.get("motivo") == "tipo_nao_aceito":
+                resumo.ignorados_tipo_nao_aceito += 1
+                resumo.adicionar_mensagem(f"Tipo não aceito: {nome_arquivo}")
+                continue
+
+            if analise_arquivo.get("motivo") == "competencia_nao_identificada":
+                resumo.competencia_nao_identificada += 1
+                resumo.adicionar_mensagem(f"Competência não identificada: {nome_arquivo}")
+                continue
+
+            if not analise_arquivo.get("valido"):
                 resumo.arquivos_fora_padrao += 1
                 resumo.adicionar_mensagem(f"Arquivo fora do padrão: {nome_arquivo}")
                 continue
 
-            if dados_arquivo["matricula"] != matricula:
+            dados_arquivo = {
+                "matricula": analise_arquivo.get("matricula"),
+                "tipo": analise_arquivo["tipo"],
+                "competencia": analise_arquivo["competencia"],
+                "nome": analise_arquivo["nome"],
+            }
+
+            if (
+                dados_arquivo["matricula"]
+                and not matriculas_equivalentes(dados_arquivo["matricula"], matricula)
+            ):
                 resumo.arquivos_fora_padrao += 1
                 resumo.adicionar_mensagem(
                     f"Arquivo com matrícula diferente da pasta: {nome_arquivo}"
