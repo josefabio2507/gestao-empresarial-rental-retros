@@ -105,6 +105,9 @@
                         <span class="module-status">Acessar documentos</span>
                     </a>
 
+                {% elif departamento.slug == "departamento_pessoal" and modulo_slug == "holerites" %}
+                    {# Holerites é configurável em permissões, mas navega pelo hub Documentos. #}
+
                 {% else %}
                     <div class="module-card">
                         <span class="module-card-icon">M</span>

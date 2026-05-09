@@ -2,7 +2,10 @@ from flask import Blueprint, flash, redirect, render_template, url_for
 from flask_login import current_user, login_required
 
 from app.services.logs_service import registrar_log
-from app.services.permissoes_service import usuario_eh_administrador, usuario_tem_permissao
+from app.services.permissoes_service import (
+    usuario_eh_administrador,
+    usuario_tem_permissao_holerites,
+)
 from app.departamento_pessoal.documentos.services import (
     buscar_holerite_por_id,
     buscar_holerites_visiveis,
@@ -14,26 +17,12 @@ from app.services.holerites_drive_service import sincronizar_holerites_google_dr
 
 documentos_bp = Blueprint("documentos", __name__)
 
-DEPARTAMENTO_DOCUMENTOS_PESSOAIS = "documentos_pessoais"
-MODULO_HOLERITES = "holerites"
-
-
 def pode_visualizar_holerites():
-    return usuario_tem_permissao(
-        current_user,
-        DEPARTAMENTO_DOCUMENTOS_PESSOAIS,
-        MODULO_HOLERITES,
-        "visualizar",
-    )
+    return usuario_tem_permissao_holerites(current_user, "visualizar")
 
 
 def pode_exportar_holerites():
-    return usuario_tem_permissao(
-        current_user,
-        DEPARTAMENTO_DOCUMENTOS_PESSOAIS,
-        MODULO_HOLERITES,
-        "exportar",
-    )
+    return usuario_tem_permissao_holerites(current_user, "exportar")
 
 
 def bloquear_sem_visualizacao():

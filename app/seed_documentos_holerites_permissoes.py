@@ -1,6 +1,6 @@
 from app import create_app
 from app.extensions import db
-from app.models import Departamento, Modulo
+from app.models import Departamento, Modulo, PermissaoUsuarioModulo
 
 
 DEPARTAMENTO_PESSOAL = {
@@ -19,21 +19,15 @@ MODULO_DOCUMENTOS_DP = {
     "ordem": 6,
 }
 
-DEPARTAMENTO_DOCUMENTOS_PESSOAIS = {
-    "nome": "Documentos Pessoais",
-    "slug": "documentos_pessoais",
-    "descricao": "Controle de acesso a documentos pessoais dos colaboradores.",
-    "icone": "documentos",
-    "ordem": 5,
-}
-
 MODULO_HOLERITES = {
-    "nome": "Holerites",
+    "nome": "Documentos > Holerites",
     "slug": "holerites",
     "descricao": "Documentos > Holerites vinculados aos colaboradores.",
     "icone": "holerite",
-    "ordem": 1,
+    "ordem": 7,
 }
+
+LEGACY_DEPARTAMENTO_DOCUMENTOS_PESSOAIS_SLUG = "documentos_pessoais"
 
 
 def criar_ou_atualizar_departamento(dados):
@@ -80,6 +74,56 @@ def criar_ou_atualizar_modulo(departamento, dados):
     return modulo, criado
 
 
+def copiar_permissoes_legacy_holerites(modulo_holerites):
+    departamento_legacy = Departamento.query.filter_by(
+        slug=LEGACY_DEPARTAMENTO_DOCUMENTOS_PESSOAIS_SLUG,
+    ).first()
+
+    if not departamento_legacy:
+        return 0, 0
+
+    modulo_legacy = Modulo.query.filter_by(
+        departamento_id=departamento_legacy.id,
+        slug=MODULO_HOLERITES["slug"],
+    ).first()
+
+    if not modulo_legacy:
+        return 0, 0
+
+    permissoes_legacy = PermissaoUsuarioModulo.query.filter_by(
+        modulo_id=modulo_legacy.id,
+    ).all()
+
+    criadas = 0
+    atualizadas = 0
+
+    for permissao_legacy in permissoes_legacy:
+        permissao = PermissaoUsuarioModulo.query.filter_by(
+            usuario_id=permissao_legacy.usuario_id,
+            modulo_id=modulo_holerites.id,
+        ).first()
+
+        if not permissao:
+            permissao = PermissaoUsuarioModulo(
+                usuario_id=permissao_legacy.usuario_id,
+                modulo_id=modulo_holerites.id,
+            )
+            db.session.add(permissao)
+            criadas += 1
+        else:
+            atualizadas += 1
+
+        permissao.pode_visualizar = (
+            permissao.pode_visualizar or permissao_legacy.pode_visualizar
+        )
+        permissao.pode_exportar = (
+            permissao.pode_exportar or permissao_legacy.pode_exportar
+        )
+        permissao.ativo = permissao.ativo or permissao_legacy.ativo
+
+    return criadas, atualizadas
+
+
 def executar_seed():
     print("Seed de Documentos/Holerites iniciado...")
 
@@ -107,17 +151,8 @@ def executar_seed():
     else:
         modulos_atualizados += 1
 
-    departamento_documentos, criado = criar_ou_atualizar_departamento(
-        DEPARTAMENTO_DOCUMENTOS_PESSOAIS,
-    )
-
-    if criado:
-        departamentos_criados += 1
-    else:
-        departamentos_atualizados += 1
-
     modulo_holerites, criado = criar_ou_atualizar_modulo(
-        departamento_documentos,
+        departamento_pessoal,
         MODULO_HOLERITES,
     )
 
@@ -126,6 +161,10 @@ def executar_seed():
     else:
         modulos_atualizados += 1
 
+    permissoes_criadas, permissoes_atualizadas = copiar_permissoes_legacy_holerites(
+        modulo_holerites,
+    )
+
     db.session.commit()
 
     print("Seed de Documentos/Holerites concluído com sucesso.")
@@ -133,9 +172,11 @@ def executar_seed():
     print(f"Departamentos atualizados: {departamentos_atualizados}")
     print(f"Módulos criados: {modulos_criados}")
     print(f"Módulos atualizados: {modulos_atualizados}")
+    print(f"Permissões migradas criadas: {permissoes_criadas}")
+    print(f"Permissões migradas atualizadas: {permissoes_atualizadas}")
     print("Itens processados:")
     print(f"- {departamento_pessoal.nome} > {modulo_documentos.nome}")
-    print(f"- {departamento_documentos.nome} > {modulo_holerites.nome}")
+    print(f"- {departamento_pessoal.nome} > Documentos > Holerites")
     print("Ações consideradas no módulo Holerites: Visualizar e Exportar.")
 
 

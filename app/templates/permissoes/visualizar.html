@@ -44,8 +44,15 @@
             <h2>{{ grupo.departamento.nome }}</h2>
 
             {% for permissao in grupo.permissoes %}
+                {% set modulo_holerites = grupo.departamento.slug == "departamento_pessoal" and permissao.modulo.slug == "holerites" %}
                 <div class="permission-summary">
-                    <strong>{{ permissao.modulo.nome }}</strong>
+                    <strong>
+                        {% if modulo_holerites %}
+                            Documentos > Holerites
+                        {% else %}
+                            {{ permissao.modulo.nome }}
+                        {% endif %}
+                    </strong>
 
                     <div class="permission-tags">
                         {% for acao in listar_acoes_liberadas(permissao) %}

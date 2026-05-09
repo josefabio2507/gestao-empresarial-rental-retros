@@ -44,10 +44,17 @@
                 {% for modulo in departamento.modulos %}
                     {% if modulo.ativo %}
                         {% set permissao = permissoes.get(modulo.id) %}
+                        {% set modulo_holerites = departamento.slug == "departamento_pessoal" and modulo.slug == "holerites" %}
 
                         <div class="permission-module">
                             <div class="permission-module-title">
-                                <strong>{{ modulo.nome }}</strong>
+                                <strong>
+                                    {% if modulo_holerites %}
+                                        Documentos > Holerites
+                                    {% else %}
+                                        {{ modulo.nome }}
+                                    {% endif %}
+                                </strong>
                                 <span>{{ modulo.descricao or "" }}</span>
                             </div>
 
@@ -61,41 +68,43 @@
                                     Visualizar
                                 </label>
 
-                                <label>
-                                    <input
-                                        type="checkbox"
-                                        name="modulo_{{ modulo.id }}_criar"
-                                        {% if permissao and permissao.ativo and permissao.pode_criar %}checked{% endif %}
-                                    >
-                                    Criar
-                                </label>
+                                {% if not modulo_holerites %}
+                                    <label>
+                                        <input
+                                            type="checkbox"
+                                            name="modulo_{{ modulo.id }}_criar"
+                                            {% if permissao and permissao.ativo and permissao.pode_criar %}checked{% endif %}
+                                        >
+                                        Criar
+                                    </label>
 
-                                <label>
-                                    <input
-                                        type="checkbox"
-                                        name="modulo_{{ modulo.id }}_editar"
-                                        {% if permissao and permissao.ativo and permissao.pode_editar %}checked{% endif %}
-                                    >
-                                    Editar
-                                </label>
+                                    <label>
+                                        <input
+                                            type="checkbox"
+                                            name="modulo_{{ modulo.id }}_editar"
+                                            {% if permissao and permissao.ativo and permissao.pode_editar %}checked{% endif %}
+                                        >
+                                        Editar
+                                    </label>
 
-                                <label>
-                                    <input
-                                        type="checkbox"
-                                        name="modulo_{{ modulo.id }}_excluir"
-                                        {% if permissao and permissao.ativo and permissao.pode_excluir %}checked{% endif %}
-                                    >
-                                    Excluir
-                                </label>
+                                    <label>
+                                        <input
+                                            type="checkbox"
+                                            name="modulo_{{ modulo.id }}_excluir"
+                                            {% if permissao and permissao.ativo and permissao.pode_excluir %}checked{% endif %}
+                                        >
+                                        Excluir
+                                    </label>
 
-                                <label>
-                                    <input
-                                        type="checkbox"
-                                        name="modulo_{{ modulo.id }}_aprovar"
-                                        {% if permissao and permissao.ativo and permissao.pode_aprovar %}checked{% endif %}
-                                    >
-                                    Aprovar
-                                </label>
+                                    <label>
+                                        <input
+                                            type="checkbox"
+                                            name="modulo_{{ modulo.id }}_aprovar"
+                                            {% if permissao and permissao.ativo and permissao.pode_aprovar %}checked{% endif %}
+                                        >
+                                        Aprovar
+                                    </label>
+                                {% endif %}
 
                                 <label>
                                     <input
