@@ -49,12 +49,24 @@
                     <strong>{{ resumo_sincronizacao.ja_existentes }}</strong>
                 </div>
                 <div class="stat-card">
-                    <span>Fora do padrão</span>
-                    <strong>{{ resumo_sincronizacao.arquivos_fora_padrao }}</strong>
+                    <span>Tipo não aceito</span>
+                    <strong>{{ resumo_sincronizacao.ignorados_tipo_nao_aceito }}</strong>
+                </div>
+                <div class="stat-card">
+                    <span>Competência não identificada</span>
+                    <strong>{{ resumo_sincronizacao.competencia_nao_identificada }}</strong>
                 </div>
                 <div class="stat-card">
                     <span>Colaboradores não encontrados</span>
                     <strong>{{ resumo_sincronizacao.colaboradores_nao_encontrados }}</strong>
+                </div>
+                <div class="stat-card">
+                    <span>Colaboradores inativos</span>
+                    <strong>{{ resumo_sincronizacao.colaboradores_inativos }}</strong>
+                </div>
+                <div class="stat-card">
+                    <span>Fora do padrão</span>
+                    <strong>{{ resumo_sincronizacao.arquivos_fora_padrao }}</strong>
                 </div>
                 <div class="stat-card">
                     <span>Pendências</span>
