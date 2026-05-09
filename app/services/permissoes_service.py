@@ -20,6 +20,7 @@ ACOES_PERMISSAO = [
 DEPARTAMENTO_PESSOAL_SLUG = "departamento_pessoal"
 DEPARTAMENTO_DOCUMENTOS_PESSOAIS_SLUG = "documentos_pessoais"
 MODULO_HOLERITES_SLUG = "holerites"
+MODULO_DOCUMENTOS_SLUG = "documentos"
 
 
 def buscar_usuario_com_permissoes(usuario_id):
@@ -29,7 +30,10 @@ def buscar_usuario_com_permissoes(usuario_id):
 def buscar_departamentos_com_modulos():
     return (
         Departamento.query
-        .filter_by(ativo=True)
+        .filter(
+            Departamento.ativo.is_(True),
+            Departamento.slug != DEPARTAMENTO_DOCUMENTOS_PESSOAIS_SLUG,
+        )
         .order_by(Departamento.ordem.asc(), Departamento.nome.asc())
         .all()
     )
@@ -56,6 +60,7 @@ def buscar_permissoes_ativas_usuario(usuario_id):
             PermissaoUsuarioModulo.pode_visualizar.is_(True),
             Modulo.ativo.is_(True),
             Departamento.ativo.is_(True),
+            Departamento.slug != DEPARTAMENTO_DOCUMENTOS_PESSOAIS_SLUG,
         )
         .order_by(
             Departamento.ordem.asc(),
@@ -259,6 +264,23 @@ def usuario_tem_permissao(usuario, departamento_slug, modulo_slug, acao="visuali
     return bool(getattr(permissao, campo_acao, False))
 
 
+def usuario_tem_permissao_holerites(usuario, acao="visualizar"):
+    if usuario_tem_permissao(
+        usuario,
+        DEPARTAMENTO_PESSOAL_SLUG,
+        MODULO_HOLERITES_SLUG,
+        acao,
+    ):
+        return True
+
+    return usuario_tem_permissao(
+        usuario,
+        DEPARTAMENTO_DOCUMENTOS_PESSOAIS_SLUG,
+        MODULO_HOLERITES_SLUG,
+        acao,
+    )
+
+
 def buscar_departamentos_liberados(usuario):
     """
     Retorna os departamentos que o usuário pode visualizar.
@@ -306,11 +328,7 @@ def buscar_departamentos_liberados(usuario):
             departamentos.append(departamento)
             ids_adicionados.add(departamento.id)
 
-    if usuario_tem_permissao(
-        usuario,
-        DEPARTAMENTO_DOCUMENTOS_PESSOAIS_SLUG,
-        MODULO_HOLERITES_SLUG,
-    ):
+    if usuario_tem_permissao_holerites(usuario):
         departamento_pessoal = Departamento.query.filter_by(
             slug=DEPARTAMENTO_PESSOAL_SLUG,
             ativo=True,
@@ -376,17 +394,10 @@ def buscar_modulos_liberados(usuario, departamento_slug):
 
     modulos = [permissao.modulo for permissao in permissoes]
 
-    if (
-        departamento_slug == DEPARTAMENTO_PESSOAL_SLUG
-        and usuario_tem_permissao(
-            usuario,
-            DEPARTAMENTO_DOCUMENTOS_PESSOAIS_SLUG,
-            MODULO_HOLERITES_SLUG,
-        )
-    ):
+    if departamento_slug == DEPARTAMENTO_PESSOAL_SLUG and usuario_tem_permissao_holerites(usuario):
         modulo_documentos = Modulo.query.filter_by(
             departamento_id=departamento.id,
-            slug="documentos",
+            slug=MODULO_DOCUMENTOS_SLUG,
             ativo=True,
         ).first()
 
@@ -443,11 +454,7 @@ def buscar_departamentos_liberados_usuario(usuario):
         .all()
     )
 
-    if usuario_tem_permissao(
-        usuario,
-        DEPARTAMENTO_DOCUMENTOS_PESSOAIS_SLUG,
-        MODULO_HOLERITES_SLUG,
-    ):
+    if usuario_tem_permissao_holerites(usuario):
         departamento_pessoal = Departamento.query.filter_by(
             slug=DEPARTAMENTO_PESSOAL_SLUG,
             ativo=True,

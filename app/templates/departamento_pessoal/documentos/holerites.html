@@ -9,9 +9,19 @@
             <p>Listagem documental de holerites vinculados aos colaboradores.</p>
         </div>
 
-        <a class="btn btn-secondary" href="{{ url_for('documentos.index') }}">
-            Voltar
-        </a>
+        <div class="page-actions">
+            {% if pode_sincronizar %}
+                <form method="post" action="{{ url_for('documentos.sincronizar_holerites') }}">
+                    <button class="btn btn-primary" type="submit">
+                        Sincronizar Google Drive
+                    </button>
+                </form>
+            {% endif %}
+
+            <a class="btn btn-secondary" href="{{ url_for('documentos.index') }}">
+                Voltar
+            </a>
+        </div>
     </div>
 
     <div class="details-card">
@@ -20,6 +30,50 @@
             finalidade administrativa autorizada e as políticas internas da empresa.
         </p>
     </div>
+
+    {% if resumo_sincronizacao %}
+        <div class="details-card">
+            <h2>Resumo da sincronização</h2>
+
+            <div class="stat-grid">
+                <div class="stat-card">
+                    <span>Arquivos encontrados</span>
+                    <strong>{{ resumo_sincronizacao.arquivos_encontrados }}</strong>
+                </div>
+                <div class="stat-card">
+                    <span>Importados</span>
+                    <strong>{{ resumo_sincronizacao.importados }}</strong>
+                </div>
+                <div class="stat-card">
+                    <span>Já existentes</span>
+                    <strong>{{ resumo_sincronizacao.ja_existentes }}</strong>
+                </div>
+                <div class="stat-card">
+                    <span>Fora do padrão</span>
+                    <strong>{{ resumo_sincronizacao.arquivos_fora_padrao }}</strong>
+                </div>
+                <div class="stat-card">
+                    <span>Colaboradores não encontrados</span>
+                    <strong>{{ resumo_sincronizacao.colaboradores_nao_encontrados }}</strong>
+                </div>
+                <div class="stat-card">
+                    <span>Pendências</span>
+                    <strong>{{ resumo_sincronizacao.erros }}</strong>
+                </div>
+            </div>
+
+            {% if resumo_sincronizacao.mensagens %}
+                <div class="alert alert-warning">
+                    <strong>Ocorrências da sincronização:</strong>
+                    <ul>
+                        {% for mensagem in resumo_sincronizacao.mensagens %}
+                            <li>{{ mensagem }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+        </div>
+    {% endif %}
 
     <div class="table-card table-responsive">
         <table class="table">
