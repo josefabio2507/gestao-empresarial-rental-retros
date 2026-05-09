@@ -83,9 +83,27 @@ class ParserHoleritesDriveTest(unittest.TestCase):
             "44",
         )
 
+    def test_competencia_mes_ano_com_hifen_e_reconhecida(self):
+        self.assertArquivoValido(
+            "15-Holerite Salário 02-2023 - Fulano.pdf",
+            "Holerite Mensal",
+            "02/2023",
+            "15",
+        )
+
     def test_matricula_com_zero_a_esquerda_e_equivalente(self):
         self.assertEqual(extrair_matricula_pasta("000079 - William Lino"), "000079")
         self.assertTrue(matriculas_equivalentes("79", "000079"))
+
+    def test_numero_inicial_do_pdf_nao_define_colaborador(self):
+        resultado = analisar_nome_arquivo_holerite(
+            "79 -Holerite Salário 08.2025 - João da Silva.pdf"
+        )
+
+        self.assertTrue(resultado["valido"])
+        self.assertEqual(resultado["matricula"], "79")
+        self.assertEqual(resultado["tipo"], "Holerite Mensal")
+        self.assertEqual(resultado["competencia"], "08/2025")
 
     def test_tipos_de_holerite_sao_normalizados(self):
         self.assertArquivoValido(
@@ -109,6 +127,14 @@ class ParserHoleritesDriveTest(unittest.TestCase):
     def test_cartoes_de_ponto_sao_ignorados_por_tipo(self):
         resultado = analisar_nome_arquivo_holerite(
             "07-Cartões de ponto 26.12.2022 á 25.01.2023 WILLIAN.pdf"
+        )
+
+        self.assertFalse(resultado["valido"])
+        self.assertEqual(resultado["motivo"], "tipo_nao_aceito")
+
+    def test_informe_de_rendimentos_e_ignorado_por_tipo(self):
+        resultado = analisar_nome_arquivo_holerite(
+            "18-Informe de Rendimentos 2024 - Fulano.pdf"
         )
 
         self.assertFalse(resultado["valido"])
