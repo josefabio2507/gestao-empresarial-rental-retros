@@ -18,7 +18,7 @@ from app.services.google_drive_service import (
 PADRAO_PASTA_COLABORADOR = re.compile(r"^\s*(?P<matricula>\d+)")
 PADRAO_MATRICULA_ARQUIVO = re.compile(r"^\s*(?P<matricula>\d+)\s*[-_\s]*")
 PADROES_COMPETENCIA = [
-    re.compile(r"(?<!\d)(?P<mes>0?[1-9]|1[0-2])\s*[./]\s*(?P<ano>19\d{2}|20\d{2})(?!\d)"),
+    re.compile(r"(?<!\d)(?P<mes>0?[1-9]|1[0-2])\s*[./-]\s*(?P<ano>19\d{2}|20\d{2})(?!\d)"),
     re.compile(r"(?<!\d)(?P<ano>19\d{2}|20\d{2})\s*-\s*(?P<mes>0?[1-9]|1[0-2])(?!\d)"),
     re.compile(r"(?<!\d)(?P<mes>0?[1-9]|1[0-2])\s+(?P<ano>19\d{2}|20\d{2})(?!\d)"),
 ]
@@ -335,16 +335,6 @@ def sincronizar_holerites_google_drive(usuario_id=None, drive_service=None, fold
                 "competencia": analise_arquivo["competencia"],
                 "nome": analise_arquivo["nome"],
             }
-
-            if (
-                dados_arquivo["matricula"]
-                and not matriculas_equivalentes(dados_arquivo["matricula"], matricula)
-            ):
-                resumo.arquivos_fora_padrao += 1
-                resumo.adicionar_mensagem(
-                    f"Arquivo com matrícula diferente da pasta: {nome_arquivo}"
-                )
-                continue
 
             if holerite_ja_importado(colaborador.id, dados_arquivo, arquivo):
                 resumo.ja_existentes += 1
