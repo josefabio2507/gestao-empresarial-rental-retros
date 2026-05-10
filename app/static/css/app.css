@@ -705,6 +705,43 @@ textarea {
     padding: 18px;
 }
 
+.holerites-scroll-box {
+    max-height: 620px;
+    overflow: auto;
+}
+
+.holerites-scroll-box .table {
+    min-width: 980px;
+}
+
+.sync-inline-form {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.sync-competencia-input {
+    width: 120px;
+    min-height: 42px;
+    border: 1px solid var(--rr-border);
+    border-radius: 9px;
+    padding: 10px 12px;
+    color: var(--rr-navy);
+}
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
 .form-group label {
     color: var(--rr-navy);
 }

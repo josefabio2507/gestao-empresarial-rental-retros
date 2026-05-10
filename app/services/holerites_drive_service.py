@@ -49,6 +49,7 @@ class ResumoSincronizacaoHolerites:
     arquivos_processados_lote: int = 0
     pastas_processadas: int = 0
     tamanho_lote: int = TAMANHO_LOTE_PADRAO
+    competencia_processada: str | None = None
     concluido: bool = False
     proximo_estado: dict | None = None
     erros: int = 0
@@ -73,6 +74,7 @@ class ResumoSincronizacaoHolerites:
             "arquivos_processados_lote": self.arquivos_processados_lote,
             "pastas_processadas": self.pastas_processadas,
             "tamanho_lote": self.tamanho_lote,
+            "competencia_processada": self.competencia_processada,
             "concluido": self.concluido,
             "proximo_estado": self.proximo_estado,
             "erros": self.erros,
@@ -155,6 +157,10 @@ def extrair_competencia(nome_base):
             )
 
     return None
+
+
+def normalizar_competencia_informada(valor):
+    return extrair_competencia(str(valor or ""))
 
 
 def normalizar_tipo_documento(nome_base):
@@ -346,11 +352,17 @@ def sincronizar_holerites_google_drive(
     folder_id=None,
     estado=None,
     limite_arquivos=TAMANHO_LOTE_PADRAO,
+    competencia_filtro=None,
 ):
     resumo = ResumoSincronizacaoHolerites()
     resumo.tamanho_lote = limite_arquivos
+    resumo.competencia_processada = normalizar_competencia_informada(competencia_filtro)
     folder_id = folder_id or current_app.config.get("GOOGLE_DRIVE_HOLERITES_FOLDER_ID")
     estado_atual = estado.copy() if estado else _novo_estado()
+    if not resumo.competencia_processada and estado_atual.get("competencia_filtro"):
+        resumo.competencia_processada = estado_atual["competencia_filtro"]
+    if resumo.competencia_processada:
+        estado_atual["competencia_filtro"] = resumo.competencia_processada
     caches_holerites = {}
 
     if not folder_id:
@@ -492,6 +504,12 @@ def sincronizar_holerites_google_drive(
                 "competencia": analise_arquivo["competencia"],
                 "nome": analise_arquivo["nome"],
             }
+
+            if (
+                resumo.competencia_processada
+                and dados_arquivo["competencia"] != resumo.competencia_processada
+            ):
+                continue
 
             if holerite_ja_importado_com_cache(
                 cache_holerites,

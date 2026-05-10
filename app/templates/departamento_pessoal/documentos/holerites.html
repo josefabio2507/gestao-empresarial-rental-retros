@@ -11,9 +11,18 @@
 
         <div class="page-actions">
             {% if pode_sincronizar %}
-                <form method="post" action="{{ url_for('documentos.sincronizar_holerites') }}">
+                <form method="post" action="{{ url_for('documentos.sincronizar_holerites') }}" class="sync-inline-form">
+                    <label for="competencia-sync" class="sr-only">Competência</label>
+                    <input
+                        id="competencia-sync"
+                        class="form-control sync-competencia-input"
+                        type="text"
+                        name="competencia"
+                        placeholder="MM/AAAA"
+                        required
+                    >
                     <button class="btn btn-primary" type="submit">
-                        Sincronizar Google Drive
+                        Sincronizar competência
                     </button>
                 </form>
             {% endif %}
@@ -36,6 +45,12 @@
             <h2>Resumo da sincronização</h2>
 
             <div class="stat-grid">
+                {% if resumo_sincronizacao.competencia_processada %}
+                    <div class="stat-card">
+                        <span>Competência processada</span>
+                        <strong>{{ resumo_sincronizacao.competencia_processada }}</strong>
+                    </div>
+                {% endif %}
                 <div class="stat-card">
                     <span>Processados no lote</span>
                     <strong>{{ resumo_sincronizacao.arquivos_processados_lote }}</strong>
@@ -112,7 +127,7 @@
         </div>
     {% endif %}
 
-    <div class="table-card table-responsive">
+    <div class="table-card table-responsive holerites-scroll-box">
         <table class="table">
             <thead>
                 <tr>
