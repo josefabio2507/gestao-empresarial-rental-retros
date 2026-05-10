@@ -44,7 +44,8 @@ from app.departamento_pessoal.pedido_refeicoes.services import (
     buscar_consumo_por_id,
     criar_consumo_refeicao,
     criar_consumos_refeicao_bebida,
-    atualizar_consumo_refeicao,
+    atualizar_consumos_refeicao_bebida,
+    buscar_consumos_relacionados,
     remover_consumo_refeicao,
     calcular_resumo_pedido,
     fechar_pedido_refeicao,
@@ -718,18 +719,22 @@ def editar_consumo(consumo_id):
     pedido = consumo.pedido
 
     if not pedido_pode_ser_editado(pedido):
-        flash("Somente pedidos em aberto podem ter consumo alterado.", "danger")
+        flash("Este pedido não permite mais alterações de consumo.", "danger")
         return redirect(url_for("pedido_refeicoes.detalhes_pedido", pedido_id=pedido.id))
 
     colaboradores = buscar_colaboradores_do_pedido(pedido)
     itens = buscar_itens_do_pedido(pedido)
+    refeicoes, bebidas = separar_itens_consumo(itens)
+    consumo_refeicao, consumo_bebida = buscar_consumos_relacionados(consumo)
 
     if request.method == "POST":
-        sucesso, mensagem = atualizar_consumo_refeicao(
-            consumo=consumo,
+        sucesso, mensagem = atualizar_consumos_refeicao_bebida(
+            consumo_referencia=consumo,
             colaborador_id=request.form.get("colaborador_id"),
-            item_cardapio_id=request.form.get("item_cardapio_id"),
-            quantidade=request.form.get("quantidade"),
+            refeicao_id=request.form.get("refeicao_id"),
+            bebida_id=request.form.get("bebida_id"),
+            quantidade_refeicao=request.form.get("quantidade_refeicao"),
+            quantidade_bebida=request.form.get("quantidade_bebida"),
             observacao=request.form.get("observacao", ""),
         )
 
@@ -743,8 +748,12 @@ def editar_consumo(consumo_id):
         "departamento_pessoal/pedido_refeicoes/consumo_form.html",
         pedido=pedido,
         consumo=consumo,
+        consumo_refeicao=consumo_refeicao,
+        consumo_bebida=consumo_bebida,
         colaboradores=colaboradores,
         itens=itens,
+        refeicoes=refeicoes,
+        bebidas=bebidas,
         modo="editar",
         formatar_moeda=formatar_moeda,
     )

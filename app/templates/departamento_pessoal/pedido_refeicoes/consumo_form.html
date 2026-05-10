@@ -55,89 +55,63 @@
                 <small>Exibe apenas colaboradores ativos da equipe do pedido.</small>
             </div>
 
-            {% if modo == "novo" %}
-                <div class="form-group">
-                    <label for="refeicao_id">Refeição / Prato</label>
-                    <select name="refeicao_id" id="refeicao_id">
-                        <option value="">Nenhuma refeição</option>
+            <div class="form-group">
+                <label for="refeicao_id">Refeição / Prato</label>
+                <select name="refeicao_id" id="refeicao_id">
+                    <option value="">Nenhuma refeição</option>
 
-                        {% for item in refeicoes %}
-                            <option value="{{ item.id }}">
-                                {{ item.nome }} — {{ formatar_moeda(item.preco) }}
-                            </option>
-                        {% endfor %}
-                    </select>
-                    <small>Opcional quando uma bebida for selecionada.</small>
-                </div>
+                    {% for item in refeicoes %}
+                        <option
+                            value="{{ item.id }}"
+                            {% if consumo_refeicao is defined and consumo_refeicao and consumo_refeicao.item_cardapio_id == item.id %}selected{% endif %}
+                        >
+                            {{ item.nome }} — {{ formatar_moeda(item.preco) }}
+                        </option>
+                    {% endfor %}
+                </select>
+                <small>Opcional quando uma bebida for selecionada.</small>
+            </div>
 
-                <div class="form-group">
-                    <label for="quantidade_refeicao">Quantidade da refeição</label>
-                    <input
-                        type="number"
-                        name="quantidade_refeicao"
-                        id="quantidade_refeicao"
-                        min="1"
-                        step="1"
-                        value="1"
-                    >
-                </div>
+            <div class="form-group">
+                <label for="quantidade_refeicao">Quantidade da refeição</label>
+                <input
+                    type="number"
+                    name="quantidade_refeicao"
+                    id="quantidade_refeicao"
+                    min="1"
+                    step="1"
+                    value="{{ consumo_refeicao.quantidade if consumo_refeicao is defined and consumo_refeicao else 1 }}"
+                >
+            </div>
 
-                <div class="form-group">
-                    <label for="bebida_id">Bebida</label>
-                    <select name="bebida_id" id="bebida_id">
-                        <option value="">Nenhuma bebida</option>
+            <div class="form-group">
+                <label for="bebida_id">Bebida</label>
+                <select name="bebida_id" id="bebida_id">
+                    <option value="">Nenhuma bebida</option>
 
-                        {% for item in bebidas %}
-                            <option value="{{ item.id }}">
-                                {{ item.nome }} — {{ formatar_moeda(item.preco) }}
-                            </option>
-                        {% endfor %}
-                    </select>
-                    <small>Opcional quando uma refeição for selecionada.</small>
-                </div>
+                    {% for item in bebidas %}
+                        <option
+                            value="{{ item.id }}"
+                            {% if consumo_bebida is defined and consumo_bebida and consumo_bebida.item_cardapio_id == item.id %}selected{% endif %}
+                        >
+                            {{ item.nome }} — {{ formatar_moeda(item.preco) }}
+                        </option>
+                    {% endfor %}
+                </select>
+                <small>Opcional quando uma refeição for selecionada.</small>
+            </div>
 
-                <div class="form-group">
-                    <label for="quantidade_bebida">Quantidade da bebida</label>
-                    <input
-                        type="number"
-                        name="quantidade_bebida"
-                        id="quantidade_bebida"
-                        min="1"
-                        step="1"
-                        value="1"
-                    >
-                </div>
-            {% else %}
-                <div class="form-group">
-                    <label for="item_cardapio_id">Item do cardápio</label>
-                    <select name="item_cardapio_id" id="item_cardapio_id" required>
-                        <option value="">Selecione...</option>
-
-                        {% for item in itens %}
-                            <option
-                                value="{{ item.id }}"
-                                {% if consumo and consumo.item_cardapio_id == item.id %}selected{% endif %}
-                            >
-                                {{ item.nome }} — {{ item.tipo }} — {{ formatar_moeda(item.preco) }}
-                            </option>
-                        {% endfor %}
-                    </select>
-                    <small>O preço vem automaticamente do cadastro do cardápio.</small>
-                </div>
-
-                <div class="form-group">
-                    <label for="quantidade">Quantidade</label>
-                    <input
-                        type="number"
-                        name="quantidade"
-                        id="quantidade"
-                        min="1"
-                        step="1"
-                        value="{{ consumo.quantidade if consumo else 1 }}"
-                        required
-                    >
-                </div>
-            {% endif %}
+            <div class="form-group">
+                <label for="quantidade_bebida">Quantidade da bebida</label>
+                <input
+                    type="number"
+                    name="quantidade_bebida"
+                    id="quantidade_bebida"
+                    min="1"
+                    step="1"
+                    value="{{ consumo_bebida.quantidade if consumo_bebida is defined and consumo_bebida else 1 }}"
+                >
+            </div>
         </div>
 
         <div class="form-group">

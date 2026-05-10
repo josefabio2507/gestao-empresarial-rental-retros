@@ -309,6 +309,9 @@ def pedido_pode_ser_editado(pedido):
     if pedido.status == STATUS_PEDIDO_ABERTO:
         return True
 
+    if pedido.status == STATUS_PEDIDO_FECHADO:
+        return True
+
     if pedido_enviado_com_correcao_permitida(pedido):
         return True
 
@@ -656,6 +659,134 @@ def criar_consumos_refeicao_bebida(
         return True, "Consumo lançado com sucesso."
 
     return True, "Consumos lançados com sucesso."
+
+
+def buscar_consumos_relacionados(consumo):
+    if not consumo:
+        return None, None
+
+    observacao_base = (consumo.observacao or "").strip()
+    consumo_refeicao = None
+    consumo_bebida = None
+
+    consumos = (
+        ConsumoRefeicao.query
+        .join(ItemCardapio)
+        .filter(
+            ConsumoRefeicao.pedido_id == consumo.pedido_id,
+            ConsumoRefeicao.colaborador_id == consumo.colaborador_id,
+        )
+        .order_by(ConsumoRefeicao.id.asc())
+        .all()
+    )
+
+    for consumo_relacionado in consumos:
+        observacao_relacionada = (consumo_relacionado.observacao or "").strip()
+
+        if observacao_relacionada != observacao_base:
+            continue
+
+        item = consumo_relacionado.item_cardapio
+
+        if not item:
+            continue
+
+        if item.tipo == "Refeição" and (
+            consumo_relacionado.id == consumo.id or consumo_refeicao is None
+        ):
+            consumo_refeicao = consumo_relacionado
+
+        if item.tipo == "Bebida" and (
+            consumo_relacionado.id == consumo.id or consumo_bebida is None
+        ):
+            consumo_bebida = consumo_relacionado
+
+    return consumo_refeicao, consumo_bebida
+
+
+def atualizar_consumos_refeicao_bebida(
+    consumo_referencia,
+    colaborador_id,
+    refeicao_id=None,
+    bebida_id=None,
+    quantidade_refeicao=1,
+    quantidade_bebida=1,
+    observacao=None
+):
+    if not consumo_referencia:
+        return False, "Consumo não encontrado."
+
+    pedido = consumo_referencia.pedido
+
+    if not pedido_pode_ser_editado(pedido):
+        return False, "Este pedido não permite mais alterações de consumo."
+
+    if not refeicao_id and not bebida_id:
+        return False, "Selecione uma refeição ou uma bebida para atualizar o consumo."
+
+    consumo_refeicao, consumo_bebida = buscar_consumos_relacionados(consumo_referencia)
+    consumos_validados = {}
+
+    for chave, item_id, quantidade, tipo_esperado in [
+        ("refeicao", refeicao_id, quantidade_refeicao, "Refeição"),
+        ("bebida", bebida_id, quantidade_bebida, "Bebida"),
+    ]:
+        if not item_id:
+            continue
+
+        valido, mensagem, colaborador, item, quantidade_convertida = validar_consumo(
+            pedido=pedido,
+            colaborador_id=colaborador_id,
+            item_cardapio_id=item_id,
+            quantidade=quantidade,
+        )
+
+        if not valido:
+            return False, mensagem
+
+        if item.tipo != tipo_esperado:
+            return False, "Item selecionado inválido para este campo."
+
+        consumos_validados[chave] = {
+            "colaborador": colaborador,
+            "item": item,
+            "quantidade": quantidade_convertida,
+        }
+
+    observacao_normalizada = observacao.strip() if observacao else ""
+
+    def salvar_consumo(consumo, dados_consumo):
+        item = dados_consumo["item"]
+        quantidade_convertida = dados_consumo["quantidade"]
+        valor_unitario = item.preco
+        valor_total = valor_unitario * quantidade_convertida
+
+        if not consumo:
+            consumo = ConsumoRefeicao(pedido_id=pedido.id)
+            db.session.add(consumo)
+
+        consumo.colaborador_id = dados_consumo["colaborador"].id
+        consumo.item_cardapio_id = item.id
+        consumo.quantidade = quantidade_convertida
+        consumo.valor_unitario = valor_unitario
+        consumo.valor_total = valor_total
+        consumo.observacao = observacao_normalizada
+
+        return consumo
+
+    if "refeicao" in consumos_validados:
+        salvar_consumo(consumo_refeicao, consumos_validados["refeicao"])
+    elif consumo_refeicao:
+        db.session.delete(consumo_refeicao)
+
+    if "bebida" in consumos_validados:
+        salvar_consumo(consumo_bebida, consumos_validados["bebida"])
+    elif consumo_bebida:
+        db.session.delete(consumo_bebida)
+
+    db.session.commit()
+
+    return True, "Consumo atualizado com sucesso."
 
 
 def atualizar_consumo_refeicao(
