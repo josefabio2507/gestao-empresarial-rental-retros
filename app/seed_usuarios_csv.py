@@ -114,19 +114,22 @@ def nivel_acesso_existe(nivel_acesso_id):
     return NivelAcesso.query.filter_by(id=nivel_acesso_id).first() is not None
 
 
-def colaborador_ja_vinculado(colaborador_id):
+def colaborador_ja_vinculado(colaborador_id, usuario_id_ignorado=None):
+    query = Usuario.query.filter(
+        Usuario.colaborador_id == colaborador_id,
+        Usuario.ativo.is_(True),
+    )
+
+    if usuario_id_ignorado:
+        query = query.filter(Usuario.id != usuario_id_ignorado)
+
     return (
-        Usuario.query
-        .filter(
-            Usuario.colaborador_id == colaborador_id,
-            Usuario.ativo.is_(True),
-        )
-        .first()
+        query.first()
         is not None
     )
 
 
-def resolver_colaborador_por_email(email, colaboradores_por_email):
+def resolver_colaborador_por_email(email, colaboradores_por_email, usuario_id_ignorado=None):
     colaboradores = colaboradores_por_email.get(email, [])
 
     if not colaboradores:
@@ -140,13 +143,40 @@ def resolver_colaborador_por_email(email, colaboradores_por_email):
     if not getattr(colaborador, "ativo", True):
         return None, "colaborador_inativo"
 
-    if colaborador_ja_vinculado(colaborador.id):
+    if colaborador_ja_vinculado(colaborador.id, usuario_id_ignorado=usuario_id_ignorado):
         return None, "colaborador_ja_vinculado"
 
     return colaborador, "vinculado"
 
 
-def criar_usuario_da_linha(linha, senha_padrao, colaboradores_por_email):
+def atualizar_vinculo_usuario_existente(usuario, email, colaboradores_por_email):
+    if usuario.colaborador_id:
+        return {
+            "usuario": usuario,
+            "criado": False,
+            "existente": True,
+            "status_vinculo": "vinculo_preservado",
+        }
+
+    colaborador, status_vinculo = resolver_colaborador_por_email(
+        email,
+        colaboradores_por_email,
+        usuario_id_ignorado=usuario.id,
+    )
+
+    if colaborador:
+        usuario.colaborador_id = colaborador.id
+        status_vinculo = "usuario_existente_vinculado"
+
+    return {
+        "usuario": usuario,
+        "criado": False,
+        "existente": True,
+        "status_vinculo": status_vinculo,
+    }
+
+
+def processar_linha_usuario(linha, senha_padrao, colaboradores_por_email):
     nome = (linha.get("nome") or "").strip()
     email = normalizar_email(linha.get("email"))
     nivel_acesso_id = converter_inteiro(linha.get("nivel_acesso_id"), "nivel_acesso_id")
@@ -162,8 +192,14 @@ def criar_usuario_da_linha(linha, senha_padrao, colaboradores_por_email):
     if not email:
         raise ValueError("E-mail é obrigatório.")
 
-    if usuario_existente_por_email(email):
-        return None, "usuario_existente"
+    usuario_existente = usuario_existente_por_email(email)
+
+    if usuario_existente:
+        return atualizar_vinculo_usuario_existente(
+            usuario_existente,
+            email,
+            colaboradores_por_email,
+        )
 
     if not nivel_acesso_existe(nivel_acesso_id):
         raise ValueError("Nível de acesso não encontrado.")
@@ -184,7 +220,15 @@ def criar_usuario_da_linha(linha, senha_padrao, colaboradores_por_email):
     usuario.definir_senha(senha_padrao)
     db.session.add(usuario)
 
-    return usuario, status_vinculo
+    if status_vinculo == "vinculado":
+        status_vinculo = "novo_usuario_vinculado"
+
+    return {
+        "usuario": usuario,
+        "criado": True,
+        "existente": False,
+        "status_vinculo": status_vinculo,
+    }
 
 
 def montar_resumo():
@@ -192,9 +236,12 @@ def montar_resumo():
         "total_linhas": 0,
         "usuarios_criados": 0,
         "usuarios_existentes": 0,
-        "usuarios_vinculados": 0,
+        "novos_usuarios_vinculados": 0,
+        "usuarios_existentes_vinculados": 0,
+        "usuarios_com_vinculo_preservado": 0,
         "usuarios_sem_colaborador": 0,
         "conflitos_colaborador_email": 0,
+        "colaboradores_ja_vinculados": 0,
         "linhas_ignoradas": 0,
         "emails_sem_colaborador": [],
         "erros": [],
@@ -216,23 +263,33 @@ def importar_usuarios_csv(caminho_csv, senha_padrao):
     try:
         for indice, linha in enumerate(linhas, start=2):
             try:
-                usuario, status_vinculo = criar_usuario_da_linha(
+                resultado = processar_linha_usuario(
                     linha,
                     senha_padrao,
                     colaboradores_por_email,
                 )
+                usuario = resultado["usuario"]
+                status_vinculo = resultado["status_vinculo"]
 
-                if status_vinculo == "usuario_existente":
+                if resultado["existente"]:
                     resumo["usuarios_existentes"] += 1
-                    continue
 
-                resumo["usuarios_criados"] += 1
+                if resultado["criado"]:
+                    resumo["usuarios_criados"] += 1
+
                 resumo["status_vinculo"][status_vinculo] += 1
 
-                if status_vinculo == "vinculado":
-                    resumo["usuarios_vinculados"] += 1
+                if status_vinculo == "novo_usuario_vinculado":
+                    resumo["novos_usuarios_vinculados"] += 1
+                elif status_vinculo == "usuario_existente_vinculado":
+                    resumo["usuarios_existentes_vinculados"] += 1
+                elif status_vinculo == "vinculo_preservado":
+                    resumo["usuarios_com_vinculo_preservado"] += 1
                 elif status_vinculo == "conflito_email_colaborador":
                     resumo["conflitos_colaborador_email"] += 1
+                    resumo["usuarios_sem_colaborador"] += 1
+                elif status_vinculo == "colaborador_ja_vinculado":
+                    resumo["colaboradores_ja_vinculados"] += 1
                     resumo["usuarios_sem_colaborador"] += 1
                 else:
                     resumo["usuarios_sem_colaborador"] += 1
@@ -260,9 +317,12 @@ def imprimir_resumo(resumo):
     print(f"Total de linhas lidas: {resumo['total_linhas']}")
     print(f"Usuários criados: {resumo['usuarios_criados']}")
     print(f"Usuários já existentes: {resumo['usuarios_existentes']}")
-    print(f"Usuários vinculados a colaboradores: {resumo['usuarios_vinculados']}")
-    print(f"Usuários criados sem colaborador correspondente: {resumo['usuarios_sem_colaborador']}")
+    print(f"Novos usuários vinculados a colaboradores: {resumo['novos_usuarios_vinculados']}")
+    print(f"Usuários existentes vinculados nesta execução: {resumo['usuarios_existentes_vinculados']}")
+    print(f"Usuários que já tinham vínculo preservado: {resumo['usuarios_com_vinculo_preservado']}")
+    print(f"Usuários sem colaborador correspondente: {resumo['usuarios_sem_colaborador']}")
     print(f"Conflitos de colaborador por e-mail duplicado: {resumo['conflitos_colaborador_email']}")
+    print(f"Colaboradores já vinculados a outro usuário: {resumo['colaboradores_ja_vinculados']}")
     print(f"Linhas ignoradas por erro: {resumo['linhas_ignoradas']}")
 
     if resumo["status_vinculo"]:
