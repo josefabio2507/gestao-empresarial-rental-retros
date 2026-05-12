@@ -5,10 +5,11 @@ from app.decorators import admin_required
 from app.models import Usuario
 from app.services.logs_service import registrar_log
 from app.services.usuarios_service import (
-    buscar_usuarios,
+    buscar_usuarios_por_colaborador,
     buscar_usuario_por_id,
     buscar_niveis_ativos,
     buscar_colaboradores_ativos_para_vinculo,
+    buscar_colaboradores_para_filtro_usuarios,
     criar_usuario,
     atualizar_usuario,
     alterar_status_usuario,
@@ -32,8 +33,21 @@ def incluir_colaborador_atual(colaboradores, usuario):
 @login_required
 @admin_required
 def listar_usuarios():
-    usuarios = buscar_usuarios()
-    return render_template("usuarios/listar.html", usuarios=usuarios)
+    filtro_colaborador = request.args.get("colaborador_id", "novo")
+    colaboradores = buscar_colaboradores_para_filtro_usuarios()
+    filtro_aplicado = filtro_colaborador != "novo"
+    usuarios = []
+
+    if filtro_aplicado:
+        usuarios = buscar_usuarios_por_colaborador(filtro_colaborador)
+
+    return render_template(
+        "usuarios/listar.html",
+        usuarios=usuarios,
+        colaboradores=colaboradores,
+        filtro_colaborador=filtro_colaborador,
+        filtro_aplicado=filtro_aplicado,
+    )
 
 
 @usuarios_bp.route("/novo", methods=["GET", "POST"])
