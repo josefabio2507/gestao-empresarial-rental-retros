@@ -132,6 +132,21 @@
                     <small>Aceita vírgula. Exemplo: 25,50</small>
                 </div>
 
+                <div class="form-group">
+                    <label for="dia_semana">Dia da semana</label>
+                    <select name="dia_semana" id="dia_semana">
+                        {% for dia in dias_semana %}
+                            <option
+                                value="{{ dia }}"
+                                {% if (item and (item.dia_semana or 'Todos os Dias') == dia) or (not item and dia == 'Todos os Dias') %}selected{% endif %}
+                            >
+                                {{ dia }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                    <small>Aplicado às refeições. Bebidas continuam disponíveis normalmente.</small>
+                </div>
+
                 <div class="form-group checkbox-group">
                     <label>
                         <input
@@ -158,6 +173,7 @@
                     <th>Restaurante</th>
                     <th>Tipo</th>
                     <th>Item</th>
+                    <th>Dia da semana</th>
                     <th>Preço</th>
                     <th>Status</th>
                     <th>Ações</th>
@@ -170,6 +186,13 @@
                         <td>{{ item_cardapio.restaurante.nome if item_cardapio.restaurante else "-" }}</td>
                         <td>{{ item_cardapio.tipo }}</td>
                         <td>{{ item_cardapio.nome }}</td>
+                        <td class="col-nowrap">
+                            {% if item_cardapio.tipo == "Refeição" %}
+                                {{ item_cardapio.dia_semana or "Todos os Dias" }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
                         <td class="col-nowrap">{{ formatar_moeda(item_cardapio.preco) }}</td>
                         <td class="col-nowrap">
                             {% if item_cardapio.ativo %}
@@ -200,7 +223,7 @@
                     </tr>
                 {% else %}
                     <tr>
-                        <td class="empty-state" colspan="6">Nenhum item de cardápio cadastrado.</td>
+                        <td class="empty-state" colspan="7">Nenhum item de cardápio cadastrado.</td>
                     </tr>
                 {% endfor %}
             </tbody>

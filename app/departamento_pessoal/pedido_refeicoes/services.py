@@ -20,6 +20,29 @@ TIPOS_CARDAPIO = [
     "Outros",
 ]
 
+DIA_SEMANA_TODOS = "Todos os Dias"
+
+DIAS_SEMANA_CARDAPIO = [
+    "Domingo",
+    "Segunda-Feira",
+    "Terça-Feira",
+    "Quarta-Feira",
+    "Quinta-Feira",
+    "Sexta-Feira",
+    "Sábado",
+    DIA_SEMANA_TODOS,
+]
+
+DIAS_SEMANA_POR_WEEKDAY = {
+    0: "Segunda-Feira",
+    1: "Terça-Feira",
+    2: "Quarta-Feira",
+    3: "Quinta-Feira",
+    4: "Sexta-Feira",
+    5: "Sábado",
+    6: "Domingo",
+}
+
 
 def limpar_numeros(valor):
     if not valor:
@@ -165,11 +188,47 @@ def buscar_itens_cardapio(restaurante_id=None, tipo=None):
     )
 
 
+def dia_semana_por_data(data_pedido):
+    if not data_pedido:
+        return None
+
+    return DIAS_SEMANA_POR_WEEKDAY.get(data_pedido.weekday())
+
+
+def normalizar_dia_semana_cardapio(dia_semana):
+    dia = (dia_semana or "").strip()
+
+    if not dia:
+        return DIA_SEMANA_TODOS
+
+    return dia
+
+
+def item_disponivel_para_data(item, data_pedido):
+    if not item:
+        return False
+
+    if item.tipo != "Refeição":
+        return True
+
+    dia_item = normalizar_dia_semana_cardapio(getattr(item, "dia_semana", None))
+
+    if dia_item == DIA_SEMANA_TODOS:
+        return True
+
+    dia_pedido = dia_semana_por_data(data_pedido)
+
+    if not dia_pedido:
+        return False
+
+    return dia_item == dia_pedido
+
+
 def buscar_item_cardapio_por_id(item_id):
     return ItemCardapio.query.get(item_id)
 
 
-def validar_item_cardapio(restaurante_id, tipo, nome, preco):
+def validar_item_cardapio(restaurante_id, tipo, nome, preco, dia_semana=None):
     if not restaurante_id:
         return False, "Restaurante é obrigatório."
 
@@ -180,6 +239,11 @@ def validar_item_cardapio(restaurante_id, tipo, nome, preco):
 
     if tipo not in TIPOS_CARDAPIO:
         return False, "Tipo de item inválido."
+
+    dia_semana = normalizar_dia_semana_cardapio(dia_semana)
+
+    if dia_semana not in DIAS_SEMANA_CARDAPIO:
+        return False, "Dia da semana inválido."
 
     nome = nome.strip()
 
@@ -197,12 +261,13 @@ def validar_item_cardapio(restaurante_id, tipo, nome, preco):
     return True, ""
 
 
-def criar_item_cardapio(restaurante_id, tipo, nome, preco, ativo=True):
+def criar_item_cardapio(restaurante_id, tipo, nome, preco, ativo=True, dia_semana=None):
     valido, mensagem = validar_item_cardapio(
         restaurante_id=restaurante_id,
         tipo=tipo,
         nome=nome,
         preco=preco,
+        dia_semana=dia_semana,
     )
 
     if not valido:
@@ -213,6 +278,11 @@ def criar_item_cardapio(restaurante_id, tipo, nome, preco, ativo=True):
         tipo=tipo,
         nome=nome.strip(),
         preco=converter_preco(preco),
+        dia_semana=(
+            normalizar_dia_semana_cardapio(dia_semana)
+            if tipo == "Refeição"
+            else DIA_SEMANA_TODOS
+        ),
         ativo=ativo,
     )
 
@@ -222,12 +292,13 @@ def criar_item_cardapio(restaurante_id, tipo, nome, preco, ativo=True):
     return True, "Item de cardápio criado com sucesso."
 
 
-def atualizar_item_cardapio(item, restaurante_id, tipo, nome, preco, ativo=True):
+def atualizar_item_cardapio(item, restaurante_id, tipo, nome, preco, ativo=True, dia_semana=None):
     valido, mensagem = validar_item_cardapio(
         restaurante_id=restaurante_id,
         tipo=tipo,
         nome=nome,
         preco=preco,
+        dia_semana=dia_semana,
     )
 
     if not valido:
@@ -237,6 +308,11 @@ def atualizar_item_cardapio(item, restaurante_id, tipo, nome, preco, ativo=True)
     item.tipo = tipo
     item.nome = nome.strip()
     item.preco = converter_preco(preco)
+    item.dia_semana = (
+        normalizar_dia_semana_cardapio(dia_semana)
+        if tipo == "Refeição"
+        else DIA_SEMANA_TODOS
+    )
     item.ativo = ativo
 
     db.session.commit()
@@ -447,11 +523,12 @@ def buscar_colaboradores_do_pedido(pedido):
     )
 
 
-def buscar_itens_do_pedido(pedido):
+def buscar_itens_do_pedido(pedido, incluir_item_ids=None):
     if not pedido:
         return []
 
-    return (
+    incluir_item_ids = set(incluir_item_ids or [])
+    itens = (
         ItemCardapio.query
         .filter(
             ItemCardapio.ativo.is_(True),
@@ -463,6 +540,11 @@ def buscar_itens_do_pedido(pedido):
         )
         .all()
     )
+
+    return [
+        item for item in itens
+        if item.id in incluir_item_ids or item_disponivel_para_data(item, pedido.data_pedido)
+    ]
 
 
 def buscar_consumos_do_pedido(pedido):
@@ -499,7 +581,13 @@ def converter_quantidade(valor):
     return quantidade
 
 
-def validar_consumo(pedido, colaborador_id, item_cardapio_id, quantidade):
+def validar_consumo(
+    pedido,
+    colaborador_id,
+    item_cardapio_id,
+    quantidade,
+    permitir_item_indisponivel_id=None,
+):
     if not pedido:
         return False, "Pedido não encontrado.", None, None, None
 
@@ -533,6 +621,21 @@ def validar_consumo(pedido, colaborador_id, item_cardapio_id, quantidade):
 
     if item.restaurante_id != pedido.restaurante_id:
         return False, "Item inválido para este pedido.", None, None, None
+
+    item_indisponivel_permitido = (
+        permitir_item_indisponivel_id
+        and item.id == permitir_item_indisponivel_id
+    )
+
+    if item.tipo == "Refeição" and not item_disponivel_para_data(item, pedido.data_pedido):
+        if not item_indisponivel_permitido:
+            return (
+                False,
+                "Refeição indisponível para o dia da semana deste pedido.",
+                None,
+                None,
+                None,
+            )
 
     quantidade_convertida = converter_quantidade(quantidade)
 
@@ -739,6 +842,11 @@ def atualizar_consumos_refeicao_bebida(
             colaborador_id=colaborador_id,
             item_cardapio_id=item_id,
             quantidade=quantidade,
+            permitir_item_indisponivel_id=(
+                consumo_refeicao.item_cardapio_id
+                if chave == "refeicao" and consumo_refeicao
+                else None
+            ),
         )
 
         if not valido:
