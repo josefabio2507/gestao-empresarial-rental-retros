@@ -943,6 +943,10 @@ def titulo_resumo_por_tipo(tipo):
     return "*Outros*"
 
 
+def normalizar_observacao_whatsapp(observacao):
+    return observacao.strip() if observacao else ""
+
+
 def gerar_mensagem_whatsapp(pedido):
     consumos = buscar_consumos_do_pedido(pedido)
     resumo_pedido, total_geral = calcular_resumo_pedido(pedido)
@@ -955,6 +959,12 @@ def gerar_mensagem_whatsapp(pedido):
     linhas.append(f"Data: {formatar_data(pedido.data_pedido)}")
     linhas.append(f"Equipe: {pedido.equipe.nome if pedido.equipe else '-'}")
     linhas.append(f"Restaurante: {pedido.restaurante.nome if pedido.restaurante else '-'}")
+
+    observacao_pedido = normalizar_observacao_whatsapp(getattr(pedido, "observacao", ""))
+
+    if observacao_pedido:
+        linhas.append(f"Obs. do pedido: {observacao_pedido}")
+
     linhas.append("")
     linhas.append("━━━━━━━━━━━━━━━━━━━━")
     linhas.append("")
@@ -984,6 +994,7 @@ def gerar_mensagem_whatsapp(pedido):
         linhas.append(f"{contador}. *{colaborador.nome}*")
 
         observacoes = []
+        observacoes_registradas = set()
 
         for consumo in grupo["consumos"]:
             item = consumo.item_cardapio
@@ -994,8 +1005,12 @@ def gerar_mensagem_whatsapp(pedido):
             icone = icone_item_por_tipo(item.tipo)
             linhas.append(f"{icone} {item.nome} | Qtd: {consumo.quantidade}")
 
-            if consumo.observacao:
-                observacoes.append(consumo.observacao)
+            observacao_consumo = normalizar_observacao_whatsapp(consumo.observacao)
+            chave_observacao = observacao_consumo.lower()
+
+            if observacao_consumo and chave_observacao not in observacoes_registradas:
+                observacoes.append(observacao_consumo)
+                observacoes_registradas.add(chave_observacao)
 
         for observacao in observacoes:
             linhas.append(f"💬 Obs: {observacao}")
