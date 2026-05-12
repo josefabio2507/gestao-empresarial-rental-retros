@@ -1022,9 +1022,6 @@ def pedido_pode_enviar_whatsapp(pedido):
     if not pedido_tem_consumo(pedido):
         return False, "Pedido sem consumo não pode ser enviado por WhatsApp."
 
-    if not pedido.restaurante or not pedido.restaurante.telefone:
-        return False, "O restaurante não possui telefone cadastrado para WhatsApp."
-
     if pedido.quantidade_envios >= 2:
         return False, "Limite de envios atingido para este pedido."
 
@@ -1152,15 +1149,10 @@ def gerar_link_whatsapp(pedido):
     if not permitido:
         return False, mensagem, None
 
-    telefone = limpar_telefone(pedido.restaurante.telefone)
-
-    if not telefone:
-        return False, "O restaurante não possui telefone cadastrado para WhatsApp.", None
-
     mensagem_whatsapp = gerar_mensagem_whatsapp(pedido)
     mensagem_codificada = quote(mensagem_whatsapp)
 
-    link = f"https://api.whatsapp.com/send/?phone={telefone}&text={mensagem_codificada}"
+    link = f"https://wa.me/?text={mensagem_codificada}"
 
     return True, "Link do WhatsApp gerado com sucesso.", link
 
