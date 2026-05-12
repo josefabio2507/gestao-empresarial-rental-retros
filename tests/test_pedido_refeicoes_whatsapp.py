@@ -4,7 +4,12 @@ from decimal import Decimal
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from app.departamento_pessoal.pedido_refeicoes.services import gerar_mensagem_whatsapp
+from app.departamento_pessoal.pedido_refeicoes.services import (
+    STATUS_PEDIDO_FECHADO,
+    gerar_link_whatsapp,
+    gerar_mensagem_whatsapp,
+    pedido_pode_enviar_whatsapp,
+)
 
 
 def montar_pedido(observacao=None):
@@ -12,8 +17,10 @@ def montar_pedido(observacao=None):
         numero_pedido="PED-000021",
         data_pedido=date(2026, 5, 11),
         equipe=SimpleNamespace(nome="TMC - SANTOS"),
-        restaurante=SimpleNamespace(nome="CASA DO SOL"),
+        restaurante=SimpleNamespace(nome="CASA DO SOL", telefone=None),
         observacao=observacao,
+        status=STATUS_PEDIDO_FECHADO,
+        quantidade_envios=0,
     )
 
 
@@ -108,6 +115,36 @@ class PedidoRefeicoesWhatsappTestCase(unittest.TestCase):
         self.assertIn("💰 *Total geral:* R$ 25,00", mensagem)
         self.assertNotIn("R$ 20,00", mensagem)
         self.assertNotIn("R$ 5,00", mensagem)
+
+    def test_pedido_sem_telefone_de_restaurante_pode_gerar_whatsapp(self):
+        pedido = montar_pedido()
+
+        with patch(
+            "app.departamento_pessoal.pedido_refeicoes.services.pedido_tem_consumo",
+            return_value=True,
+        ):
+            permitido, mensagem = pedido_pode_enviar_whatsapp(pedido)
+
+        self.assertTrue(permitido)
+        self.assertEqual(mensagem, "")
+
+    def test_link_whatsapp_abre_sem_numero_fixo(self):
+        pedido = montar_pedido()
+
+        with patch(
+            "app.departamento_pessoal.pedido_refeicoes.services.pedido_pode_enviar_whatsapp",
+            return_value=(True, ""),
+        ), patch(
+            "app.departamento_pessoal.pedido_refeicoes.services.gerar_mensagem_whatsapp",
+            return_value="Pedido PED-000021\nTotal geral",
+        ):
+            sucesso, mensagem, link = gerar_link_whatsapp(pedido)
+
+        self.assertTrue(sucesso)
+        self.assertEqual(mensagem, "Link do WhatsApp gerado com sucesso.")
+        self.assertTrue(link.startswith("https://wa.me/?text="))
+        self.assertNotIn("phone=", link)
+        self.assertIn("Pedido%20PED-000021", link)
 
 
 if __name__ == "__main__":
