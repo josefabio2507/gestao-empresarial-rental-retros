@@ -15,6 +15,7 @@ from app.services.permissoes_service import usuario_tem_permissao
 from app.departamento_pessoal.pedido_refeicoes.services import (
 
     TIPOS_CARDAPIO,
+    DIAS_SEMANA_CARDAPIO,
     buscar_restaurantes,
     buscar_restaurantes_ativos,
     buscar_restaurante_por_id,
@@ -333,6 +334,7 @@ def novo_item_cardapio():
             tipo=request.form.get("tipo", ""),
             nome=request.form.get("nome", ""),
             preco=request.form.get("preco", ""),
+            dia_semana=request.form.get("dia_semana", ""),
             ativo=request.form.get("ativo") == "on",
         )
 
@@ -354,6 +356,7 @@ def novo_item_cardapio():
         item=None,
         restaurantes=restaurantes_ativos,
         tipos=TIPOS_CARDAPIO,
+        dias_semana=DIAS_SEMANA_CARDAPIO,
         modo="novo",
         restaurante_id_selecionado="",
         tipo_selecionado="",
@@ -382,6 +385,7 @@ def editar_item_cardapio(item_id):
             tipo=request.form.get("tipo", ""),
             nome=request.form.get("nome", ""),
             preco=request.form.get("preco", ""),
+            dia_semana=request.form.get("dia_semana", ""),
             ativo=request.form.get("ativo") == "on",
         )
 
@@ -403,6 +407,7 @@ def editar_item_cardapio(item_id):
         item=item,
         restaurantes=restaurantes_ativos,
         tipos=TIPOS_CARDAPIO,
+        dias_semana=DIAS_SEMANA_CARDAPIO,
         modo="editar",
         restaurante_id_selecionado="",
         tipo_selecionado="",
@@ -723,9 +728,17 @@ def editar_consumo(consumo_id):
         return redirect(url_for("pedido_refeicoes.detalhes_pedido", pedido_id=pedido.id))
 
     colaboradores = buscar_colaboradores_do_pedido(pedido)
-    itens = buscar_itens_do_pedido(pedido)
-    refeicoes, bebidas = separar_itens_consumo(itens)
     consumo_refeicao, consumo_bebida = buscar_consumos_relacionados(consumo)
+    itens_incluir = []
+
+    if consumo_refeicao:
+        itens_incluir.append(consumo_refeicao.item_cardapio_id)
+
+    if consumo_bebida:
+        itens_incluir.append(consumo_bebida.item_cardapio_id)
+
+    itens = buscar_itens_do_pedido(pedido, incluir_item_ids=itens_incluir)
+    refeicoes, bebidas = separar_itens_consumo(itens)
 
     if request.method == "POST":
         sucesso, mensagem = atualizar_consumos_refeicao_bebida(

@@ -451,6 +451,7 @@ class ItemCardapio(db.Model):
     tipo = db.Column(db.String(30), nullable=False)
     nome = db.Column(db.String(150), nullable=False)
     preco = db.Column(db.Numeric(10, 2), nullable=False)
+    dia_semana = db.Column(db.String(30), default="Todos os Dias", nullable=False)
     ativo = db.Column(db.Boolean, default=True, nullable=False)
 
     criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
