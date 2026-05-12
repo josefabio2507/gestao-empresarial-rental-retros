@@ -15,6 +15,30 @@ def buscar_usuarios():
     )
 
 
+def buscar_usuarios_por_colaborador(filtro_colaborador):
+    if filtro_colaborador == "sem_colaborador":
+        return (
+            Usuario.query
+            .join(NivelAcesso)
+            .filter(Usuario.colaborador_id.is_(None))
+            .order_by(Usuario.nome.asc())
+            .all()
+        )
+
+    colaborador_id = normalizar_colaborador_id(filtro_colaborador)
+
+    if colaborador_id is None:
+        return []
+
+    return (
+        Usuario.query
+        .join(NivelAcesso)
+        .filter(Usuario.colaborador_id == colaborador_id)
+        .order_by(Usuario.nome.asc())
+        .all()
+    )
+
+
 def buscar_usuario_por_id(usuario_id):
     return Usuario.query.get(usuario_id)
 
@@ -29,6 +53,14 @@ def buscar_colaboradores_ativos_para_vinculo():
         .join(Equipe)
         .filter(Colaborador.ativo.is_(True))
         .order_by(Colaborador.nome.asc())
+        .all()
+    )
+
+
+def buscar_colaboradores_para_filtro_usuarios():
+    return (
+        Colaborador.query
+        .order_by(Colaborador.matricula.asc(), Colaborador.nome.asc())
         .all()
     )
 

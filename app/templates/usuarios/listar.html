@@ -14,81 +14,115 @@
         </a>
     </div>
 
-    <div class="table-card table-responsive">
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>Nome</th>
-                    <th>E-mail</th>
-                    <th>Nível</th>
-                    <th>Colaborador</th>
-                    <th>Status</th>
-                    <th>Criado em</th>
-                    <th>Ações</th>
-                </tr>
-            </thead>
+    <form class="filter-card" method="GET" action="{{ url_for('usuarios.listar_usuarios') }}">
+        <div class="form-group">
+            <label for="colaborador_id">Filtrar por colaborador</label>
+            <select name="colaborador_id" id="colaborador_id">
+                <option value="novo" {% if filtro_colaborador == "novo" %}selected{% endif %}>
+                    Selecione um colaborador
+                </option>
+                <option value="sem_colaborador" {% if filtro_colaborador == "sem_colaborador" %}selected{% endif %}>
+                    Usuários sem colaborador vinculado
+                </option>
 
-            <tbody>
-                {% for usuario in usuarios %}
-                    <tr>
-                        <td>{{ usuario.nome }}</td>
-                        <td>{{ usuario.email }}</td>
-                        <td>
-                            {% if usuario.nivel_acesso %}
-                                {{ usuario.nivel_acesso.nome }}
-                            {% else %}
-                                Sem nível
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if usuario.colaborador %}
-                                {{ usuario.colaborador.matricula }} - {{ usuario.colaborador.nome }}
-                            {% else %}
-                                Não vinculado
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if usuario.ativo %}
-                                <span class="badge badge-success">Ativo</span>
-                            {% else %}
-                                <span class="badge badge-danger">Inativo</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {{ usuario.criado_em.strftime("%d/%m/%Y") if usuario.criado_em else "-" }}
-                        </td>
-                        <td class="col-acoes">
-                            <div class="acoes-botoes">
-                                <a class="btn btn-secondary" href="{{ url_for('usuarios.detalhes_usuario', usuario_id=usuario.id) }}">
-                                    Ver
-                                </a>
-
-                                <a class="btn btn-primary" href="{{ url_for('usuarios.editar_usuario', usuario_id=usuario.id) }}">
-                                    Editar
-                                </a>
-
-                                <a class="btn btn-secondary" href="{{ url_for('permissoes.visualizar_permissoes', usuario_id=usuario.id) }}">
-                                    Permissões
-                                </a>
-
-                                <a class="btn btn-warning" href="{{ url_for('usuarios.alterar_status', usuario_id=usuario.id) }}">
-                                    {% if usuario.ativo %}
-                                        Inativar
-                                    {% else %}
-                                        Ativar
-                                    {% endif %}
-                                </a>
-                            </div>
-                        </td>
-                    </tr>
-                {% else %}
-                    <tr>
-                        <td class="empty-state" colspan="7">Nenhum usuário cadastrado.</td>
-                    </tr>
+                {% for colaborador in colaboradores %}
+                    <option
+                        value="{{ colaborador.id }}"
+                        {% if filtro_colaborador|string == colaborador.id|string %}selected{% endif %}
+                    >
+                        {{ colaborador.matricula }} - {{ colaborador.nome }}
+                    </option>
                 {% endfor %}
-            </tbody>
-        </table>
-    </div>
+            </select>
+        </div>
+
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Filtrar</button>
+            <a class="btn btn-secondary" href="{{ url_for('usuarios.listar_usuarios') }}">Limpar</a>
+        </div>
+    </form>
+
+    {% if not filtro_aplicado %}
+        <div class="table-card">
+            <p class="empty-state">Selecione um colaborador para consultar os usuários.</p>
+        </div>
+    {% else %}
+        <div class="table-card table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>E-mail</th>
+                        <th>Nível</th>
+                        <th>Colaborador</th>
+                        <th>Status</th>
+                        <th>Criado em</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for usuario in usuarios %}
+                        <tr>
+                            <td>{{ usuario.nome }}</td>
+                            <td>{{ usuario.email }}</td>
+                            <td>
+                                {% if usuario.nivel_acesso %}
+                                    {{ usuario.nivel_acesso.nome }}
+                                {% else %}
+                                    Sem nível
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if usuario.colaborador %}
+                                    {{ usuario.colaborador.matricula }} - {{ usuario.colaborador.nome }}
+                                {% else %}
+                                    Não vinculado
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if usuario.ativo %}
+                                    <span class="badge badge-success">Ativo</span>
+                                {% else %}
+                                    <span class="badge badge-danger">Inativo</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {{ usuario.criado_em.strftime("%d/%m/%Y") if usuario.criado_em else "-" }}
+                            </td>
+                            <td class="col-acoes">
+                                <div class="acoes-botoes">
+                                    <a class="btn btn-secondary" href="{{ url_for('usuarios.detalhes_usuario', usuario_id=usuario.id) }}">
+                                        Ver
+                                    </a>
+
+                                    <a class="btn btn-primary" href="{{ url_for('usuarios.editar_usuario', usuario_id=usuario.id) }}">
+                                        Editar
+                                    </a>
+
+                                    <a class="btn btn-secondary" href="{{ url_for('permissoes.visualizar_permissoes', usuario_id=usuario.id) }}">
+                                        Permissões
+                                    </a>
+
+                                    <a class="btn btn-warning" href="{{ url_for('usuarios.alterar_status', usuario_id=usuario.id) }}">
+                                        {% if usuario.ativo %}
+                                            Inativar
+                                        {% else %}
+                                            Ativar
+                                        {% endif %}
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td class="empty-state" colspan="7">Nenhum usuário encontrado para o filtro selecionado.</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endif %}
 
     <div class="page-actions">
         <a class="btn btn-secondary" href="{{ url_for('main.inicio') }}">Voltar ao início</a>
