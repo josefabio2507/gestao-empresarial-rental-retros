@@ -16,35 +16,25 @@
 
     <form class="filter-card" method="GET" action="{{ url_for('usuarios.listar_usuarios') }}">
         <div class="form-group">
-            <label for="colaborador_id">Filtrar por colaborador</label>
-            <select name="colaborador_id" id="colaborador_id">
-                <option value="novo" {% if filtro_colaborador == "novo" %}selected{% endif %}>
-                    Selecione um colaborador
-                </option>
-                <option value="sem_colaborador" {% if filtro_colaborador == "sem_colaborador" %}selected{% endif %}>
-                    Usuários sem colaborador vinculado
-                </option>
-
-                {% for colaborador in colaboradores %}
-                    <option
-                        value="{{ colaborador.id }}"
-                        {% if filtro_colaborador|string == colaborador.id|string %}selected{% endif %}
-                    >
-                        {{ colaborador.matricula }} - {{ colaborador.nome }}
-                    </option>
-                {% endfor %}
-            </select>
+            <label for="nome">Buscar por nome do usuário</label>
+            <input
+                type="text"
+                name="nome"
+                id="nome"
+                value="{{ filtro_nome }}"
+                placeholder="Digite o nome ou parte do nome"
+            >
         </div>
 
         <div class="form-actions">
-            <button class="btn btn-primary" type="submit">Filtrar</button>
+            <button class="btn btn-primary" type="submit">Pesquisar</button>
             <a class="btn btn-secondary" href="{{ url_for('usuarios.listar_usuarios') }}">Limpar</a>
         </div>
     </form>
 
     {% if not filtro_aplicado %}
         <div class="table-card">
-            <p class="empty-state">Selecione um colaborador para consultar os usuários.</p>
+            <p class="empty-state">Digite o nome ou parte do nome do usuário para consultar.</p>
         </div>
     {% else %}
         <div class="table-card table-responsive">
