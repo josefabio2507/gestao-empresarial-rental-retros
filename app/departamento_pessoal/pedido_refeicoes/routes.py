@@ -879,6 +879,36 @@ def gerar_pdf_relatorio_refeicoes(relatorio, filtros):
         elementos.append(Paragraph(linha, styles["Normal"]))
 
     elementos.append(Spacer(1, 16))
+    elementos.append(Paragraph("<b>Resumo financeiro</b>", styles["Heading2"]))
+
+    tabela_resumo_financeiro = Table([
+        ["Indicador", "Quantidade", "Valor"],
+        [
+            "Refeições",
+            str(relatorio["quantidade_refeicoes"]),
+            formatar_moeda(relatorio["valor_refeicoes"]),
+        ],
+        [
+            "Bebidas",
+            str(relatorio["quantidade_bebidas"]),
+            formatar_moeda(relatorio["valor_bebidas"]),
+        ],
+        [
+            "Total geral",
+            "",
+            formatar_moeda(relatorio["total_geral"]),
+        ],
+    ])
+    tabela_resumo_financeiro.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTNAME", (0, 3), (-1, 3), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, -1), 9),
+        ("ALIGN", (1, 1), (-1, -1), "RIGHT"),
+    ]))
+    elementos.append(tabela_resumo_financeiro)
+    elementos.append(Spacer(1, 16))
 
     for grupo in relatorio["grupos"]:
         elementos.append(Paragraph(f"<b>{grupo['tipo']}: {grupo['titulo']}</b>", styles["Heading2"]))

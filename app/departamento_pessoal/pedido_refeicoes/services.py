@@ -397,7 +397,11 @@ def pedido_pode_ser_cancelado(pedido):
     if not pedido:
         return False
 
-    return pedido.status == STATUS_PEDIDO_ABERTO
+    return pedido.status in {
+        STATUS_PEDIDO_ABERTO,
+        STATUS_PEDIDO_FECHADO,
+        STATUS_PEDIDO_ENVIADO,
+    }
 
 
 def converter_data(data_texto):
@@ -501,7 +505,7 @@ def atualizar_pedido_refeicao(pedido, equipe_id, restaurante_id, data_pedido, ob
 
 def cancelar_pedido_refeicao(pedido):
     if not pedido_pode_ser_cancelado(pedido):
-        return False, "Somente pedidos em aberto podem ser cancelados."
+        return False, "Somente pedidos abertos, fechados ou enviados podem ser cancelados."
 
     pedido.status = STATUS_PEDIDO_CANCELADO
     db.session.commit()
@@ -1173,6 +1177,9 @@ def registrar_envio_whatsapp(pedido):
 
 
 def status_whatsapp_pedido(pedido):
+    if pedido.status == STATUS_PEDIDO_CANCELADO:
+        return STATUS_PEDIDO_CANCELADO
+
     if not pedido.enviado_whatsapp:
         return "Não enviado"
 
@@ -1202,6 +1209,7 @@ def buscar_pedidos_relatorio_refeicoes(
         .join(ConsumoRefeicao, ConsumoRefeicao.pedido_id == PedidoRefeicao.id)
         .filter(PedidoRefeicao.data_pedido >= data_inicio)
         .filter(PedidoRefeicao.data_pedido <= data_fim)
+        .filter(PedidoRefeicao.status != STATUS_PEDIDO_CANCELADO)
     )
 
     if equipe_id:
@@ -1231,9 +1239,42 @@ def calcular_total_pedido_relatorio(pedido):
     total = Decimal("0.00")
 
     for consumo in pedido.consumos:
+        item = consumo.item_cardapio
+
+        if not item or item.tipo not in {"Refeição", "Bebida"}:
+            continue
+
         total += consumo.valor_total or Decimal("0.00")
 
     return total
+
+
+def calcular_resumo_totais_relatorio(pedidos):
+    resumo = {
+        "quantidade_refeicoes": 0,
+        "valor_refeicoes": Decimal("0.00"),
+        "quantidade_bebidas": 0,
+        "valor_bebidas": Decimal("0.00"),
+    }
+
+    for pedido in pedidos:
+        for consumo in pedido.consumos:
+            item = consumo.item_cardapio
+
+            if not item:
+                continue
+
+            quantidade = consumo.quantidade or 0
+            total = consumo.valor_total or Decimal("0.00")
+
+            if item.tipo == "Refeição":
+                resumo["quantidade_refeicoes"] += quantidade
+                resumo["valor_refeicoes"] += total
+            elif item.tipo == "Bebida":
+                resumo["quantidade_bebidas"] += quantidade
+                resumo["valor_bebidas"] += total
+
+    return resumo
 
 
 def calcular_resumo_itens_relatorio(pedidos):
@@ -1243,7 +1284,7 @@ def calcular_resumo_itens_relatorio(pedidos):
         for consumo in pedido.consumos:
             item = consumo.item_cardapio
 
-            if not item:
+            if not item or item.tipo not in {"Refeição", "Bebida"}:
                 continue
 
             chave = (item.tipo, item.nome)
@@ -1369,10 +1410,8 @@ def montar_relatorio_refeicoes(
         grupos = agrupar_relatorio_por_restaurante(pedidos)
         agrupamento_label = "Restaurante"
 
-    total_geral = Decimal("0.00")
-
-    for grupo in grupos:
-        total_geral += grupo["total_grupo"]
+    resumo_totais = calcular_resumo_totais_relatorio(pedidos)
+    total_geral = resumo_totais["valor_refeicoes"] + resumo_totais["valor_bebidas"]
 
     return {
         "periodo": {
@@ -1384,6 +1423,10 @@ def montar_relatorio_refeicoes(
         "agrupamento_label": agrupamento_label,
         "grupos": grupos,
         "total_geral": total_geral,
+        "quantidade_refeicoes": resumo_totais["quantidade_refeicoes"],
+        "valor_refeicoes": resumo_totais["valor_refeicoes"],
+        "quantidade_bebidas": resumo_totais["quantidade_bebidas"],
+        "valor_bebidas": resumo_totais["valor_bebidas"],
         "quantidade_pedidos": len(pedidos),
     }
 

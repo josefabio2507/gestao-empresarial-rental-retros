@@ -81,6 +81,8 @@
                                 <span class="badge badge-success">Reenvio disponível</span>
                             {% elif status_whatsapp == "Limite atingido" %}
                                 <span class="badge badge-danger">Limite atingido</span>
+                            {% elif status_whatsapp == "Cancelado" %}
+                                <span class="badge badge-danger">Cancelado</span>
                             {% else %}
                                 <span class="badge badge-secondary">{{ status_whatsapp }}</span>
                             {% endif %}
@@ -99,7 +101,11 @@
                                 {% endif %}
 
                                 {% if pode_excluir and pedido_pode_ser_cancelado(pedido) %}
-                                    <a class="btn btn-warning" href="{{ url_for('pedido_refeicoes.cancelar_pedido', pedido_id=pedido.id) }}">
+                                    <a
+                                        class="btn btn-warning"
+                                        href="{{ url_for('pedido_refeicoes.cancelar_pedido', pedido_id=pedido.id) }}"
+                                        onclick="return confirm('Confirmar cancelamento deste pedido?');"
+                                    >
                                         Cancelar
                                     </a>
                                 {% endif %}
