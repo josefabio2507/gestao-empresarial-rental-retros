@@ -127,6 +127,22 @@
                     <strong>{{ relatorio.quantidade_pedidos }}</strong>
                 </div>
                 <div class="stat-card">
+                    <span>Qtd. refeições</span>
+                    <strong>{{ relatorio.quantidade_refeicoes }}</strong>
+                </div>
+                <div class="stat-card">
+                    <span>Total refeições</span>
+                    <strong>{{ formatar_moeda(relatorio.valor_refeicoes) }}</strong>
+                </div>
+                <div class="stat-card">
+                    <span>Qtd. bebidas</span>
+                    <strong>{{ relatorio.quantidade_bebidas }}</strong>
+                </div>
+                <div class="stat-card">
+                    <span>Total bebidas</span>
+                    <strong>{{ formatar_moeda(relatorio.valor_bebidas) }}</strong>
+                </div>
+                <div class="stat-card">
                     <span>Total geral</span>
                     <strong>{{ formatar_moeda(relatorio.total_geral) }}</strong>
                 </div>

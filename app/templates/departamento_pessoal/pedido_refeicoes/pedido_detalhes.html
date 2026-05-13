@@ -184,25 +184,29 @@
 </div>
 
     <div class="page-actions">
-    {% if pedido.status == "Aberto" %}
-        {% if pode_editar and pedido_pode_ser_editado(pedido) %}
-            <a class="btn btn-primary" href="{{ url_for('pedido_refeicoes.editar_pedido', pedido_id=pedido.id) }}">
-                Editar
-            </a>
+        {% if pedido.status == "Aberto" %}
+            {% if pode_editar and pedido_pode_ser_editado(pedido) %}
+                <a class="btn btn-primary" href="{{ url_for('pedido_refeicoes.editar_pedido', pedido_id=pedido.id) }}">
+                    Editar
+                </a>
+            {% endif %}
+
+            {% if pode_aprovar %}
+                <a class="btn btn-success" href="{{ url_for('pedido_refeicoes.fechar_pedido', pedido_id=pedido.id) }}">
+                    Fechar pedido
+                </a>
+            {% endif %}
         {% endif %}
 
         {% if pode_excluir and pedido_pode_ser_cancelado(pedido) %}
-            <a class="btn btn-warning" href="{{ url_for('pedido_refeicoes.cancelar_pedido', pedido_id=pedido.id) }}">
+            <a
+                class="btn btn-warning"
+                href="{{ url_for('pedido_refeicoes.cancelar_pedido', pedido_id=pedido.id) }}"
+                onclick="return confirm('Confirmar cancelamento deste pedido?');"
+            >
                 Cancelar pedido
             </a>
         {% endif %}
-
-        {% if pode_aprovar %}
-            <a class="btn btn-success" href="{{ url_for('pedido_refeicoes.fechar_pedido', pedido_id=pedido.id) }}">
-                Fechar pedido
-            </a>
-        {% endif %}
-    {% endif %}
 
     {% if pedido.status == "Fechado" %}
         {% if pode_enviar_whatsapp %}
