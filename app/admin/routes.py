@@ -22,14 +22,19 @@ def logs():
     acao = request.args.get("acao", "").strip()
     data_inicial = request.args.get("data_inicial", "").strip()
     data_final = request.args.get("data_final", "").strip()
+    filtro_aplicado = bool(request.args)
 
-    logs_lista = buscar_logs(
-        usuario_id=usuario_id if usuario_id else None,
-        acao=acao if acao else None,
-        data_inicial=data_inicial if data_inicial else None,
-        data_final=data_final if data_final else None,
-        limite=500,
-    )
+    logs_lista = []
+
+    if filtro_aplicado:
+        logs_lista = buscar_logs(
+            usuario_id=usuario_id if usuario_id else None,
+            acao=acao if acao else None,
+            data_inicial=data_inicial if data_inicial else None,
+            data_final=data_final if data_final else None,
+            limite=500,
+        )
+
     usuarios = buscar_usuarios_com_logs()
 
     return render_template(
@@ -42,5 +47,6 @@ def logs():
             "data_inicial": data_inicial,
             "data_final": data_final,
         },
+        filtro_aplicado=filtro_aplicado,
         formatar_data_hora_brasil=formatar_data_hora_brasil,
     )
