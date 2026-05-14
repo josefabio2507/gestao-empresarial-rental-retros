@@ -20,6 +20,19 @@ TIPOS_CARDAPIO = [
     "Outros",
 ]
 
+TIPO_CARDAPIO_REFEICAO = TIPOS_CARDAPIO[0]
+TIPO_CARDAPIO_BEBIDA = TIPOS_CARDAPIO[1]
+
+MENSAGEM_DUPLICIDADE_REFEICAO = (
+    "Já foi solicitada refeição para este colaborador neste pedido."
+)
+MENSAGEM_DUPLICIDADE_BEBIDA = (
+    "Já foi solicitada bebida para este colaborador neste pedido."
+)
+MENSAGEM_DUPLICIDADE_REFEICAO_BEBIDA = (
+    "Este colaborador já possui refeição e bebida solicitadas neste pedido."
+)
+
 DIA_SEMANA_TODOS = "Todos os Dias"
 
 DIAS_SEMANA_CARDAPIO = [
@@ -585,6 +598,79 @@ def converter_quantidade(valor):
     return quantidade
 
 
+def buscar_consumo_existente_por_tipo(
+    pedido_id,
+    colaborador_id,
+    tipo_item,
+    excluir_consumo_ids=None,
+):
+    if not pedido_id or not colaborador_id or not tipo_item:
+        return None
+
+    excluir_consumo_ids = [
+        consumo_id
+        for consumo_id in (excluir_consumo_ids or [])
+        if consumo_id
+    ]
+
+    query = (
+        ConsumoRefeicao.query
+        .join(ItemCardapio)
+        .filter(
+            ConsumoRefeicao.pedido_id == pedido_id,
+            ConsumoRefeicao.colaborador_id == colaborador_id,
+            ConsumoRefeicao.quantidade > 0,
+            ItemCardapio.tipo == tipo_item,
+        )
+    )
+
+    if excluir_consumo_ids:
+        query = query.filter(~ConsumoRefeicao.id.in_(excluir_consumo_ids))
+
+    return query.first()
+
+
+def validar_duplicidade_consumo_colaborador(
+    pedido,
+    colaborador_id,
+    possui_refeicao=False,
+    possui_bebida=False,
+    excluir_consumo_ids=None,
+):
+    if not pedido or not colaborador_id:
+        return True, ""
+
+    duplicidade_refeicao = False
+    duplicidade_bebida = False
+
+    if possui_refeicao:
+        duplicidade_refeicao = buscar_consumo_existente_por_tipo(
+            pedido_id=pedido.id,
+            colaborador_id=colaborador_id,
+            tipo_item=TIPO_CARDAPIO_REFEICAO,
+            excluir_consumo_ids=excluir_consumo_ids,
+        ) is not None
+
+    if possui_bebida:
+        duplicidade_bebida = buscar_consumo_existente_por_tipo(
+            pedido_id=pedido.id,
+            colaborador_id=colaborador_id,
+            tipo_item=TIPO_CARDAPIO_BEBIDA,
+            excluir_consumo_ids=excluir_consumo_ids,
+        ) is not None
+
+    if duplicidade_refeicao and duplicidade_bebida:
+        return False, MENSAGEM_DUPLICIDADE_REFEICAO_BEBIDA
+
+    if duplicidade_refeicao:
+        return False, MENSAGEM_DUPLICIDADE_REFEICAO
+
+    if duplicidade_bebida:
+        return False, MENSAGEM_DUPLICIDADE_BEBIDA
+
+    return True, ""
+
+
 def validar_consumo(
     pedido,
     colaborador_id,
@@ -596,7 +682,7 @@ def validar_consumo(
         return False, "Pedido não encontrado.", None, None, None
 
     if not pedido_pode_ser_editado(pedido):
-        return False, "Este pedido não permite mais alterações de consumo."
+        return False, "Este pedido não permite mais alterações de consumo.", None, None, None
 
     if not colaborador_id:
         return False, "Colaborador é obrigatório.", None, None, None
@@ -661,6 +747,16 @@ def criar_consumo_refeicao(
         colaborador_id=colaborador_id,
         item_cardapio_id=item_cardapio_id,
         quantidade=quantidade,
+    )
+
+    if not valido:
+        return False, mensagem
+
+    valido, mensagem = validar_duplicidade_consumo_colaborador(
+        pedido=pedido,
+        colaborador_id=colaborador.id,
+        possui_refeicao=item.tipo == TIPO_CARDAPIO_REFEICAO,
+        possui_bebida=item.tipo == TIPO_CARDAPIO_BEBIDA,
     )
 
     if not valido:
@@ -740,6 +836,23 @@ def criar_consumos_refeicao_bebida(
                 "quantidade": quantidade_convertida,
             }
         )
+
+    colaborador_validado = consumos_validados[0]["colaborador"]
+    valido, mensagem = validar_duplicidade_consumo_colaborador(
+        pedido=pedido,
+        colaborador_id=colaborador_validado.id,
+        possui_refeicao=any(
+            dados["item"].tipo == TIPO_CARDAPIO_REFEICAO
+            for dados in consumos_validados
+        ),
+        possui_bebida=any(
+            dados["item"].tipo == TIPO_CARDAPIO_BEBIDA
+            for dados in consumos_validados
+        ),
+    )
+
+    if not valido:
+        return False, mensagem
 
     observacao_normalizada = observacao.strip() if observacao else ""
 
@@ -832,6 +945,12 @@ def atualizar_consumos_refeicao_bebida(
         return False, "Selecione uma refeição ou uma bebida para atualizar o consumo."
 
     consumo_refeicao, consumo_bebida = buscar_consumos_relacionados(consumo_referencia)
+    excluir_consumo_ids = []
+
+    for consumo_atual in (consumo_referencia, consumo_refeicao, consumo_bebida):
+        if consumo_atual and consumo_atual.id not in excluir_consumo_ids:
+            excluir_consumo_ids.append(consumo_atual.id)
+
     consumos_validados = {}
 
     for chave, item_id, quantidade, tipo_esperado in [
@@ -864,6 +983,18 @@ def atualizar_consumos_refeicao_bebida(
             "item": item,
             "quantidade": quantidade_convertida,
         }
+
+    colaborador_validado = next(iter(consumos_validados.values()))["colaborador"]
+    valido, mensagem = validar_duplicidade_consumo_colaborador(
+        pedido=pedido,
+        colaborador_id=colaborador_validado.id,
+        possui_refeicao="refeicao" in consumos_validados,
+        possui_bebida="bebida" in consumos_validados,
+        excluir_consumo_ids=excluir_consumo_ids,
+    )
+
+    if not valido:
+        return False, mensagem
 
     observacao_normalizada = observacao.strip() if observacao else ""
 
@@ -918,6 +1049,17 @@ def atualizar_consumo_refeicao(
         colaborador_id=colaborador_id,
         item_cardapio_id=item_cardapio_id,
         quantidade=quantidade,
+    )
+
+    if not valido:
+        return False, mensagem
+
+    valido, mensagem = validar_duplicidade_consumo_colaborador(
+        pedido=pedido,
+        colaborador_id=colaborador.id,
+        possui_refeicao=item.tipo == TIPO_CARDAPIO_REFEICAO,
+        possui_bebida=item.tipo == TIPO_CARDAPIO_BEBIDA,
+        excluir_consumo_ids=[consumo.id],
     )
 
     if not valido:
