@@ -1,6 +1,8 @@
 import re
 
-from app.models import HoleriteColaborador
+from sqlalchemy import or_
+
+from app.models import Colaborador, HoleriteColaborador
 from app.services.permissoes_service import usuario_eh_administrador
 
 
@@ -36,9 +38,27 @@ def usuario_deve_ver_apenas_proprios_holerites(usuario):
     return bool(getattr(usuario, "colaborador_id", None))
 
 
-def buscar_holerites_visiveis(usuario):
+def termos_filtro_holerites(filtro):
+    termo = str(filtro or "").strip()
+
+    if not termo:
+        return []
+
+    termos = {termo}
+
+    if "." in termo:
+        termos.add(termo.replace(".", "/"))
+
+    if "/" in termo:
+        termos.add(termo.replace("/", "."))
+
+    return list(termos)
+
+
+def buscar_holerites_visiveis(usuario, filtro_admin=None):
     query = (
         HoleriteColaborador.query
+        .join(Colaborador)
         .filter(HoleriteColaborador.ativo.is_(True))
     )
 
@@ -49,6 +69,21 @@ def buscar_holerites_visiveis(usuario):
             return []
 
         query = query.filter(HoleriteColaborador.colaborador_id == colaborador_id)
+    elif usuario_eh_administrador(usuario):
+        termos = termos_filtro_holerites(filtro_admin)
+
+        if termos:
+            filtros = []
+
+            for termo in termos:
+                padrao = f"%{termo}%"
+                filtros.extend([
+                    Colaborador.nome.ilike(padrao),
+                    Colaborador.matricula.ilike(padrao),
+                    HoleriteColaborador.competencia.ilike(padrao),
+                ])
+
+            query = query.filter(or_(*filtros))
 
     holerites = (
         query

@@ -70,7 +70,12 @@ def pode_sincronizar_holerites():
 
 
 def renderizar_holerites(resumo_sincronizacao=None):
-    holerites_lista = buscar_holerites_visiveis(current_user)
+    pode_filtrar_admin = usuario_eh_administrador(current_user)
+    filtro_admin = request.args.get("filtro", "").strip() if pode_filtrar_admin else ""
+    holerites_lista = buscar_holerites_visiveis(
+        current_user,
+        filtro_admin=filtro_admin if pode_filtrar_admin else None,
+    )
     apenas_proprios = usuario_deve_ver_apenas_proprios_holerites(current_user)
 
     return render_template(
@@ -79,6 +84,8 @@ def renderizar_holerites(resumo_sincronizacao=None):
         pode_exportar=pode_exportar_holerites(),
         pode_sincronizar=pode_sincronizar_holerites(),
         apenas_proprios=apenas_proprios,
+        pode_filtrar_admin=pode_filtrar_admin,
+        filtro_admin=filtro_admin,
         resumo_sincronizacao=resumo_sincronizacao,
     )
 
