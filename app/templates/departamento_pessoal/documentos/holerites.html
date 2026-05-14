@@ -127,6 +127,26 @@
         </div>
     {% endif %}
 
+    {% if pode_filtrar_admin %}
+        <form class="filter-card" method="GET" action="{{ url_for('documentos.holerites') }}">
+            <div class="form-group">
+                <label for="filtro">Filtro administrativo</label>
+                <input
+                    type="text"
+                    name="filtro"
+                    id="filtro"
+                    value="{{ filtro_admin }}"
+                    placeholder="Filtrar por nome, matrícula ou competência"
+                >
+            </div>
+
+            <div class="form-actions">
+                <button class="btn btn-primary" type="submit">Filtrar</button>
+                <a class="btn btn-secondary" href="{{ url_for('documentos.holerites') }}">Limpar</a>
+            </div>
+        </form>
+    {% endif %}
+
     <div class="table-card table-responsive holerites-scroll-box">
         <table class="table">
             <thead>
@@ -173,6 +193,8 @@
                         <td class="empty-state" colspan="7">
                             {% if apenas_proprios %}
                                 Nenhum holerite disponível para o seu usuário.
+                            {% elif filtro_admin %}
+                                Nenhum holerite encontrado para o filtro informado.
                             {% else %}
                                 Nenhum holerite cadastrado até o momento.
                             {% endif %}
