@@ -48,35 +48,41 @@
         </div>
     </form>
 
-    <div class="table-card table-responsive">
-        <table class="table">
-            <thead>
-                <tr>
-                    <th class="col-nowrap">Data/Hora</th>
-                    <th>Usuário</th>
-                    <th class="col-nowrap">Ação</th>
-                    <th>Descrição</th>
-                    <th>Rota</th>
-                    <th class="col-nowrap">IP</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for log in logs %}
+    {% if not filtro_aplicado %}
+        <div class="table-card">
+            <p class="empty-state">Use os filtros acima para consultar os logs.</p>
+        </div>
+    {% else %}
+        <div class="table-card table-responsive">
+            <table class="table">
+                <thead>
                     <tr>
-                        <td class="col-nowrap">{{ formatar_data_hora_brasil(log.criado_em) }}</td>
-                        <td>{{ log.usuario.nome if log.usuario else "-" }}</td>
-                        <td class="col-nowrap"><span class="audit-action-badge">{{ log.acao }}</span></td>
-                        <td>{{ log.descricao or "-" }}</td>
-                        <td>{{ log.rota or "-" }}</td>
-                        <td class="col-nowrap">{{ log.ip or "-" }}</td>
+                        <th class="col-nowrap">Data/Hora</th>
+                        <th>Usuário</th>
+                        <th class="col-nowrap">Ação</th>
+                        <th>Descrição</th>
+                        <th>Rota</th>
+                        <th class="col-nowrap">IP</th>
                     </tr>
-                {% else %}
-                    <tr>
-                        <td class="empty-state" colspan="6">Nenhum log encontrado para os filtros selecionados.</td>
-                    </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
+                </thead>
+                <tbody>
+                    {% for log in logs %}
+                        <tr>
+                            <td class="col-nowrap">{{ formatar_data_hora_brasil(log.criado_em) }}</td>
+                            <td>{{ log.usuario.nome if log.usuario else "-" }}</td>
+                            <td class="col-nowrap"><span class="audit-action-badge">{{ log.acao }}</span></td>
+                            <td>{{ log.descricao or "-" }}</td>
+                            <td>{{ log.rota or "-" }}</td>
+                            <td class="col-nowrap">{{ log.ip or "-" }}</td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td class="empty-state" colspan="6">Nenhum log encontrado para os filtros informados.</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endif %}
 </section>
 {% endblock %}
