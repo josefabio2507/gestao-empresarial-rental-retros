@@ -11,7 +11,7 @@ from app.services.permissoes_service import (
     permissoes_por_departamento,
     listar_acoes_liberadas,
 )
-from app.services.usuarios_service import buscar_usuarios
+from app.services.usuarios_service import buscar_usuarios_por_nome
 
 
 permissoes_bp = Blueprint("permissoes", __name__)
@@ -21,8 +21,16 @@ permissoes_bp = Blueprint("permissoes", __name__)
 @login_required
 @admin_required
 def listar_permissoes():
-    usuarios = buscar_usuarios()
-    return render_template("permissoes/listar.html", usuarios=usuarios)
+    filtro_nome = request.args.get("nome", "").strip()
+    filtro_aplicado = bool(filtro_nome)
+    usuarios = buscar_usuarios_por_nome(filtro_nome) if filtro_aplicado else []
+
+    return render_template(
+        "permissoes/listar.html",
+        usuarios=usuarios,
+        filtro_nome=filtro_nome,
+        filtro_aplicado=filtro_aplicado,
+    )
 
 
 @permissoes_bp.route("/usuario/<int:usuario_id>")
