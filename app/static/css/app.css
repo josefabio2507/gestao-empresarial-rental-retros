@@ -721,8 +721,14 @@ textarea {
     flex-wrap: wrap;
 }
 
-.sync-competencia-input {
-    width: 120px;
+.sync-label {
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.sync-date-input {
+    width: 132px;
     min-height: 42px;
     border: 1px solid var(--rr-border);
     border-radius: 9px;

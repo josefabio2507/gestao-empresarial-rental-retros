@@ -6,6 +6,10 @@ from flask import current_app
 GOOGLE_DRIVE_FOLDER_MIME_TYPE = "application/vnd.google-apps.folder"
 GOOGLE_DRIVE_PDF_MIME_TYPE = "application/pdf"
 GOOGLE_DRIVE_SCOPES = ["https://www.googleapis.com/auth/drive.readonly"]
+GOOGLE_DRIVE_LIST_FIELDS = (
+    "nextPageToken,"
+    "files(id,name,mimeType,webViewLink,webContentLink,createdTime)"
+)
 
 
 class GoogleDriveConfiguracaoErro(Exception):
@@ -82,15 +86,11 @@ def listar_itens_da_pasta_pagina(
     page_token=None,
     page_size=100,
 ):
-    campos = (
-        "nextPageToken,"
-        "files(id,name,mimeType,webViewLink,webContentLink)"
-    )
     resposta = (
         service.files()
         .list(
             q=_montar_query_itens(folder_id, mime_type=mime_type),
-            fields=campos,
+            fields=GOOGLE_DRIVE_LIST_FIELDS,
             pageToken=page_token,
             pageSize=page_size,
             supportsAllDrives=True,
@@ -103,10 +103,6 @@ def listar_itens_da_pasta_pagina(
 
 
 def listar_itens_da_pasta(service, folder_id, mime_type=None):
-    campos = (
-        "nextPageToken,"
-        "files(id,name,mimeType,webViewLink,webContentLink)"
-    )
     itens = []
     page_token = None
 
@@ -115,7 +111,7 @@ def listar_itens_da_pasta(service, folder_id, mime_type=None):
             service.files()
             .list(
                 q=_montar_query_itens(folder_id, mime_type=mime_type),
-                fields=campos,
+                fields=GOOGLE_DRIVE_LIST_FIELDS,
                 pageToken=page_token,
                 pageSize=1000,
                 supportsAllDrives=True,

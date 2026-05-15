@@ -12,17 +12,19 @@
         <div class="page-actions">
             {% if pode_sincronizar %}
                 <form method="post" action="{{ url_for('documentos.sincronizar_holerites') }}" class="sync-inline-form">
-                    <label for="competencia-sync" class="sr-only">Competência</label>
+                    <label for="data-criacao-sync" class="sync-label">Data de criação no Drive</label>
                     <input
-                        id="competencia-sync"
-                        class="form-control sync-competencia-input"
+                        id="data-criacao-sync"
+                        class="form-control sync-date-input"
                         type="text"
-                        name="competencia"
-                        placeholder="MM/AAAA"
+                        name="data_criacao"
+                        placeholder="dd/mm/aaaa"
+                        inputmode="numeric"
+                        pattern="\d{2}/\d{2}/\d{4}"
                         required
                     >
                     <button class="btn btn-primary" type="submit">
-                        Sincronizar competência
+                        Sincronizar por data
                     </button>
                 </form>
             {% endif %}
@@ -45,10 +47,10 @@
             <h2>Resumo da sincronização</h2>
 
             <div class="stat-grid">
-                {% if resumo_sincronizacao.competencia_processada %}
+                {% if resumo_sincronizacao.data_criacao_processada %}
                     <div class="stat-card">
-                        <span>Competência processada</span>
-                        <strong>{{ resumo_sincronizacao.competencia_processada }}</strong>
+                        <span>Data de criação filtrada</span>
+                        <strong>{{ resumo_sincronizacao.data_criacao_processada }}</strong>
                     </div>
                 {% endif %}
                 <div class="stat-card">
@@ -64,8 +66,16 @@
                     <strong>{{ resumo_sincronizacao.pastas_processadas }}</strong>
                 </div>
                 <div class="stat-card">
-                    <span>Arquivos encontrados</span>
+                    <span>Arquivos lidos no Drive</span>
                     <strong>{{ resumo_sincronizacao.arquivos_encontrados }}</strong>
+                </div>
+                <div class="stat-card">
+                    <span>Arquivos encontrados na data</span>
+                    <strong>{{ resumo_sincronizacao.arquivos_encontrados_data }}</strong>
+                </div>
+                <div class="stat-card">
+                    <span>Arquivos fora da data</span>
+                    <strong>{{ resumo_sincronizacao.arquivos_fora_data }}</strong>
                 </div>
                 <div class="stat-card">
                     <span>Importados</span>
