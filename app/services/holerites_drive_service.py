@@ -1,11 +1,13 @@
 import re
 import unicodedata
 from dataclasses import dataclass, field
+from datetime import date, datetime
 
 from flask import current_app
 
 from app.extensions import db
 from app.models import Colaborador, HoleriteColaborador
+from app.utils.datas import BR_TZ, UTC_TZ
 from app.services.google_drive_service import (
     GOOGLE_DRIVE_FOLDER_MIME_TYPE,
     GOOGLE_DRIVE_PDF_MIME_TYPE,
@@ -20,6 +22,8 @@ TAMANHO_PAGINA_PASTAS = 1
 TAMANHO_PAGINA_ARQUIVOS = 100
 PADRAO_PASTA_COLABORADOR = re.compile(r"^\s*(?P<matricula>\d+)")
 PADRAO_MATRICULA_ARQUIVO = re.compile(r"^\s*(?P<matricula>\d+)\s*[-_\s]*")
+PADRAO_DATA_BR = re.compile(r"^\d{2}/\d{2}/\d{4}$")
+PADRAO_DATA_ISO = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 PADROES_COMPETENCIA = [
     re.compile(r"(?<!\d)(?P<mes>0?[1-9]|1[0-2])\s*[./-]\s*(?P<ano>19\d{2}|20\d{2})(?!\d)"),
     re.compile(r"(?<!\d)(?P<ano>19\d{2}|20\d{2})\s*-\s*(?P<mes>0?[1-9]|1[0-2])(?!\d)"),
@@ -37,6 +41,8 @@ TIPOS_PONTO_NAO_ACEITOS = [
 @dataclass
 class ResumoSincronizacaoHolerites:
     arquivos_encontrados: int = 0
+    arquivos_encontrados_data: int = 0
+    arquivos_fora_data: int = 0
     importados: int = 0
     ja_existentes: int = 0
     pastas_ignoradas: int = 0
@@ -49,7 +55,7 @@ class ResumoSincronizacaoHolerites:
     arquivos_processados_lote: int = 0
     pastas_processadas: int = 0
     tamanho_lote: int = TAMANHO_LOTE_PADRAO
-    competencia_processada: str | None = None
+    data_criacao_processada: str | None = None
     concluido: bool = False
     proximo_estado: dict | None = None
     erros: int = 0
@@ -62,6 +68,8 @@ class ResumoSincronizacaoHolerites:
     def como_dict(self):
         return {
             "arquivos_encontrados": self.arquivos_encontrados,
+            "arquivos_encontrados_data": self.arquivos_encontrados_data,
+            "arquivos_fora_data": self.arquivos_fora_data,
             "importados": self.importados,
             "ja_existentes": self.ja_existentes,
             "pastas_ignoradas": self.pastas_ignoradas,
@@ -74,7 +82,7 @@ class ResumoSincronizacaoHolerites:
             "arquivos_processados_lote": self.arquivos_processados_lote,
             "pastas_processadas": self.pastas_processadas,
             "tamanho_lote": self.tamanho_lote,
-            "competencia_processada": self.competencia_processada,
+            "data_criacao_processada": self.data_criacao_processada,
             "concluido": self.concluido,
             "proximo_estado": self.proximo_estado,
             "erros": self.erros,
@@ -161,6 +169,55 @@ def extrair_competencia(nome_base):
 
 def normalizar_competencia_informada(valor):
     return extrair_competencia(str(valor or ""))
+
+
+def normalizar_data_criacao_informada(valor):
+    if isinstance(valor, datetime):
+        if valor.tzinfo is None:
+            valor = valor.replace(tzinfo=UTC_TZ)
+        return valor.astimezone(BR_TZ).date()
+
+    if isinstance(valor, date):
+        return valor
+
+    texto = str(valor or "").strip()
+
+    if PADRAO_DATA_BR.match(texto):
+        formato = "%d/%m/%Y"
+    elif PADRAO_DATA_ISO.match(texto):
+        formato = "%Y-%m-%d"
+    else:
+        return None
+
+    try:
+        return datetime.strptime(texto, formato).date()
+    except ValueError:
+        return None
+
+
+def formatar_data_criacao(data_criacao):
+    if not data_criacao:
+        return None
+
+    return data_criacao.strftime("%d/%m/%Y")
+
+
+def data_criacao_arquivo_drive(arquivo_drive):
+    created_time = (arquivo_drive or {}).get("createdTime")
+    texto = str(created_time or "").strip()
+
+    if not texto:
+        return None
+
+    try:
+        data_hora = datetime.fromisoformat(texto.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+    if data_hora.tzinfo is None:
+        data_hora = data_hora.replace(tzinfo=UTC_TZ)
+
+    return data_hora.astimezone(BR_TZ).date()
 
 
 def normalizar_tipo_documento(nome_base):
@@ -275,8 +332,8 @@ def holerite_ja_importado_com_cache(cache, colaborador_id, dados_arquivo, arquiv
     google_drive_file_id = arquivo_drive.get("id")
 
     if cache is not None:
-        if google_drive_file_id and google_drive_file_id in cache["google_drive_file_ids"]:
-            return True
+        if google_drive_file_id:
+            return google_drive_file_id in cache["google_drive_file_ids"]
 
         return (
             dados_arquivo["competencia"],
@@ -289,8 +346,7 @@ def holerite_ja_importado_com_cache(cache, colaborador_id, dados_arquivo, arquiv
             google_drive_file_id=google_drive_file_id,
         ).first()
 
-        if existente:
-            return True
+        return existente is not None
 
     return (
         HoleriteColaborador.query
@@ -352,17 +408,23 @@ def sincronizar_holerites_google_drive(
     folder_id=None,
     estado=None,
     limite_arquivos=TAMANHO_LOTE_PADRAO,
-    competencia_filtro=None,
+    data_criacao_filtro=None,
 ):
     resumo = ResumoSincronizacaoHolerites()
     resumo.tamanho_lote = limite_arquivos
-    resumo.competencia_processada = normalizar_competencia_informada(competencia_filtro)
     folder_id = folder_id or current_app.config.get("GOOGLE_DRIVE_HOLERITES_FOLDER_ID")
     estado_atual = estado.copy() if estado else _novo_estado()
-    if not resumo.competencia_processada and estado_atual.get("competencia_filtro"):
-        resumo.competencia_processada = estado_atual["competencia_filtro"]
-    if resumo.competencia_processada:
-        estado_atual["competencia_filtro"] = resumo.competencia_processada
+    data_criacao_processada = normalizar_data_criacao_informada(data_criacao_filtro)
+
+    if not data_criacao_processada and estado_atual.get("data_criacao_filtro"):
+        data_criacao_processada = normalizar_data_criacao_informada(
+            estado_atual["data_criacao_filtro"]
+        )
+
+    if data_criacao_processada:
+        estado_atual["data_criacao_filtro"] = data_criacao_processada.isoformat()
+        resumo.data_criacao_processada = formatar_data_criacao(data_criacao_processada)
+
     caches_holerites = {}
 
     if not folder_id:
@@ -474,6 +536,15 @@ def sincronizar_holerites_google_drive(
             resumo.arquivos_encontrados += 1
             resumo.arquivos_processados_lote += 1
 
+            if data_criacao_processada:
+                data_criacao_arquivo = data_criacao_arquivo_drive(arquivo)
+
+                if data_criacao_arquivo != data_criacao_processada:
+                    resumo.arquivos_fora_data += 1
+                    continue
+
+                resumo.arquivos_encontrados_data += 1
+
             if (
                 arquivo.get("mimeType") != GOOGLE_DRIVE_PDF_MIME_TYPE
                 and not nome_arquivo.lower().endswith(".pdf")
@@ -504,12 +575,6 @@ def sincronizar_holerites_google_drive(
                 "competencia": analise_arquivo["competencia"],
                 "nome": analise_arquivo["nome"],
             }
-
-            if (
-                resumo.competencia_processada
-                and dados_arquivo["competencia"] != resumo.competencia_processada
-            ):
-                continue
 
             if holerite_ja_importado_com_cache(
                 cache_holerites,

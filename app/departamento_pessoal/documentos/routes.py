@@ -14,7 +14,7 @@ from app.departamento_pessoal.documentos.services import (
     usuario_pode_acessar_holerite,
 )
 from app.services.holerites_drive_service import (
-    normalizar_competencia_informada,
+    normalizar_data_criacao_informada,
     sincronizar_holerites_google_drive,
 )
 
@@ -134,21 +134,33 @@ def sincronizar_holerites():
 
     cursor = request.form.get("cursor")
     estado = decodificar_cursor_sincronizacao(cursor)
-    competencia = None
+    data_criacao = None
+
+    if cursor and estado is None:
+        return renderizar_holerites()
 
     if not cursor:
-        competencia = normalizar_competencia_informada(
-            request.form.get("competencia"),
+        data_criacao = normalizar_data_criacao_informada(
+            request.form.get("data_criacao"),
         )
 
-        if not competencia:
-            flash("Informe uma competência válida no formato MM/AAAA.", "warning")
+        if not data_criacao:
+            flash(
+                "Informe uma data de criação no Drive válida no formato dd/mm/aaaa.",
+                "warning",
+            )
             return renderizar_holerites()
+    elif not normalizar_data_criacao_informada(estado.get("data_criacao_filtro")):
+        flash(
+            "Não foi possível identificar a data de criação deste lote. Inicie uma nova sincronização.",
+            "warning",
+        )
+        return renderizar_holerites()
 
     resumo = sincronizar_holerites_google_drive(
         usuario_id=current_user.id,
         estado=estado,
-        competencia_filtro=competencia,
+        data_criacao_filtro=data_criacao,
     )
     resumo["proximo_cursor"] = codificar_cursor_sincronizacao(
         resumo.get("proximo_estado"),
@@ -159,7 +171,9 @@ def sincronizar_holerites():
         (
             f"Usuário ID {current_user.id} sincronizou holerites. "
             f"Lote: {resumo['arquivos_processados_lote']}, "
-            f"Competência: {resumo['competencia_processada'] or 'geral'}, "
+            f"Data de criação no Drive: {resumo['data_criacao_processada'] or 'não informada'}, "
+            f"Arquivos na data: {resumo['arquivos_encontrados_data']}, "
+            f"Fora da data: {resumo['arquivos_fora_data']}, "
             f"Importados: {resumo['importados']}, "
             f"já existentes: {resumo['ja_existentes']}, "
             f"erros: {resumo['erros']}, "

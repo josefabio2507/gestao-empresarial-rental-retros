@@ -5,10 +5,13 @@ from app.departamento_pessoal.documentos.services import chave_ordenacao_compete
 from app.services.holerites_drive_service import (
     analisar_nome_arquivo_holerite,
     buscar_colaborador_por_matricula,
+    data_criacao_arquivo_drive,
     extrair_matricula_pasta,
     holerite_ja_importado,
+    holerite_ja_importado_com_cache,
     matriculas_equivalentes,
     normalizar_competencia_informada,
+    normalizar_data_criacao_informada,
     sincronizar_holerites_google_drive,
 )
 
@@ -105,6 +108,31 @@ class ParserHoleritesDriveTest(unittest.TestCase):
         self.assertEqual(normalizar_competencia_informada("03.2025"), "03/2025")
         self.assertIsNone(normalizar_competencia_informada("2025"))
 
+    def test_data_criacao_informada_e_normalizada(self):
+        data_criacao = normalizar_data_criacao_informada("14/05/2026")
+
+        self.assertEqual(data_criacao.isoformat(), "2026-05-14")
+        self.assertEqual(
+            normalizar_data_criacao_informada("2026-05-14").isoformat(),
+            "2026-05-14",
+        )
+        self.assertIsNone(normalizar_data_criacao_informada("2026"))
+        self.assertIsNone(normalizar_data_criacao_informada("31/02/2026"))
+
+    def test_created_time_drive_considera_timezone_brasil(self):
+        self.assertEqual(
+            data_criacao_arquivo_drive(
+                {"createdTime": "2026-05-14T03:10:00.000Z"}
+            ).isoformat(),
+            "2026-05-14",
+        )
+        self.assertEqual(
+            data_criacao_arquivo_drive(
+                {"createdTime": "2026-05-14T02:59:59.000Z"}
+            ).isoformat(),
+            "2026-05-13",
+        )
+
     def test_chave_de_ordenacao_de_competencia_e_numerica(self):
         competencias = ["12/2024", "01/2025", "11/2024"]
 
@@ -194,6 +222,33 @@ class ParserHoleritesDriveTest(unittest.TestCase):
 
         self.assertTrue(existe)
 
+    def test_duplicidade_com_cache_prioriza_google_drive_file_id(self):
+        cache = {
+            "google_drive_file_ids": {"drive-antigo"},
+            "chaves_fallback": {
+                (
+                    "05/2026",
+                    "Holerite Mensal",
+                    "10-Holerite Salário 05.2026 - Fulano.pdf",
+                )
+            },
+        }
+
+        existe = holerite_ja_importado_com_cache(
+            cache,
+            1,
+            {
+                "competencia": "05/2026",
+                "tipo": "Holerite Mensal",
+            },
+            {
+                "id": "drive-novo",
+                "name": "10-Holerite Salário 05.2026 - Fulano.pdf",
+            },
+        )
+
+        self.assertFalse(existe)
+
     def test_colaborador_nao_cadastrado_retorna_none_sem_excecao(self):
         with patch(
             "app.services.holerites_drive_service.Colaborador",
@@ -209,6 +264,7 @@ class ParserHoleritesDriveTest(unittest.TestCase):
             "name": "79 -Holerite Salário 08.2025 - João da Silva.pdf",
             "mimeType": "application/pdf",
             "webViewLink": "https://drive.example/drive-1",
+            "createdTime": "2025-08-15T12:00:00.000Z",
         }
 
         with patch(
@@ -235,6 +291,7 @@ class ParserHoleritesDriveTest(unittest.TestCase):
                 drive_service=object(),
                 folder_id="root",
                 limite_arquivos=1,
+                data_criacao_filtro="15/08/2025",
             )
 
         self.assertEqual(resumo["arquivos_processados_lote"], 1)
@@ -244,21 +301,24 @@ class ParserHoleritesDriveTest(unittest.TestCase):
             resumo["proximo_estado"]["file_page_token"],
             "next-file-page",
         )
+        self.assertEqual(resumo["proximo_estado"]["data_criacao_filtro"], "2025-08-15")
         criar_holerite.assert_called_once()
 
-    def test_sincronizacao_filtra_competencia_parametrizada(self):
+    def test_sincronizacao_filtra_data_criacao_parametrizada(self):
         arquivos = [
             {
                 "id": "drive-1",
                 "name": "79 -Holerite Salário 02.2025 - João da Silva.pdf",
                 "mimeType": "application/pdf",
                 "webViewLink": "https://drive.example/drive-1",
+                "createdTime": "2026-05-20T12:00:00.000Z",
             },
             {
                 "id": "drive-2",
                 "name": "79 -Holerite Salário 03.2025 - João da Silva.pdf",
                 "mimeType": "application/pdf",
                 "webViewLink": "https://drive.example/drive-2",
+                "createdTime": "2026-05-21T12:00:00.000Z",
             },
         ]
 
@@ -286,13 +346,64 @@ class ParserHoleritesDriveTest(unittest.TestCase):
                 drive_service=object(),
                 folder_id="root",
                 limite_arquivos=10,
-                competencia_filtro="03.2025",
+                data_criacao_filtro="20/05/2026",
             )
 
-        self.assertEqual(resumo["competencia_processada"], "03/2025")
+        self.assertEqual(resumo["data_criacao_processada"], "20/05/2026")
         self.assertEqual(resumo["arquivos_processados_lote"], 2)
+        self.assertEqual(resumo["arquivos_encontrados_data"], 1)
+        self.assertEqual(resumo["arquivos_fora_data"], 1)
         self.assertEqual(resumo["importados"], 1)
         criar_holerite.assert_called_once()
+
+    def test_sincronizacao_importa_mesma_competencia_mesma_data_ids_diferentes(self):
+        arquivos = [
+            {
+                "id": "drive-1",
+                "name": "79 -Holerite Salário 05.2026 - João da Silva.pdf",
+                "mimeType": "application/pdf",
+                "webViewLink": "https://drive.example/drive-1",
+                "createdTime": "2026-06-01T13:00:00.000Z",
+            },
+            {
+                "id": "drive-2",
+                "name": "79 -Adiantamento Salarial 05.2026 - João da Silva.pdf",
+                "mimeType": "application/pdf",
+                "webViewLink": "https://drive.example/drive-2",
+                "createdTime": "2026-06-01T14:00:00.000Z",
+            },
+        ]
+
+        with patch(
+            "app.services.holerites_drive_service._listar_proxima_pasta",
+            return_value=(
+                {"id": "folder-1", "name": "000123 - João da Silva"},
+                None,
+            ),
+        ), patch(
+            "app.services.holerites_drive_service.listar_itens_da_pasta_pagina",
+            return_value=(arquivos, None),
+        ), patch(
+            "app.services.holerites_drive_service.buscar_colaborador_por_matricula",
+            return_value=ColaboradorFake(),
+        ), patch(
+            "app.services.holerites_drive_service.carregar_cache_holerites_colaborador",
+            return_value={"google_drive_file_ids": set(), "chaves_fallback": set()},
+        ), patch(
+            "app.services.holerites_drive_service.criar_holerite",
+        ) as criar_holerite, patch(
+            "app.services.holerites_drive_service.db.session.commit",
+        ):
+            resumo = sincronizar_holerites_google_drive(
+                drive_service=object(),
+                folder_id="root",
+                limite_arquivos=10,
+                data_criacao_filtro="01/06/2026",
+            )
+
+        self.assertEqual(resumo["arquivos_encontrados_data"], 2)
+        self.assertEqual(resumo["importados"], 2)
+        self.assertEqual(criar_holerite.call_count, 2)
 
 
 if __name__ == "__main__":
