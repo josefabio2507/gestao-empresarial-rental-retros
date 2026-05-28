@@ -357,6 +357,54 @@ def buscar_equipes_ativas():
     )
 
 
+def buscar_colaboradores_ativos():
+    return (
+        Colaborador.query
+        .filter(Colaborador.ativo.is_(True))
+        .order_by(Colaborador.nome.asc())
+        .all()
+    )
+
+
+def texto_colaborador_historico(colaborador):
+    if not colaborador:
+        return ""
+
+    return f"{colaborador.nome} - {colaborador.matricula}"
+
+
+def buscar_colaborador_ativo_por_texto(texto):
+    texto_normalizado = (texto or "").strip()
+
+    if not texto_normalizado:
+        return None
+
+    colaboradores = buscar_colaboradores_ativos()
+    texto_busca = texto_normalizado.lower()
+
+    for colaborador in colaboradores:
+        opcoes = {
+            texto_colaborador_historico(colaborador).lower(),
+            (colaborador.nome or "").strip().lower(),
+            (colaborador.matricula or "").strip().lower(),
+            (colaborador.cpf or "").strip().lower(),
+        }
+
+        if texto_busca in opcoes:
+            return colaborador
+
+    encontrados_por_nome = [
+        colaborador
+        for colaborador in colaboradores
+        if texto_busca in (colaborador.nome or "").strip().lower()
+    ]
+
+    if len(encontrados_por_nome) == 1:
+        return encontrados_por_nome[0]
+
+    return None
+
+
 def buscar_pedidos(status=None):
     query = PedidoRefeicao.query
 
@@ -1581,3 +1629,93 @@ def status_relatorio_opcoes():
         "Cancelado",
         "Todos",
     ]
+
+
+def buscar_consumos_historico_colaborador(colaborador, data_inicial, data_final):
+    data_inicio = converter_data(data_inicial)
+    data_fim = converter_data(data_final)
+
+    if not colaborador or not data_inicio or not data_fim:
+        return []
+
+    if data_inicio > data_fim:
+        return []
+
+    return (
+        ConsumoRefeicao.query
+        .join(PedidoRefeicao, ConsumoRefeicao.pedido_id == PedidoRefeicao.id)
+        .join(ItemCardapio, ConsumoRefeicao.item_cardapio_id == ItemCardapio.id)
+        .join(Restaurante, PedidoRefeicao.restaurante_id == Restaurante.id)
+        .outerjoin(Equipe, PedidoRefeicao.equipe_id == Equipe.id)
+        .filter(
+            ConsumoRefeicao.colaborador_id == colaborador.id,
+            PedidoRefeicao.data_pedido >= data_inicio,
+            PedidoRefeicao.data_pedido <= data_fim,
+            PedidoRefeicao.status != STATUS_PEDIDO_CANCELADO,
+            ItemCardapio.tipo.in_([TIPO_CARDAPIO_REFEICAO, TIPO_CARDAPIO_BEBIDA]),
+        )
+        .order_by(
+            PedidoRefeicao.data_pedido.asc(),
+            PedidoRefeicao.id.asc(),
+            ItemCardapio.tipo.asc(),
+            ItemCardapio.nome.asc(),
+        )
+        .all()
+    )
+
+
+def montar_historico_colaborador_refeicoes(colaborador, data_inicial, data_final):
+    consumos = buscar_consumos_historico_colaborador(
+        colaborador=colaborador,
+        data_inicial=data_inicial,
+        data_final=data_final,
+    )
+
+    resumo = {
+        "quantidade_refeicoes": 0,
+        "valor_refeicoes": Decimal("0.00"),
+        "quantidade_bebidas": 0,
+        "valor_bebidas": Decimal("0.00"),
+        "total_geral": Decimal("0.00"),
+        "quantidade_consumos": len(consumos),
+    }
+    itens = []
+
+    for consumo in consumos:
+        item = consumo.item_cardapio
+        pedido = consumo.pedido
+
+        if not item or not pedido:
+            continue
+
+        quantidade = consumo.quantidade or 0
+        valor_total = consumo.valor_total or Decimal("0.00")
+
+        if item.tipo == TIPO_CARDAPIO_REFEICAO:
+            resumo["quantidade_refeicoes"] += quantidade
+            resumo["valor_refeicoes"] += valor_total
+        elif item.tipo == TIPO_CARDAPIO_BEBIDA:
+            resumo["quantidade_bebidas"] += quantidade
+            resumo["valor_bebidas"] += valor_total
+
+        resumo["total_geral"] += valor_total
+
+        itens.append({
+            "data": pedido.data_pedido,
+            "numero_pedido": pedido.numero_pedido,
+            "equipe": pedido.equipe.nome if pedido.equipe else "-",
+            "restaurante": pedido.restaurante.nome if pedido.restaurante else "-",
+            "status": pedido.status,
+            "tipo": item.tipo,
+            "nome_item": item.nome,
+            "quantidade": quantidade,
+            "valor_unitario": consumo.valor_unitario,
+            "valor_total": valor_total,
+            "observacao": consumo.observacao or "",
+        })
+
+    return {
+        "colaborador": colaborador,
+        "resumo": resumo,
+        "itens": itens,
+    }
