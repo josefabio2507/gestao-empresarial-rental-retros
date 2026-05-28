@@ -32,6 +32,12 @@ NOVOS_MODULOS = [
         "descricao": "Consulta, análise e exportação dos relatórios de refeições.",
         "ordem": 23,
     },
+    {
+        "nome": "Pedido de Refeições - Histórico por Colaborador",
+        "slug": "pedido-refeicoes-historico-colaborador",
+        "descricao": "Consulta do histórico de refeições e bebidas por colaborador ativo.",
+        "ordem": 24,
+    },
 ]
 
 ACOES = [

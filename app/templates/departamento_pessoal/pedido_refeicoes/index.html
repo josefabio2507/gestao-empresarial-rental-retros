@@ -50,6 +50,15 @@
                 <span class="badge badge-success">Disponível</span>
             </a>
         {% endif %}
+
+        {% if pode_visualizar_historico_colaborador %}
+            <a class="module-card module-card-link" href="{{ url_for('pedido_refeicoes.historico_colaborador') }}">
+                <span class="module-card-icon">H</span>
+                <h2>Histórico por Colaborador</h2>
+                <p>Consulte refeições e bebidas por colaborador ativo e período.</p>
+                <span class="badge badge-success">Disponível</span>
+            </a>
+        {% endif %}
     </div>
 </section>
 {% endblock %}
