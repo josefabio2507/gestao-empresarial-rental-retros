@@ -30,6 +30,7 @@ from app.departamento_pessoal.pedido_refeicoes.services import (
     formatar_telefone,
     formatar_moeda,
     buscar_equipes_ativas,
+    buscar_colaborador_ativo_por_texto,
     buscar_pedidos,
     buscar_pedido_por_id,
     criar_pedido_refeicao,
@@ -61,6 +62,7 @@ from app.departamento_pessoal.pedido_refeicoes.services import (
     pedido_enviado_com_correcao_permitida,
     pedido_pode_ser_cancelado,
     montar_relatorio_refeicoes,
+    montar_historico_colaborador_refeicoes,
     status_relatorio_opcoes,
 )
 
@@ -72,12 +74,14 @@ MODULO_REFEICOES_RESTAURANTES = "pedido-refeicoes-restaurantes"
 MODULO_REFEICOES_CARDAPIO = "pedido-refeicoes-cardapio"
 MODULO_REFEICOES_PEDIDOS = "pedido-refeicoes-pedidos"
 MODULO_REFEICOES_RELATORIOS = "pedido-refeicoes-relatorios"
+MODULO_REFEICOES_HISTORICO_COLABORADOR = "pedido-refeicoes-historico-colaborador"
 
 SUBMODULOS_REFEICOES = [
     MODULO_REFEICOES_RESTAURANTES,
     MODULO_REFEICOES_CARDAPIO,
     MODULO_REFEICOES_PEDIDOS,
     MODULO_REFEICOES_RELATORIOS,
+    MODULO_REFEICOES_HISTORICO_COLABORADOR,
 ]
 
 STATUS_FILTRO_NOVO_PEDIDO = "novo_pedido"
@@ -127,6 +131,9 @@ def index():
     pode_visualizar_cardapio = pode_acessar_submodulo_refeicoes(MODULO_REFEICOES_CARDAPIO)
     pode_visualizar_pedidos = pode_acessar_submodulo_refeicoes(MODULO_REFEICOES_PEDIDOS)
     pode_visualizar_relatorios = pode_acessar_submodulo_refeicoes(MODULO_REFEICOES_RELATORIOS)
+    pode_visualizar_historico_colaborador = pode_acessar_submodulo_refeicoes(
+        MODULO_REFEICOES_HISTORICO_COLABORADOR
+    )
 
     return render_template(
         "departamento_pessoal/pedido_refeicoes/index.html",
@@ -134,6 +141,7 @@ def index():
         pode_visualizar_cardapio=pode_visualizar_cardapio,
         pode_visualizar_pedidos=pode_visualizar_pedidos,
         pode_visualizar_relatorios=pode_visualizar_relatorios,
+        pode_visualizar_historico_colaborador=pode_visualizar_historico_colaborador,
     )
     
 
@@ -1030,6 +1038,46 @@ def relatorios():
         formatar_data=formatar_data,
         formatar_moeda=formatar_moeda,
         pode_exportar=pode_exportar,
+    )
+
+@pedido_refeicoes_bp.route("/historico-colaborador")
+@module_permission_required(DEPARTAMENTO_PESSOAL_SLUG, MODULO_REFEICOES_HISTORICO_COLABORADOR, "visualizar")
+def historico_colaborador():
+    colaborador_texto = request.args.get("colaborador", "").strip()
+    data_inicial = request.args.get("data_inicial", "").strip()
+    data_final = request.args.get("data_final", "").strip()
+
+    colaborador = None
+    historico = None
+    filtros_aplicados = bool(request.args)
+
+    if filtros_aplicados:
+        if not colaborador_texto:
+            flash("Informe o colaborador.", "danger")
+        elif not data_inicial or not data_final:
+            flash("Informe data inicial e data final.", "danger")
+        else:
+            colaborador = buscar_colaborador_ativo_por_texto(colaborador_texto)
+
+            if not colaborador:
+                flash("Colaborador ativo não encontrado ou pesquisa ambígua.", "danger")
+            else:
+                historico = montar_historico_colaborador_refeicoes(
+                    colaborador=colaborador,
+                    data_inicial=data_inicial,
+                    data_final=data_final,
+                )
+
+    return render_template(
+        "departamento_pessoal/pedido_refeicoes/historico_colaborador.html",
+        historico=historico,
+        filtros={
+            "colaborador": colaborador_texto,
+            "data_inicial": data_inicial,
+            "data_final": data_final,
+        },
+        formatar_data=formatar_data,
+        formatar_moeda=formatar_moeda,
     )
 
 @pedido_refeicoes_bp.route("/relatorios/pdf")

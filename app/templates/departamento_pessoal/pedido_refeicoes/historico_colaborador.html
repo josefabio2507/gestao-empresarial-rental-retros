@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Pedido de Refeições</span>
+            <h1>Histórico por Colaborador</h1>
+            <p>Consulte refeições e bebidas consumidas por colaborador ativo.</p>
+        </div>
+
+        <a class="btn btn-secondary" href="{{ url_for('pedido_refeicoes.index') }}">
+            Voltar
+        </a>
+    </div>
+
+    <form class="filter-card" method="GET" action="{{ url_for('pedido_refeicoes.historico_colaborador') }}">
+        <div class="filter-grid">
+            <div class="form-group">
+                <label for="colaborador">Colaborador</label>
+                <input
+                    type="text"
+                    name="colaborador"
+                    id="colaborador"
+                    value="{{ filtros.colaborador }}"
+                    autocomplete="off"
+                    required
+                >
+                <small>Pesquise por nome, matrícula ou CPF do colaborador ativo.</small>
+            </div>
+
+            <div class="form-group">
+                <label for="data_inicial">Data inicial</label>
+                <input
+                    type="date"
+                    name="data_inicial"
+                    id="data_inicial"
+                    value="{{ filtros.data_inicial }}"
+                    required
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="data_final">Data final</label>
+                <input
+                    type="date"
+                    name="data_final"
+                    id="data_final"
+                    value="{{ filtros.data_final }}"
+                    required
+                >
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Consultar</button>
+        </div>
+    </form>
+
+    {% if historico %}
+        <div class="details-card">
+            <h2>{{ historico.colaborador.nome }}</h2>
+            <p>
+                Matrícula: {{ historico.colaborador.matricula }}
+                {% if historico.colaborador.equipe %}
+                    | Equipe: {{ historico.colaborador.equipe.nome }}
+                {% endif %}
+            </p>
+
+            <div class="stat-grid">
+                <div class="stat-card">
+                    <span>Período</span>
+                    <strong>{{ filtros.data_inicial }} a {{ filtros.data_final }}</strong>
+                </div>
+                <div class="stat-card">
+                    <span>Qtd. refeições</span>
+                    <strong>{{ historico.resumo.quantidade_refeicoes }}</strong>
+                </div>
+                <div class="stat-card">
+                    <span>Total refeições</span>
+                    <strong>{{ formatar_moeda(historico.resumo.valor_refeicoes) }}</strong>
+                </div>
+                <div class="stat-card">
+                    <span>Qtd. bebidas</span>
+                    <strong>{{ historico.resumo.quantidade_bebidas }}</strong>
+                </div>
+                <div class="stat-card">
+                    <span>Total bebidas</span>
+                    <strong>{{ formatar_moeda(historico.resumo.valor_bebidas) }}</strong>
+                </div>
+                <div class="stat-card">
+                    <span>Total geral</span>
+                    <strong>{{ formatar_moeda(historico.resumo.total_geral) }}</strong>
+                </div>
+            </div>
+        </div>
+
+        <div class="table-card table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Pedido</th>
+                        <th>Equipe</th>
+                        <th>Restaurante</th>
+                        <th>Status</th>
+                        <th>Tipo</th>
+                        <th>Item</th>
+                        <th>Qtd.</th>
+                        <th>Valor unit.</th>
+                        <th>Total</th>
+                        <th>Observação</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for item in historico.itens %}
+                        <tr>
+                            <td class="col-nowrap">{{ formatar_data(item.data) }}</td>
+                            <td>{{ item.numero_pedido }}</td>
+                            <td>{{ item.equipe }}</td>
+                            <td>{{ item.restaurante }}</td>
+                            <td>{{ item.status }}</td>
+                            <td>{{ item.tipo }}</td>
+                            <td>{{ item.nome_item }}</td>
+                            <td>{{ item.quantidade }}</td>
+                            <td class="col-nowrap">{{ formatar_moeda(item.valor_unitario) }}</td>
+                            <td class="col-nowrap">{{ formatar_moeda(item.valor_total) }}</td>
+                            <td>{{ item.observacao or "-" }}</td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td class="empty-state" colspan="11">Nenhum consumo encontrado para os filtros selecionados.</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endif %}
+</section>
+{% endblock %}
