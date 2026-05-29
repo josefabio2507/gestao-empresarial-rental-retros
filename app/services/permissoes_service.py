@@ -21,6 +21,49 @@ DEPARTAMENTO_PESSOAL_SLUG = "departamento_pessoal"
 DEPARTAMENTO_DOCUMENTOS_PESSOAIS_SLUG = "documentos_pessoais"
 MODULO_HOLERITES_SLUG = "holerites"
 MODULO_DOCUMENTOS_SLUG = "documentos"
+MODULO_REFEICOES_HISTORICO_COLABORADOR_SLUG = "pedido-refeicoes-historico-colaborador"
+
+
+def garantir_modulo_historico_refeicoes_colaborador():
+    departamento = Departamento.query.filter_by(
+        slug=DEPARTAMENTO_PESSOAL_SLUG,
+        ativo=True,
+    ).first()
+
+    if not departamento:
+        return
+
+    modulo = Modulo.query.filter_by(
+        departamento_id=departamento.id,
+        slug=MODULO_REFEICOES_HISTORICO_COLABORADOR_SLUG,
+    ).first()
+
+    dados_modulo = {
+        "nome": "Pedido de Refeições - Histórico por Colaborador",
+        "descricao": "Consulta do histórico de refeições e bebidas por colaborador ativo.",
+        "ativo": True,
+        "ordem": 24,
+    }
+
+    if not modulo:
+        modulo = Modulo(
+            departamento_id=departamento.id,
+            slug=MODULO_REFEICOES_HISTORICO_COLABORADOR_SLUG,
+            **dados_modulo,
+        )
+        db.session.add(modulo)
+        db.session.commit()
+        return
+
+    alterado = False
+
+    for campo, valor in dados_modulo.items():
+        if getattr(modulo, campo) != valor:
+            setattr(modulo, campo, valor)
+            alterado = True
+
+    if alterado:
+        db.session.commit()
 
 
 def buscar_usuario_com_permissoes(usuario_id):

@@ -6,6 +6,7 @@ from app.services.logs_service import registrar_log
 from app.services.permissoes_service import (
     buscar_usuario_com_permissoes,
     buscar_departamentos_com_modulos,
+    garantir_modulo_historico_refeicoes_colaborador,
     buscar_permissoes_usuario,
     salvar_permissoes_usuario,
     permissoes_por_departamento,
@@ -76,6 +77,7 @@ def editar_permissoes(usuario_id):
 
         flash(mensagem, "danger")
 
+    garantir_modulo_historico_refeicoes_colaborador()
     departamentos = buscar_departamentos_com_modulos()
     permissoes = buscar_permissoes_usuario(usuario.id)
 
