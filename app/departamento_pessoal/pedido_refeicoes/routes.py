@@ -918,6 +918,37 @@ def gerar_pdf_relatorio_refeicoes(relatorio, filtros):
     elementos.append(tabela_resumo_financeiro)
     elementos.append(Spacer(1, 16))
 
+    elementos.append(Paragraph("<b>Resumo por Pedidos</b>", styles["Heading2"]))
+
+    tabela_resumo_pedidos = [
+        ["Data", "Nº Pedido", "Valor Total"]
+    ]
+
+    for pedido in relatorio["resumo_pedidos"]:
+        tabela_resumo_pedidos.append([
+            formatar_data(pedido["data"]),
+            pedido["numero"],
+            formatar_moeda(pedido["total"]),
+        ])
+
+    if len(tabela_resumo_pedidos) == 1:
+        tabela_resumo_pedidos.append([
+            "-",
+            "Nenhum pedido encontrado",
+            formatar_moeda(0),
+        ])
+
+    tabela_resumo_pedidos_pdf = Table(tabela_resumo_pedidos, repeatRows=1)
+    tabela_resumo_pedidos_pdf.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, -1), 9),
+        ("ALIGN", (2, 1), (2, -1), "RIGHT"),
+    ]))
+    elementos.append(tabela_resumo_pedidos_pdf)
+    elementos.append(Spacer(1, 16))
+
     for grupo in relatorio["grupos"]:
         elementos.append(Paragraph(f"<b>{grupo['tipo']}: {grupo['titulo']}</b>", styles["Heading2"]))
         elementos.append(Spacer(1, 8))

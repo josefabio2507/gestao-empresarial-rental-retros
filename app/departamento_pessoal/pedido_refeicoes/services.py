@@ -1493,6 +1493,19 @@ def calcular_resumo_itens_relatorio(pedidos):
     return list(resumo.values())
 
 
+def calcular_resumo_pedidos_relatorio(pedidos):
+    resumo = []
+
+    for pedido in pedidos:
+        resumo.append({
+            "data": pedido.data_pedido,
+            "numero": pedido.numero_pedido,
+            "total": calcular_total_pedido_relatorio(pedido),
+        })
+
+    return resumo
+
+
 def agrupar_relatorio_por_restaurante(pedidos):
     grupos = {}
 
@@ -1601,6 +1614,7 @@ def montar_relatorio_refeicoes(
         agrupamento_label = "Restaurante"
 
     resumo_totais = calcular_resumo_totais_relatorio(pedidos)
+    resumo_pedidos = calcular_resumo_pedidos_relatorio(pedidos)
     total_geral = resumo_totais["valor_refeicoes"] + resumo_totais["valor_bebidas"]
 
     return {
@@ -1618,6 +1632,7 @@ def montar_relatorio_refeicoes(
         "quantidade_bebidas": resumo_totais["quantidade_bebidas"],
         "valor_bebidas": resumo_totais["valor_bebidas"],
         "quantidade_pedidos": len(pedidos),
+        "resumo_pedidos": resumo_pedidos,
     }
 
 
