@@ -921,20 +921,30 @@ def gerar_pdf_relatorio_refeicoes(relatorio, filtros):
     elementos.append(Paragraph("<b>Resumo por Pedidos</b>", styles["Heading2"]))
 
     tabela_resumo_pedidos = [
-        ["Data", "Nº Pedido", "Valor Total"]
+        ["Data", "Nº Pedido", "Valor Total", "Total por Dia"]
     ]
+    spans_total_por_dia = []
 
-    for pedido in relatorio["resumo_pedidos"]:
+    for indice, pedido in enumerate(relatorio["resumo_pedidos"], start=1):
         tabela_resumo_pedidos.append([
             formatar_data(pedido["data"]),
             pedido["numero"],
             formatar_moeda(pedido["total"]),
+            formatar_moeda(pedido["total_dia"]) if pedido["linhas_dia"] else "",
         ])
+
+        if pedido["linhas_dia"] > 1:
+            spans_total_por_dia.append((
+                "SPAN",
+                (3, indice),
+                (3, indice + pedido["linhas_dia"] - 1),
+            ))
 
     if len(tabela_resumo_pedidos) == 1:
         tabela_resumo_pedidos.append([
             "-",
             "Nenhum pedido encontrado",
+            formatar_moeda(0),
             formatar_moeda(0),
         ])
 
@@ -944,8 +954,9 @@ def gerar_pdf_relatorio_refeicoes(relatorio, filtros):
         ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
         ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
         ("FONTSIZE", (0, 0), (-1, -1), 9),
-        ("ALIGN", (2, 1), (2, -1), "RIGHT"),
-    ]))
+        ("ALIGN", (2, 1), (-1, -1), "RIGHT"),
+        ("VALIGN", (3, 1), (3, -1), "MIDDLE"),
+    ] + spans_total_por_dia))
     elementos.append(tabela_resumo_pedidos_pdf)
     elementos.append(Spacer(1, 16))
 
