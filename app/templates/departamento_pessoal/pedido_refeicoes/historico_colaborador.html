@@ -22,17 +22,11 @@
                     type="text"
                     name="colaborador"
                     id="colaborador"
-                    list="colaboradores_ativos"
                     value="{{ filtros.colaborador }}"
                     autocomplete="off"
                     required
                 >
-                <datalist id="colaboradores_ativos">
-                    {% for colaborador in colaboradores %}
-                        <option value="{{ texto_colaborador_historico(colaborador) }}"></option>
-                    {% endfor %}
-                </datalist>
-                <small>Digite e selecione um colaborador ativo da lista.</small>
+                <small>Pesquise por nome, matrícula ou CPF do colaborador ativo.</small>
             </div>
 
             <div class="form-group">

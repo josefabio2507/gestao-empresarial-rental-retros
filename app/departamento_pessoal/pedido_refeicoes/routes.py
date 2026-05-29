@@ -30,7 +30,6 @@ from app.departamento_pessoal.pedido_refeicoes.services import (
     formatar_telefone,
     formatar_moeda,
     buscar_equipes_ativas,
-    buscar_colaboradores_ativos,
     buscar_colaborador_ativo_por_texto,
     buscar_pedidos,
     buscar_pedido_por_id,
@@ -64,7 +63,6 @@ from app.departamento_pessoal.pedido_refeicoes.services import (
     pedido_pode_ser_cancelado,
     montar_relatorio_refeicoes,
     montar_historico_colaborador_refeicoes,
-    texto_colaborador_historico,
     status_relatorio_opcoes,
 )
 
@@ -1049,7 +1047,6 @@ def historico_colaborador():
     data_inicial = request.args.get("data_inicial", "").strip()
     data_final = request.args.get("data_final", "").strip()
 
-    colaboradores = buscar_colaboradores_ativos()
     colaborador = None
     historico = None
     filtros_aplicados = bool(request.args)
@@ -1063,7 +1060,7 @@ def historico_colaborador():
             colaborador = buscar_colaborador_ativo_por_texto(colaborador_texto)
 
             if not colaborador:
-                flash("Colaborador ativo não encontrado na lista.", "danger")
+                flash("Colaborador ativo não encontrado ou pesquisa ambígua.", "danger")
             else:
                 historico = montar_historico_colaborador_refeicoes(
                     colaborador=colaborador,
@@ -1073,7 +1070,6 @@ def historico_colaborador():
 
     return render_template(
         "departamento_pessoal/pedido_refeicoes/historico_colaborador.html",
-        colaboradores=colaboradores,
         historico=historico,
         filtros={
             "colaborador": colaborador_texto,
@@ -1082,7 +1078,6 @@ def historico_colaborador():
         },
         formatar_data=formatar_data,
         formatar_moeda=formatar_moeda,
-        texto_colaborador_historico=texto_colaborador_historico,
     )
 
 @pedido_refeicoes_bp.route("/relatorios/pdf")
