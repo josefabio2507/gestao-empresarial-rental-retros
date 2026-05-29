@@ -1495,13 +1495,37 @@ def calcular_resumo_itens_relatorio(pedidos):
 
 def calcular_resumo_pedidos_relatorio(pedidos):
     resumo = []
+    totais_por_data = {}
+    quantidades_por_data = {}
 
     for pedido in pedidos:
+        data_pedido = pedido.data_pedido
+        total_pedido = calcular_total_pedido_relatorio(pedido)
+
+        totais_por_data[data_pedido] = (
+            totais_por_data.get(data_pedido, Decimal("0.00")) + total_pedido
+        )
+        quantidades_por_data[data_pedido] = quantidades_por_data.get(data_pedido, 0) + 1
+
         resumo.append({
-            "data": pedido.data_pedido,
+            "data": data_pedido,
             "numero": pedido.numero_pedido,
-            "total": calcular_total_pedido_relatorio(pedido),
+            "total": total_pedido,
+            "total_dia": Decimal("0.00"),
+            "linhas_dia": 0,
         })
+
+    datas_renderizadas = set()
+
+    for pedido in resumo:
+        data_pedido = pedido["data"]
+
+        if data_pedido in datas_renderizadas:
+            continue
+
+        pedido["total_dia"] = totais_por_data[data_pedido]
+        pedido["linhas_dia"] = quantidades_por_data[data_pedido]
+        datas_renderizadas.add(data_pedido)
 
     return resumo
 
