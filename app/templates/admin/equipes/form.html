@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Administração</span>
+            <h1>{{ "Nova Equipe" if modo == "nova" else "Editar Equipe" }}</h1>
+            <p>
+                {{ "Cadastre uma nova equipe para uso no sistema." if modo == "nova" else "Atualize o nome da equipe selecionada." }}
+            </p>
+        </div>
+    </div>
+
+    <form class="form-card" method="POST">
+        <div class="form-group">
+            <label for="nome">Nome</label>
+            <input
+                type="text"
+                name="nome"
+                id="nome"
+                value="{{ nome_informado }}"
+                maxlength="120"
+                required
+                autofocus
+            >
+        </div>
+
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Salvar</button>
+            <a class="btn btn-secondary" href="{{ url_for('equipes.listar_equipes') }}">Cancelar</a>
+        </div>
+    </form>
+</section>
+{% endblock %}

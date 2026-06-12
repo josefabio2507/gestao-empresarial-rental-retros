@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Administração</span>
+            <h1>Equipes</h1>
+            <p>Cadastre e gerencie as equipes utilizadas no sistema.</p>
+        </div>
+
+        <a class="btn btn-primary" href="{{ url_for('equipes.nova_equipe') }}">
+            + Nova Equipe
+        </a>
+    </div>
+
+    <form class="filter-card" method="GET" action="{{ url_for('equipes.listar_equipes') }}">
+        <div class="form-group">
+            <label for="nome">Buscar por nome da equipe</label>
+            <input
+                type="text"
+                name="nome"
+                id="nome"
+                value="{{ filtro_nome }}"
+                placeholder="Digite o nome ou parte do nome"
+            >
+        </div>
+
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Pesquisar</button>
+            <a class="btn btn-secondary" href="{{ url_for('equipes.listar_equipes') }}">Limpar</a>
+        </div>
+    </form>
+
+    <div class="table-card table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Nome</th>
+                    <th>Status</th>
+                    <th>Criada em</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for equipe in equipes %}
+                    <tr>
+                        <td>{{ equipe.nome }}</td>
+                        <td>
+                            {% if equipe.ativo %}
+                                <span class="badge badge-success">Ativa</span>
+                            {% else %}
+                                <span class="badge badge-danger">Inativa</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ equipe.criado_em.strftime("%d/%m/%Y") if equipe.criado_em else "-" }}</td>
+                        <td class="col-acoes">
+                            <div class="acoes-botoes">
+                                <a class="btn btn-secondary" href="{{ url_for('equipes.detalhes_equipe', equipe_id=equipe.id) }}">
+                                    Ver
+                                </a>
+                                <a class="btn btn-primary" href="{{ url_for('equipes.editar_equipe', equipe_id=equipe.id) }}">
+                                    Editar
+                                </a>
+                                <form
+                                    class="inline-form"
+                                    method="POST"
+                                    action="{{ url_for('equipes.alterar_status', equipe_id=equipe.id) }}"
+                                    onsubmit='return confirm({{ ("Confirma a inativação desta equipe?" if equipe.ativo else "Confirma a reativação desta equipe?")|tojson }});'
+                                >
+                                    <button class="btn btn-warning" type="submit">
+                                        {{ "Inativar" if equipe.ativo else "Reativar" }}
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td class="empty-state" colspan="4">Nenhuma equipe encontrada.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="page-actions">
+        <a class="btn btn-secondary" href="{{ url_for('admin.index') }}">Voltar</a>
+    </div>
+</section>
+{% endblock %}
