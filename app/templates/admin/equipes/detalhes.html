@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Administração</span>
+            <h1>Detalhes da Equipe</h1>
+            <p>Informações cadastrais da equipe.</p>
+        </div>
+    </div>
+
+    <div class="details-card">
+        <h2 class="section-title">Dados da equipe</h2>
+        <p><strong>Nome:</strong> {{ equipe.nome }}</p>
+        <p>
+            <strong>Status:</strong>
+            {% if equipe.ativo %}
+                <span class="badge badge-success">Ativa</span>
+            {% else %}
+                <span class="badge badge-danger">Inativa</span>
+            {% endif %}
+        </p>
+        <p>
+            <strong>Criada em:</strong>
+            {{ equipe.criado_em.strftime("%d/%m/%Y %H:%M") if equipe.criado_em else "-" }}
+        </p>
+        <p>
+            <strong>Atualizada em:</strong>
+            {{ equipe.atualizado_em.strftime("%d/%m/%Y %H:%M") if equipe.atualizado_em else "-" }}
+        </p>
+    </div>
+
+    <div class="page-actions">
+        <a class="btn btn-primary" href="{{ url_for('equipes.editar_equipe', equipe_id=equipe.id) }}">Editar</a>
+        <a class="btn btn-secondary" href="{{ url_for('equipes.listar_equipes') }}">Voltar</a>
+    </div>
+</section>
+{% endblock %}

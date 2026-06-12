@@ -32,6 +32,14 @@
         </a>
 
         {% if current_user.is_admin %}
+            <a class="module-card module-card-link" href="{{ url_for('equipes.listar_equipes') }}">
+                <span class="module-card-icon">E</span>
+                <h2>Equipes</h2>
+                <p>Cadastro, edição e gestão de status das equipes.</p>
+                <span class="badge badge-success">Administrador</span>
+                <span class="module-status">Acessar equipes</span>
+            </a>
+
             <a class="module-card module-card-link" href="{{ url_for('admin.logs') }}">
                 <span class="module-card-icon">A</span>
                 <h2>Auditoria / Logs</h2>
