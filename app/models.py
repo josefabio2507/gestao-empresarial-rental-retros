@@ -319,6 +319,25 @@ class Equipe(db.Model):
         return f"<Equipe {self.slug}>"
 
 
+class Cargo(db.Model):
+    __tablename__ = "cargos"
+
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String(120), nullable=False)
+    ativo = db.Column(db.Boolean, default=True, nullable=False)
+
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    atualizado_em = db.Column(
+        db.DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False
+    )
+
+    def __repr__(self):
+        return f"<Cargo {self.nome}>"
+
+
 class Colaborador(db.Model):
     __tablename__ = "colaboradores"
 

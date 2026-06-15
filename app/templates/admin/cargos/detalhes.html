@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Administração</span>
+            <h1>Detalhes do Cargo</h1>
+            <p>Informações cadastrais do cargo.</p>
+        </div>
+    </div>
+
+    <div class="details-card">
+        <h2 class="section-title">Dados do cargo</h2>
+        <p><strong>Nome:</strong> {{ cargo.nome }}</p>
+        <p>
+            <strong>Status:</strong>
+            {% if cargo.ativo %}
+                <span class="badge badge-success">Ativo</span>
+            {% else %}
+                <span class="badge badge-danger">Inativo</span>
+            {% endif %}
+        </p>
+        <p>
+            <strong>Criado em:</strong>
+            {{ cargo.criado_em.strftime("%d/%m/%Y %H:%M") if cargo.criado_em else "-" }}
+        </p>
+        <p>
+            <strong>Atualizado em:</strong>
+            {{ cargo.atualizado_em.strftime("%d/%m/%Y %H:%M") if cargo.atualizado_em else "-" }}
+        </p>
+    </div>
+
+    <div class="page-actions">
+        <a class="btn btn-primary" href="{{ url_for('cargos.editar_cargo', cargo_id=cargo.id) }}">Editar</a>
+        <a class="btn btn-secondary" href="{{ url_for('cargos.listar_cargos') }}">Voltar</a>
+    </div>
+</section>
+{% endblock %}
