@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Administração</span>
+            <h1>Cargos</h1>
+            <p>Cadastre e gerencie os cargos utilizados no sistema.</p>
+        </div>
+
+        <a class="btn btn-primary" href="{{ url_for('cargos.novo_cargo') }}">
+            + Novo Cargo
+        </a>
+    </div>
+
+    <form class="filter-card" method="GET" action="{{ url_for('cargos.listar_cargos') }}">
+        <div class="form-group">
+            <label for="nome">Buscar por nome do cargo</label>
+            <input
+                type="text"
+                name="nome"
+                id="nome"
+                value="{{ filtro_nome }}"
+                placeholder="Digite o nome ou parte do nome"
+            >
+        </div>
+
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Pesquisar</button>
+            <a class="btn btn-secondary" href="{{ url_for('cargos.listar_cargos') }}">Limpar</a>
+        </div>
+    </form>
+
+    <div class="table-card table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Nome</th>
+                    <th>Status</th>
+                    <th>Criado em</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for cargo in cargos %}
+                    <tr>
+                        <td>{{ cargo.nome }}</td>
+                        <td>
+                            {% if cargo.ativo %}
+                                <span class="badge badge-success">Ativo</span>
+                            {% else %}
+                                <span class="badge badge-danger">Inativo</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ cargo.criado_em.strftime("%d/%m/%Y") if cargo.criado_em else "-" }}</td>
+                        <td class="col-acoes">
+                            <div class="acoes-botoes">
+                                <a class="btn btn-secondary" href="{{ url_for('cargos.detalhes_cargo', cargo_id=cargo.id) }}">
+                                    Ver
+                                </a>
+                                <a class="btn btn-primary" href="{{ url_for('cargos.editar_cargo', cargo_id=cargo.id) }}">
+                                    Editar
+                                </a>
+                                <form
+                                    class="inline-form"
+                                    method="POST"
+                                    action="{{ url_for('cargos.alterar_status', cargo_id=cargo.id) }}"
+                                    onsubmit='return confirm({{ ("Confirma a inativação deste cargo?" if cargo.ativo else "Confirma a reativação deste cargo?")|tojson }});'
+                                >
+                                    <button class="btn btn-warning" type="submit">
+                                        {{ "Inativar" if cargo.ativo else "Reativar" }}
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td class="empty-state" colspan="4">Nenhum cargo encontrado.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="page-actions">
+        <a class="btn btn-secondary" href="{{ url_for('admin.index') }}">Voltar</a>
+    </div>
+</section>
+{% endblock %}

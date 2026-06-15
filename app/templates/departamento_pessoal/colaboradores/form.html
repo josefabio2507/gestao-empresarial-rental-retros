@@ -74,12 +74,26 @@
 
             <div class="form-group">
                 <label for="cargo">Cargo</label>
-                <input
-                    type="text"
-                    name="cargo"
-                    id="cargo"
-                    value="{{ colaborador.cargo if colaborador else '' }}"
-                >
+                <select name="cargo" id="cargo">
+                    <option value="">Selecione...</option>
+
+                    {% set cargo_atual = colaborador.cargo.strip() if colaborador and colaborador.cargo else "" %}
+                    {% set cargos_ativos_nomes = cargos | map(attribute="nome") | map("lower") | list %}
+                    {% if cargo_atual and cargo_atual.lower() not in cargos_ativos_nomes %}
+                        <option value="{{ cargo_atual }}" selected>
+                            {{ cargo_atual }} (inativo)
+                        </option>
+                    {% endif %}
+
+                    {% for cargo in cargos %}
+                        <option
+                            value="{{ cargo.nome }}"
+                            {% if cargo_atual.lower() == cargo.nome.lower() %}selected{% endif %}
+                        >
+                            {{ cargo.nome }}
+                        </option>
+                    {% endfor %}
+                </select>
             </div>
 
             <div class="form-group">

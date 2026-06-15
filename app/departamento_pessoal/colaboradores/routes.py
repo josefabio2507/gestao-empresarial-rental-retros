@@ -14,6 +14,7 @@ from app.utils.mascaras_lgpd import (
 from app.departamento_pessoal.colaboradores.services import (
     buscar_colaboradores,
     buscar_colaborador_por_id,
+    buscar_cargos_ativos,
     buscar_equipes_ativas,
     criar_colaborador,
     atualizar_colaborador,
@@ -137,6 +138,7 @@ def importar_colaboradores():
 @module_permission_required("departamento_pessoal", "colaboradores", "criar")
 def novo_colaborador():
     equipes = buscar_equipes_ativas()
+    cargos = buscar_cargos_ativos()
 
     if request.method == "POST":
         sucesso, mensagem = criar_colaborador(
@@ -163,6 +165,7 @@ def novo_colaborador():
     return render_template(
         "departamento_pessoal/colaboradores/form.html",
         colaborador=None,
+        cargos=cargos,
         equipes=equipes,
         modo="novo",
     )
@@ -208,6 +211,7 @@ def editar_colaborador(colaborador_id):
         return redirect(url_for("colaboradores.listar_colaboradores"))
 
     equipes = buscar_equipes_ativas()
+    cargos = buscar_cargos_ativos()
 
     if request.method == "POST":
         sucesso, mensagem = atualizar_colaborador(
@@ -235,6 +239,7 @@ def editar_colaborador(colaborador_id):
     return render_template(
         "departamento_pessoal/colaboradores/form.html",
         colaborador=colaborador,
+        cargos=cargos,
         equipes=equipes,
         modo="editar",
     )

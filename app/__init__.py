@@ -35,6 +35,7 @@ def create_app():
     from app.operacao.routes import operacao_bp
     from app.seguranca_trabalho.routes import seguranca_trabalho_bp
     from app.admin import admin_bp
+    from app.admin.cargos import cargos_bp
     from app.admin.equipes import equipes_bp
 
     # Registro dos Blueprints
@@ -51,6 +52,7 @@ def create_app():
     app.register_blueprint(operacao_bp, url_prefix="/operacao")
     app.register_blueprint(seguranca_trabalho_bp, url_prefix="/seguranca-trabalho")
     app.register_blueprint(admin_bp, url_prefix="/admin")
+    app.register_blueprint(cargos_bp, url_prefix="/admin/cargos")
     app.register_blueprint(equipes_bp, url_prefix="/admin/equipes")
 
     return app

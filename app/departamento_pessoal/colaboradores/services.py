@@ -1,9 +1,9 @@
 import re
 
-from sqlalchemy import or_
+from sqlalchemy import func, or_
 
 from app.extensions import db
-from app.models import Colaborador, Equipe
+from app.models import Cargo, Colaborador, Equipe
 from app.utils.mascaras_lgpd import (
     MENSAGEM_TELEFONE_INVALIDO,
     formatar_cpf_completo,
@@ -45,6 +45,31 @@ def buscar_equipes_ativas():
         .filter_by(ativo=True)
         .order_by(Equipe.nome.asc())
         .all()
+    )
+
+
+def buscar_cargos_ativos():
+    return (
+        Cargo.query
+        .filter_by(ativo=True)
+        .order_by(Cargo.nome.asc())
+        .all()
+    )
+
+
+def cargo_ativo_por_nome(nome):
+    nome = nome.strip() if nome else ""
+
+    if not nome:
+        return None
+
+    return (
+        Cargo.query
+        .filter(
+            Cargo.ativo.is_(True),
+            func.lower(func.trim(Cargo.nome)) == nome.lower(),
+        )
+        .first()
     )
 
 
@@ -164,13 +189,18 @@ def criar_colaborador(
     if not valido:
         return False, mensagem
 
+    cargo_selecionado = cargo_ativo_por_nome(cargo)
+
+    if cargo and not cargo_selecionado:
+        return False, "Cargo inválido ou inativo."
+
     colaborador = Colaborador(
         matricula=matricula.strip(),
         nome=nome.strip(),
         cpf=limpar_cpf(cpf),
         email=normalizar_email(email),
         telefone=normalizar_telefone_brasil(telefone),
-        cargo=cargo.strip() if cargo else "",
+        cargo=cargo_selecionado.nome if cargo_selecionado else "",
         equipe_id=equipe_id,
         ativo=ativo,
     )
@@ -204,12 +234,25 @@ def atualizar_colaborador(
     if not valido:
         return False, mensagem
 
+    cargo_normalizado = cargo.strip() if cargo else ""
+    cargo_selecionado = cargo_ativo_por_nome(cargo_normalizado)
+    cargo_historico_mantido = (
+        cargo_normalizado
+        and colaborador.cargo
+        and cargo_normalizado.casefold() == colaborador.cargo.strip().casefold()
+    )
+
+    if cargo_normalizado and not cargo_selecionado and not cargo_historico_mantido:
+        return False, "Cargo inválido ou inativo."
+
     colaborador.matricula = matricula.strip()
     colaborador.nome = nome.strip()
     colaborador.cpf = limpar_cpf(cpf)
     colaborador.email = normalizar_email(email)
     colaborador.telefone = normalizar_telefone_brasil(telefone)
-    colaborador.cargo = cargo.strip() if cargo else ""
+    colaborador.cargo = (
+        cargo_selecionado.nome if cargo_selecionado else cargo_normalizado
+    )
     colaborador.equipe_id = equipe_id
     colaborador.ativo = ativo
 
