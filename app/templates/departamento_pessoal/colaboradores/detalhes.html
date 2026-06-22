@@ -23,6 +23,14 @@
         <p><strong>Telefone:</strong> {{ exibir_telefone(colaborador.telefone, pode_ver_dados_sensiveis) }}</p>
         <p><strong>Cargo:</strong> {{ colaborador.cargo or "-" }}</p>
         <p><strong>Equipe:</strong> {{ colaborador.equipe.nome if colaborador.equipe else "-" }}</p>
+        <p>
+            <strong>Optante Vale Transporte:</strong>
+            {% if colaborador.vale_transporte_optante %}
+                <span class="badge badge-success">Optante</span>
+            {% else %}
+                <span class="badge badge-warning">Não Optante</span>
+            {% endif %}
+        </p>
 
         <p>
             <strong>Status:</strong>

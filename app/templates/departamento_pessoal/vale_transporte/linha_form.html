@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Vale Transporte</span>
+            {% if modo == "nova" %}
+                <h1>Nova linha de ônibus</h1>
+                <p>Cadastre uma linha para uso nos vínculos de Vale Transporte.</p>
+            {% else %}
+                <h1>Editar linha de ônibus</h1>
+                <p>Atualize os dados da linha preservando seus vínculos históricos.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <form class="form-card" method="POST">
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="nome">Nome da linha</label>
+                <input
+                    type="text"
+                    name="nome"
+                    id="nome"
+                    value="{{ linha.nome if linha else '' }}"
+                    required
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="codigo">Código</label>
+                <input
+                    type="text"
+                    name="codigo"
+                    id="codigo"
+                    value="{{ linha.codigo if linha else '' }}"
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="empresa_transporte">Empresa de transporte</label>
+                <input
+                    type="text"
+                    name="empresa_transporte"
+                    id="empresa_transporte"
+                    value="{{ linha.empresa_transporte if linha else '' }}"
+                    required
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="valor_tarifa_dia">Valor da tarifa por dia</label>
+                <input
+                    type="text"
+                    name="valor_tarifa_dia"
+                    id="valor_tarifa_dia"
+                    value="{{ formatar_moeda_brl(linha.valor_tarifa_dia).replace('R$ ', '') if linha else '' }}"
+                    placeholder="Ex: 5,25"
+                    required
+                >
+            </div>
+        </div>
+
+        {% if linha %}
+            <p>
+                <strong>Status:</strong>
+                {% if linha.ativo %}
+                    <span class="badge badge-success">Ativa</span>
+                {% else %}
+                    <span class="badge badge-danger">Inativa</span>
+                {% endif %}
+            </p>
+        {% endif %}
+
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Salvar</button>
+            <a class="btn btn-secondary" href="{{ url_for('vale_transporte.listar_linhas') }}">Cancelar</a>
+        </div>
+    </form>
+</section>
+{% endblock %}
