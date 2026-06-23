@@ -150,29 +150,39 @@
                             <td class="col-nowrap">{{ formatar_moeda_brl(vinculo.linha_onibus.valor_tarifa_dia) }}</td>
                             <td>
                                 {% if pode_editar %}
-                                    <form class="inline-form" method="POST" action="{{ url_for('vale_transporte.editar_vinculo', vinculo_id=vinculo.id) }}">
-                                        <select name="tipo_pagamento" required>
-                                            {% for valor, rotulo in tipos_pagamento.items() %}
-                                                <option value="{{ valor }}" {% if vinculo.tipo_pagamento == valor %}selected{% endif %}>
-                                                    {{ rotulo }}
-                                                </option>
-                                            {% endfor %}
-                                        </select>
-                                        <select name="periodicidade_pagamento" required>
+                                    <form
+                                        id="form-pagamento-{{ vinculo.id }}"
+                                        method="POST"
+                                        action="{{ url_for('vale_transporte.editar_vinculo', vinculo_id=vinculo.id) }}"
+                                    ></form>
+                                    <select name="tipo_pagamento" form="form-pagamento-{{ vinculo.id }}" required>
+                                        {% for valor, rotulo in tipos_pagamento.items() %}
+                                            <option value="{{ valor }}" {% if vinculo.tipo_pagamento == valor %}selected{% endif %}>
+                                                {{ rotulo }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                {% else %}
+                                    {{ tipos_pagamento.get(vinculo.tipo_pagamento, vinculo.tipo_pagamento) }}
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if pode_editar %}
+                                    <div class="inline-form">
+                                        <select name="periodicidade_pagamento" form="form-pagamento-{{ vinculo.id }}" required>
                                             {% for valor, rotulo in periodicidades_pagamento.items() %}
                                                 <option value="{{ valor }}" {% if vinculo.periodicidade_pagamento == valor %}selected{% endif %}>
                                                     {{ rotulo }}
                                                 </option>
                                             {% endfor %}
                                         </select>
-                                        <button class="btn btn-secondary" type="submit">Salvar</button>
-                                    </form>
+                                        <button class="btn btn-secondary" type="submit" form="form-pagamento-{{ vinculo.id }}">
+                                            Salvar
+                                        </button>
+                                    </div>
                                 {% else %}
-                                    {{ tipos_pagamento.get(vinculo.tipo_pagamento, vinculo.tipo_pagamento) }}
+                                    {{ periodicidades_pagamento.get(vinculo.periodicidade_pagamento, vinculo.periodicidade_pagamento) }}
                                 {% endif %}
-                            </td>
-                            <td>
-                                {{ periodicidades_pagamento.get(vinculo.periodicidade_pagamento, vinculo.periodicidade_pagamento) }}
                             </td>
                             <td class="col-nowrap">
                                 {% if vinculo.ativo %}
