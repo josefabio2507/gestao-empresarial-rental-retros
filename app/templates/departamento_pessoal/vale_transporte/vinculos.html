@@ -155,7 +155,12 @@
                                         method="POST"
                                         action="{{ url_for('vale_transporte.editar_vinculo', vinculo_id=vinculo.id) }}"
                                     ></form>
-                                    <select name="tipo_pagamento" form="form-pagamento-{{ vinculo.id }}" required>
+                                    <select
+                                        class="payment-select payment-select-type"
+                                        name="tipo_pagamento"
+                                        form="form-pagamento-{{ vinculo.id }}"
+                                        required
+                                    >
                                         {% for valor, rotulo in tipos_pagamento.items() %}
                                             <option value="{{ valor }}" {% if vinculo.tipo_pagamento == valor %}selected{% endif %}>
                                                 {{ rotulo }}
@@ -169,7 +174,12 @@
                             <td>
                                 {% if pode_editar %}
                                     <div class="inline-form">
-                                        <select name="periodicidade_pagamento" form="form-pagamento-{{ vinculo.id }}" required>
+                                        <select
+                                            class="payment-select payment-select-period"
+                                            name="periodicidade_pagamento"
+                                            form="form-pagamento-{{ vinculo.id }}"
+                                            required
+                                        >
                                             {% for valor, rotulo in periodicidades_pagamento.items() %}
                                                 <option value="{{ valor }}" {% if vinculo.periodicidade_pagamento == valor %}selected{% endif %}>
                                                     {{ rotulo }}
