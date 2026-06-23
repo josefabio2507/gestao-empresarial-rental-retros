@@ -95,6 +95,21 @@
                             {% endfor %}
                         </select>
                     </div>
+
+                    <div class="form-group">
+                        <label for="periodicidade_pagamento">Periodicidade do pagamento</label>
+                        <select
+                            name="periodicidade_pagamento"
+                            id="periodicidade_pagamento"
+                            required
+                            {% if not colaborador.vale_transporte_optante %}disabled{% endif %}
+                        >
+                            <option value="">Selecione...</option>
+                            {% for valor, rotulo in periodicidades_pagamento.items() %}
+                                <option value="{{ valor }}">{{ rotulo }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
                 </div>
 
                 <div class="form-actions">
@@ -119,6 +134,7 @@
                         <th>Empresa de Transporte</th>
                         <th class="col-nowrap">Valor da Tarifa por Dia</th>
                         <th>Tipo de pagamento</th>
+                        <th>Periodicidade</th>
                         <th class="col-nowrap">Status</th>
                         <th class="col-acoes">Ações</th>
                     </tr>
@@ -142,11 +158,21 @@
                                                 </option>
                                             {% endfor %}
                                         </select>
+                                        <select name="periodicidade_pagamento" required>
+                                            {% for valor, rotulo in periodicidades_pagamento.items() %}
+                                                <option value="{{ valor }}" {% if vinculo.periodicidade_pagamento == valor %}selected{% endif %}>
+                                                    {{ rotulo }}
+                                                </option>
+                                            {% endfor %}
+                                        </select>
                                         <button class="btn btn-secondary" type="submit">Salvar</button>
                                     </form>
                                 {% else %}
                                     {{ tipos_pagamento.get(vinculo.tipo_pagamento, vinculo.tipo_pagamento) }}
                                 {% endif %}
+                            </td>
+                            <td>
+                                {{ periodicidades_pagamento.get(vinculo.periodicidade_pagamento, vinculo.periodicidade_pagamento) }}
                             </td>
                             <td class="col-nowrap">
                                 {% if vinculo.ativo %}
@@ -173,7 +199,7 @@
                         </tr>
                     {% else %}
                         <tr>
-                            <td class="empty-state" colspan="8">Nenhuma linha vinculada a este colaborador.</td>
+                            <td class="empty-state" colspan="9">Nenhuma linha vinculada a este colaborador.</td>
                         </tr>
                     {% endfor %}
                 </tbody>

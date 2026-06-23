@@ -439,6 +439,11 @@ class ValeTransporteColaboradorLinha(db.Model):
     )
 
     tipo_pagamento = db.Column(db.String(30), nullable=False)
+    periodicidade_pagamento = db.Column(
+        db.String(20),
+        default="mensal",
+        nullable=False,
+    )
     ativo = db.Column(db.Boolean, default=True, nullable=False)
 
     criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
@@ -462,6 +467,10 @@ class ValeTransporteColaboradorLinha(db.Model):
         db.CheckConstraint(
             "tipo_pagamento in ('dinheiro', 'cartao_transporte')",
             name="ck_vale_transporte_tipo_pagamento",
+        ),
+        db.CheckConstraint(
+            "periodicidade_pagamento in ('mensal', 'semanal')",
+            name="ck_vale_transporte_periodicidade_pagamento",
         ),
     )
 
