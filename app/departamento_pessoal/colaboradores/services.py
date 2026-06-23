@@ -3,7 +3,7 @@ import re
 from sqlalchemy import func, or_
 
 from app.extensions import db
-from app.models import Cargo, Colaborador, Equipe
+from app.models import Cargo, Colaborador, Equipe, Usuario
 from app.utils.mascaras_lgpd import (
     MENSAGEM_TELEFONE_INVALIDO,
     formatar_cpf_completo,
@@ -258,18 +258,47 @@ def atualizar_colaborador(
     )
     colaborador.equipe_id = equipe_id
     colaborador.vale_transporte_optante = bool(vale_transporte_optante)
+    colaborador_ativo_anterior = colaborador.ativo
     colaborador.ativo = ativo
+
+    if colaborador_ativo_anterior and not colaborador.ativo:
+        inativar_usuarios_vinculados(colaborador)
 
     db.session.commit()
 
     return True, "Colaborador atualizado com sucesso."
 
 
+def inativar_usuarios_vinculados(colaborador):
+    usuarios_ativos = Usuario.query.filter(
+        Usuario.colaborador_id == colaborador.id,
+        Usuario.ativo.is_(True),
+    ).all()
+
+    for usuario in usuarios_ativos:
+        usuario.ativo = False
+
+    return len(usuarios_ativos)
+
+
 def alterar_status_colaborador(colaborador):
     colaborador.ativo = not colaborador.ativo
+
+    usuarios_inativados = 0
+
+    if not colaborador.ativo:
+        usuarios_inativados = inativar_usuarios_vinculados(colaborador)
+
     db.session.commit()
 
     if colaborador.ativo:
         return True, "Colaborador ativado com sucesso."
+
+    if usuarios_inativados:
+        return (
+            True,
+            "Colaborador inativado com sucesso. "
+            f"{usuarios_inativados} usuário(s) vinculado(s) também foram inativados.",
+        )
 
     return True, "Colaborador inativado com sucesso."
