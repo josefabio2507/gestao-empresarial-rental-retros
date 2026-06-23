@@ -13,6 +13,7 @@ def create_app():
     login_manager.init_app(app)
 
     from app.models import Usuario
+    from app.startup_migrations import executar_migrations_startup
 
     @login_manager.user_loader
     def load_user(user_id):
@@ -20,6 +21,8 @@ def create_app():
             return Usuario.query.get(int(user_id))
         except (TypeError, ValueError):
             return None
+
+    executar_migrations_startup(app)
 
     # Importação dos Blueprints
     from app.main.routes import main_bp

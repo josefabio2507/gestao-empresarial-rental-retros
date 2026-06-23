@@ -12,6 +12,10 @@ class Config:
     SQLALCHEMY_DATABASE_URI = DATABASE_URL or "sqlite:///app.db"
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    AUTO_MIGRATE_ON_START = os.getenv(
+        "AUTO_MIGRATE_ON_START",
+        "true" if SQLALCHEMY_DATABASE_URI.startswith("postgresql://") else "false",
+    ).lower() == "true"
 
     MAIL_SERVER = os.getenv("MAIL_SERVER")
     MAIL_PORT = int(os.getenv("MAIL_PORT", "587"))
