@@ -966,6 +966,24 @@ textarea:focus {
     padding: 8px 10px;
 }
 
+.payment-select {
+    min-height: 38px;
+    border: 1px solid var(--rr-border);
+    border-radius: 9px;
+    padding: 8px 10px;
+    background-color: #ffffff;
+    color: var(--rr-text);
+    font: inherit;
+}
+
+.payment-select-type {
+    width: 150px;
+}
+
+.payment-select-period {
+    width: 92px;
+}
+
 .btn:disabled,
 .form-group select:disabled {
     cursor: not-allowed;
