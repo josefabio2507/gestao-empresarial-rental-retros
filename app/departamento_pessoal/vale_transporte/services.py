@@ -118,6 +118,7 @@ def alternar_status_linha(linha):
 def listar_colaboradores_para_vinculo():
     return (
         Colaborador.query
+        .filter_by(vale_transporte_optante=True)
         .order_by(Colaborador.nome.asc())
         .all()
     )
