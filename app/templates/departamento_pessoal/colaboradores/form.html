@@ -112,6 +112,24 @@
                 </select>
             </div>
 
+            <div class="form-group">
+                <label for="vale_transporte_optante">Optante Vale Transporte</label>
+                <select name="vale_transporte_optante" id="vale_transporte_optante">
+                    <option
+                        value="nao_optante"
+                        {% if not colaborador or not colaborador.vale_transporte_optante %}selected{% endif %}
+                    >
+                        Não Optante
+                    </option>
+                    <option
+                        value="optante"
+                        {% if colaborador and colaborador.vale_transporte_optante %}selected{% endif %}
+                    >
+                        Optante
+                    </option>
+                </select>
+            </div>
+
             <div class="form-group checkbox-group">
                 <label>
                     <input

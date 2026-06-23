@@ -176,6 +176,7 @@ def criar_colaborador(
     telefone,
     cargo,
     equipe_id,
+    vale_transporte_optante=False,
     ativo=True
 ):
     valido, mensagem = validar_dados_colaborador(
@@ -202,6 +203,7 @@ def criar_colaborador(
         telefone=normalizar_telefone_brasil(telefone),
         cargo=cargo_selecionado.nome if cargo_selecionado else "",
         equipe_id=equipe_id,
+        vale_transporte_optante=bool(vale_transporte_optante),
         ativo=ativo,
     )
 
@@ -220,6 +222,7 @@ def atualizar_colaborador(
     telefone,
     cargo,
     equipe_id,
+    vale_transporte_optante=False,
     ativo=True
 ):
     valido, mensagem = validar_dados_colaborador(
@@ -254,6 +257,7 @@ def atualizar_colaborador(
         cargo_selecionado.nome if cargo_selecionado else cargo_normalizado
     )
     colaborador.equipe_id = equipe_id
+    colaborador.vale_transporte_optante = bool(vale_transporte_optante)
     colaborador.ativo = ativo
 
     db.session.commit()

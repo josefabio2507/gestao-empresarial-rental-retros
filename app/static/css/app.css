@@ -954,7 +954,22 @@ textarea:focus {
 
 .inline-form {
     display: inline-flex;
+    align-items: center;
+    gap: 8px;
     margin: 0;
+}
+
+.inline-form select {
+    min-height: 38px;
+    border: 1px solid var(--rr-border);
+    border-radius: 9px;
+    padding: 8px 10px;
+}
+
+.btn:disabled,
+.form-group select:disabled {
+    cursor: not-allowed;
+    opacity: 0.62;
 }
 
 .summary-group {

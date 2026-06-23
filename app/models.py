@@ -349,6 +349,11 @@ class Colaborador(db.Model):
     email = db.Column(db.String(150), nullable=True)
     telefone = db.Column(db.String(20), nullable=True)
     cargo = db.Column(db.String(120), nullable=True)
+    vale_transporte_optante = db.Column(
+        db.Boolean,
+        default=False,
+        nullable=False
+    )
 
     equipe_id = db.Column(
         db.Integer,
@@ -378,9 +383,93 @@ class Colaborador(db.Model):
         "HoleriteColaborador",
         back_populates="colaborador"
     )
+    linhas_vale_transporte = db.relationship(
+        "ValeTransporteColaboradorLinha",
+        back_populates="colaborador"
+    )
 
     def __repr__(self):
         return f"<Colaborador {self.matricula} - {self.nome}>"
+
+
+class LinhaOnibus(db.Model):
+    __tablename__ = "linhas_onibus"
+
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String(150), nullable=False)
+    codigo = db.Column(db.String(60), nullable=True)
+    empresa_transporte = db.Column(db.String(150), nullable=False)
+    valor_tarifa_dia = db.Column(db.Numeric(10, 2), nullable=False)
+    ativo = db.Column(db.Boolean, default=True, nullable=False)
+
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    atualizado_em = db.Column(
+        db.DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False
+    )
+
+    vinculos_colaboradores = db.relationship(
+        "ValeTransporteColaboradorLinha",
+        back_populates="linha_onibus"
+    )
+
+    def __repr__(self):
+        return f"<LinhaOnibus {self.codigo or ''} {self.nome}>"
+
+
+class ValeTransporteColaboradorLinha(db.Model):
+    __tablename__ = "vale_transporte_colaborador_linhas"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    colaborador_id = db.Column(
+        db.Integer,
+        db.ForeignKey("colaboradores.id"),
+        nullable=False,
+        index=True
+    )
+
+    linha_onibus_id = db.Column(
+        db.Integer,
+        db.ForeignKey("linhas_onibus.id"),
+        nullable=False,
+        index=True
+    )
+
+    tipo_pagamento = db.Column(db.String(30), nullable=False)
+    ativo = db.Column(db.Boolean, default=True, nullable=False)
+
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    atualizado_em = db.Column(
+        db.DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False
+    )
+
+    colaborador = db.relationship(
+        "Colaborador",
+        back_populates="linhas_vale_transporte"
+    )
+    linha_onibus = db.relationship(
+        "LinhaOnibus",
+        back_populates="vinculos_colaboradores"
+    )
+
+    __table_args__ = (
+        db.CheckConstraint(
+            "tipo_pagamento in ('dinheiro', 'cartao_transporte')",
+            name="ck_vale_transporte_tipo_pagamento",
+        ),
+    )
+
+    def __repr__(self):
+        return (
+            f"<ValeTransporteColaboradorLinha "
+            f"colaborador={self.colaborador_id} linha={self.linha_onibus_id}>"
+        )
 
 
 class HoleriteColaborador(db.Model):

@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Departamento Pessoal</span>
+            <h1>Vale Transporte</h1>
+            <p>Cadastro de linhas e vínculos de transporte dos colaboradores.</p>
+        </div>
+    </div>
+
+    <div class="modules-grid">
+        <a class="module-card module-card-link" href="{{ url_for('vale_transporte.listar_linhas') }}">
+            <span class="module-card-icon">L</span>
+            <h2>Linhas de ônibus</h2>
+            <p>Cadastre linhas, empresas de transporte, tarifas diárias e status.</p>
+            <span class="badge badge-success">Liberado</span>
+            <span class="module-status">Acessar cadastro</span>
+        </a>
+
+        <a class="module-card module-card-link" href="{{ url_for('vale_transporte.vinculos') }}">
+            <span class="module-card-icon">V</span>
+            <h2>Vínculos por colaborador</h2>
+            <p>Gerencie as linhas vinculadas e o tipo de pagamento de cada colaborador.</p>
+            <span class="badge badge-success">Liberado</span>
+            <span class="module-status">Acessar vínculos</span>
+        </a>
+    </div>
+
+    <div class="page-actions">
+        <a class="btn btn-secondary" href="{{ url_for('departamentos.detalhe_departamento', slug_departamento='departamento_pessoal') }}">
+            Voltar ao Departamento Pessoal
+        </a>
+    </div>
+</section>
+{% endblock %}

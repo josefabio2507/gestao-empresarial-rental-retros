@@ -149,6 +149,9 @@ def novo_colaborador():
             telefone=request.form.get("telefone", ""),
             cargo=request.form.get("cargo", ""),
             equipe_id=request.form.get("equipe_id"),
+            vale_transporte_optante=(
+                request.form.get("vale_transporte_optante") == "optante"
+            ),
             ativo=request.form.get("ativo") == "on",
         )
 
@@ -223,6 +226,9 @@ def editar_colaborador(colaborador_id):
             telefone=request.form.get("telefone", ""),
             cargo=request.form.get("cargo", ""),
             equipe_id=request.form.get("equipe_id"),
+            vale_transporte_optante=(
+                request.form.get("vale_transporte_optante") == "optante"
+            ),
             ativo=request.form.get("ativo") == "on",
         )
 

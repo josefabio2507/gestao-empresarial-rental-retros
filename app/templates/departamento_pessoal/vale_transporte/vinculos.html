@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Vale Transporte</span>
+            <h1>Vínculos por colaborador</h1>
+            <p>Selecione o colaborador e gerencie as linhas vinculadas ao benefício.</p>
+        </div>
+    </div>
+
+    <form class="filter-card" method="GET">
+        <div class="filter-grid">
+            <div class="form-group">
+                <label for="colaborador_id">Colaborador</label>
+                <select name="colaborador_id" id="colaborador_id" required>
+                    <option value="">Selecione...</option>
+                    {% for item in colaboradores %}
+                        <option
+                            value="{{ item.id }}"
+                            {% if colaborador_id_selecionado|string == item.id|string %}selected{% endif %}
+                        >
+                            {{ item.nome }} - Matrícula {{ item.matricula }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="filter-actions">
+                <button class="btn btn-primary" type="submit">Buscar</button>
+                <a class="btn btn-secondary" href="{{ url_for('vale_transporte.vinculos') }}">
+                    Limpar
+                </a>
+            </div>
+        </div>
+    </form>
+
+    {% if colaborador %}
+        <div class="details-card">
+            <h2 class="section-title">Colaborador selecionado</h2>
+            <p><strong>Colaborador:</strong> {{ colaborador.nome }}</p>
+            <p><strong>Matrícula:</strong> {{ colaborador.matricula }}</p>
+            <p>
+                <strong>Optante Vale Transporte:</strong>
+                {% if colaborador.vale_transporte_optante %}
+                    <span class="badge badge-success">Optante</span>
+                {% else %}
+                    <span class="badge badge-warning">Não Optante</span>
+                {% endif %}
+            </p>
+        </div>
+
+        {% if pode_criar %}
+            <form class="form-card" method="POST">
+                <input type="hidden" name="colaborador_id" value="{{ colaborador.id }}">
+
+                <h2>Adicionar linha</h2>
+
+                {% if not colaborador.vale_transporte_optante %}
+                    <div class="alert-warning-box">
+                        Este colaborador não está marcado como optante de Vale Transporte.
+                    </div>
+                {% endif %}
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="linha_onibus_id">Linha de ônibus</label>
+                        <select
+                            name="linha_onibus_id"
+                            id="linha_onibus_id"
+                            required
+                            {% if not colaborador.vale_transporte_optante %}disabled{% endif %}
+                        >
+                            <option value="">Selecione...</option>
+                            {% for linha in linhas_ativas %}
+                                <option value="{{ linha.id }}">
+                                    {{ (linha.codigo ~ " - ") if linha.codigo else "" }}{{ linha.nome }} - {{ linha.empresa_transporte }} - {{ formatar_moeda_brl(linha.valor_tarifa_dia) }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="tipo_pagamento">Tipo de pagamento</label>
+                        <select
+                            name="tipo_pagamento"
+                            id="tipo_pagamento"
+                            required
+                            {% if not colaborador.vale_transporte_optante %}disabled{% endif %}
+                        >
+                            <option value="">Selecione...</option>
+                            {% for valor, rotulo in tipos_pagamento.items() %}
+                                <option value="{{ valor }}">{{ rotulo }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button
+                        class="btn btn-primary"
+                        type="submit"
+                        {% if not colaborador.vale_transporte_optante %}disabled{% endif %}
+                    >
+                        Vincular linha
+                    </button>
+                </div>
+            </form>
+        {% endif %}
+
+        <div class="table-card table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Colaborador</th>
+                        <th class="col-nowrap">Matrícula</th>
+                        <th>Linha de ônibus</th>
+                        <th>Empresa de Transporte</th>
+                        <th class="col-nowrap">Valor da Tarifa por Dia</th>
+                        <th>Tipo de pagamento</th>
+                        <th class="col-nowrap">Status</th>
+                        <th class="col-acoes">Ações</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for vinculo in vinculos %}
+                        <tr>
+                            <td>{{ vinculo.colaborador.nome }}</td>
+                            <td class="col-nowrap">{{ vinculo.colaborador.matricula }}</td>
+                            <td>{{ vinculo.linha_onibus.nome }}</td>
+                            <td>{{ vinculo.linha_onibus.empresa_transporte }}</td>
+                            <td class="col-nowrap">{{ formatar_moeda_brl(vinculo.linha_onibus.valor_tarifa_dia) }}</td>
+                            <td>
+                                {% if pode_editar %}
+                                    <form class="inline-form" method="POST" action="{{ url_for('vale_transporte.editar_vinculo', vinculo_id=vinculo.id) }}">
+                                        <select name="tipo_pagamento" required>
+                                            {% for valor, rotulo in tipos_pagamento.items() %}
+                                                <option value="{{ valor }}" {% if vinculo.tipo_pagamento == valor %}selected{% endif %}>
+                                                    {{ rotulo }}
+                                                </option>
+                                            {% endfor %}
+                                        </select>
+                                        <button class="btn btn-secondary" type="submit">Salvar</button>
+                                    </form>
+                                {% else %}
+                                    {{ tipos_pagamento.get(vinculo.tipo_pagamento, vinculo.tipo_pagamento) }}
+                                {% endif %}
+                            </td>
+                            <td class="col-nowrap">
+                                {% if vinculo.ativo %}
+                                    <span class="badge badge-success">Ativo</span>
+                                {% else %}
+                                    <span class="badge badge-danger">Inativo</span>
+                                {% endif %}
+                            </td>
+                            <td class="col-acoes">
+                                {% if pode_excluir %}
+                                    <form class="inline-form" method="POST" action="{{ url_for('vale_transporte.alterar_status_vinculo', vinculo_id=vinculo.id) }}">
+                                        <button
+                                            class="btn btn-warning"
+                                            type="submit"
+                                            data-confirm="Confirma {{ 'inativar' if vinculo.ativo else 'reativar' }} este vínculo?"
+                                        >
+                                            {{ "Inativar" if vinculo.ativo else "Reativar" }}
+                                        </button>
+                                    </form>
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td class="empty-state" colspan="8">Nenhuma linha vinculada a este colaborador.</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endif %}
+
+    <div class="page-actions">
+        <a class="btn btn-secondary" href="{{ url_for('vale_transporte.index') }}">Voltar</a>
+    </div>
+</section>
+{% endblock %}

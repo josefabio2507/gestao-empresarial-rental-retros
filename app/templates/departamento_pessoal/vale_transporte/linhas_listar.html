@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Vale Transporte</span>
+            <h1>Linhas de ônibus</h1>
+            <p>Cadastro de linhas utilizadas no benefício de Vale Transporte.</p>
+        </div>
+
+        <div class="action-bar">
+            {% if pode_criar %}
+                <a class="btn btn-primary" href="{{ url_for('vale_transporte.nova_linha') }}">
+                    + Nova Linha
+                </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <form class="filter-card" method="GET">
+        <div class="filter-grid">
+            <div class="form-group">
+                <label for="q">Pesquisar</label>
+                <input
+                    type="text"
+                    name="q"
+                    id="q"
+                    value="{{ filtro_texto }}"
+                    placeholder="Nome, código ou empresa"
+                >
+            </div>
+
+            <div class="filter-actions">
+                <button class="btn btn-primary" type="submit">Filtrar</button>
+                <a class="btn btn-secondary" href="{{ url_for('vale_transporte.listar_linhas') }}">
+                    Limpar
+                </a>
+            </div>
+        </div>
+    </form>
+
+    <div class="table-card table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Nome da linha</th>
+                    <th class="col-nowrap">Código</th>
+                    <th>Empresa de Transporte</th>
+                    <th class="col-nowrap">Valor da Tarifa por Dia</th>
+                    <th class="col-nowrap">Status</th>
+                    <th class="col-acoes">Ações</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for linha in linhas %}
+                    <tr>
+                        <td>{{ linha.nome }}</td>
+                        <td class="col-nowrap">{{ linha.codigo or "-" }}</td>
+                        <td>{{ linha.empresa_transporte }}</td>
+                        <td class="col-nowrap">{{ formatar_moeda_brl(linha.valor_tarifa_dia) }}</td>
+                        <td class="col-nowrap">
+                            {% if linha.ativo %}
+                                <span class="badge badge-success">Ativa</span>
+                            {% else %}
+                                <span class="badge badge-danger">Inativa</span>
+                            {% endif %}
+                        </td>
+                        <td class="col-acoes">
+                            <div class="acoes-botoes">
+                                {% if pode_editar %}
+                                    <a class="btn btn-primary" href="{{ url_for('vale_transporte.editar_linha', linha_id=linha.id) }}">
+                                        Editar
+                                    </a>
+                                {% endif %}
+
+                                {% if pode_excluir %}
+                                    <form class="inline-form" method="POST" action="{{ url_for('vale_transporte.alterar_status_linha', linha_id=linha.id) }}">
+                                        <button
+                                            class="btn btn-warning"
+                                            type="submit"
+                                            data-confirm="Confirma {{ 'inativar' if linha.ativo else 'reativar' }} esta linha de ônibus?"
+                                        >
+                                            {{ "Inativar" if linha.ativo else "Reativar" }}
+                                        </button>
+                                    </form>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td class="empty-state" colspan="6">Nenhuma linha de ônibus encontrada.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="page-actions">
+        <a class="btn btn-secondary" href="{{ url_for('vale_transporte.index') }}">Voltar</a>
+    </div>
+</section>
+{% endblock %}

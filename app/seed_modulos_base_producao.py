@@ -56,6 +56,7 @@ DEPARTAMENTOS_BASE = [
             ("Férias", "ferias", "Programação e controle"),
             ("Documentos", "documentos", "Arquivos e pendências"),
             ("Pedido de Refeições", "pedido_refeicoes", "Controle de refeições, bebidas e pedidos"),
+            ("Vale Transporte", "vale_transporte", "Cadastro de linhas e vínculos de Vale Transporte"),
         ],
     },
     {
