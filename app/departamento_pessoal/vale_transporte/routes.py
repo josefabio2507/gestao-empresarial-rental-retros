@@ -6,10 +6,11 @@ from app.models import LinhaOnibus
 from app.services.logs_service import registrar_log
 from app.services.permissoes_service import usuario_tem_permissao
 from app.departamento_pessoal.vale_transporte.services import (
+    PERIODICIDADES_PAGAMENTO,
     TIPOS_PAGAMENTO,
     alternar_status_linha,
     alternar_status_vinculo,
-    atualizar_tipo_pagamento_vinculo,
+    atualizar_pagamento_vinculo,
     buscar_colaborador_por_id,
     buscar_linha_por_id,
     buscar_linhas_onibus,
@@ -159,6 +160,7 @@ def vinculos():
             colaborador=colaborador,
             linha_onibus_id=request.form.get("linha_onibus_id"),
             tipo_pagamento=request.form.get("tipo_pagamento"),
+            periodicidade_pagamento=request.form.get("periodicidade_pagamento"),
         )
 
         if sucesso:
@@ -189,6 +191,7 @@ def vinculos():
         colaborador_id_selecionado=colaborador_id,
         vinculos=vinculos_colaborador,
         tipos_pagamento=TIPOS_PAGAMENTO,
+        periodicidades_pagamento=PERIODICIDADES_PAGAMENTO,
         formatar_moeda_brl=formatar_moeda_brl,
         pode_criar=_pode("criar"),
         pode_editar=_pode("editar"),
@@ -205,15 +208,16 @@ def editar_vinculo(vinculo_id):
         flash("Vínculo não encontrado.", "warning")
         return redirect(url_for("vale_transporte.vinculos"))
 
-    sucesso, mensagem = atualizar_tipo_pagamento_vinculo(
+    sucesso, mensagem = atualizar_pagamento_vinculo(
         vinculo,
         request.form.get("tipo_pagamento"),
+        request.form.get("periodicidade_pagamento"),
     )
 
     if sucesso:
         registrar_log(
             "vale_transporte_vinculo_atualizado",
-            f"Tipo de pagamento de vínculo atualizado. ID: {vinculo.id}.",
+            f"Dados de pagamento de vínculo atualizados. ID: {vinculo.id}.",
         )
         flash(mensagem, "success")
     else:

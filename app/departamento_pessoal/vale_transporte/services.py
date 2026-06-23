@@ -11,6 +11,11 @@ TIPOS_PAGAMENTO = {
     "cartao_transporte": "Cartão Transporte",
 }
 
+PERIODICIDADES_PAGAMENTO = {
+    "mensal": "Mensal",
+    "semanal": "Semanal",
+}
+
 
 def formatar_moeda_brl(valor):
     if valor is None:
@@ -174,6 +179,7 @@ def salvar_vinculo_colaborador_linha(
     colaborador,
     linha_onibus_id,
     tipo_pagamento,
+    periodicidade_pagamento,
 ):
     if not colaborador:
         return False, "Colaborador não encontrado."
@@ -192,6 +198,9 @@ def salvar_vinculo_colaborador_linha(
     if tipo_pagamento not in TIPOS_PAGAMENTO:
         return False, "Tipo de pagamento inválido."
 
+    if periodicidade_pagamento not in PERIODICIDADES_PAGAMENTO:
+        return False, "Periodicidade do pagamento inválida."
+
     if existe_vinculo_ativo(colaborador.id, linha.id):
         return False, "Esta linha de ônibus já está vinculada a este colaborador."
 
@@ -199,6 +208,7 @@ def salvar_vinculo_colaborador_linha(
         colaborador_id=colaborador.id,
         linha_onibus_id=linha.id,
         tipo_pagamento=tipo_pagamento,
+        periodicidade_pagamento=periodicidade_pagamento,
         ativo=True,
     )
     db.session.add(vinculo)
@@ -207,17 +217,25 @@ def salvar_vinculo_colaborador_linha(
     return True, "Linha vinculada ao colaborador com sucesso."
 
 
-def atualizar_tipo_pagamento_vinculo(vinculo, tipo_pagamento):
+def atualizar_pagamento_vinculo(
+    vinculo,
+    tipo_pagamento,
+    periodicidade_pagamento,
+):
     if not vinculo:
         return False, "Vínculo não encontrado."
 
     if tipo_pagamento not in TIPOS_PAGAMENTO:
         return False, "Tipo de pagamento inválido."
 
+    if periodicidade_pagamento not in PERIODICIDADES_PAGAMENTO:
+        return False, "Periodicidade do pagamento inválida."
+
     vinculo.tipo_pagamento = tipo_pagamento
+    vinculo.periodicidade_pagamento = periodicidade_pagamento
     db.session.commit()
 
-    return True, "Tipo de pagamento atualizado com sucesso."
+    return True, "Dados de pagamento atualizados com sucesso."
 
 
 def alternar_status_vinculo(vinculo):
