@@ -48,6 +48,7 @@
                     <th>Período</th>
                     <th>Dias</th>
                     <th>Equipe</th>
+                    <th>Colaborador</th>
                     <th>Forma</th>
                     <th>Empresa</th>
                     <th>Prazo</th>
@@ -64,6 +65,7 @@
                         </td>
                         <td>{{ pedido.quantidade_dias_padrao }}</td>
                         <td>{{ pedido.equipe.nome if pedido.equipe else "Todas" }}</td>
+                        <td>{{ pedido.colaborador.nome if pedido.colaborador else "Todos" }}</td>
                         <td>{{ tipos_pagamento.get(pedido.forma_pagamento_filtro, "Todas") }}</td>
                         <td>{{ pedido.empresa_transporte_filtro or "Todas" }}</td>
                         <td>{{ periodicidades_pagamento.get(pedido.prazo_pagamento, "-") }}</td>
@@ -97,7 +99,7 @@
                     </tr>
                 {% else %}
                     <tr>
-                        <td class="empty-state" colspan="9">Nenhum pedido encontrado.</td>
+                        <td class="empty-state" colspan="10">Nenhum pedido encontrado.</td>
                     </tr>
                 {% endfor %}
             </tbody>

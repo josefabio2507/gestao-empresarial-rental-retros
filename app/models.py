@@ -504,6 +504,12 @@ class ValeTransportePedido(db.Model):
         nullable=True,
         index=True
     )
+    colaborador_id = db.Column(
+        db.Integer,
+        db.ForeignKey("colaboradores.id"),
+        nullable=True,
+        index=True
+    )
     forma_pagamento_filtro = db.Column(db.String(30), nullable=True)
     empresa_transporte_filtro = db.Column(db.String(150), nullable=True)
     prazo_pagamento = db.Column(db.String(20), nullable=False)
@@ -525,6 +531,7 @@ class ValeTransportePedido(db.Model):
     )
 
     equipe = db.relationship("Equipe")
+    colaborador = db.relationship("Colaborador")
     criado_por = db.relationship("Usuario")
     itens = db.relationship(
         "ValeTransportePedidoItem",

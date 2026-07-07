@@ -35,6 +35,7 @@
         </div>
 
         <p><strong>Equipe:</strong> {{ pedido.equipe.nome if pedido.equipe else "Todas" }}</p>
+        <p><strong>Colaborador:</strong> {{ pedido.colaborador.nome if pedido.colaborador else "Todos" }}</p>
         <p><strong>Forma de Pagamento:</strong> {{ tipos_pagamento.get(pedido.forma_pagamento_filtro, "Todas") }}</p>
         <p><strong>Empresa de Transporte:</strong> {{ pedido.empresa_transporte_filtro or "Todas" }}</p>
         <p><strong>Prazo de Pagamento:</strong> {{ periodicidades_pagamento.get(pedido.prazo_pagamento, "-") }}</p>
