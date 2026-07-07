@@ -387,6 +387,10 @@ class Colaborador(db.Model):
         "ValeTransporteColaboradorLinha",
         back_populates="colaborador"
     )
+    itens_pedidos_vale_transporte = db.relationship(
+        "ValeTransportePedidoItem",
+        back_populates="colaborador"
+    )
 
     def __repr__(self):
         return f"<Colaborador {self.matricula} - {self.nome}>"
@@ -412,6 +416,10 @@ class LinhaOnibus(db.Model):
 
     vinculos_colaboradores = db.relationship(
         "ValeTransporteColaboradorLinha",
+        back_populates="linha_onibus"
+    )
+    itens_pedidos_vale_transporte = db.relationship(
+        "ValeTransportePedidoItem",
         back_populates="linha_onibus"
     )
 
@@ -477,6 +485,161 @@ class ValeTransporteColaboradorLinha(db.Model):
     def __repr__(self):
         return (
             f"<ValeTransporteColaboradorLinha "
+            f"colaborador={self.colaborador_id} linha={self.linha_onibus_id}>"
+        )
+
+
+class ValeTransportePedido(db.Model):
+    __tablename__ = "vale_transporte_pedidos"
+
+    id = db.Column(db.Integer, primary_key=True)
+    competencia = db.Column(db.String(7), nullable=False, index=True)
+    data_inicial = db.Column(db.Date, nullable=False)
+    data_final = db.Column(db.Date, nullable=False)
+    quantidade_dias_padrao = db.Column(db.Integer, nullable=False)
+
+    equipe_id = db.Column(
+        db.Integer,
+        db.ForeignKey("equipes.id"),
+        nullable=True,
+        index=True
+    )
+    forma_pagamento_filtro = db.Column(db.String(30), nullable=True)
+    empresa_transporte_filtro = db.Column(db.String(150), nullable=True)
+    prazo_pagamento = db.Column(db.String(20), nullable=False)
+    status = db.Column(db.String(30), default="Gerado", nullable=False, index=True)
+
+    criado_por_id = db.Column(
+        db.Integer,
+        db.ForeignKey("usuarios.id"),
+        nullable=True,
+        index=True
+    )
+
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    atualizado_em = db.Column(
+        db.DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False
+    )
+
+    equipe = db.relationship("Equipe")
+    criado_por = db.relationship("Usuario")
+    itens = db.relationship(
+        "ValeTransportePedidoItem",
+        back_populates="pedido",
+        cascade="all, delete-orphan",
+    )
+
+    __table_args__ = (
+        db.CheckConstraint(
+            "status in ('Rascunho', 'Gerado', 'Cancelado')",
+            name="ck_vale_transporte_pedidos_status",
+        ),
+        db.CheckConstraint(
+            "prazo_pagamento in ('mensal', 'semanal')",
+            name="ck_vale_transporte_pedidos_prazo_pagamento",
+        ),
+        db.CheckConstraint(
+            "quantidade_dias_padrao > 0",
+            name="ck_vale_transporte_pedidos_quantidade_dias",
+        ),
+    )
+
+    def __repr__(self):
+        return f"<ValeTransportePedido competencia={self.competencia} status={self.status}>"
+
+
+class ValeTransportePedidoItem(db.Model):
+    __tablename__ = "vale_transporte_pedido_itens"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    pedido_id = db.Column(
+        db.Integer,
+        db.ForeignKey("vale_transporte_pedidos.id"),
+        nullable=False,
+        index=True
+    )
+    colaborador_id = db.Column(
+        db.Integer,
+        db.ForeignKey("colaboradores.id"),
+        nullable=False,
+        index=True
+    )
+    linha_onibus_id = db.Column(
+        db.Integer,
+        db.ForeignKey("linhas_onibus.id"),
+        nullable=False,
+        index=True
+    )
+
+    matricula_snapshot = db.Column(db.String(40), nullable=False)
+    nome_colaborador_snapshot = db.Column(db.String(150), nullable=False)
+    equipe_snapshot = db.Column(db.String(120), nullable=True)
+    empresa_transporte_snapshot = db.Column(db.String(150), nullable=False)
+    linha_transporte_snapshot = db.Column(db.String(220), nullable=False)
+    forma_pagamento = db.Column(db.String(30), nullable=False)
+    tarifa_diaria = db.Column(db.Numeric(10, 2), nullable=False)
+    quantidade_dias = db.Column(db.Integer, nullable=False)
+    valor_base = db.Column(db.Numeric(10, 2), nullable=False)
+    valor_acrescimo = db.Column(db.Numeric(10, 2), default=0, nullable=False)
+    valor_desconto = db.Column(db.Numeric(10, 2), default=0, nullable=False)
+    valor_total = db.Column(db.Numeric(10, 2), nullable=False)
+    observacao = db.Column(db.Text, nullable=True)
+    ativo = db.Column(db.Boolean, default=True, nullable=False, index=True)
+
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    atualizado_em = db.Column(
+        db.DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False
+    )
+
+    pedido = db.relationship("ValeTransportePedido", back_populates="itens")
+    colaborador = db.relationship(
+        "Colaborador",
+        back_populates="itens_pedidos_vale_transporte"
+    )
+    linha_onibus = db.relationship(
+        "LinhaOnibus",
+        back_populates="itens_pedidos_vale_transporte"
+    )
+
+    __table_args__ = (
+        db.UniqueConstraint(
+            "pedido_id",
+            "colaborador_id",
+            "linha_onibus_id",
+            name="uq_vale_transporte_pedido_item_colaborador_linha",
+        ),
+        db.CheckConstraint(
+            "forma_pagamento in ('dinheiro', 'cartao_transporte')",
+            name="ck_vale_transporte_pedido_itens_forma_pagamento",
+        ),
+        db.CheckConstraint(
+            "quantidade_dias > 0",
+            name="ck_vale_transporte_pedido_itens_quantidade_dias",
+        ),
+        db.CheckConstraint(
+            "valor_acrescimo >= 0",
+            name="ck_vale_transporte_pedido_itens_acrescimo",
+        ),
+        db.CheckConstraint(
+            "valor_desconto >= 0",
+            name="ck_vale_transporte_pedido_itens_desconto",
+        ),
+        db.CheckConstraint(
+            "valor_total >= 0",
+            name="ck_vale_transporte_pedido_itens_total",
+        ),
+    )
+
+    def __repr__(self):
+        return (
+            f"<ValeTransportePedidoItem pedido={self.pedido_id} "
             f"colaborador={self.colaborador_id} linha={self.linha_onibus_id}>"
         )
 
