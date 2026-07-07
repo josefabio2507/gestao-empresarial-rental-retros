@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Vale Transporte</span>
+            <h1>Pedidos Gerados</h1>
+            <p>Consulte os pedidos de Vale Transporte criados.</p>
+        </div>
+
+        <div class="actions">
+            {% if pode_criar %}
+                <a class="btn btn-primary" href="{{ url_for('vale_transporte.pedidos') }}">
+                    + Novo Pedido
+                </a>
+            {% endif %}
+            <a class="btn btn-secondary" href="{{ url_for('vale_transporte.index') }}">
+                Voltar
+            </a>
+        </div>
+    </div>
+
+    <form class="filter-card" method="get" action="{{ url_for('vale_transporte.listar_pedidos_vale_transporte') }}">
+        <div class="filter-form">
+            <div class="form-group">
+                <label for="status">Status</label>
+                <select name="status" id="status">
+                    <option value="todos" {% if status == "todos" %}selected{% endif %}>Todos</option>
+                    {% for valor, rotulo in status_pedidos.items() %}
+                        <option value="{{ valor }}" {% if status == valor %}selected{% endif %}>
+                            {{ rotulo }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-actions">
+                <button class="btn btn-primary" type="submit">Filtrar</button>
+            </div>
+        </div>
+    </form>
+
+    <div class="table-card table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Competência</th>
+                    <th>Período</th>
+                    <th>Dias</th>
+                    <th>Equipe</th>
+                    <th>Forma</th>
+                    <th>Empresa</th>
+                    <th>Prazo</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for pedido in pedidos %}
+                    <tr>
+                        <td class="col-nowrap">{{ pedido.competencia }}</td>
+                        <td class="col-nowrap">
+                            {{ formatar_data_brl(pedido.data_inicial) }} a {{ formatar_data_brl(pedido.data_final) }}
+                        </td>
+                        <td>{{ pedido.quantidade_dias_padrao }}</td>
+                        <td>{{ pedido.equipe.nome if pedido.equipe else "Todas" }}</td>
+                        <td>{{ tipos_pagamento.get(pedido.forma_pagamento_filtro, "Todas") }}</td>
+                        <td>{{ pedido.empresa_transporte_filtro or "Todas" }}</td>
+                        <td>{{ periodicidades_pagamento.get(pedido.prazo_pagamento, "-") }}</td>
+                        <td>
+                            {% if pedido.status == "Gerado" %}
+                                <span class="badge badge-success">Gerado</span>
+                            {% elif pedido.status == "Cancelado" %}
+                                <span class="badge badge-danger">Cancelado</span>
+                            {% else %}
+                                <span class="badge badge-warning">{{ pedido.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="col-acoes">
+                            <div class="acoes-botoes">
+                                <a class="btn btn-secondary" href="{{ url_for('vale_transporte.detalhes_pedido_vale_transporte', pedido_id=pedido.id) }}">
+                                    Ver
+                                </a>
+                                {% if pode_excluir and pedido_pode_cancelar(pedido) %}
+                                    <form class="inline-form" method="post" action="{{ url_for('vale_transporte.cancelar_pedido_vale_transporte_rota', pedido_id=pedido.id) }}">
+                                        <button
+                                            class="btn btn-warning"
+                                            type="submit"
+                                            onclick="return confirm('Confirmar cancelamento deste pedido?');"
+                                        >
+                                            Cancelar
+                                        </button>
+                                    </form>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td class="empty-state" colspan="9">Nenhum pedido encontrado.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

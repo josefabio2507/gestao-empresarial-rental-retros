@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Vale Transporte</span>
+            <h1>Detalhes do Pedido</h1>
+            <p>Consulta do pedido de Vale Transporte gerado.</p>
+        </div>
+
+        <a class="btn btn-secondary" href="{{ url_for('vale_transporte.listar_pedidos_vale_transporte') }}">
+            Voltar
+        </a>
+    </div>
+
+    <div class="details-card">
+        <div class="stat-grid">
+            <div class="stat-card">
+                <span>Competência</span>
+                <strong>{{ pedido.competencia }}</strong>
+            </div>
+            <div class="stat-card">
+                <span>Período</span>
+                <strong>{{ formatar_data_brl(pedido.data_inicial) }} a {{ formatar_data_brl(pedido.data_final) }}</strong>
+            </div>
+            <div class="stat-card">
+                <span>Dias pagos</span>
+                <strong>{{ pedido.quantidade_dias_padrao }}</strong>
+            </div>
+            <div class="stat-card">
+                <span>Status</span>
+                <strong>{{ pedido.status }}</strong>
+            </div>
+        </div>
+
+        <p><strong>Equipe:</strong> {{ pedido.equipe.nome if pedido.equipe else "Todas" }}</p>
+        <p><strong>Forma de Pagamento:</strong> {{ tipos_pagamento.get(pedido.forma_pagamento_filtro, "Todas") }}</p>
+        <p><strong>Empresa de Transporte:</strong> {{ pedido.empresa_transporte_filtro or "Todas" }}</p>
+        <p><strong>Prazo de Pagamento:</strong> {{ periodicidades_pagamento.get(pedido.prazo_pagamento, "-") }}</p>
+        <p><strong>Criado por:</strong> {{ pedido.criado_por.nome if pedido.criado_por else "-" }}</p>
+        <p><strong>Criado em:</strong> {{ pedido.criado_em.strftime("%d/%m/%Y %H:%M") if pedido.criado_em else "-" }}</p>
+    </div>
+
+    <div class="table-card table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Matrícula</th>
+                    <th>Nome do colaborador</th>
+                    <th>Equipe</th>
+                    <th>Empresa de Transporte</th>
+                    <th>Forma de Pagamento</th>
+                    <th>Linha do Transporte</th>
+                    <th>Tarifa Diária</th>
+                    <th>Quantidade de Dias</th>
+                    <th>Valor Base</th>
+                    <th>Valor a Acrescentar</th>
+                    <th>Valor a Descontar</th>
+                    <th>Valor Total a Pagar</th>
+                    <th>Observação</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% set totais = namespace(total=0) %}
+                {% for item in pedido.itens %}
+                    {% if item.ativo %}
+                        {% set totais.total = totais.total + item.valor_total %}
+                        <tr>
+                            <td class="col-nowrap">{{ item.matricula_snapshot }}</td>
+                            <td>{{ item.nome_colaborador_snapshot }}</td>
+                            <td>{{ item.equipe_snapshot or "-" }}</td>
+                            <td>{{ item.empresa_transporte_snapshot }}</td>
+                            <td>{{ tipos_pagamento.get(item.forma_pagamento, item.forma_pagamento) }}</td>
+                            <td>{{ item.linha_transporte_snapshot }}</td>
+                            <td class="col-nowrap">{{ formatar_moeda_brl(item.tarifa_diaria) }}</td>
+                            <td>{{ item.quantidade_dias }}</td>
+                            <td class="col-nowrap">{{ formatar_moeda_brl(item.valor_base) }}</td>
+                            <td class="col-nowrap">{{ formatar_moeda_brl(item.valor_acrescimo) }}</td>
+                            <td class="col-nowrap">{{ formatar_moeda_brl(item.valor_desconto) }}</td>
+                            <td class="col-nowrap"><strong>{{ formatar_moeda_brl(item.valor_total) }}</strong></td>
+                            <td>{{ item.observacao or "-" }}</td>
+                        </tr>
+                    {% endif %}
+                {% else %}
+                    <tr>
+                        <td class="empty-state" colspan="13">Nenhum item no pedido.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="total-box">
+        <strong>Total geral:</strong> {{ formatar_moeda_brl(totais.total) }}
+    </div>
+
+    <div class="page-actions">
+        {% if pode_excluir and pedido_pode_cancelar(pedido) %}
+            <form class="inline-form" method="post" action="{{ url_for('vale_transporte.cancelar_pedido_vale_transporte_rota', pedido_id=pedido.id) }}">
+                <button
+                    class="btn btn-warning"
+                    type="submit"
+                    onclick="return confirm('Confirmar cancelamento deste pedido?');"
+                >
+                    Cancelar pedido
+                </button>
+            </form>
+        {% endif %}
+
+        <a class="btn btn-secondary" href="{{ url_for('vale_transporte.listar_pedidos_vale_transporte') }}">
+            Voltar para pedidos
+        </a>
+    </div>
+</section>
+{% endblock %}

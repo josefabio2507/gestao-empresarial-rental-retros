@@ -1,0 +1,242 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Vale Transporte</span>
+            <h1>Pedidos de Vale Transporte</h1>
+            <p>Gere pedidos para colaboradores optantes com vínculos ativos.</p>
+        </div>
+
+        <div class="actions">
+            <a class="btn btn-secondary" href="{{ url_for('vale_transporte.listar_pedidos_vale_transporte') }}">
+                Consultar pedidos
+            </a>
+            <a class="btn btn-secondary" href="{{ url_for('vale_transporte.index') }}">
+                Voltar
+            </a>
+        </div>
+    </div>
+
+    <form class="filter-card" method="get" action="{{ url_for('vale_transporte.pedidos') }}">
+        <div class="filter-form">
+            <div class="form-group">
+                <label for="competencia">Competência</label>
+                <input
+                    type="text"
+                    name="competencia"
+                    id="competencia"
+                    value="{{ filtros.competencia }}"
+                    placeholder="MM.AAAA"
+                    maxlength="7"
+                    required
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="data_inicial">Data Inicial</label>
+                <input type="date" name="data_inicial" id="data_inicial" value="{{ filtros.data_inicial }}" required>
+            </div>
+
+            <div class="form-group">
+                <label for="data_final">Data Final</label>
+                <input type="date" name="data_final" id="data_final" value="{{ filtros.data_final }}" required>
+            </div>
+
+            <div class="form-group">
+                <label for="quantidade_dias">Quantidade de dias pagos</label>
+                <input
+                    type="number"
+                    name="quantidade_dias"
+                    id="quantidade_dias"
+                    value="{{ filtros.quantidade_dias }}"
+                    min="1"
+                    step="1"
+                    required
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="equipe_id">Equipe</label>
+                <select name="equipe_id" id="equipe_id">
+                    <option value="">Todas</option>
+                    {% for equipe in equipes %}
+                        <option value="{{ equipe.id }}" {% if filtros.equipe_id|string == equipe.id|string %}selected{% endif %}>
+                            {{ equipe.nome }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="forma_pagamento">Forma de Pagamento</label>
+                <select name="forma_pagamento" id="forma_pagamento">
+                    <option value="todos" {% if filtros.forma_pagamento == "todos" %}selected{% endif %}>Todos</option>
+                    {% for valor, rotulo in tipos_pagamento.items() %}
+                        <option value="{{ valor }}" {% if filtros.forma_pagamento == valor %}selected{% endif %}>
+                            {{ rotulo }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="empresa_transporte">Empresa de Transporte</label>
+                <select name="empresa_transporte" id="empresa_transporte">
+                    <option value="todos" {% if filtros.empresa_transporte == "todos" %}selected{% endif %}>Todas</option>
+                    {% for empresa in empresas_transporte %}
+                        <option value="{{ empresa }}" {% if filtros.empresa_transporte == empresa %}selected{% endif %}>
+                            {{ empresa }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="prazo_pagamento">Prazo de Pagamento</label>
+                <select name="prazo_pagamento" id="prazo_pagamento" required>
+                    <option value="">Selecione...</option>
+                    {% for valor, rotulo in periodicidades_pagamento.items() %}
+                        <option value="{{ valor }}" {% if filtros.prazo_pagamento == valor %}selected{% endif %}>
+                            {{ rotulo }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-actions">
+                <button class="btn btn-primary" type="submit" name="acao" value="consultar">
+                    Consultar/Gerar Prévia
+                </button>
+                <a class="btn btn-secondary" href="{{ url_for('vale_transporte.pedidos') }}">Limpar</a>
+            </div>
+        </div>
+    </form>
+
+    {% if previa %}
+        <form method="post" action="{{ url_for('vale_transporte.pedidos') }}">
+            <input type="hidden" name="acao" value="criar">
+            <input type="hidden" name="competencia" value="{{ filtros.competencia }}">
+            <input type="hidden" name="data_inicial" value="{{ filtros.data_inicial }}">
+            <input type="hidden" name="data_final" value="{{ filtros.data_final }}">
+            <input type="hidden" name="quantidade_dias" value="{{ filtros.quantidade_dias }}">
+            <input type="hidden" name="equipe_id" value="{{ filtros.equipe_id }}">
+            <input type="hidden" name="forma_pagamento" value="{{ filtros.forma_pagamento }}">
+            <input type="hidden" name="empresa_transporte" value="{{ filtros.empresa_transporte }}">
+            <input type="hidden" name="prazo_pagamento" value="{{ filtros.prazo_pagamento }}">
+
+            <div class="table-card table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Competência</th>
+                            <th>Matrícula</th>
+                            <th>Nome do colaborador</th>
+                            <th>Equipe</th>
+                            <th>Empresa de Transporte</th>
+                            <th>Forma de Pagamento</th>
+                            <th>Linha do Transporte</th>
+                            <th>Tarifa Diária</th>
+                            <th>Quantidade de Dias</th>
+                            <th>Valor a Acrescentar</th>
+                            <th>Valor a Descontar</th>
+                            <th>Valor Total a Pagar</th>
+                            <th>Observação</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in previa.itens %}
+                            {% set vinculo_id = item.vinculo.id %}
+                            <tr class="vt-pedido-item" data-tarifa="{{ item.tarifa_diaria }}">
+                                <td class="col-nowrap">{{ item.competencia }}</td>
+                                <td class="col-nowrap">{{ item.matricula }}</td>
+                                <td>{{ item.nome_colaborador }}</td>
+                                <td>{{ item.equipe }}</td>
+                                <td>{{ item.empresa_transporte }}</td>
+                                <td>{{ item.forma_pagamento }}</td>
+                                <td>{{ item.linha_transporte }}</td>
+                                <td class="col-nowrap">{{ formatar_moeda_brl(item.tarifa_diaria) }}</td>
+                                <td>
+                                    <input
+                                        class="vt-qtd-dias"
+                                        type="number"
+                                        name="quantidade_dias_{{ vinculo_id }}"
+                                        value="{{ item.quantidade_dias }}"
+                                        min="1"
+                                        step="1"
+                                        required
+                                    >
+                                </td>
+                                <td>
+                                    <input
+                                        class="vt-valor-acrescimo"
+                                        type="text"
+                                        name="valor_acrescimo_{{ vinculo_id }}"
+                                        value="0,00"
+                                    >
+                                </td>
+                                <td>
+                                    <input
+                                        class="vt-valor-desconto"
+                                        type="text"
+                                        name="valor_desconto_{{ vinculo_id }}"
+                                        value="0,00"
+                                    >
+                                </td>
+                                <td class="col-nowrap">
+                                    <strong class="vt-total">{{ formatar_moeda_brl(item.valor_total) }}</strong>
+                                </td>
+                                <td>
+                                    <input type="text" name="observacao_{{ vinculo_id }}" value="">
+                                </td>
+                            </tr>
+                        {% else %}
+                            <tr>
+                                <td class="empty-state" colspan="13">
+                                    Nenhum colaborador encontrado para os filtros informados.
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="page-actions">
+                {% if pode_criar and previa.itens %}
+                    <button class="btn btn-success" type="submit">
+                        Criar Pedido
+                    </button>
+                {% endif %}
+            </div>
+        </form>
+    {% endif %}
+</section>
+
+<script>
+    function parseValorBrasileiro(valor) {
+        const texto = (valor || "").replace("R$", "").replace(/\s/g, "").replace(/\./g, "").replace(",", ".");
+        const numero = Number.parseFloat(texto);
+        return Number.isFinite(numero) ? numero : 0;
+    }
+
+    function formatarMoeda(valor) {
+        return valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+    }
+
+    function atualizarLinha(linha) {
+        const tarifa = Number.parseFloat(linha.dataset.tarifa || "0");
+        const quantidade = Number.parseInt(linha.querySelector(".vt-qtd-dias").value || "0", 10);
+        const acrescimo = parseValorBrasileiro(linha.querySelector(".vt-valor-acrescimo").value);
+        const desconto = parseValorBrasileiro(linha.querySelector(".vt-valor-desconto").value);
+        const total = Math.max(0, (tarifa * quantidade) + acrescimo - desconto);
+        linha.querySelector(".vt-total").textContent = formatarMoeda(total);
+    }
+
+    document.querySelectorAll(".vt-pedido-item").forEach((linha) => {
+        linha.querySelectorAll("input").forEach((campo) => {
+            campo.addEventListener("input", () => atualizarLinha(linha));
+        });
+    });
+</script>
+{% endblock %}

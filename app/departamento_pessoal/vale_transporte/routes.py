@@ -7,6 +7,7 @@ from app.services.logs_service import registrar_log
 from app.services.permissoes_service import usuario_tem_permissao
 from app.departamento_pessoal.vale_transporte.services import (
     PERIODICIDADES_PAGAMENTO,
+    STATUS_PEDIDOS,
     TIPOS_PAGAMENTO,
     alternar_status_linha,
     alternar_status_vinculo,
@@ -14,11 +15,20 @@ from app.departamento_pessoal.vale_transporte.services import (
     buscar_colaborador_por_id,
     buscar_linha_por_id,
     buscar_linhas_onibus,
+    buscar_pedido_vale_transporte_por_id,
+    buscar_pedidos_vale_transporte,
     buscar_vinculo_por_id,
     buscar_vinculos_colaborador,
+    cancelar_pedido_vale_transporte,
+    criar_pedido_vale_transporte,
+    formatar_data_brl,
     formatar_moeda_brl,
+    listar_empresas_transporte_ativas,
+    listar_equipes_ativas,
     listar_colaboradores_para_vinculo,
     listar_linhas_ativas,
+    montar_previa_pedido_vale_transporte,
+    pedido_vale_transporte_pode_ser_cancelado,
     salvar_linha_onibus,
     salvar_vinculo_colaborador_linha,
 )
@@ -40,6 +50,169 @@ def _pode(acao):
 @module_permission_required("departamento_pessoal", "vale_transporte", "visualizar")
 def index():
     return render_template("departamento_pessoal/vale_transporte/index.html")
+
+
+def _filtros_pedido_form():
+    return {
+        "competencia": request.values.get("competencia", "").strip(),
+        "data_inicial": request.values.get("data_inicial", "").strip(),
+        "data_final": request.values.get("data_final", "").strip(),
+        "quantidade_dias": request.values.get("quantidade_dias", "").strip(),
+        "equipe_id": request.values.get("equipe_id", "").strip(),
+        "forma_pagamento": request.values.get("forma_pagamento", "todos").strip() or "todos",
+        "empresa_transporte": (
+            request.values.get("empresa_transporte", "todos").strip() or "todos"
+        ),
+        "prazo_pagamento": request.values.get("prazo_pagamento", "").strip(),
+    }
+
+
+def _ajustes_itens_form():
+    ajustes = {}
+
+    for chave, valor in request.form.items():
+        for prefixo, campo in (
+            ("quantidade_dias_", "quantidade_dias"),
+            ("valor_acrescimo_", "valor_acrescimo"),
+            ("valor_desconto_", "valor_desconto"),
+            ("observacao_", "observacao"),
+        ):
+            if chave.startswith(prefixo):
+                vinculo_id = chave.replace(prefixo, "", 1)
+                ajustes.setdefault(vinculo_id, {})[campo] = valor
+
+    return ajustes
+
+
+@vale_transporte_bp.route("/pedidos", methods=["GET", "POST"])
+@module_permission_required("departamento_pessoal", "vale_transporte", "visualizar")
+def pedidos():
+    filtros = _filtros_pedido_form()
+    previa = None
+    acao = request.values.get("acao", "").strip()
+
+    if request.method == "POST" and acao == "criar":
+        if not _pode("criar"):
+            flash("Você não tem permissão para criar pedidos de Vale Transporte.", "danger")
+            return redirect(url_for("main.acesso_negado"))
+
+        sucesso, mensagem, pedido = criar_pedido_vale_transporte(
+            competencia=filtros["competencia"],
+            data_inicial=filtros["data_inicial"],
+            data_final=filtros["data_final"],
+            quantidade_dias=filtros["quantidade_dias"],
+            equipe_id=filtros["equipe_id"],
+            forma_pagamento=filtros["forma_pagamento"],
+            empresa_transporte=filtros["empresa_transporte"],
+            prazo_pagamento=filtros["prazo_pagamento"],
+            ajustes_itens=_ajustes_itens_form(),
+            criado_por_id=current_user.id if current_user.is_authenticated else None,
+        )
+
+        if sucesso:
+            registrar_log(
+                "vale_transporte_pedido_criado",
+                f"Pedido de Vale Transporte criado. ID: {pedido.id}.",
+            )
+            flash(mensagem, "success")
+            return redirect(
+                url_for("vale_transporte.detalhes_pedido_vale_transporte", pedido_id=pedido.id)
+            )
+
+        flash(mensagem, "danger")
+
+    if request.values and (request.method == "GET" or acao in {"consultar", "criar"}):
+        try:
+            previa = montar_previa_pedido_vale_transporte(
+                competencia=filtros["competencia"],
+                data_inicial=filtros["data_inicial"],
+                data_final=filtros["data_final"],
+                quantidade_dias=filtros["quantidade_dias"],
+                equipe_id=filtros["equipe_id"],
+                forma_pagamento=filtros["forma_pagamento"],
+                empresa_transporte=filtros["empresa_transporte"],
+                prazo_pagamento=filtros["prazo_pagamento"],
+            )
+            if not previa["itens"]:
+                flash("Nenhum colaborador encontrado para os filtros informados.", "warning")
+        except ValueError as erro:
+            if acao:
+                flash(str(erro), "danger")
+
+    return render_template(
+        "departamento_pessoal/vale_transporte/pedidos.html",
+        filtros=filtros,
+        previa=previa,
+        equipes=listar_equipes_ativas(),
+        empresas_transporte=listar_empresas_transporte_ativas(),
+        tipos_pagamento=TIPOS_PAGAMENTO,
+        periodicidades_pagamento=PERIODICIDADES_PAGAMENTO,
+        formatar_moeda_brl=formatar_moeda_brl,
+        pode_criar=_pode("criar"),
+    )
+
+
+@vale_transporte_bp.route("/pedidos/listar")
+@module_permission_required("departamento_pessoal", "vale_transporte", "visualizar")
+def listar_pedidos_vale_transporte():
+    status = request.args.get("status", "todos").strip() or "todos"
+
+    return render_template(
+        "departamento_pessoal/vale_transporte/pedidos_listar.html",
+        pedidos=buscar_pedidos_vale_transporte(status=status),
+        status=status,
+        status_pedidos=STATUS_PEDIDOS,
+        tipos_pagamento=TIPOS_PAGAMENTO,
+        periodicidades_pagamento=PERIODICIDADES_PAGAMENTO,
+        formatar_data_brl=formatar_data_brl,
+        pode_criar=_pode("criar"),
+        pode_excluir=_pode("excluir"),
+        pedido_pode_cancelar=pedido_vale_transporte_pode_ser_cancelado,
+    )
+
+
+@vale_transporte_bp.route("/pedidos/<int:pedido_id>")
+@module_permission_required("departamento_pessoal", "vale_transporte", "visualizar")
+def detalhes_pedido_vale_transporte(pedido_id):
+    pedido = buscar_pedido_vale_transporte_por_id(pedido_id)
+
+    if not pedido:
+        flash("Pedido de Vale Transporte não encontrado.", "warning")
+        return redirect(url_for("vale_transporte.listar_pedidos_vale_transporte"))
+
+    return render_template(
+        "departamento_pessoal/vale_transporte/pedido_detalhes.html",
+        pedido=pedido,
+        tipos_pagamento=TIPOS_PAGAMENTO,
+        periodicidades_pagamento=PERIODICIDADES_PAGAMENTO,
+        formatar_moeda_brl=formatar_moeda_brl,
+        formatar_data_brl=formatar_data_brl,
+        pode_excluir=_pode("excluir"),
+        pedido_pode_cancelar=pedido_vale_transporte_pode_ser_cancelado,
+    )
+
+
+@vale_transporte_bp.route("/pedidos/<int:pedido_id>/cancelar", methods=["POST"])
+@module_permission_required("departamento_pessoal", "vale_transporte", "excluir")
+def cancelar_pedido_vale_transporte_rota(pedido_id):
+    pedido = buscar_pedido_vale_transporte_por_id(pedido_id)
+
+    if not pedido:
+        flash("Pedido de Vale Transporte não encontrado.", "warning")
+        return redirect(url_for("vale_transporte.listar_pedidos_vale_transporte"))
+
+    sucesso, mensagem = cancelar_pedido_vale_transporte(pedido)
+
+    if sucesso:
+        registrar_log(
+            "vale_transporte_pedido_cancelado",
+            f"Pedido de Vale Transporte cancelado. ID: {pedido.id}.",
+        )
+        flash(mensagem, "success")
+    else:
+        flash(mensagem, "danger")
+
+    return redirect(url_for("vale_transporte.detalhes_pedido_vale_transporte", pedido_id=pedido.id))
 
 
 @vale_transporte_bp.route("/linhas")
