@@ -46,6 +46,33 @@ class ValeTransportePedidosTestCase(unittest.TestCase):
             vale_transporte_optante=True,
             ativo=True,
         )
+        self.colaborador_inativo = Colaborador(
+            matricula="300",
+            nome="Colaborador Inativo",
+            cpf="12345678903",
+            cargo="Operador",
+            equipe=self.equipe,
+            vale_transporte_optante=True,
+            ativo=False,
+        )
+        self.colaborador_nao_optante = Colaborador(
+            matricula="400",
+            nome="Colaborador Nao Optante",
+            cpf="12345678904",
+            cargo="Operador",
+            equipe=self.equipe,
+            vale_transporte_optante=False,
+            ativo=True,
+        )
+        self.colaborador_sem_linha = Colaborador(
+            matricula="500",
+            nome="Colaborador Sem Linha",
+            cpf="12345678905",
+            cargo="Operador",
+            equipe=self.equipe,
+            vale_transporte_optante=True,
+            ativo=True,
+        )
         self.linha = LinhaOnibus(
             nome="Centro",
             codigo="001",
@@ -65,6 +92,9 @@ class ValeTransportePedidosTestCase(unittest.TestCase):
             outra_equipe,
             self.colaborador,
             self.colaborador_fora_filtro,
+            self.colaborador_inativo,
+            self.colaborador_nao_optante,
+            self.colaborador_sem_linha,
             self.linha,
             self.outra_linha,
         ])
@@ -140,6 +170,102 @@ class ValeTransportePedidosTestCase(unittest.TestCase):
         self.assertEqual(Decimal("200.00"), item.valor_base)
         self.assertEqual(Decimal("203.50"), item.valor_total)
         self.assertEqual("Ajuste manual", item.observacao)
+
+    def test_monta_previa_individual_por_matricula(self):
+        previa = montar_previa_pedido_vale_transporte(
+            competencia="09.2026",
+            data_inicial="2026-09-01",
+            data_final="2026-09-30",
+            quantidade_dias="22",
+            colaborador="100",
+            prazo_pagamento="mensal",
+        )
+
+        self.assertEqual(self.colaborador.id, previa["colaborador"].id)
+        self.assertEqual(1, len(previa["itens"]))
+        self.assertEqual("100", previa["itens"][0]["matricula"])
+
+    def test_monta_previa_individual_por_parte_do_nome_com_filtro_pagamento(self):
+        sucesso, mensagem = salvar_vinculo_colaborador_linha(
+            colaborador=self.colaborador,
+            linha_onibus_id=self.outra_linha.id,
+            tipo_pagamento="cartao_transporte",
+            periodicidade_pagamento="mensal",
+        )
+        self.assertTrue(sucesso, mensagem)
+
+        previa = montar_previa_pedido_vale_transporte(
+            competencia="10.2026",
+            data_inicial="2026-10-01",
+            data_final="2026-10-31",
+            quantidade_dias="22",
+            colaborador="Teste",
+            forma_pagamento="dinheiro",
+            prazo_pagamento="mensal",
+        )
+
+        self.assertEqual(1, len(previa["itens"]))
+        self.assertEqual("Dinheiro", previa["itens"][0]["forma_pagamento"])
+        self.assertEqual("Transporte Teste", previa["itens"][0]["empresa_transporte"])
+
+    def test_cria_pedido_individual_salvando_colaborador_no_cabecalho(self):
+        sucesso, mensagem, pedido = criar_pedido_vale_transporte(
+            competencia="11.2026",
+            data_inicial="2026-11-01",
+            data_final="2026-11-30",
+            quantidade_dias="22",
+            colaborador="100 - Colaborador Teste",
+            prazo_pagamento="mensal",
+        )
+
+        self.assertTrue(sucesso, mensagem)
+        self.assertEqual(self.colaborador.id, pedido.colaborador_id)
+        self.assertEqual(1, len(pedido.itens))
+
+    def test_bloqueia_colaborador_inativo_no_pedido_individual(self):
+        with self.assertRaises(ValueError) as contexto:
+            montar_previa_pedido_vale_transporte(
+                competencia="12.2026",
+                data_inicial="2026-12-01",
+                data_final="2026-12-31",
+                quantidade_dias="22",
+                colaborador="300",
+                prazo_pagamento="mensal",
+            )
+
+        self.assertEqual("Este colaborador está inativo.", str(contexto.exception))
+
+    def test_bloqueia_colaborador_nao_optante_no_pedido_individual(self):
+        with self.assertRaises(ValueError) as contexto:
+            montar_previa_pedido_vale_transporte(
+                competencia="01.2027",
+                data_inicial="2027-01-01",
+                data_final="2027-01-31",
+                quantidade_dias="22",
+                colaborador="400",
+                prazo_pagamento="mensal",
+            )
+
+        self.assertEqual(
+            "Este colaborador não está marcado como optante de Vale Transporte.",
+            str(contexto.exception),
+        )
+
+    def test_bloqueia_colaborador_sem_linha_ativa_no_pedido_individual(self):
+        with self.assertRaises(ValueError) as contexto:
+            montar_previa_pedido_vale_transporte(
+                competencia="02.2027",
+                data_inicial="2027-02-01",
+                data_final="2027-02-28",
+                quantidade_dias="22",
+                colaborador="500",
+                prazo_pagamento="mensal",
+            )
+
+        self.assertEqual(
+            "Este colaborador não possui linhas de transporte ativas vinculadas.",
+            str(contexto.exception),
+        )
 
     def test_bloqueia_desconto_maior_que_base_mais_acrescimo(self):
         vinculo = self.colaborador.linhas_vale_transporte[0]

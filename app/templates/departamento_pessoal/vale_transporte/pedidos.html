@@ -70,6 +70,23 @@
             </div>
 
             <div class="form-group">
+                <label for="colaborador">Colaborador</label>
+                <input
+                    type="text"
+                    name="colaborador"
+                    id="colaborador"
+                    value="{{ filtros.colaborador }}"
+                    list="colaboradores_pedido"
+                    placeholder="Matrícula, nome ou parte do nome"
+                >
+                <datalist id="colaboradores_pedido">
+                    {% for colaborador in colaboradores %}
+                        <option value="{{ colaborador.matricula }} - {{ colaborador.nome }}">
+                    {% endfor %}
+                </datalist>
+            </div>
+
+            <div class="form-group">
                 <label for="forma_pagamento">Forma de Pagamento</label>
                 <select name="forma_pagamento" id="forma_pagamento">
                     <option value="todos" {% if filtros.forma_pagamento == "todos" %}selected{% endif %}>Todos</option>
@@ -122,6 +139,7 @@
             <input type="hidden" name="data_final" value="{{ filtros.data_final }}">
             <input type="hidden" name="quantidade_dias" value="{{ filtros.quantidade_dias }}">
             <input type="hidden" name="equipe_id" value="{{ filtros.equipe_id }}">
+            <input type="hidden" name="colaborador" value="{{ filtros.colaborador }}">
             <input type="hidden" name="forma_pagamento" value="{{ filtros.forma_pagamento }}">
             <input type="hidden" name="empresa_transporte" value="{{ filtros.empresa_transporte }}">
             <input type="hidden" name="prazo_pagamento" value="{{ filtros.prazo_pagamento }}">
