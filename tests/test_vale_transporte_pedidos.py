@@ -185,6 +185,88 @@ class ValeTransportePedidosTestCase(unittest.TestCase):
         self.assertEqual(1, len(previa["itens"]))
         self.assertEqual("100", previa["itens"][0]["matricula"])
 
+    def test_monta_previa_apenas_com_colaborador_manual_sem_disparar_massa(self):
+        previa = montar_previa_pedido_vale_transporte(
+            competencia="03.2027",
+            data_inicial="2027-03-01",
+            data_final="2027-03-31",
+            quantidade_dias="22",
+            prazo_pagamento="semanal",
+            colaboradores_manuais_ids=[str(self.colaborador_fora_filtro.id)],
+        )
+
+        self.assertEqual(1, len(previa["colaboradores_manuais"]))
+        self.assertEqual(1, len(previa["itens"]))
+        self.assertEqual("200", previa["itens"][0]["matricula"])
+
+    def test_colaborador_manual_ignora_filtros_de_equipe_forma_e_empresa(self):
+        previa = montar_previa_pedido_vale_transporte(
+            competencia="04.2027",
+            data_inicial="2027-04-01",
+            data_final="2027-04-30",
+            quantidade_dias="22",
+            equipe_id=str(self.equipe.id),
+            forma_pagamento="dinheiro",
+            empresa_transporte="Transporte Teste",
+            prazo_pagamento="semanal",
+            colaboradores_manuais_ids=[str(self.colaborador_fora_filtro.id)],
+        )
+
+        self.assertEqual(1, len(previa["itens"]))
+        self.assertEqual("200", previa["itens"][0]["matricula"])
+        self.assertEqual("Cartão Transporte", previa["itens"][0]["forma_pagamento"])
+        self.assertEqual("Outra Empresa", previa["itens"][0]["empresa_transporte"])
+
+    def test_colaborador_manual_nao_duplica_vinculo_ja_filtrado(self):
+        previa = montar_previa_pedido_vale_transporte(
+            competencia="05.2027",
+            data_inicial="2027-05-01",
+            data_final="2027-05-31",
+            quantidade_dias="22",
+            equipe_id=str(self.equipe.id),
+            forma_pagamento="dinheiro",
+            empresa_transporte="Transporte Teste",
+            prazo_pagamento="mensal",
+            colaboradores_manuais_ids=[str(self.colaborador.id)],
+        )
+
+        self.assertEqual(1, len(previa["itens"]))
+        self.assertEqual("100", previa["itens"][0]["matricula"])
+
+    def test_bloqueia_colaborador_manual_repetido(self):
+        with self.assertRaises(ValueError) as contexto:
+            montar_previa_pedido_vale_transporte(
+                competencia="06.2027",
+                data_inicial="2027-06-01",
+                data_final="2027-06-30",
+                quantidade_dias="22",
+                prazo_pagamento="mensal",
+                colaboradores_manuais_ids=[
+                    str(self.colaborador.id),
+                    str(self.colaborador.id),
+                ],
+            )
+
+        self.assertEqual(
+            "Este colaborador já foi incluído na seleção manual.",
+            str(contexto.exception),
+        )
+
+    def test_cria_pedido_com_colaboradores_manuais(self):
+        sucesso, mensagem, pedido = criar_pedido_vale_transporte(
+            competencia="07.2027",
+            data_inicial="2027-07-01",
+            data_final="2027-07-31",
+            quantidade_dias="22",
+            prazo_pagamento="semanal",
+            colaboradores_manuais_ids=[str(self.colaborador_fora_filtro.id)],
+        )
+
+        self.assertTrue(sucesso, mensagem)
+        self.assertIsNone(pedido.colaborador_id)
+        self.assertEqual(1, len(pedido.itens))
+        self.assertEqual("Colaborador Fora", pedido.itens[0].nome_colaborador_snapshot)
+
     def test_monta_previa_individual_por_parte_do_nome_com_filtro_pagamento(self):
         sucesso, mensagem = salvar_vinculo_colaborador_linha(
             colaborador=self.colaborador,

@@ -61,12 +61,33 @@ def _filtros_pedido_form():
         "quantidade_dias": request.values.get("quantidade_dias", "").strip(),
         "equipe_id": request.values.get("equipe_id", "").strip(),
         "colaborador": request.values.get("colaborador", "").strip(),
+        "colaboradores_manuais_ids": [
+            valor.strip()
+            for valor in request.values.getlist("colaboradores_manuais_ids")
+            if valor.strip()
+        ],
         "forma_pagamento": request.values.get("forma_pagamento", "todos").strip() or "todos",
         "empresa_transporte": (
             request.values.get("empresa_transporte", "todos").strip() or "todos"
         ),
         "prazo_pagamento": request.values.get("prazo_pagamento", "").strip(),
     }
+
+
+def _colaboradores_manuais_para_exibicao(colaboradores_ids):
+    colaboradores = []
+    vistos = set()
+
+    for colaborador_id in colaboradores_ids:
+        if colaborador_id in vistos:
+            continue
+        vistos.add(colaborador_id)
+
+        colaborador = buscar_colaborador_por_id(colaborador_id)
+        if colaborador:
+            colaboradores.append(colaborador)
+
+    return colaboradores
 
 
 def _ajustes_itens_form():
@@ -108,6 +129,7 @@ def pedidos():
             forma_pagamento=filtros["forma_pagamento"],
             empresa_transporte=filtros["empresa_transporte"],
             prazo_pagamento=filtros["prazo_pagamento"],
+            colaboradores_manuais_ids=filtros["colaboradores_manuais_ids"],
             ajustes_itens=_ajustes_itens_form(),
             criado_por_id=current_user.id if current_user.is_authenticated else None,
         )
@@ -136,6 +158,7 @@ def pedidos():
                 forma_pagamento=filtros["forma_pagamento"],
                 empresa_transporte=filtros["empresa_transporte"],
                 prazo_pagamento=filtros["prazo_pagamento"],
+                colaboradores_manuais_ids=filtros["colaboradores_manuais_ids"],
             )
             if not previa["itens"]:
                 flash("Nenhum colaborador encontrado para os filtros informados.", "warning")
@@ -149,6 +172,9 @@ def pedidos():
         previa=previa,
         equipes=listar_equipes_ativas(),
         colaboradores=listar_colaboradores_para_filtro_pedido(),
+        colaboradores_manuais=_colaboradores_manuais_para_exibicao(
+            filtros["colaboradores_manuais_ids"]
+        ),
         empresas_transporte=listar_empresas_transporte_ativas(),
         tipos_pagamento=TIPOS_PAGAMENTO,
         periodicidades_pagamento=PERIODICIDADES_PAGAMENTO,

@@ -452,6 +452,29 @@ def validar_colaborador_para_pedido(colaborador):
         raise ValueError("Este colaborador não possui linhas de transporte ativas vinculadas.")
 
 
+def resolver_colaboradores_manuais_pedido(colaboradores_ids=None):
+    colaboradores = []
+    vistos = set()
+
+    for colaborador_id in colaboradores_ids or []:
+        colaborador_id = normalizar_filtro_opcional(colaborador_id)
+        if not colaborador_id:
+            continue
+
+        if colaborador_id in vistos:
+            raise ValueError("Este colaborador já foi incluído na seleção manual.")
+        vistos.add(colaborador_id)
+
+        colaborador = Colaborador.query.get(colaborador_id)
+        if not colaborador:
+            raise ValueError("Colaborador não encontrado.")
+
+        validar_colaborador_para_pedido(colaborador)
+        colaboradores.append(colaborador)
+
+    return colaboradores
+
+
 def montar_linha_snapshot(linha):
     if not linha:
         return "-"
@@ -557,6 +580,81 @@ def calcular_totais_item(tarifa_diaria, quantidade_dias, valor_acrescimo, valor_
     return valor_base, total
 
 
+def filtros_de_pedido_foram_informados(
+    equipe_id=None,
+    colaborador=None,
+    colaborador_id=None,
+    forma_pagamento=None,
+    empresa_transporte=None,
+):
+    return any([
+        normalizar_filtro_opcional(equipe_id),
+        normalizar_filtro_opcional(colaborador),
+        normalizar_filtro_opcional(colaborador_id),
+        normalizar_filtro_opcional(forma_pagamento),
+        normalizar_filtro_opcional(empresa_transporte),
+    ])
+
+
+def montar_vinculos_pedido_vale_transporte(
+    equipe_id=None,
+    colaborador=None,
+    colaborador_id=None,
+    forma_pagamento=None,
+    empresa_transporte=None,
+    prazo_pagamento=None,
+    colaboradores_manuais_ids=None,
+):
+    colaborador_resolvido = resolver_colaborador_filtro(
+        colaborador_texto=colaborador,
+        colaborador_id=colaborador_id,
+    )
+    validar_colaborador_para_pedido(colaborador_resolvido)
+
+    colaboradores_manuais = resolver_colaboradores_manuais_pedido(
+        colaboradores_manuais_ids
+    )
+    possui_manuais = bool(colaboradores_manuais)
+    possui_filtros = filtros_de_pedido_foram_informados(
+        equipe_id=equipe_id,
+        colaborador=colaborador,
+        colaborador_id=colaborador_id,
+        forma_pagamento=forma_pagamento,
+        empresa_transporte=empresa_transporte,
+    )
+
+    vinculos = []
+    if possui_filtros or not possui_manuais:
+        vinculos.extend(
+            buscar_vinculos_para_pedido(
+                equipe_id=equipe_id,
+                colaborador_id=colaborador_resolvido.id if colaborador_resolvido else None,
+                forma_pagamento=forma_pagamento,
+                empresa_transporte=empresa_transporte,
+                prazo_pagamento=prazo_pagamento,
+            )
+        )
+
+    for colaborador_manual in colaboradores_manuais:
+        vinculos.extend(
+            buscar_vinculos_para_pedido(
+                colaborador_id=colaborador_manual.id,
+                prazo_pagamento=prazo_pagamento,
+            )
+        )
+
+    vinculos_unicos = []
+    chaves = set()
+    for vinculo in vinculos:
+        chave = (vinculo.colaborador_id, vinculo.linha_onibus_id)
+        if chave in chaves:
+            continue
+        chaves.add(chave)
+        vinculos_unicos.append(vinculo)
+
+    return vinculos_unicos, colaborador_resolvido, colaboradores_manuais
+
+
 def montar_previa_pedido_vale_transporte(
     competencia,
     data_inicial,
@@ -568,6 +666,7 @@ def montar_previa_pedido_vale_transporte(
     forma_pagamento=None,
     empresa_transporte=None,
     prazo_pagamento=None,
+    colaboradores_manuais_ids=None,
 ):
     competencia, data_inicio, data_fim, quantidade, prazo = validar_cabecalho_pedido(
         competencia,
@@ -576,18 +675,14 @@ def montar_previa_pedido_vale_transporte(
         quantidade_dias,
         prazo_pagamento,
     )
-    colaborador_resolvido = resolver_colaborador_filtro(
-        colaborador_texto=colaborador,
-        colaborador_id=colaborador_id,
-    )
-    validar_colaborador_para_pedido(colaborador_resolvido)
-
-    vinculos = buscar_vinculos_para_pedido(
+    vinculos, colaborador_resolvido, colaboradores_manuais = montar_vinculos_pedido_vale_transporte(
         equipe_id=equipe_id,
-        colaborador_id=colaborador_resolvido.id if colaborador_resolvido else None,
+        colaborador=colaborador,
+        colaborador_id=colaborador_id,
         forma_pagamento=forma_pagamento,
         empresa_transporte=empresa_transporte,
         prazo_pagamento=prazo,
+        colaboradores_manuais_ids=colaboradores_manuais_ids,
     )
 
     itens = []
@@ -621,6 +716,7 @@ def montar_previa_pedido_vale_transporte(
         "quantidade_dias": quantidade,
         "prazo_pagamento": prazo,
         "colaborador": colaborador_resolvido,
+        "colaboradores_manuais": colaboradores_manuais,
         "itens": itens,
     }
 
@@ -721,6 +817,7 @@ def criar_pedido_vale_transporte(
     prazo_pagamento=None,
     ajustes_itens=None,
     criado_por_id=None,
+    colaboradores_manuais_ids=None,
 ):
     try:
         competencia, data_inicio, data_fim, quantidade, prazo = validar_cabecalho_pedido(
@@ -735,25 +832,21 @@ def criar_pedido_vale_transporte(
 
     equipe_id = normalizar_filtro_opcional(equipe_id)
     try:
-        colaborador_resolvido = resolver_colaborador_filtro(
-            colaborador_texto=colaborador,
+        vinculos, colaborador_resolvido, colaboradores_manuais = montar_vinculos_pedido_vale_transporte(
+            equipe_id=equipe_id,
+            colaborador=colaborador,
             colaborador_id=colaborador_id,
+            forma_pagamento=forma_pagamento,
+            empresa_transporte=empresa_transporte,
+            prazo_pagamento=prazo,
+            colaboradores_manuais_ids=colaboradores_manuais_ids,
         )
-        validar_colaborador_para_pedido(colaborador_resolvido)
     except ValueError as erro:
         return False, str(erro), None
 
     forma_pagamento = normalizar_filtro_opcional(forma_pagamento)
     empresa_transporte = normalizar_filtro_opcional(empresa_transporte)
     ajustes_itens = ajustes_itens or {}
-
-    vinculos = buscar_vinculos_para_pedido(
-        equipe_id=equipe_id,
-        colaborador_id=colaborador_resolvido.id if colaborador_resolvido else None,
-        forma_pagamento=forma_pagamento,
-        empresa_transporte=empresa_transporte,
-        prazo_pagamento=prazo,
-    )
 
     if not vinculos:
         return False, "Nenhum colaborador encontrado para os filtros informados.", None
@@ -769,7 +862,7 @@ def criar_pedido_vale_transporte(
         prazo_pagamento=prazo,
     )
 
-    if pedido_duplicado:
+    if pedido_duplicado and not colaboradores_manuais:
         return (
             False,
             "Já existe pedido ativo para esta competência, período e filtros.",

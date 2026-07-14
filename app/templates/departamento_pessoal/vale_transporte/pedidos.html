@@ -69,13 +69,13 @@
                 </select>
             </div>
 
+            <input type="hidden" name="colaborador" value="{{ filtros.colaborador }}">
+
             <div class="form-group">
-                <label for="colaborador">Colaborador</label>
+                <label for="colaborador_manual_busca">Colaborador</label>
                 <input
                     type="text"
-                    name="colaborador"
-                    id="colaborador"
-                    value="{{ filtros.colaborador }}"
+                    id="colaborador_manual_busca"
                     list="colaboradores_pedido"
                     placeholder="Matrícula, nome ou parte do nome"
                 >
@@ -129,6 +129,56 @@
                 <a class="btn btn-secondary" href="{{ url_for('vale_transporte.pedidos') }}">Limpar</a>
             </div>
         </div>
+
+        <div class="table-card table-responsive" style="margin-top: 1rem;">
+            <div class="top-bar" style="margin-bottom: 0.75rem;">
+                <div>
+                    <h2>Colaboradores selecionados individualmente</h2>
+                </div>
+                <button class="btn btn-secondary" type="button" id="adicionar-colaborador-manual">
+                    Adicionar colaborador
+                </button>
+            </div>
+
+            <div id="colaboradores-manuais-inputs">
+                {% for colaborador in colaboradores_manuais %}
+                    <input type="hidden" name="colaboradores_manuais_ids" value="{{ colaborador.id }}">
+                {% endfor %}
+            </div>
+
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Matrícula</th>
+                        <th>Nome</th>
+                        <th>Equipe</th>
+                        <th>Optante VT</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="colaboradores-manuais-lista">
+                    {% for colaborador in colaboradores_manuais %}
+                        <tr data-colaborador-id="{{ colaborador.id }}">
+                            <td>{{ colaborador.matricula }}</td>
+                            <td>{{ colaborador.nome }}</td>
+                            <td>{{ colaborador.equipe.nome if colaborador.equipe else "-" }}</td>
+                            <td>{{ "Sim" if colaborador.vale_transporte_optante else "Não" }}</td>
+                            <td>
+                                <button class="btn btn-secondary remover-colaborador-manual" type="button">
+                                    Remover
+                                </button>
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr class="empty-row">
+                            <td class="empty-state" colspan="5">
+                                Nenhum colaborador incluído manualmente.
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </form>
 
     {% if previa %}
@@ -143,6 +193,9 @@
             <input type="hidden" name="forma_pagamento" value="{{ filtros.forma_pagamento }}">
             <input type="hidden" name="empresa_transporte" value="{{ filtros.empresa_transporte }}">
             <input type="hidden" name="prazo_pagamento" value="{{ filtros.prazo_pagamento }}">
+            {% for colaborador in colaboradores_manuais %}
+                <input type="hidden" name="colaboradores_manuais_ids" value="{{ colaborador.id }}">
+            {% endfor %}
 
             <div class="table-card table-responsive">
                 <table class="table">
@@ -232,6 +285,125 @@
 </section>
 
 <script>
+    const colaboradoresPedido = [
+        {% for colaborador in colaboradores %}
+            {
+                id: "{{ colaborador.id }}",
+                texto: {{ (colaborador.matricula ~ " - " ~ colaborador.nome)|tojson }},
+                matricula: {{ colaborador.matricula|tojson }},
+                nome: {{ colaborador.nome|tojson }},
+                equipe: {{ (colaborador.equipe.nome if colaborador.equipe else "-")|tojson }},
+                optante: {{ ("Sim" if colaborador.vale_transporte_optante else "Não")|tojson }}
+            }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ];
+
+    const campoColaboradorManual = document.getElementById("colaborador_manual_busca");
+    const botaoAdicionarColaborador = document.getElementById("adicionar-colaborador-manual");
+    const tabelaColaboradoresManuais = document.getElementById("colaboradores-manuais-lista");
+    const inputsColaboradoresManuais = document.getElementById("colaboradores-manuais-inputs");
+
+    function colaboradorJaSelecionado(id) {
+        return Boolean(inputsColaboradoresManuais?.querySelector(`input[value="${id}"]`));
+    }
+
+    function encontrarColaboradorManual(termo) {
+        const texto = (termo || "").trim().toLowerCase();
+        if (!texto) {
+            return null;
+        }
+
+        return colaboradoresPedido.find((colaborador) => colaborador.texto.toLowerCase() === texto)
+            || colaboradoresPedido.find((colaborador) => colaborador.matricula.toLowerCase() === texto)
+            || colaboradoresPedido.find((colaborador) => colaborador.nome.toLowerCase() === texto)
+            || colaboradoresPedido.find((colaborador) => colaborador.nome.toLowerCase().includes(texto));
+    }
+
+    function removerLinhaVaziaColaboradores() {
+        const linhaVazia = tabelaColaboradoresManuais?.querySelector(".empty-row");
+        if (linhaVazia) {
+            linhaVazia.remove();
+        }
+    }
+
+    function adicionarInputColaboradorManual(id) {
+        const input = document.createElement("input");
+        input.type = "hidden";
+        input.name = "colaboradores_manuais_ids";
+        input.value = id;
+        inputsColaboradoresManuais.appendChild(input);
+    }
+
+    function adicionarLinhaColaboradorManual(colaborador) {
+        removerLinhaVaziaColaboradores();
+
+        const linha = document.createElement("tr");
+        linha.dataset.colaboradorId = colaborador.id;
+        [colaborador.matricula, colaborador.nome, colaborador.equipe, colaborador.optante].forEach((valor) => {
+            const celula = document.createElement("td");
+            celula.textContent = valor;
+            linha.appendChild(celula);
+        });
+
+        const celulaAcoes = document.createElement("td");
+        const botaoRemover = document.createElement("button");
+        botaoRemover.className = "btn btn-secondary remover-colaborador-manual";
+        botaoRemover.type = "button";
+        botaoRemover.textContent = "Remover";
+        celulaAcoes.appendChild(botaoRemover);
+        linha.appendChild(celulaAcoes);
+        tabelaColaboradoresManuais.appendChild(linha);
+    }
+
+    function adicionarColaboradorManual() {
+        const colaborador = encontrarColaboradorManual(campoColaboradorManual.value);
+        if (!colaborador) {
+            campoColaboradorManual.setCustomValidity("Colaborador não encontrado.");
+            campoColaboradorManual.reportValidity();
+            return;
+        }
+
+        if (colaboradorJaSelecionado(colaborador.id)) {
+            campoColaboradorManual.setCustomValidity("Este colaborador já foi incluído na seleção manual.");
+            campoColaboradorManual.reportValidity();
+            return;
+        }
+
+        campoColaboradorManual.setCustomValidity("");
+        adicionarInputColaboradorManual(colaborador.id);
+        adicionarLinhaColaboradorManual(colaborador);
+        campoColaboradorManual.value = "";
+    }
+
+    botaoAdicionarColaborador?.addEventListener("click", adicionarColaboradorManual);
+    campoColaboradorManual?.addEventListener("input", () => campoColaboradorManual.setCustomValidity(""));
+
+    tabelaColaboradoresManuais?.addEventListener("click", (evento) => {
+        const botao = evento.target.closest(".remover-colaborador-manual");
+        if (!botao) {
+            return;
+        }
+
+        const linha = botao.closest("tr");
+        const colaboradorId = linha.dataset.colaboradorId;
+        linha.remove();
+
+        const input = inputsColaboradoresManuais.querySelector(`input[value="${colaboradorId}"]`);
+        if (input) {
+            input.remove();
+        }
+
+        if (!tabelaColaboradoresManuais.querySelector("tr")) {
+            tabelaColaboradoresManuais.innerHTML = `
+                <tr class="empty-row">
+                    <td class="empty-state" colspan="5">
+                        Nenhum colaborador incluído manualmente.
+                    </td>
+                </tr>
+            `;
+        }
+    });
+
     function parseValorBrasileiro(valor) {
         const texto = (valor || "").replace("R$", "").replace(/\s/g, "").replace(/\./g, "").replace(",", ".");
         const numero = Number.parseFloat(texto);
