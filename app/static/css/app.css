@@ -736,6 +736,33 @@ textarea {
     color: var(--rr-navy);
 }
 
+.sync-auto-status {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.sync-auto-spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(30, 64, 175, 0.2);
+    border-top-color: #1e40af;
+    border-radius: 50%;
+    animation: sync-auto-spin 0.8s linear infinite;
+    flex: 0 0 auto;
+}
+
+.btn:disabled {
+    cursor: wait;
+    opacity: 0.72;
+}
+
+@keyframes sync-auto-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
 .sr-only {
     position: absolute;
     width: 1px;

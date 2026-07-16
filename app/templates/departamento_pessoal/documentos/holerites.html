@@ -122,8 +122,22 @@
                 </div>
             {% endif %}
 
+            {% set deve_continuar_automaticamente = resumo_sincronizacao.proximo_cursor and not resumo_sincronizacao.concluido and resumo_sincronizacao.erros == 0 %}
+
             {% if resumo_sincronizacao.proximo_cursor %}
-                <form method="post" action="{{ url_for('documentos.sincronizar_holerites') }}" class="page-actions">
+                {% if deve_continuar_automaticamente %}
+                    <div class="alert alert-info sync-auto-status" aria-live="polite">
+                        <span class="sync-auto-spinner" aria-hidden="true"></span>
+                        Sincronização em andamento. O próximo lote será processado automaticamente em 2 segundos.
+                    </div>
+                {% endif %}
+
+                <form
+                    method="post"
+                    action="{{ url_for('documentos.sincronizar_holerites') }}"
+                    class="page-actions"
+                    {% if deve_continuar_automaticamente %}data-auto-submit-delay="2000" data-auto-submit-label="Continuando automaticamente..."{% endif %}
+                >
                     <input type="hidden" name="cursor" value="{{ resumo_sincronizacao.proximo_cursor }}">
                     <button class="btn btn-primary" type="submit">
                         Continuar sincronização
