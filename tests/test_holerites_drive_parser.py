@@ -283,6 +283,9 @@ class ParserHoleritesDriveTest(unittest.TestCase):
             "app.services.holerites_drive_service.carregar_cache_holerites_colaborador",
             return_value={"google_drive_file_ids": set(), "chaves_fallback": set()},
         ), patch(
+            "app.services.holerites_drive_service.carregar_google_drive_file_ids_importados",
+            return_value=set(),
+        ), patch(
             "app.services.holerites_drive_service.criar_holerite",
         ) as criar_holerite, patch(
             "app.services.holerites_drive_service.db.session.commit",
@@ -338,6 +341,9 @@ class ParserHoleritesDriveTest(unittest.TestCase):
             "app.services.holerites_drive_service.carregar_cache_holerites_colaborador",
             return_value={"google_drive_file_ids": set(), "chaves_fallback": set()},
         ), patch(
+            "app.services.holerites_drive_service.carregar_google_drive_file_ids_importados",
+            return_value=set(),
+        ), patch(
             "app.services.holerites_drive_service.criar_holerite",
         ) as criar_holerite, patch(
             "app.services.holerites_drive_service.db.session.commit",
@@ -390,6 +396,9 @@ class ParserHoleritesDriveTest(unittest.TestCase):
             "app.services.holerites_drive_service.carregar_cache_holerites_colaborador",
             return_value={"google_drive_file_ids": set(), "chaves_fallback": set()},
         ), patch(
+            "app.services.holerites_drive_service.carregar_google_drive_file_ids_importados",
+            return_value=set(),
+        ), patch(
             "app.services.holerites_drive_service.criar_holerite",
         ) as criar_holerite, patch(
             "app.services.holerites_drive_service.db.session.commit",
@@ -404,6 +413,59 @@ class ParserHoleritesDriveTest(unittest.TestCase):
         self.assertEqual(resumo["arquivos_encontrados_data"], 2)
         self.assertEqual(resumo["importados"], 2)
         self.assertEqual(criar_holerite.call_count, 2)
+
+    def test_sincronizacao_ignora_id_existente_no_cache_global(self):
+        arquivos = [
+            {
+                "id": "drive-ja-importado",
+                "name": "79 -Holerite Salário 05.2026 - João da Silva.pdf",
+                "mimeType": "application/pdf",
+                "webViewLink": "https://drive.example/drive-ja-importado",
+                "createdTime": "2026-06-01T13:00:00.000Z",
+            },
+            {
+                "id": "drive-novo",
+                "name": "79 -Holerite Salário 05.2026 - João da Silva.pdf",
+                "mimeType": "application/pdf",
+                "webViewLink": "https://drive.example/drive-novo",
+                "createdTime": "2026-06-01T14:00:00.000Z",
+            },
+        ]
+
+        with patch(
+            "app.services.holerites_drive_service._listar_proxima_pasta",
+            return_value=(
+                {"id": "folder-1", "name": "000123 - João da Silva"},
+                None,
+            ),
+        ), patch(
+            "app.services.holerites_drive_service.listar_itens_da_pasta_pagina",
+            return_value=(arquivos, None),
+        ), patch(
+            "app.services.holerites_drive_service.buscar_colaborador_por_matricula",
+            return_value=ColaboradorFake(),
+        ), patch(
+            "app.services.holerites_drive_service.carregar_cache_holerites_colaborador",
+            return_value={"google_drive_file_ids": set(), "chaves_fallback": set()},
+        ), patch(
+            "app.services.holerites_drive_service.carregar_google_drive_file_ids_importados",
+            return_value={"drive-ja-importado"},
+        ), patch(
+            "app.services.holerites_drive_service.criar_holerite",
+        ) as criar_holerite, patch(
+            "app.services.holerites_drive_service.db.session.commit",
+        ):
+            resumo = sincronizar_holerites_google_drive(
+                drive_service=object(),
+                folder_id="root",
+                limite_arquivos=10,
+                data_criacao_filtro="01/06/2026",
+            )
+
+        self.assertEqual(resumo["arquivos_encontrados_data"], 2)
+        self.assertEqual(resumo["ja_existentes"], 1)
+        self.assertEqual(resumo["importados"], 1)
+        criar_holerite.assert_called_once()
 
 
 if __name__ == "__main__":

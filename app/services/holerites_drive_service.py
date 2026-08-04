@@ -310,6 +310,18 @@ def carregar_cache_holerites_colaborador(colaborador_id):
     }
 
 
+def carregar_google_drive_file_ids_importados():
+    return {
+        google_drive_file_id
+        for (google_drive_file_id,) in (
+            db.session.query(HoleriteColaborador.google_drive_file_id)
+            .filter(HoleriteColaborador.google_drive_file_id.isnot(None))
+            .all()
+        )
+        if google_drive_file_id
+    }
+
+
 def registrar_holerite_no_cache(cache, dados_arquivo, arquivo_drive):
     if cache is None:
         return
@@ -318,6 +330,8 @@ def registrar_holerite_no_cache(cache, dados_arquivo, arquivo_drive):
 
     if google_drive_file_id:
         cache["google_drive_file_ids"].add(google_drive_file_id)
+        if "google_drive_file_ids_globais" in cache:
+            cache["google_drive_file_ids_globais"].add(google_drive_file_id)
 
     cache["chaves_fallback"].add(
         (
@@ -333,6 +347,9 @@ def holerite_ja_importado_com_cache(cache, colaborador_id, dados_arquivo, arquiv
 
     if cache is not None:
         if google_drive_file_id:
+            if "google_drive_file_ids_globais" in cache:
+                return google_drive_file_id in cache["google_drive_file_ids_globais"]
+
             return google_drive_file_id in cache["google_drive_file_ids"]
 
         return (
@@ -432,6 +449,8 @@ def sincronizar_holerites_google_drive(
         resumo.adicionar_mensagem("Pasta principal de Holerites não configurada.")
         return resumo.como_dict()
 
+    google_drive_file_ids_importados = carregar_google_drive_file_ids_importados()
+
     try:
         service = drive_service or criar_google_drive_client()
     except GoogleDriveConfiguracaoErro as exc:
@@ -529,6 +548,7 @@ def sincronizar_holerites_google_drive(
 
         if cache_holerites is None:
             cache_holerites = carregar_cache_holerites_colaborador(colaborador.id)
+            cache_holerites["google_drive_file_ids_globais"] = google_drive_file_ids_importados
             caches_holerites[colaborador.id] = cache_holerites
 
         for arquivo in arquivos:
