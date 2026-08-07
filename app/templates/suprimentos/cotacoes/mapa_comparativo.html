@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Suprimentos</span>
+            <h1>Mapa comparativo</h1>
+            <p>{{ cotacao.numero }} - Requisicao {{ cotacao.requisicao.numero }}</p>
+        </div>
+        <a class="btn btn-secondary" href="{{ url_for('suprimentos_cotacoes.detalhes', cotacao_id=cotacao.id) }}">Voltar a cotacao</a>
+    </div>
+
+    <div class="stat-grid">
+        <div class="stat-card">
+            <span>Itens</span>
+            <strong>{{ mapa.totais.itens }}</strong>
+        </div>
+        <div class="stat-card">
+            <span>Itens cotados</span>
+            <strong>{{ mapa.totais.itens_com_proposta }}</strong>
+        </div>
+        <div class="stat-card">
+            <span>Sem proposta</span>
+            <strong>{{ mapa.totais.itens_sem_proposta }}</strong>
+        </div>
+        <div class="stat-card">
+            <span>Propostas</span>
+            <strong>{{ mapa.totais.propostas }}</strong>
+        </div>
+    </div>
+
+    <div class="details-card">
+        <p><strong>Status da cotacao:</strong> {{ cotacao.status }}</p>
+        <p><strong>Justificativa:</strong> {{ cotacao.requisicao.justificativa }}</p>
+        <p><strong>Observacoes:</strong> {{ cotacao.observacoes or "-" }}</p>
+    </div>
+
+    {% for grupo in mapa.grupos %}
+        <div class="table-card table-responsive comparison-card">
+            <div class="section-header">
+                <div>
+                    <h2>{{ grupo.item.item_descricao_snapshot }}</h2>
+                    <p>
+                        Quantidade:
+                        {{ formatar_decimal_brasil(grupo.item.quantidade) }}
+                        {{ grupo.item.unidade_medida_snapshot }}
+                    </p>
+                </div>
+                {% if grupo.propostas %}
+                    <div class="comparison-summary">
+                        <span>Menor preco: <strong>{{ formatar_moeda_brl(grupo.menor_preco) }}</strong></span>
+                        <span>Menor total: <strong>{{ formatar_moeda_brl(grupo.menor_total) }}</strong></span>
+                        <span>Menor prazo: <strong>{{ grupo.menor_prazo if grupo.menor_prazo is not none else "-" }} dias</strong></span>
+                    </div>
+                {% endif %}
+            </div>
+
+            <table class="table comparison-table">
+                <thead>
+                    <tr>
+                        <th>Fornecedor</th>
+                        <th>Preco unit.</th>
+                        <th>Total</th>
+                        <th>Prazo</th>
+                        <th>Condicao</th>
+                        <th>Destaques</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for linha in grupo.propostas %}
+                        {% set proposta = linha.proposta %}
+                        <tr class="{% if linha.melhor_custo %}comparison-row-best{% endif %}">
+                            <td>{{ proposta.fornecedor_razao_social_snapshot }}</td>
+                            <td class="{% if linha.menor_preco %}comparison-highlight{% endif %}">
+                                {{ formatar_moeda_brl(proposta.preco_unitario) }}
+                            </td>
+                            <td class="{% if linha.menor_total %}comparison-highlight{% endif %}">
+                                {{ formatar_moeda_brl(linha.valor_total) }}
+                            </td>
+                            <td class="{% if linha.menor_prazo %}comparison-highlight{% endif %}">
+                                {{ proposta.prazo_entrega_dias if proposta.prazo_entrega_dias is not none else "-" }}
+                            </td>
+                            <td>{{ proposta.condicao_pagamento or "-" }}</td>
+                            <td>
+                                <div class="comparison-tags">
+                                    {% if linha.menor_preco %}<span class="badge badge-success">Menor preco</span>{% endif %}
+                                    {% if linha.menor_total %}<span class="badge badge-success">Menor total</span>{% endif %}
+                                    {% if linha.menor_prazo %}<span class="badge badge-warning">Menor prazo</span>{% endif %}
+                                    {% if not linha.menor_preco and not linha.menor_total and not linha.menor_prazo %}
+                                        <span class="module-status">-</span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td class="empty-state" colspan="6">Nenhuma proposta registrada para este item.</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endfor %}
+
+    <div class="alert-warning-box">
+        Este mapa e apenas comparativo. A selecao de fornecedor vencedor, aprovacao por alcada e ordem de compra serao tratadas nas proximas missoes.
+    </div>
+
+    <div class="page-actions">
+        <a class="btn btn-secondary" href="{{ url_for('suprimentos_cotacoes.detalhes', cotacao_id=cotacao.id) }}">Voltar a cotacao</a>
+        <a class="btn btn-secondary" href="{{ url_for('suprimentos_cotacoes.listar') }}">Voltar para cotacoes</a>
+    </div>
+</section>
+{% endblock %}

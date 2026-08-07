@@ -13,7 +13,9 @@ from app.services.suprimentos_service import (
     cancelar_cotacao,
     encerrar_cotacao,
     formatar_moeda_brl,
+    formatar_decimal_brasil,
     fornecedores_disponiveis_para_requisicao_item,
+    montar_mapa_comparativo_cotacao,
     requisicoes_disponiveis_para_cotacao,
     remover_proposta_cotacao,
     salvar_cotacao,
@@ -83,6 +85,25 @@ def detalhes(cotacao_id):
         cotacao=cotacao,
         fornecedores_por_item=fornecedores_por_item,
         formatar_moeda_brl=formatar_moeda_brl,
+    )
+
+
+@suprimentos_cotacoes_bp.route("/<int:cotacao_id>/mapa-comparativo")
+@login_required
+@module_permission_required("suprimentos", "cotacoes", "visualizar")
+def mapa_comparativo(cotacao_id):
+    cotacao = buscar_por_id(SuprimentosCotacao, cotacao_id)
+
+    if not cotacao:
+        flash("Cotacao nao encontrada.", "warning")
+        return redirect(url_for("suprimentos_cotacoes.listar"))
+
+    return render_template(
+        "suprimentos/cotacoes/mapa_comparativo.html",
+        cotacao=cotacao,
+        mapa=montar_mapa_comparativo_cotacao(cotacao),
+        formatar_moeda_brl=formatar_moeda_brl,
+        formatar_decimal_brasil=formatar_decimal_brasil,
     )
 
 
