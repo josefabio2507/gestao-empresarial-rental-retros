@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Suprimentos</span>
+            <h1>{{ "Novo Vinculo" if modo == "novo" else "Editar Vinculo" }}</h1>
+            <p>Condicoes informativas para compras futuras, sem gerar financeiro.</p>
+        </div>
+    </div>
+
+    <form class="form-card" method="POST">
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="fornecedor_id">Fornecedor</label>
+                <select id="fornecedor_id" name="fornecedor_id" required>
+                    <option value="">Selecione</option>
+                    {% for fornecedor in fornecedores %}
+                        <option value="{{ fornecedor.id }}" {{ "selected" if vinculo and vinculo.fornecedor_id == fornecedor.id else "" }}>{{ fornecedor.razao_social }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="item_id">Item</label>
+                <select id="item_id" name="item_id" required>
+                    <option value="">Selecione</option>
+                    {% for item in itens %}
+                        <option value="{{ item.id }}" {{ "selected" if vinculo and vinculo.item_id == item.id else "" }}>{{ item.descricao }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="codigo_item_fornecedor">Codigo no fornecedor</label>
+                <input id="codigo_item_fornecedor" name="codigo_item_fornecedor" value="{{ vinculo.codigo_item_fornecedor if vinculo else '' }}" maxlength="80" data-uppercase>
+            </div>
+            <div class="form-group">
+                <label for="preco_referencia">Preco de referencia</label>
+                <input id="preco_referencia" name="preco_referencia" value="{{ vinculo.preco_referencia if vinculo and vinculo.preco_referencia is not none else '' }}">
+            </div>
+            <div class="form-group">
+                <label for="prazo_entrega_dias">Prazo entrega dias</label>
+                <input id="prazo_entrega_dias" name="prazo_entrega_dias" value="{{ vinculo.prazo_entrega_dias if vinculo and vinculo.prazo_entrega_dias is not none else '' }}">
+            </div>
+            <div class="form-group">
+                <label for="condicao_pagamento">Condicao de pagamento</label>
+                <input id="condicao_pagamento" name="condicao_pagamento" value="{{ vinculo.condicao_pagamento if vinculo else '' }}" maxlength="160" data-uppercase>
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="descricao_item_fornecedor">Descricao no fornecedor</label>
+            <input id="descricao_item_fornecedor" name="descricao_item_fornecedor" value="{{ vinculo.descricao_item_fornecedor if vinculo else '' }}" maxlength="220" data-uppercase>
+        </div>
+        <div class="form-group">
+            <label>
+                <input type="checkbox" name="fornecedor_preferencial" {{ "checked" if vinculo and vinculo.fornecedor_preferencial else "" }}>
+                Fornecedor preferencial
+            </label>
+        </div>
+        <div class="form-group">
+            <label for="observacoes">Observacoes</label>
+            <textarea id="observacoes" name="observacoes" data-uppercase>{{ vinculo.observacoes if vinculo else '' }}</textarea>
+        </div>
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Salvar</button>
+            <a class="btn btn-secondary" href="{{ url_for('suprimentos_fornecedor_itens.listar') }}">Cancelar</a>
+        </div>
+    </form>
+</section>
+{% endblock %}

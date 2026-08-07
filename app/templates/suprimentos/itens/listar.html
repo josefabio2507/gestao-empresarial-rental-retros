@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Suprimentos</span>
+            <h1>Itens</h1>
+            <p>Materiais, servicos, pecas, EPIs, ferramentas e consumo.</p>
+        </div>
+        <a class="btn btn-primary" href="{{ url_for('suprimentos_itens.novo') }}">+ Novo Item</a>
+    </div>
+
+    <form class="filter-card" method="GET">
+        <div class="form-group">
+            <label for="descricao">Descricao ou codigo</label>
+            <input id="descricao" name="descricao" value="{{ filtros.get('descricao', '') }}">
+        </div>
+        <div class="form-group">
+            <label for="categoria_id">Categoria</label>
+            <select id="categoria_id" name="categoria_id">
+                <option value="">Todas</option>
+                {% for categoria in categorias %}
+                    <option value="{{ categoria.id }}" {{ "selected" if filtros.get('categoria_id')|string == categoria.id|string else "" }}>{{ categoria.nome }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="tipo">Tipo</label>
+            <select id="tipo" name="tipo">
+                <option value="">Todos</option>
+                {% for tipo in tipos_item %}
+                    <option value="{{ tipo }}" {{ "selected" if filtros.get('tipo') == tipo else "" }}>{{ tipo }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Pesquisar</button>
+            <a class="btn btn-secondary" href="{{ url_for('suprimentos_itens.listar') }}">Limpar</a>
+        </div>
+    </form>
+
+    <div class="table-card table-responsive">
+        <table class="table">
+            <thead><tr><th>Codigo</th><th>Descricao</th><th>Categoria</th><th>Unidade</th><th>Tipo</th><th>Status</th><th>Acoes</th></tr></thead>
+            <tbody>
+                {% for item in itens %}
+                    <tr>
+                        <td>{{ item.codigo_interno or "-" }}</td>
+                        <td>{{ item.descricao }}</td>
+                        <td>{{ item.categoria.nome }}</td>
+                        <td>{{ item.unidade_medida.sigla }}</td>
+                        <td>{{ item.tipo }}</td>
+                        <td><span class="badge {{ 'badge-success' if item.ativo else 'badge-danger' }}">{{ "Ativo" if item.ativo else "Inativo" }}</span></td>
+                        <td class="col-acoes">
+                            <div class="acoes-botoes">
+                                <a class="btn btn-primary" href="{{ url_for('suprimentos_itens.editar', item_id=item.id) }}">Editar</a>
+                                <form class="inline-form" method="POST" action="{{ url_for('suprimentos_itens.status', item_id=item.id) }}">
+                                    <button class="btn btn-warning" type="submit">{{ "Inativar" if item.ativo else "Reativar" }}</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr><td class="empty-state" colspan="7">Nenhum item encontrado.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="page-actions"><a class="btn btn-secondary" href="{{ url_for('suprimentos.index') }}">Voltar</a></div>
+</section>
+{% endblock %}

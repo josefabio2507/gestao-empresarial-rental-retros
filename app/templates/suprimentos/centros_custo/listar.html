@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Suprimentos</span>
+            <h1>Centros de Custo</h1>
+            <p>Base compartilhavel com o futuro modulo Financeiro.</p>
+        </div>
+        <a class="btn btn-primary" href="{{ url_for('suprimentos_centros_custo.novo') }}">+ Novo Centro</a>
+    </div>
+
+    <form class="filter-card" method="GET">
+        <div class="form-group">
+            <label for="nome">Nome ou codigo</label>
+            <input id="nome" name="nome" value="{{ filtros.get('nome', '') }}">
+        </div>
+        <div class="form-group">
+            <label for="status">Status</label>
+            <select id="status" name="status">
+                <option value="">Todos</option>
+                <option value="ativos" {{ "selected" if filtros.get('status') == "ativos" else "" }}>Ativos</option>
+                <option value="inativos" {{ "selected" if filtros.get('status') == "inativos" else "" }}>Inativos</option>
+            </select>
+        </div>
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Pesquisar</button>
+            <a class="btn btn-secondary" href="{{ url_for('suprimentos_centros_custo.listar') }}">Limpar</a>
+        </div>
+    </form>
+
+    <div class="table-card table-responsive">
+        <table class="table">
+            <thead><tr><th>Codigo</th><th>Nome</th><th>Status</th><th>Acoes</th></tr></thead>
+            <tbody>
+                {% for centro in centros %}
+                    <tr>
+                        <td>{{ centro.codigo or "-" }}</td>
+                        <td>{{ centro.nome }}</td>
+                        <td><span class="badge {{ 'badge-success' if centro.ativo else 'badge-danger' }}">{{ "Ativo" if centro.ativo else "Inativo" }}</span></td>
+                        <td class="col-acoes">
+                            <div class="acoes-botoes">
+                                <a class="btn btn-primary" href="{{ url_for('suprimentos_centros_custo.editar', centro_id=centro.id) }}">Editar</a>
+                                <form class="inline-form" method="POST" action="{{ url_for('suprimentos_centros_custo.status', centro_id=centro.id) }}">
+                                    <button class="btn btn-warning" type="submit">{{ "Inativar" if centro.ativo else "Reativar" }}</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr><td class="empty-state" colspan="4">Nenhum centro de custo encontrado.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="page-actions"><a class="btn btn-secondary" href="{{ url_for('suprimentos.index') }}">Voltar</a></div>
+</section>
+{% endblock %}

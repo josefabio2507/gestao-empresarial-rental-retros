@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Suprimentos</span>
+            <h1>{{ "Nova Unidade" if modo == "nova" else "Editar Unidade" }}</h1>
+            <p>Unidade usada no cadastro de itens.</p>
+        </div>
+    </div>
+    <form class="form-card" method="POST">
+        <div class="form-group">
+            <label for="sigla">Sigla</label>
+            <input id="sigla" name="sigla" value="{{ unidade.sigla if unidade else '' }}" required maxlength="20" data-uppercase>
+        </div>
+        <div class="form-group">
+            <label for="nome">Nome</label>
+            <input id="nome" name="nome" value="{{ unidade.nome if unidade else '' }}" required maxlength="120" data-uppercase>
+        </div>
+        <div class="form-group">
+            <label for="descricao">Descricao</label>
+            <textarea id="descricao" name="descricao" data-uppercase>{{ unidade.descricao if unidade else '' }}</textarea>
+        </div>
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Salvar</button>
+            <a class="btn btn-secondary" href="{{ url_for('suprimentos_unidades_medida.listar') }}">Cancelar</a>
+        </div>
+    </form>
+</section>
+{% endblock %}

@@ -1121,6 +1121,70 @@ textarea:focus {
     padding-top: 12px;
 }
 
+.input-action-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.input-action-row input {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.input-action-row .btn {
+    flex: 0 0 auto;
+    white-space: nowrap;
+}
+
+.input-prefix-row {
+    display: flex;
+    align-items: center;
+    border: 1px solid var(--rr-border);
+    border-radius: 9px;
+    background: #ffffff;
+    overflow: hidden;
+}
+
+.input-prefix-row span {
+    align-self: stretch;
+    display: inline-flex;
+    align-items: center;
+    padding: 0 12px;
+    background: #f3f7fb;
+    color: var(--rr-navy);
+    font-weight: 800;
+    border-right: 1px solid var(--rr-border);
+}
+
+.form-group .input-prefix-row input {
+    border: 0;
+    border-radius: 0;
+    min-width: 0;
+}
+
+.input-prefix-row:focus-within {
+    border-color: var(--rr-blue);
+    box-shadow: 0 0 0 3px rgba(11, 63, 117, 0.12);
+}
+
+.form-group .input-prefix-row input:focus {
+    box-shadow: none;
+}
+
+.form-help {
+    display: block;
+    margin-top: 6px;
+    color: #52616f;
+}
+
+@media (max-width: 640px) {
+    .input-action-row {
+        align-items: stretch;
+        flex-direction: column;
+    }
+}
+
 @media (min-width: 768px) {
     .cards,
     .modules-grid,

@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Suprimentos</span>
+            <h1>Fornecedor x Item</h1>
+            <p>Vinculo comercial base, sem cotacao e sem contas a pagar.</p>
+        </div>
+        <a class="btn btn-primary" href="{{ url_for('suprimentos_fornecedor_itens.novo') }}">+ Novo Vinculo</a>
+    </div>
+
+    <form class="filter-card" method="GET">
+        <div class="form-group">
+            <label for="fornecedor_id">Fornecedor</label>
+            <select id="fornecedor_id" name="fornecedor_id">
+                <option value="">Todos</option>
+                {% for fornecedor in fornecedores %}
+                    <option value="{{ fornecedor.id }}" {{ "selected" if filtros.get('fornecedor_id')|string == fornecedor.id|string else "" }}>{{ fornecedor.razao_social }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="item_id">Item</label>
+            <select id="item_id" name="item_id">
+                <option value="">Todos</option>
+                {% for item in itens %}
+                    <option value="{{ item.id }}" {{ "selected" if filtros.get('item_id')|string == item.id|string else "" }}>{{ item.descricao }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Pesquisar</button>
+            <a class="btn btn-secondary" href="{{ url_for('suprimentos_fornecedor_itens.listar') }}">Limpar</a>
+        </div>
+    </form>
+
+    <div class="table-card table-responsive">
+        <table class="table">
+            <thead><tr><th>Fornecedor</th><th>Item</th><th>Preco ref.</th><th>Condicao</th><th>Status</th><th>Acoes</th></tr></thead>
+            <tbody>
+                {% for vinculo in vinculos %}
+                    <tr>
+                        <td>{{ vinculo.fornecedor.razao_social }}</td>
+                        <td>{{ vinculo.item.descricao }}</td>
+                        <td>{{ vinculo.preco_referencia or "-" }}</td>
+                        <td>{{ vinculo.condicao_pagamento or "-" }}</td>
+                        <td><span class="badge {{ 'badge-success' if vinculo.ativo else 'badge-danger' }}">{{ "Ativo" if vinculo.ativo else "Inativo" }}</span></td>
+                        <td class="col-acoes">
+                            <div class="acoes-botoes">
+                                <a class="btn btn-primary" href="{{ url_for('suprimentos_fornecedor_itens.editar', vinculo_id=vinculo.id) }}">Editar</a>
+                                <form class="inline-form" method="POST" action="{{ url_for('suprimentos_fornecedor_itens.status', vinculo_id=vinculo.id) }}">
+                                    <button class="btn btn-warning" type="submit">{{ "Inativar" if vinculo.ativo else "Reativar" }}</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr><td class="empty-state" colspan="6">Nenhum vinculo encontrado.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="page-actions"><a class="btn btn-secondary" href="{{ url_for('suprimentos.index') }}">Voltar</a></div>
+</section>
+{% endblock %}

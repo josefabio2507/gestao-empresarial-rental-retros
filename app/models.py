@@ -844,3 +844,482 @@ class ConsumoRefeicao(db.Model):
 
     def __repr__(self):
         return f"<ConsumoRefeicao pedido={self.pedido_id} colaborador={self.colaborador_id}>" 
+
+
+class SuprimentosFornecedor(db.Model):
+    __tablename__ = "suprimentos_fornecedores"
+
+    id = db.Column(db.Integer, primary_key=True)
+    razao_social = db.Column(db.String(180), nullable=False)
+    nome_fantasia = db.Column(db.String(180), nullable=True)
+    tipo_pessoa = db.Column(db.String(20), nullable=False)
+    cnpj_cpf = db.Column(db.String(14), unique=True, nullable=True, index=True)
+    inscricao_estadual = db.Column(db.String(40), nullable=True)
+    telefone = db.Column(db.String(30), nullable=True)
+    email = db.Column(db.String(150), nullable=True)
+    pessoa_contato = db.Column(db.String(120), nullable=True)
+    endereco = db.Column(db.String(255), nullable=True)
+    cidade = db.Column(db.String(120), nullable=True)
+    uf = db.Column(db.String(2), nullable=True)
+    observacoes = db.Column(db.Text, nullable=True)
+    ativo = db.Column(db.Boolean, default=True, nullable=False, index=True)
+
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    atualizado_em = db.Column(
+        db.DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False
+    )
+
+    itens = db.relationship(
+        "SuprimentosFornecedorItem",
+        back_populates="fornecedor",
+        cascade="all, delete-orphan",
+    )
+
+    __table_args__ = (
+        db.CheckConstraint(
+            "tipo_pessoa in ('juridica', 'fisica')",
+            name="ck_suprimentos_fornecedores_tipo_pessoa",
+        ),
+    )
+
+    def __repr__(self):
+        return f"<SuprimentosFornecedor {self.razao_social}>"
+
+
+class SuprimentosCategoriaItem(db.Model):
+    __tablename__ = "suprimentos_categorias_itens"
+
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String(120), nullable=False)
+    slug = db.Column(db.String(120), unique=True, nullable=False, index=True)
+    descricao = db.Column(db.Text, nullable=True)
+    ativo = db.Column(db.Boolean, default=True, nullable=False, index=True)
+
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    atualizado_em = db.Column(
+        db.DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False
+    )
+
+    itens = db.relationship("SuprimentosItem", back_populates="categoria")
+
+    def __repr__(self):
+        return f"<SuprimentosCategoriaItem {self.slug}>"
+
+
+class SuprimentosUnidadeMedida(db.Model):
+    __tablename__ = "suprimentos_unidades_medida"
+
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String(120), nullable=False)
+    sigla = db.Column(db.String(20), unique=True, nullable=False, index=True)
+    descricao = db.Column(db.Text, nullable=True)
+    ativo = db.Column(db.Boolean, default=True, nullable=False, index=True)
+
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    atualizado_em = db.Column(
+        db.DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False
+    )
+
+    itens = db.relationship("SuprimentosItem", back_populates="unidade_medida")
+
+    def __repr__(self):
+        return f"<SuprimentosUnidadeMedida {self.sigla}>"
+
+
+class CentroCusto(db.Model):
+    __tablename__ = "centros_custo"
+
+    id = db.Column(db.Integer, primary_key=True)
+    codigo = db.Column(db.String(40), unique=True, nullable=True, index=True)
+    nome = db.Column(db.String(120), nullable=False)
+    descricao = db.Column(db.Text, nullable=True)
+    ativo = db.Column(db.Boolean, default=True, nullable=False, index=True)
+
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    atualizado_em = db.Column(
+        db.DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False
+    )
+
+    itens_suprimentos = db.relationship(
+        "SuprimentosItem",
+        back_populates="centro_custo_padrao",
+    )
+
+    def __repr__(self):
+        return f"<CentroCusto {self.codigo or ''} {self.nome}>"
+
+
+class SuprimentosItem(db.Model):
+    __tablename__ = "suprimentos_itens"
+
+    id = db.Column(db.Integer, primary_key=True)
+    codigo_interno = db.Column(db.String(60), unique=True, nullable=True, index=True)
+    descricao = db.Column(db.String(220), nullable=False)
+    categoria_id = db.Column(
+        db.Integer,
+        db.ForeignKey("suprimentos_categorias_itens.id"),
+        nullable=False,
+        index=True,
+    )
+    unidade_medida_id = db.Column(
+        db.Integer,
+        db.ForeignKey("suprimentos_unidades_medida.id"),
+        nullable=False,
+        index=True,
+    )
+    centro_custo_padrao_id = db.Column(
+        db.Integer,
+        db.ForeignKey("centros_custo.id"),
+        nullable=True,
+        index=True,
+    )
+    tipo = db.Column(db.String(30), nullable=False)
+    item_estocavel = db.Column(db.Boolean, default=False, nullable=False)
+    ncm = db.Column(db.String(20), nullable=True)
+    estoque_minimo = db.Column(db.Numeric(12, 3), nullable=True)
+    observacoes = db.Column(db.Text, nullable=True)
+    ativo = db.Column(db.Boolean, default=True, nullable=False, index=True)
+
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    atualizado_em = db.Column(
+        db.DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False
+    )
+
+    categoria = db.relationship("SuprimentosCategoriaItem", back_populates="itens")
+    unidade_medida = db.relationship("SuprimentosUnidadeMedida", back_populates="itens")
+    centro_custo_padrao = db.relationship(
+        "CentroCusto",
+        back_populates="itens_suprimentos",
+    )
+    fornecedores = db.relationship(
+        "SuprimentosFornecedorItem",
+        back_populates="item",
+        cascade="all, delete-orphan",
+    )
+
+    __table_args__ = (
+        db.CheckConstraint(
+            "tipo in ('material', 'servico', 'epi', 'ferramenta', 'peca', 'equipamento', 'consumo')",
+            name="ck_suprimentos_itens_tipo",
+        ),
+        db.CheckConstraint(
+            "estoque_minimo is null or estoque_minimo >= 0",
+            name="ck_suprimentos_itens_estoque_minimo",
+        ),
+    )
+
+    def __repr__(self):
+        return f"<SuprimentosItem {self.codigo_interno or ''} {self.descricao}>"
+
+
+class SuprimentosFornecedorItem(db.Model):
+    __tablename__ = "suprimentos_fornecedor_itens"
+
+    id = db.Column(db.Integer, primary_key=True)
+    fornecedor_id = db.Column(
+        db.Integer,
+        db.ForeignKey("suprimentos_fornecedores.id"),
+        nullable=False,
+        index=True,
+    )
+    item_id = db.Column(
+        db.Integer,
+        db.ForeignKey("suprimentos_itens.id"),
+        nullable=False,
+        index=True,
+    )
+    codigo_item_fornecedor = db.Column(db.String(80), nullable=True)
+    descricao_item_fornecedor = db.Column(db.String(220), nullable=True)
+    preco_referencia = db.Column(db.Numeric(12, 2), nullable=True)
+    prazo_entrega_dias = db.Column(db.Integer, nullable=True)
+    condicao_pagamento = db.Column(db.String(160), nullable=True)
+    observacoes = db.Column(db.Text, nullable=True)
+    fornecedor_preferencial = db.Column(db.Boolean, default=False, nullable=False)
+    ativo = db.Column(db.Boolean, default=True, nullable=False, index=True)
+
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    atualizado_em = db.Column(
+        db.DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False
+    )
+
+    fornecedor = db.relationship("SuprimentosFornecedor", back_populates="itens")
+    item = db.relationship("SuprimentosItem", back_populates="fornecedores")
+
+    __table_args__ = (
+        db.UniqueConstraint(
+            "fornecedor_id",
+            "item_id",
+            name="uq_suprimentos_fornecedor_item",
+        ),
+        db.CheckConstraint(
+            "preco_referencia is null or preco_referencia >= 0",
+            name="ck_suprimentos_fornecedor_itens_preco",
+        ),
+        db.CheckConstraint(
+            "prazo_entrega_dias is null or prazo_entrega_dias >= 0",
+            name="ck_suprimentos_fornecedor_itens_prazo",
+        ),
+    )
+
+    def __repr__(self):
+        return (
+            f"<SuprimentosFornecedorItem fornecedor={self.fornecedor_id} "
+            f"item={self.item_id}>"
+        )
+
+
+class SuprimentosRequisicaoCompra(db.Model):
+    __tablename__ = "suprimentos_requisicoes_compra"
+
+    id = db.Column(db.Integer, primary_key=True)
+    numero = db.Column(db.String(30), unique=True, nullable=False, index=True)
+    solicitante_usuario_id = db.Column(
+        db.Integer,
+        db.ForeignKey("usuarios.id"),
+        nullable=False,
+        index=True,
+    )
+    centro_custo_id = db.Column(
+        db.Integer,
+        db.ForeignKey("centros_custo.id"),
+        nullable=True,
+        index=True,
+    )
+    justificativa = db.Column(db.Text, nullable=False)
+    observacoes = db.Column(db.Text, nullable=True)
+    status = db.Column(db.String(30), default="Rascunho", nullable=False, index=True)
+    enviada_em = db.Column(db.DateTime, nullable=True)
+    cancelada_em = db.Column(db.DateTime, nullable=True)
+    motivo_cancelamento = db.Column(db.Text, nullable=True)
+
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    atualizado_em = db.Column(
+        db.DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False
+    )
+
+    solicitante = db.relationship("Usuario")
+    centro_custo = db.relationship("CentroCusto")
+    itens = db.relationship(
+        "SuprimentosRequisicaoCompraItem",
+        back_populates="requisicao",
+        cascade="all, delete-orphan",
+    )
+
+    __table_args__ = (
+        db.CheckConstraint(
+            "status in ('Rascunho', 'Enviada para Analise', 'Cancelada')",
+            name="ck_suprimentos_requisicoes_compra_status",
+        ),
+    )
+
+    @property
+    def pode_editar(self):
+        return self.status == "Rascunho"
+
+    def __repr__(self):
+        return f"<SuprimentosRequisicaoCompra {self.numero}>"
+
+
+class SuprimentosRequisicaoCompraItem(db.Model):
+    __tablename__ = "suprimentos_requisicao_compra_itens"
+
+    id = db.Column(db.Integer, primary_key=True)
+    requisicao_id = db.Column(
+        db.Integer,
+        db.ForeignKey("suprimentos_requisicoes_compra.id"),
+        nullable=False,
+        index=True,
+    )
+    item_id = db.Column(
+        db.Integer,
+        db.ForeignKey("suprimentos_itens.id"),
+        nullable=False,
+        index=True,
+    )
+    item_codigo_snapshot = db.Column(db.String(60), nullable=True)
+    item_descricao_snapshot = db.Column(db.String(220), nullable=False)
+    unidade_medida_snapshot = db.Column(db.String(20), nullable=False)
+    quantidade = db.Column(db.Numeric(12, 3), nullable=False)
+    observacoes = db.Column(db.Text, nullable=True)
+
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    atualizado_em = db.Column(
+        db.DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False
+    )
+
+    requisicao = db.relationship("SuprimentosRequisicaoCompra", back_populates="itens")
+    item = db.relationship("SuprimentosItem")
+
+    __table_args__ = (
+        db.UniqueConstraint(
+            "requisicao_id",
+            "item_id",
+            name="uq_suprimentos_requisicao_compra_item",
+        ),
+        db.CheckConstraint(
+            "quantidade > 0",
+            name="ck_suprimentos_requisicao_compra_itens_quantidade",
+        ),
+    )
+
+    def __repr__(self):
+        return (
+            f"<SuprimentosRequisicaoCompraItem requisicao={self.requisicao_id} "
+            f"item={self.item_id}>"
+        )
+
+
+class SuprimentosCotacao(db.Model):
+    __tablename__ = "suprimentos_cotacoes"
+
+    id = db.Column(db.Integer, primary_key=True)
+    numero = db.Column(db.String(30), unique=True, nullable=False, index=True)
+    requisicao_id = db.Column(
+        db.Integer,
+        db.ForeignKey("suprimentos_requisicoes_compra.id"),
+        nullable=False,
+        index=True,
+    )
+    criado_por_usuario_id = db.Column(
+        db.Integer,
+        db.ForeignKey("usuarios.id"),
+        nullable=False,
+        index=True,
+    )
+    status = db.Column(db.String(30), default="Aberta", nullable=False, index=True)
+    observacoes = db.Column(db.Text, nullable=True)
+    aberta_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    encerrada_em = db.Column(db.DateTime, nullable=True)
+
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    atualizado_em = db.Column(
+        db.DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False
+    )
+
+    requisicao = db.relationship("SuprimentosRequisicaoCompra")
+    criado_por = db.relationship("Usuario")
+    propostas = db.relationship(
+        "SuprimentosCotacaoProposta",
+        back_populates="cotacao",
+        cascade="all, delete-orphan",
+    )
+
+    __table_args__ = (
+        db.CheckConstraint(
+            "status in ('Aberta', 'Encerrada', 'Cancelada')",
+            name="ck_suprimentos_cotacoes_status",
+        ),
+    )
+
+    @property
+    def pode_editar(self):
+        return self.status == "Aberta"
+
+    def __repr__(self):
+        return f"<SuprimentosCotacao {self.numero}>"
+
+
+class SuprimentosCotacaoProposta(db.Model):
+    __tablename__ = "suprimentos_cotacao_propostas"
+
+    id = db.Column(db.Integer, primary_key=True)
+    cotacao_id = db.Column(
+        db.Integer,
+        db.ForeignKey("suprimentos_cotacoes.id"),
+        nullable=False,
+        index=True,
+    )
+    fornecedor_id = db.Column(
+        db.Integer,
+        db.ForeignKey("suprimentos_fornecedores.id"),
+        nullable=False,
+        index=True,
+    )
+    requisicao_item_id = db.Column(
+        db.Integer,
+        db.ForeignKey("suprimentos_requisicao_compra_itens.id"),
+        nullable=False,
+        index=True,
+    )
+    item_id = db.Column(
+        db.Integer,
+        db.ForeignKey("suprimentos_itens.id"),
+        nullable=False,
+        index=True,
+    )
+    fornecedor_razao_social_snapshot = db.Column(db.String(180), nullable=False)
+    item_descricao_snapshot = db.Column(db.String(220), nullable=False)
+    unidade_medida_snapshot = db.Column(db.String(20), nullable=False)
+    quantidade_snapshot = db.Column(db.Numeric(12, 3), nullable=False)
+    preco_unitario = db.Column(db.Numeric(12, 2), nullable=False)
+    prazo_entrega_dias = db.Column(db.Integer, nullable=True)
+    condicao_pagamento = db.Column(db.String(160), nullable=True)
+    observacoes = db.Column(db.Text, nullable=True)
+    ativo = db.Column(db.Boolean, default=True, nullable=False, index=True)
+
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    atualizado_em = db.Column(
+        db.DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False
+    )
+
+    cotacao = db.relationship("SuprimentosCotacao", back_populates="propostas")
+    fornecedor = db.relationship("SuprimentosFornecedor")
+    requisicao_item = db.relationship("SuprimentosRequisicaoCompraItem")
+    item = db.relationship("SuprimentosItem")
+
+    __table_args__ = (
+        db.UniqueConstraint(
+            "cotacao_id",
+            "fornecedor_id",
+            "requisicao_item_id",
+            name="uq_suprimentos_cotacao_fornecedor_item",
+        ),
+        db.CheckConstraint(
+            "preco_unitario >= 0",
+            name="ck_suprimentos_cotacao_propostas_preco_unitario",
+        ),
+        db.CheckConstraint(
+            "prazo_entrega_dias is null or prazo_entrega_dias >= 0",
+            name="ck_suprimentos_cotacao_propostas_prazo",
+        ),
+    )
+
+    @property
+    def valor_total(self):
+        return self.quantidade_snapshot * self.preco_unitario
+
+    def __repr__(self):
+        return (
+            f"<SuprimentosCotacaoProposta cotacao={self.cotacao_id} "
+            f"fornecedor={self.fornecedor_id} item={self.item_id}>"
+        )

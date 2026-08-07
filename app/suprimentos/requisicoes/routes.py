@@ -1,0 +1,196 @@
+from flask import flash, redirect, render_template, request, url_for
+from flask_login import current_user, login_required
+
+from app.decorators import module_permission_required
+from app.models import (
+    SuprimentosRequisicaoCompra,
+    SuprimentosRequisicaoCompraItem,
+)
+from app.services.logs_service import registrar_log
+from app.services.suprimentos_service import (
+    STATUS_REQUISICAO_CANCELADA,
+    STATUS_REQUISICAO_ENVIADA,
+    STATUS_REQUISICAO_RASCUNHO,
+    adicionar_item_requisicao,
+    buscar_centros_custo_ativos,
+    buscar_itens_ativos,
+    buscar_por_id,
+    buscar_requisicoes_compra,
+    cancelar_requisicao_compra,
+    enviar_requisicao_compra,
+    remover_item_requisicao,
+    salvar_requisicao_compra,
+)
+from app.suprimentos.requisicoes import suprimentos_requisicoes_bp
+
+
+STATUS_REQUISICOES = [
+    STATUS_REQUISICAO_RASCUNHO,
+    STATUS_REQUISICAO_ENVIADA,
+    STATUS_REQUISICAO_CANCELADA,
+]
+
+
+def opcoes_formulario():
+    return {
+        "centros": buscar_centros_custo_ativos(),
+        "itens_disponiveis": buscar_itens_ativos(),
+    }
+
+
+@suprimentos_requisicoes_bp.route("/")
+@login_required
+@module_permission_required("suprimentos", "requisicoes_compra", "visualizar")
+def listar():
+    return render_template(
+        "suprimentos/requisicoes/listar.html",
+        requisicoes=buscar_requisicoes_compra(
+            request.args.get("numero"),
+            request.args.get("status"),
+        ),
+        status_requisicoes=STATUS_REQUISICOES,
+        filtros=request.args,
+    )
+
+
+@suprimentos_requisicoes_bp.route("/nova", methods=["GET", "POST"])
+@login_required
+@module_permission_required("suprimentos", "requisicoes_compra", "criar")
+def nova():
+    if request.method == "POST":
+        sucesso, mensagem, requisicao = salvar_requisicao_compra(request.form, current_user)
+
+        if sucesso:
+            registrar_log("suprimentos_requisicao_criada", f"Requisicao criada. ID: {requisicao.id}.")
+            flash(mensagem, "success")
+            return redirect(url_for("suprimentos_requisicoes.detalhes", requisicao_id=requisicao.id))
+
+        flash(mensagem, "danger")
+
+    return render_template(
+        "suprimentos/requisicoes/form.html",
+        requisicao=None,
+        modo="nova",
+        **opcoes_formulario(),
+    )
+
+
+@suprimentos_requisicoes_bp.route("/<int:requisicao_id>")
+@login_required
+@module_permission_required("suprimentos", "requisicoes_compra", "visualizar")
+def detalhes(requisicao_id):
+    requisicao = buscar_por_id(SuprimentosRequisicaoCompra, requisicao_id)
+
+    if not requisicao:
+        flash("Requisicao nao encontrada.", "warning")
+        return redirect(url_for("suprimentos_requisicoes.listar"))
+
+    return render_template(
+        "suprimentos/requisicoes/detalhes.html",
+        requisicao=requisicao,
+        **opcoes_formulario(),
+    )
+
+
+@suprimentos_requisicoes_bp.route("/<int:requisicao_id>/editar", methods=["GET", "POST"])
+@login_required
+@module_permission_required("suprimentos", "requisicoes_compra", "editar")
+def editar(requisicao_id):
+    requisicao = buscar_por_id(SuprimentosRequisicaoCompra, requisicao_id)
+
+    if not requisicao:
+        flash("Requisicao nao encontrada.", "warning")
+        return redirect(url_for("suprimentos_requisicoes.listar"))
+
+    if request.method == "POST":
+        sucesso, mensagem, requisicao = salvar_requisicao_compra(request.form, current_user, requisicao)
+
+        if sucesso:
+            registrar_log("suprimentos_requisicao_atualizada", f"Requisicao atualizada. ID: {requisicao.id}.")
+            flash(mensagem, "success")
+            return redirect(url_for("suprimentos_requisicoes.detalhes", requisicao_id=requisicao.id))
+
+        flash(mensagem, "danger")
+
+    return render_template(
+        "suprimentos/requisicoes/form.html",
+        requisicao=requisicao,
+        modo="editar",
+        **opcoes_formulario(),
+    )
+
+
+@suprimentos_requisicoes_bp.route("/<int:requisicao_id>/itens", methods=["POST"])
+@login_required
+@module_permission_required("suprimentos", "requisicoes_compra", "editar")
+def adicionar_item(requisicao_id):
+    requisicao = buscar_por_id(SuprimentosRequisicaoCompra, requisicao_id)
+
+    if not requisicao:
+        flash("Requisicao nao encontrada.", "warning")
+        return redirect(url_for("suprimentos_requisicoes.listar"))
+
+    sucesso, mensagem, requisicao_item = adicionar_item_requisicao(request.form, requisicao)
+
+    if sucesso:
+        registrar_log("suprimentos_requisicao_item_adicionado", f"Item adicionado. ID: {requisicao_item.id}.")
+
+    flash(mensagem, "success" if sucesso else "danger")
+    return redirect(url_for("suprimentos_requisicoes.detalhes", requisicao_id=requisicao.id))
+
+
+@suprimentos_requisicoes_bp.route("/<int:requisicao_id>/itens/<int:item_requisicao_id>/remover", methods=["POST"])
+@login_required
+@module_permission_required("suprimentos", "requisicoes_compra", "editar")
+def remover_item(requisicao_id, item_requisicao_id):
+    requisicao = buscar_por_id(SuprimentosRequisicaoCompra, requisicao_id)
+    requisicao_item = buscar_por_id(SuprimentosRequisicaoCompraItem, item_requisicao_id)
+
+    if not requisicao or not requisicao_item:
+        flash("Item da requisicao nao encontrado.", "warning")
+        return redirect(url_for("suprimentos_requisicoes.listar"))
+
+    sucesso, mensagem = remover_item_requisicao(requisicao, requisicao_item)
+    flash(mensagem, "success" if sucesso else "danger")
+    return redirect(url_for("suprimentos_requisicoes.detalhes", requisicao_id=requisicao.id))
+
+
+@suprimentos_requisicoes_bp.route("/<int:requisicao_id>/enviar", methods=["POST"])
+@login_required
+@module_permission_required("suprimentos", "requisicoes_compra", "editar")
+def enviar(requisicao_id):
+    requisicao = buscar_por_id(SuprimentosRequisicaoCompra, requisicao_id)
+
+    if not requisicao:
+        flash("Requisicao nao encontrada.", "warning")
+        return redirect(url_for("suprimentos_requisicoes.listar"))
+
+    sucesso, mensagem = enviar_requisicao_compra(requisicao)
+
+    if sucesso:
+        registrar_log("suprimentos_requisicao_enviada", f"Requisicao enviada. ID: {requisicao.id}.")
+
+    flash(mensagem, "success" if sucesso else "danger")
+    return redirect(url_for("suprimentos_requisicoes.detalhes", requisicao_id=requisicao.id))
+
+
+@suprimentos_requisicoes_bp.route("/<int:requisicao_id>/cancelar", methods=["POST"])
+@login_required
+@module_permission_required("suprimentos", "requisicoes_compra", "excluir")
+def cancelar(requisicao_id):
+    requisicao = buscar_por_id(SuprimentosRequisicaoCompra, requisicao_id)
+
+    if not requisicao:
+        flash("Requisicao nao encontrada.", "warning")
+        return redirect(url_for("suprimentos_requisicoes.listar"))
+
+    sucesso, mensagem = cancelar_requisicao_compra(
+        requisicao,
+        request.form.get("motivo_cancelamento"),
+    )
+
+    if sucesso:
+        registrar_log("suprimentos_requisicao_cancelada", f"Requisicao cancelada. ID: {requisicao.id}.")
+
+    flash(mensagem, "success" if sucesso else "danger")
+    return redirect(url_for("suprimentos_requisicoes.detalhes", requisicao_id=requisicao.id))

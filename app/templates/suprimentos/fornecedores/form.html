@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Suprimentos</span>
+            <h1>{{ "Novo Fornecedor" if modo == "novo" else "Editar Fornecedor" }}</h1>
+            <p>Dados cadastrais e comerciais para compras futuras.</p>
+        </div>
+    </div>
+
+    <form class="form-card" method="POST">
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="razao_social">Razao social</label>
+                <input id="razao_social" name="razao_social" value="{{ fornecedor.razao_social if fornecedor else '' }}" required maxlength="180" data-uppercase>
+            </div>
+            <div class="form-group">
+                <label for="nome_fantasia">Nome fantasia</label>
+                <input id="nome_fantasia" name="nome_fantasia" value="{{ fornecedor.nome_fantasia if fornecedor else '' }}" maxlength="180" data-uppercase>
+            </div>
+            <div class="form-group">
+                <label for="tipo_pessoa">Tipo</label>
+                <select id="tipo_pessoa" name="tipo_pessoa">
+                    {% set tipo = fornecedor.tipo_pessoa if fornecedor else "juridica" %}
+                    <option value="juridica" {{ "selected" if tipo == "juridica" else "" }}>Juridica</option>
+                    <option value="fisica" {{ "selected" if tipo == "fisica" else "" }}>Fisica</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="cnpj_cpf">CNPJ/CPF</label>
+                <div class="input-action-row">
+                    <input id="cnpj_cpf" name="cnpj_cpf" value="{{ fornecedor.cnpj_cpf if fornecedor else '' }}" maxlength="18" data-documento-br required>
+                    <button class="btn btn-secondary" type="button" data-cnpj-lookup data-url="{{ url_for('suprimentos_fornecedores.consultar_cnpj') }}">
+                        Buscar CNPJ
+                    </button>
+                </div>
+                <small id="cnpj_lookup_status" class="form-help"></small>
+            </div>
+            <div class="form-group">
+                <label for="telefone">Telefone</label>
+                <input id="telefone" name="telefone" value="{{ fornecedor.telefone if fornecedor else '' }}" maxlength="30" data-telefone-br required>
+                <small class="form-help">Salvo como 55 + DDD + numero.</small>
+            </div>
+            <div class="form-group">
+                <label for="email">E-mail</label>
+                <input id="email" name="email" value="{{ fornecedor.email if fornecedor else '' }}" maxlength="150" type="email" required>
+            </div>
+            <div class="form-group">
+                <label for="pessoa_contato">Pessoa de contato</label>
+                <input id="pessoa_contato" name="pessoa_contato" value="{{ fornecedor.pessoa_contato if fornecedor else '' }}" maxlength="120" data-uppercase>
+            </div>
+            <div class="form-group">
+                <label for="uf">UF</label>
+                <input id="uf" name="uf" value="{{ fornecedor.uf if fornecedor else '' }}" maxlength="2" data-uppercase>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="endereco">Endereco</label>
+            <input id="endereco" name="endereco" value="{{ fornecedor.endereco if fornecedor else '' }}" maxlength="255" data-uppercase>
+        </div>
+        <div class="form-group">
+            <label for="cidade">Cidade</label>
+            <input id="cidade" name="cidade" value="{{ fornecedor.cidade if fornecedor else '' }}" maxlength="120" data-uppercase>
+        </div>
+        <div class="form-group">
+            <label for="observacoes">Observacoes</label>
+            <textarea id="observacoes" name="observacoes" data-uppercase>{{ fornecedor.observacoes if fornecedor else '' }}</textarea>
+        </div>
+
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Salvar</button>
+            <a class="btn btn-secondary" href="{{ url_for('suprimentos_fornecedores.listar') }}">Cancelar</a>
+        </div>
+    </form>
+</section>
+{% endblock %}

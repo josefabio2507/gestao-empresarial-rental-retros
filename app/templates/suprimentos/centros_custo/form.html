@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Suprimentos</span>
+            <h1>{{ "Novo Centro de Custo" if modo == "novo" else "Editar Centro de Custo" }}</h1>
+            <p>Centro usado para classificar compras e futuras previsoes financeiras.</p>
+        </div>
+    </div>
+    <form class="form-card" method="POST">
+        <div class="form-group">
+            <label for="codigo">Codigo</label>
+            <input id="codigo" name="codigo" value="{{ centro.codigo if centro else '' }}" maxlength="40" data-uppercase>
+        </div>
+        <div class="form-group">
+            <label for="nome">Nome</label>
+            <input id="nome" name="nome" value="{{ centro.nome if centro else '' }}" required maxlength="120" data-uppercase>
+        </div>
+        <div class="form-group">
+            <label for="descricao">Descricao</label>
+            <textarea id="descricao" name="descricao" data-uppercase>{{ centro.descricao if centro else '' }}</textarea>
+        </div>
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Salvar</button>
+            <a class="btn btn-secondary" href="{{ url_for('suprimentos_centros_custo.listar') }}">Cancelar</a>
+        </div>
+    </form>
+</section>
+{% endblock %}

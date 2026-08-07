@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Suprimentos</span>
+            <h1>Cotacoes</h1>
+            <p>Registro de propostas de fornecedores para requisicoes enviadas.</p>
+        </div>
+        <a class="btn btn-primary" href="{{ url_for('suprimentos_cotacoes.nova') }}">+ Nova Cotacao</a>
+    </div>
+
+    <form class="filter-card" method="GET">
+        <div class="form-group">
+            <label for="numero">Numero</label>
+            <input id="numero" name="numero" value="{{ filtros.get('numero', '') }}" data-uppercase>
+        </div>
+        <div class="form-group">
+            <label for="status">Status</label>
+            <select id="status" name="status">
+                <option value="">Todos</option>
+                {% for status in status_cotacoes %}
+                    <option value="{{ status }}" {{ "selected" if filtros.get('status') == status else "" }}>{{ status }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Pesquisar</button>
+            <a class="btn btn-secondary" href="{{ url_for('suprimentos_cotacoes.listar') }}">Limpar</a>
+        </div>
+    </form>
+
+    <div class="table-card table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Numero</th>
+                    <th>Requisicao</th>
+                    <th>Status</th>
+                    <th>Propostas</th>
+                    <th>Acoes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for cotacao in cotacoes %}
+                    <tr>
+                        <td>{{ cotacao.numero }}</td>
+                        <td>{{ cotacao.requisicao.numero }}</td>
+                        <td><span class="badge badge-success">{{ cotacao.status }}</span></td>
+                        <td>{{ cotacao.propostas|length }}</td>
+                        <td class="col-acoes">
+                            <div class="acoes-botoes">
+                                <a class="btn btn-secondary" href="{{ url_for('suprimentos_cotacoes.detalhes', cotacao_id=cotacao.id) }}">Ver</a>
+                                {% if cotacao.pode_editar %}
+                                    <a class="btn btn-primary" href="{{ url_for('suprimentos_cotacoes.editar', cotacao_id=cotacao.id) }}">Editar</a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr><td class="empty-state" colspan="5">Nenhuma cotacao encontrada.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="page-actions">
+        <a class="btn btn-secondary" href="{{ url_for('suprimentos.index') }}">Voltar</a>
+    </div>
+</section>
+{% endblock %}

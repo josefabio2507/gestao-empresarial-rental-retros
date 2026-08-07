@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Suprimentos</span>
+            <h1>Unidades de Medida</h1>
+            <p>Unidades usadas nos itens de compra.</p>
+        </div>
+        <a class="btn btn-primary" href="{{ url_for('suprimentos_unidades_medida.nova') }}">+ Nova Unidade</a>
+    </div>
+
+    <form class="filter-card" method="GET">
+        <div class="form-group">
+            <label for="nome">Nome ou sigla</label>
+            <input id="nome" name="nome" value="{{ filtros.get('nome', '') }}">
+        </div>
+        <div class="form-group">
+            <label for="status">Status</label>
+            <select id="status" name="status">
+                <option value="">Todos</option>
+                <option value="ativos" {{ "selected" if filtros.get('status') == "ativos" else "" }}>Ativos</option>
+                <option value="inativos" {{ "selected" if filtros.get('status') == "inativos" else "" }}>Inativos</option>
+            </select>
+        </div>
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Pesquisar</button>
+            <a class="btn btn-secondary" href="{{ url_for('suprimentos_unidades_medida.listar') }}">Limpar</a>
+        </div>
+    </form>
+
+    <div class="table-card table-responsive">
+        <table class="table">
+            <thead><tr><th>Sigla</th><th>Nome</th><th>Status</th><th>Acoes</th></tr></thead>
+            <tbody>
+                {% for unidade in unidades %}
+                    <tr>
+                        <td>{{ unidade.sigla }}</td>
+                        <td>{{ unidade.nome }}</td>
+                        <td><span class="badge {{ 'badge-success' if unidade.ativo else 'badge-danger' }}">{{ "Ativa" if unidade.ativo else "Inativa" }}</span></td>
+                        <td class="col-acoes">
+                            <div class="acoes-botoes">
+                                <a class="btn btn-primary" href="{{ url_for('suprimentos_unidades_medida.editar', unidade_id=unidade.id) }}">Editar</a>
+                                <form class="inline-form" method="POST" action="{{ url_for('suprimentos_unidades_medida.status', unidade_id=unidade.id) }}">
+                                    <button class="btn btn-warning" type="submit">{{ "Inativar" if unidade.ativo else "Reativar" }}</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr><td class="empty-state" colspan="4">Nenhuma unidade encontrada.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="page-actions"><a class="btn btn-secondary" href="{{ url_for('suprimentos.index') }}">Voltar</a></div>
+</section>
+{% endblock %}
