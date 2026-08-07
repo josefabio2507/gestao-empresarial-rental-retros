@@ -1178,8 +1178,71 @@ textarea:focus {
     color: #52616f;
 }
 
+.comparison-card h2 {
+    margin: 0 0 6px;
+    color: var(--rr-navy);
+    font-size: 20px;
+}
+
+.comparison-card p {
+    margin: 0;
+    color: var(--rr-muted);
+}
+
+.comparison-summary {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.comparison-summary span {
+    display: inline-flex;
+    gap: 5px;
+    align-items: center;
+    padding: 7px 10px;
+    border: 1px solid var(--rr-border);
+    border-radius: 9px;
+    background: #f8fbff;
+    color: var(--rr-muted);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.comparison-summary strong {
+    color: var(--rr-navy);
+}
+
+.comparison-table {
+    min-width: 860px;
+    margin-top: 16px;
+}
+
+.comparison-highlight {
+    background: #fff8e1;
+    color: var(--rr-navy);
+    font-weight: 800;
+}
+
+.comparison-row-best td:first-child {
+    border-left: 4px solid var(--rr-gold);
+}
+
+.comparison-tags {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
 @media (max-width: 640px) {
     .input-action-row {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .comparison-summary {
+        width: 100%;
         align-items: stretch;
         flex-direction: column;
     }

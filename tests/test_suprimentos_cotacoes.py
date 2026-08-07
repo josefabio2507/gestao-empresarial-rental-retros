@@ -1,4 +1,5 @@
 import unittest
+from decimal import Decimal
 
 from app import create_app
 from app.extensions import db
@@ -27,6 +28,7 @@ from app.services.suprimentos_service import (
     encerrar_cotacao,
     formatar_moeda_brl,
     enviar_requisicao_compra,
+    montar_mapa_comparativo_cotacao,
     salvar_cotacao,
     salvar_proposta_cotacao,
     salvar_requisicao_compra,
@@ -113,7 +115,15 @@ class SuprimentosCotacoesTestCase(unittest.TestCase):
             telefone="5513999998888",
             ativo=True,
         )
-        db.session.add_all([self.item, self.fornecedor])
+        self.fornecedor_b = SuprimentosFornecedor(
+            razao_social="FORNECEDOR B LTDA",
+            tipo_pessoa="juridica",
+            cnpj_cpf="11444777000161",
+            email="fornecedorb@teste.com",
+            telefone="551388887777",
+            ativo=True,
+        )
+        db.session.add_all([self.item, self.fornecedor, self.fornecedor_b])
         db.session.flush()
 
         self.vinculo = SuprimentosFornecedorItem(
@@ -122,7 +132,13 @@ class SuprimentosCotacoesTestCase(unittest.TestCase):
             ativo=True,
             fornecedor_preferencial=True,
         )
-        db.session.add(self.vinculo)
+        self.vinculo_b = SuprimentosFornecedorItem(
+            fornecedor_id=self.fornecedor_b.id,
+            item_id=self.item.id,
+            ativo=True,
+            fornecedor_preferencial=False,
+        )
+        db.session.add_all([self.vinculo, self.vinculo_b])
         db.session.commit()
 
         _, _, self.requisicao = salvar_requisicao_compra(
@@ -247,7 +263,7 @@ class SuprimentosCotacoesTestCase(unittest.TestCase):
         fornecedor_sem_vinculo = SuprimentosFornecedor(
             razao_social="SEM VINCULO LTDA",
             tipo_pessoa="juridica",
-            cnpj_cpf="11444777000161",
+            cnpj_cpf="50873397000156",
             email="sem@vinculo.com",
             telefone="551388887777",
             ativo=True,
@@ -330,6 +346,81 @@ class SuprimentosCotacoesTestCase(unittest.TestCase):
         self.assertIn(b"R$", resposta.data)
         self.assertIn(b"R$ 15,50", resposta.data)
         self.assertIn(b"R$ 31,00", resposta.data)
+
+    def test_monta_mapa_comparativo_destacando_melhores_criterios(self):
+        _, _, cotacao = salvar_cotacao(
+            {"requisicao_id": str(self.requisicao.id)},
+            self.admin,
+        )
+        salvar_proposta_cotacao(
+            {
+                "requisicao_item_id": str(self.requisicao_item.id),
+                "fornecedor_id": str(self.fornecedor.id),
+                "preco_unitario": "15,50",
+                "prazo_entrega_dias": "5",
+            },
+            cotacao,
+        )
+        salvar_proposta_cotacao(
+            {
+                "requisicao_item_id": str(self.requisicao_item.id),
+                "fornecedor_id": str(self.fornecedor_b.id),
+                "preco_unitario": "14,00",
+                "prazo_entrega_dias": "8",
+            },
+            cotacao,
+        )
+
+        mapa = montar_mapa_comparativo_cotacao(cotacao)
+        grupo = mapa["grupos"][0]
+
+        self.assertEqual(1, mapa["totais"]["itens"])
+        self.assertEqual(1, mapa["totais"]["itens_com_proposta"])
+        self.assertEqual(2, mapa["totais"]["propostas"])
+        self.assertEqual(Decimal("14.00"), grupo["menor_preco"])
+        self.assertEqual(Decimal("28.00000"), grupo["menor_total"])
+        self.assertEqual(5, grupo["menor_prazo"])
+
+        linha_fornecedor_b = next(
+            linha
+            for linha in grupo["propostas"]
+            if linha["proposta"].fornecedor_id == self.fornecedor_b.id
+        )
+        linha_fornecedor_a = next(
+            linha
+            for linha in grupo["propostas"]
+            if linha["proposta"].fornecedor_id == self.fornecedor.id
+        )
+
+        self.assertTrue(linha_fornecedor_b["menor_preco"])
+        self.assertTrue(linha_fornecedor_b["menor_total"])
+        self.assertFalse(linha_fornecedor_b["menor_prazo"])
+        self.assertTrue(linha_fornecedor_a["menor_prazo"])
+
+    def test_mapa_comparativo_renderiza_destaques_sem_escolher_vencedor(self):
+        self._liberar_usuario(visualizar=True)
+        self._autenticar(self.usuario)
+        _, _, cotacao = salvar_cotacao(
+            {"requisicao_id": str(self.requisicao.id)},
+            self.admin,
+        )
+        salvar_proposta_cotacao(
+            {
+                "requisicao_item_id": str(self.requisicao_item.id),
+                "fornecedor_id": str(self.fornecedor.id),
+                "preco_unitario": "15,50",
+                "prazo_entrega_dias": "5",
+            },
+            cotacao,
+        )
+
+        resposta = self.client.get(f"/suprimentos/cotacoes/{cotacao.id}/mapa-comparativo")
+
+        self.assertEqual(200, resposta.status_code)
+        self.assertIn(b"Mapa comparativo", resposta.data)
+        self.assertIn(b"Menor preco", resposta.data)
+        self.assertIn(b"Menor total", resposta.data)
+        self.assertIn(b"Este mapa e apenas comparativo", resposta.data)
 
 
 if __name__ == "__main__":

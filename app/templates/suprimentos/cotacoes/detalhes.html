@@ -11,6 +11,7 @@
         {% if cotacao.pode_editar %}
             <a class="btn btn-primary" href="{{ url_for('suprimentos_cotacoes.editar', cotacao_id=cotacao.id) }}">Editar dados</a>
         {% endif %}
+        <a class="btn btn-secondary" href="{{ url_for('suprimentos_cotacoes.mapa_comparativo', cotacao_id=cotacao.id) }}">Mapa comparativo</a>
     </div>
 
     <div class="details-card">

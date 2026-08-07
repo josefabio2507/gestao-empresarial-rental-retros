@@ -123,6 +123,19 @@ def formatar_moeda_brl(valor):
     return f"R$ {texto_valor}"
 
 
+def formatar_decimal_brasil(valor, casas=3):
+    if valor is None:
+        return "-"
+
+    try:
+        valor_decimal = Decimal(valor).quantize(Decimal(f"0.{'0' * casas}"))
+    except (InvalidOperation, TypeError, ValueError):
+        return "-"
+
+    texto_valor = f"{valor_decimal:,.{casas}f}"
+    return texto_valor.replace(",", "X").replace(".", ",").replace("X", ".")
+
+
 def inteiro_ou_none(valor):
     valor = texto(str(valor)) if valor is not None else ""
 
@@ -976,6 +989,85 @@ def cancelar_cotacao(cotacao):
     cotacao.encerrada_em = datetime.utcnow()
     db.session.commit()
     return True, "Cotacao cancelada com sucesso."
+
+
+def montar_mapa_comparativo_cotacao(cotacao):
+    propostas_por_item = {}
+
+    for proposta in cotacao.propostas:
+        propostas_por_item.setdefault(proposta.requisicao_item_id, []).append(proposta)
+
+    grupos = []
+    totais = {
+        "itens": 0,
+        "itens_com_proposta": 0,
+        "propostas": 0,
+    }
+
+    for requisicao_item in cotacao.requisicao.itens:
+        propostas = sorted(
+            propostas_por_item.get(requisicao_item.id, []),
+            key=lambda proposta: (
+                proposta.preco_unitario,
+                proposta.prazo_entrega_dias if proposta.prazo_entrega_dias is not None else 999999,
+                proposta.fornecedor_razao_social_snapshot,
+            ),
+        )
+
+        menor_preco = min((proposta.preco_unitario for proposta in propostas), default=None)
+        menor_total = min((proposta.valor_total for proposta in propostas), default=None)
+        prazos_informados = [
+            proposta.prazo_entrega_dias
+            for proposta in propostas
+            if proposta.prazo_entrega_dias is not None
+        ]
+        menor_prazo = min(prazos_informados) if prazos_informados else None
+
+        linhas = []
+
+        for proposta in propostas:
+            destaque_preco = proposta.preco_unitario == menor_preco if menor_preco is not None else False
+            destaque_total = proposta.valor_total == menor_total if menor_total is not None else False
+            destaque_prazo = (
+                proposta.prazo_entrega_dias == menor_prazo
+                if menor_prazo is not None and proposta.prazo_entrega_dias is not None
+                else False
+            )
+
+            linhas.append(
+                {
+                    "proposta": proposta,
+                    "valor_total": proposta.valor_total,
+                    "menor_preco": destaque_preco,
+                    "menor_total": destaque_total,
+                    "menor_prazo": destaque_prazo,
+                    "melhor_custo": destaque_preco and destaque_total,
+                }
+            )
+
+        grupos.append(
+            {
+                "item": requisicao_item,
+                "propostas": linhas,
+                "menor_preco": menor_preco,
+                "menor_total": menor_total,
+                "menor_prazo": menor_prazo,
+            }
+        )
+
+        totais["itens"] += 1
+        totais["propostas"] += len(propostas)
+
+        if propostas:
+            totais["itens_com_proposta"] += 1
+
+    totais["itens_sem_proposta"] = totais["itens"] - totais["itens_com_proposta"]
+
+    return {
+        "cotacao": cotacao,
+        "grupos": grupos,
+        "totais": totais,
+    }
 
 
 def normalizar_dados_cnpj_api(dados):
