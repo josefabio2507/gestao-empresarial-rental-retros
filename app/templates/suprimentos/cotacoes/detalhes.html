@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Suprimentos</span>
+            <h1>{{ cotacao.numero }}</h1>
+            <p>{{ cotacao.status }} - Requisicao {{ cotacao.requisicao.numero }}</p>
+        </div>
+        {% if cotacao.pode_editar %}
+            <a class="btn btn-primary" href="{{ url_for('suprimentos_cotacoes.editar', cotacao_id=cotacao.id) }}">Editar dados</a>
+        {% endif %}
+    </div>
+
+    <div class="details-card">
+        <p><strong>Requisicao:</strong> {{ cotacao.requisicao.numero }}</p>
+        <p><strong>Justificativa:</strong> {{ cotacao.requisicao.justificativa }}</p>
+        <p><strong>Criada por:</strong> {{ cotacao.criado_por.nome }}</p>
+        <p><strong>Observacoes:</strong> {{ cotacao.observacoes or "-" }}</p>
+    </div>
+
+    {% if cotacao.pode_editar %}
+        <form class="form-card" method="POST" action="{{ url_for('suprimentos_cotacoes.adicionar_proposta', cotacao_id=cotacao.id) }}">
+            <h2>Registrar proposta</h2>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="requisicao_item_id">Item da requisicao</label>
+                    <select id="requisicao_item_id" name="requisicao_item_id" required>
+                        <option value="">Selecione</option>
+                        {% for item in cotacao.requisicao.itens %}
+                            <option value="{{ item.id }}">{{ item.item_descricao_snapshot }} - {{ item.quantidade }} {{ item.unidade_medida_snapshot }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="fornecedor_id">Fornecedor</label>
+                    <select id="fornecedor_id" name="fornecedor_id" required>
+                        <option value="">Selecione</option>
+                        {% for item in cotacao.requisicao.itens %}
+                            {% for fornecedor in fornecedores_por_item[item.id] %}
+                                <option value="{{ fornecedor.id }}" data-item-id="{{ item.id }}">{{ item.item_descricao_snapshot }} - {{ fornecedor.razao_social }}</option>
+                            {% endfor %}
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="preco_unitario">Preco unitario</label>
+                    <div class="input-prefix-row">
+                        <span>R$</span>
+                        <input id="preco_unitario" name="preco_unitario" inputmode="decimal" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="prazo_entrega_dias">Prazo entrega dias</label>
+                    <input id="prazo_entrega_dias" name="prazo_entrega_dias">
+                </div>
+                <div class="form-group">
+                    <label for="condicao_pagamento">Condicao de pagamento</label>
+                    <input id="condicao_pagamento" name="condicao_pagamento" maxlength="160" data-uppercase>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="observacoes">Observacoes</label>
+                <textarea id="observacoes" name="observacoes" data-uppercase></textarea>
+            </div>
+            <div class="form-actions">
+                <button class="btn btn-primary" type="submit">Registrar proposta</button>
+            </div>
+        </form>
+    {% endif %}
+
+    <div class="table-card table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Fornecedor</th>
+                    <th>Item</th>
+                    <th>Qtd.</th>
+                    <th>Preco unit.</th>
+                    <th>Total</th>
+                    <th>Prazo</th>
+                    <th>Condicao</th>
+                    {% if cotacao.pode_editar %}<th>Acoes</th>{% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for proposta in cotacao.propostas %}
+                    <tr>
+                        <td>{{ proposta.fornecedor_razao_social_snapshot }}</td>
+                        <td>{{ proposta.item_descricao_snapshot }}</td>
+                        <td>{{ proposta.quantidade_snapshot }} {{ proposta.unidade_medida_snapshot }}</td>
+                        <td>{{ formatar_moeda_brl(proposta.preco_unitario) }}</td>
+                        <td>{{ formatar_moeda_brl(proposta.valor_total) }}</td>
+                        <td>{{ proposta.prazo_entrega_dias if proposta.prazo_entrega_dias is not none else "-" }}</td>
+                        <td>{{ proposta.condicao_pagamento or "-" }}</td>
+                        {% if cotacao.pode_editar %}
+                            <td class="col-acoes">
+                                <form class="inline-form" method="POST" action="{{ url_for('suprimentos_cotacoes.remover_proposta', cotacao_id=cotacao.id, proposta_id=proposta.id) }}">
+                                    <button class="btn btn-warning" type="submit">Remover</button>
+                                </form>
+                            </td>
+                        {% endif %}
+                    </tr>
+                {% else %}
+                    <tr><td class="empty-state" colspan="{{ 8 if cotacao.pode_editar else 7 }}">Nenhuma proposta registrada.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="page-actions">
+        {% if cotacao.pode_editar %}
+            <form class="inline-form" method="POST" action="{{ url_for('suprimentos_cotacoes.encerrar', cotacao_id=cotacao.id) }}">
+                <button class="btn btn-primary" type="submit">Encerrar cotacao</button>
+            </form>
+        {% endif %}
+        {% if cotacao.status != "Cancelada" %}
+            <form class="inline-form" method="POST" action="{{ url_for('suprimentos_cotacoes.cancelar', cotacao_id=cotacao.id) }}">
+                <button class="btn btn-warning" type="submit">Cancelar</button>
+            </form>
+        {% endif %}
+        <a class="btn btn-secondary" href="{{ url_for('suprimentos_cotacoes.listar') }}">Voltar</a>
+    </div>
+</section>
+{% endblock %}

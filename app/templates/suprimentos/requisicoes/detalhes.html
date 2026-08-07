@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Suprimentos</span>
+            <h1>{{ requisicao.numero }}</h1>
+            <p>{{ requisicao.status }}</p>
+        </div>
+        {% if requisicao.pode_editar %}
+            <a class="btn btn-primary" href="{{ url_for('suprimentos_requisicoes.editar', requisicao_id=requisicao.id) }}">Editar dados</a>
+        {% endif %}
+    </div>
+
+    <div class="details-card">
+        <p><strong>Solicitante:</strong> {{ requisicao.solicitante.nome }}</p>
+        <p><strong>Centro de custo:</strong> {{ requisicao.centro_custo.nome if requisicao.centro_custo else "-" }}</p>
+        <p><strong>Justificativa:</strong> {{ requisicao.justificativa }}</p>
+        <p><strong>Observacoes:</strong> {{ requisicao.observacoes or "-" }}</p>
+        {% if requisicao.enviada_em %}
+            <p><strong>Enviada em:</strong> {{ requisicao.enviada_em.strftime("%d/%m/%Y %H:%M") }}</p>
+        {% endif %}
+        {% if requisicao.cancelada_em %}
+            <p><strong>Cancelada em:</strong> {{ requisicao.cancelada_em.strftime("%d/%m/%Y %H:%M") }}</p>
+            <p><strong>Motivo:</strong> {{ requisicao.motivo_cancelamento or "-" }}</p>
+        {% endif %}
+    </div>
+
+    {% if requisicao.pode_editar %}
+        <form class="form-card" method="POST" action="{{ url_for('suprimentos_requisicoes.adicionar_item', requisicao_id=requisicao.id) }}">
+            <h2>Adicionar item</h2>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="item_id">Item</label>
+                    <select id="item_id" name="item_id" required>
+                        <option value="">Selecione</option>
+                        {% for item in itens_disponiveis %}
+                            <option value="{{ item.id }}">{{ item.codigo_interno or "-" }} - {{ item.descricao }} ({{ item.unidade_medida.sigla }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="quantidade">Quantidade</label>
+                    <input id="quantidade" name="quantidade" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="observacoes_item">Observacoes do item</label>
+                <textarea id="observacoes_item" name="observacoes" data-uppercase></textarea>
+            </div>
+            <div class="form-actions">
+                <button class="btn btn-primary" type="submit">Adicionar item</button>
+            </div>
+        </form>
+    {% endif %}
+
+    <div class="table-card table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Codigo</th>
+                    <th>Item</th>
+                    <th>Unidade</th>
+                    <th>Quantidade</th>
+                    <th>Observacoes</th>
+                    {% if requisicao.pode_editar %}<th>Acoes</th>{% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in requisicao.itens %}
+                    <tr>
+                        <td>{{ item.item_codigo_snapshot or "-" }}</td>
+                        <td>{{ item.item_descricao_snapshot }}</td>
+                        <td>{{ item.unidade_medida_snapshot }}</td>
+                        <td>{{ item.quantidade }}</td>
+                        <td>{{ item.observacoes or "-" }}</td>
+                        {% if requisicao.pode_editar %}
+                            <td class="col-acoes">
+                                <form class="inline-form" method="POST" action="{{ url_for('suprimentos_requisicoes.remover_item', requisicao_id=requisicao.id, item_requisicao_id=item.id) }}">
+                                    <button class="btn btn-warning" type="submit">Remover</button>
+                                </form>
+                            </td>
+                        {% endif %}
+                    </tr>
+                {% else %}
+                    <tr><td class="empty-state" colspan="{{ 6 if requisicao.pode_editar else 5 }}">Nenhum item adicionado.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="page-actions">
+        {% if requisicao.pode_editar %}
+            <form class="inline-form" method="POST" action="{{ url_for('suprimentos_requisicoes.enviar', requisicao_id=requisicao.id) }}">
+                <button class="btn btn-primary" type="submit">Enviar para analise</button>
+            </form>
+        {% endif %}
+        {% if requisicao.status != "Cancelada" %}
+            <form class="inline-form" method="POST" action="{{ url_for('suprimentos_requisicoes.cancelar', requisicao_id=requisicao.id) }}">
+                <input type="hidden" name="motivo_cancelamento" value="CANCELAMENTO MANUAL">
+                <button class="btn btn-warning" type="submit">Cancelar</button>
+            </form>
+        {% endif %}
+        <a class="btn btn-secondary" href="{{ url_for('suprimentos_requisicoes.listar') }}">Voltar</a>
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Suprimentos</span>
+            <h1>{{ "Novo Item" if modo == "novo" else "Editar Item" }}</h1>
+            <p>Cadastro base para materiais, servicos e compras futuras.</p>
+        </div>
+    </div>
+
+    <form class="form-card" method="POST">
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="codigo_interno">Codigo interno</label>
+                <input id="codigo_interno" name="codigo_interno" value="{{ item.codigo_interno if item else '' }}" maxlength="60" data-uppercase>
+            </div>
+            <div class="form-group">
+                <label for="descricao">Descricao</label>
+                <input id="descricao" name="descricao" value="{{ item.descricao if item else '' }}" required maxlength="220" data-uppercase>
+            </div>
+            <div class="form-group">
+                <label for="categoria_id">Categoria</label>
+                <select id="categoria_id" name="categoria_id" required>
+                    <option value="">Selecione</option>
+                    {% for categoria in categorias %}
+                        <option value="{{ categoria.id }}" {{ "selected" if item and item.categoria_id == categoria.id else "" }}>{{ categoria.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="unidade_medida_id">Unidade</label>
+                <select id="unidade_medida_id" name="unidade_medida_id" required>
+                    <option value="">Selecione</option>
+                    {% for unidade in unidades %}
+                        <option value="{{ unidade.id }}" {{ "selected" if item and item.unidade_medida_id == unidade.id else "" }}>{{ unidade.sigla }} - {{ unidade.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="centro_custo_padrao_id">Centro de custo padrao</label>
+                <select id="centro_custo_padrao_id" name="centro_custo_padrao_id">
+                    <option value="">Sem padrao</option>
+                    {% for centro in centros %}
+                        <option value="{{ centro.id }}" {{ "selected" if item and item.centro_custo_padrao_id == centro.id else "" }}>{{ centro.codigo or "-" }} - {{ centro.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="tipo">Tipo</label>
+                <select id="tipo" name="tipo" required>
+                    <option value="">Selecione</option>
+                    {% for tipo in tipos_item %}
+                        <option value="{{ tipo }}" {{ "selected" if item and item.tipo == tipo else "" }}>{{ tipo }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="ncm">NCM</label>
+                <input id="ncm" name="ncm" value="{{ item.ncm if item else '' }}" maxlength="20" data-uppercase>
+            </div>
+            <div class="form-group">
+                <label for="estoque_minimo">Estoque minimo</label>
+                <input id="estoque_minimo" name="estoque_minimo" value="{{ item.estoque_minimo if item and item.estoque_minimo is not none else '' }}">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>
+                <input type="checkbox" name="item_estocavel" {{ "checked" if item and item.item_estocavel else "" }}>
+                Item estocavel
+            </label>
+        </div>
+        <div class="form-group">
+            <label for="observacoes">Observacoes</label>
+            <textarea id="observacoes" name="observacoes" data-uppercase>{{ item.observacoes if item else '' }}</textarea>
+        </div>
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Salvar</button>
+            <a class="btn btn-secondary" href="{{ url_for('suprimentos_itens.listar') }}">Cancelar</a>
+        </div>
+    </form>
+</section>
+{% endblock %}

@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Modulo</span>
+            <h1>Suprimentos</h1>
+            <p>Cadastros base para fornecedores, itens, centros de custo e compras futuras.</p>
+        </div>
+
+        <a class="btn btn-secondary" href="{{ url_for('main.inicio') }}">Voltar ao inicio</a>
+    </div>
+
+    <div class="modules-grid">
+        {% for modulo in modulos_liberados %}
+            {% set slug = modulo.slug %}
+            {% if slug == "fornecedores" %}
+                {% set destino = url_for('suprimentos_fornecedores.listar') %}
+            {% elif slug == "categorias" %}
+                {% set destino = url_for('suprimentos_categorias.listar') %}
+            {% elif slug == "unidades_medida" %}
+                {% set destino = url_for('suprimentos_unidades_medida.listar') %}
+            {% elif slug == "itens" %}
+                {% set destino = url_for('suprimentos_itens.listar') %}
+            {% elif slug == "centros_custo" %}
+                {% set destino = url_for('suprimentos_centros_custo.listar') %}
+            {% elif slug == "fornecedor_itens" %}
+                {% set destino = url_for('suprimentos_fornecedor_itens.listar') %}
+            {% elif slug == "requisicoes_compra" %}
+                {% set destino = url_for('suprimentos_requisicoes.listar') %}
+            {% elif slug == "cotacoes" %}
+                {% set destino = url_for('suprimentos_cotacoes.listar') %}
+            {% else %}
+                {% set destino = None %}
+            {% endif %}
+
+            {% if destino %}
+                <a class="module-card module-card-link" href="{{ destino }}">
+                    <span class="module-card-icon">S</span>
+                    <h2>{{ modulo.nome }}</h2>
+                    <p>{{ modulo.descricao or "Cadastro base de Suprimentos." }}</p>
+                    <span class="badge badge-success">Liberado</span>
+                    <span class="module-status">Acessar cadastro</span>
+                </a>
+            {% endif %}
+        {% else %}
+            <div class="details-card">
+                <h2>Nenhum cadastro liberado</h2>
+                <p>Entre em contato com o administrador para liberar acesso ao modulo Suprimentos.</p>
+            </div>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

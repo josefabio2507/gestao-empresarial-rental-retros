@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Suprimentos</span>
+            <h1>Requisicoes de Compra</h1>
+            <p>Solicitacoes internas de materiais e servicos.</p>
+        </div>
+        <a class="btn btn-primary" href="{{ url_for('suprimentos_requisicoes.nova') }}">+ Nova Requisicao</a>
+    </div>
+
+    <form class="filter-card" method="GET">
+        <div class="form-group">
+            <label for="numero">Numero</label>
+            <input id="numero" name="numero" value="{{ filtros.get('numero', '') }}" data-uppercase>
+        </div>
+        <div class="form-group">
+            <label for="status">Status</label>
+            <select id="status" name="status">
+                <option value="">Todos</option>
+                {% for status in status_requisicoes %}
+                    <option value="{{ status }}" {{ "selected" if filtros.get('status') == status else "" }}>{{ status }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Pesquisar</button>
+            <a class="btn btn-secondary" href="{{ url_for('suprimentos_requisicoes.listar') }}">Limpar</a>
+        </div>
+    </form>
+
+    <div class="table-card table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Numero</th>
+                    <th>Solicitante</th>
+                    <th>Centro de custo</th>
+                    <th>Status</th>
+                    <th>Itens</th>
+                    <th>Acoes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for requisicao in requisicoes %}
+                    <tr>
+                        <td>{{ requisicao.numero }}</td>
+                        <td>{{ requisicao.solicitante.nome }}</td>
+                        <td>{{ requisicao.centro_custo.nome if requisicao.centro_custo else "-" }}</td>
+                        <td><span class="badge badge-success">{{ requisicao.status }}</span></td>
+                        <td>{{ requisicao.itens|length }}</td>
+                        <td class="col-acoes">
+                            <div class="acoes-botoes">
+                                <a class="btn btn-secondary" href="{{ url_for('suprimentos_requisicoes.detalhes', requisicao_id=requisicao.id) }}">Ver</a>
+                                {% if requisicao.pode_editar %}
+                                    <a class="btn btn-primary" href="{{ url_for('suprimentos_requisicoes.editar', requisicao_id=requisicao.id) }}">Editar</a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr><td class="empty-state" colspan="6">Nenhuma requisicao encontrada.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="page-actions">
+        <a class="btn btn-secondary" href="{{ url_for('suprimentos.index') }}">Voltar</a>
+    </div>
+</section>
+{% endblock %}

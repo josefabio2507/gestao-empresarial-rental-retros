@@ -28,11 +28,28 @@ DEPARTAMENTOS_BASE = [
         ],
     },
     {
+        "nome": "Suprimentos",
+        "slug": "suprimentos",
+        "descricao": "Cadastro de fornecedores, itens, centros de custo e base do processo de compras.",
+        "icone": "compras",
+        "ordem": 2,
+        "modulos": [
+            ("Fornecedores", "fornecedores", "Cadastro e consulta de fornecedores"),
+            ("Categorias", "categorias", "Categorias de itens, materiais e servicos"),
+            ("Unidades de Medida", "unidades_medida", "Unidades usadas nos itens de compra"),
+            ("Itens", "itens", "Materiais, servicos, pecas, EPIs e consumo"),
+            ("Centros de Custo", "centros_custo", "Centros de custo para compras e integracao futura"),
+            ("Fornecedor x Item", "fornecedor_itens", "Vinculo comercial entre fornecedores e itens"),
+            ("Requisicoes de Compra", "requisicoes_compra", "Solicitacao interna de compras e servicos"),
+            ("Cotacoes", "cotacoes", "Registro de propostas de fornecedores para requisicoes enviadas"),
+        ],
+    },
+    {
         "nome": "Operação",
         "slug": "operacao",
         "descricao": "Execução, equipes e produtividade operacional.",
         "icone": "engrenagem",
-        "ordem": 2,
+        "ordem": 3,
         "modulos": [
             ("Ordens de Serviço", "ordens_de_servico", "Abertura e acompanhamento"),
             ("Equipes", "equipes", "Times e alocação"),
@@ -47,7 +64,7 @@ DEPARTAMENTOS_BASE = [
         "slug": "departamento_pessoal",
         "descricao": "Gestão de pessoas e rotinas trabalhistas.",
         "icone": "usuarios",
-        "ordem": 3,
+        "ordem": 4,
         "modulos": [
             ("Colaboradores", "colaboradores", "Cadastro e consulta de colaboradores"),
             ("Admissão", "admissao", "Cadastro e integração"),
@@ -64,7 +81,7 @@ DEPARTAMENTOS_BASE = [
         "slug": "seguranca_trabalho",
         "descricao": "Conformidade, prevenção e inspeções.",
         "icone": "escudo",
-        "ordem": 4,
+        "ordem": 5,
         "modulos": [
             ("EPIs", "epis", "Entrega e controle"),
             ("Treinamentos", "treinamentos", "Capacitação e validade"),

@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Suprimentos</span>
+            <h1>{{ fornecedor.razao_social }}</h1>
+            <p>{{ fornecedor.nome_fantasia or "Fornecedor cadastrado." }}</p>
+        </div>
+        <a class="btn btn-primary" href="{{ url_for('suprimentos_fornecedores.editar', fornecedor_id=fornecedor.id) }}">Editar</a>
+    </div>
+
+    <div class="details-card">
+        <p><strong>Tipo:</strong> {{ fornecedor.tipo_pessoa }}</p>
+        <p><strong>CNPJ/CPF:</strong> {{ fornecedor.cnpj_cpf or "-" }}</p>
+        <p><strong>Contato:</strong> {{ fornecedor.pessoa_contato or "-" }}</p>
+        <p><strong>E-mail:</strong> {{ fornecedor.email or "-" }}</p>
+        <p><strong>Telefone:</strong> {{ fornecedor.telefone or "-" }}</p>
+        <p><strong>Cidade/UF:</strong> {{ fornecedor.cidade or "-" }} / {{ fornecedor.uf or "-" }}</p>
+        <p><strong>Status:</strong> {{ "Ativo" if fornecedor.ativo else "Inativo" }}</p>
+    </div>
+
+    <div class="page-actions">
+        <a class="btn btn-secondary" href="{{ url_for('suprimentos_fornecedores.listar') }}">Voltar</a>
+    </div>
+</section>
+{% endblock %}

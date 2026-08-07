@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Suprimentos</span>
+            <h1>{{ "Nova Requisicao" if modo == "nova" else "Editar Requisicao" }}</h1>
+            <p>Informe a justificativa e o centro de custo antes de adicionar os itens.</p>
+        </div>
+    </div>
+
+    <form class="form-card" method="POST">
+        <div class="form-group">
+            <label for="centro_custo_id">Centro de custo</label>
+            <select id="centro_custo_id" name="centro_custo_id">
+                <option value="">Sem centro definido</option>
+                {% for centro in centros %}
+                    <option value="{{ centro.id }}" {{ "selected" if requisicao and requisicao.centro_custo_id == centro.id else "" }}>
+                        {{ centro.codigo or "-" }} - {{ centro.nome }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="justificativa">Justificativa</label>
+            <textarea id="justificativa" name="justificativa" required data-uppercase>{{ requisicao.justificativa if requisicao else '' }}</textarea>
+        </div>
+        <div class="form-group">
+            <label for="observacoes">Observacoes</label>
+            <textarea id="observacoes" name="observacoes" data-uppercase>{{ requisicao.observacoes if requisicao else '' }}</textarea>
+        </div>
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Salvar</button>
+            <a class="btn btn-secondary" href="{{ url_for('suprimentos_requisicoes.listar') }}">Cancelar</a>
+        </div>
+    </form>
+</section>
+{% endblock %}

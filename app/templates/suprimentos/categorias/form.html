@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Suprimentos</span>
+            <h1>{{ "Nova Categoria" if modo == "nova" else "Editar Categoria" }}</h1>
+            <p>Categoria usada no cadastro de itens.</p>
+        </div>
+    </div>
+    <form class="form-card" method="POST">
+        <div class="form-group">
+            <label for="nome">Nome</label>
+            <input id="nome" name="nome" value="{{ categoria.nome if categoria else '' }}" required maxlength="120" data-uppercase>
+        </div>
+        <div class="form-group">
+            <label for="descricao">Descricao</label>
+            <textarea id="descricao" name="descricao" data-uppercase>{{ categoria.descricao if categoria else '' }}</textarea>
+        </div>
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Salvar</button>
+            <a class="btn btn-secondary" href="{{ url_for('suprimentos_categorias.listar') }}">Cancelar</a>
+        </div>
+    </form>
+</section>
+{% endblock %}

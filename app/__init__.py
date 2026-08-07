@@ -36,6 +36,15 @@ def create_app():
     from app.departamento_pessoal.documentos.routes import documentos_bp
     from app.departamento_pessoal.vale_transporte.routes import vale_transporte_bp
     from app.financeiro.routes import financeiro_bp
+    from app.suprimentos.routes import suprimentos_bp
+    from app.suprimentos.fornecedores.routes import suprimentos_fornecedores_bp
+    from app.suprimentos.categorias.routes import suprimentos_categorias_bp
+    from app.suprimentos.unidades_medida.routes import suprimentos_unidades_medida_bp
+    from app.suprimentos.itens.routes import suprimentos_itens_bp
+    from app.suprimentos.centros_custo.routes import suprimentos_centros_custo_bp
+    from app.suprimentos.fornecedor_itens.routes import suprimentos_fornecedor_itens_bp
+    from app.suprimentos.requisicoes.routes import suprimentos_requisicoes_bp
+    from app.suprimentos.cotacoes.routes import suprimentos_cotacoes_bp
     from app.operacao.routes import operacao_bp
     from app.seguranca_trabalho.routes import seguranca_trabalho_bp
     from app.admin import admin_bp
@@ -54,6 +63,15 @@ def create_app():
     app.register_blueprint(documentos_bp, url_prefix="/departamento-pessoal/documentos")
     app.register_blueprint(vale_transporte_bp, url_prefix="/departamento-pessoal/vale-transporte")
     app.register_blueprint(financeiro_bp, url_prefix="/financeiro")
+    app.register_blueprint(suprimentos_bp, url_prefix="/suprimentos")
+    app.register_blueprint(suprimentos_fornecedores_bp, url_prefix="/suprimentos/fornecedores")
+    app.register_blueprint(suprimentos_categorias_bp, url_prefix="/suprimentos/categorias")
+    app.register_blueprint(suprimentos_unidades_medida_bp, url_prefix="/suprimentos/unidades-medida")
+    app.register_blueprint(suprimentos_itens_bp, url_prefix="/suprimentos/itens")
+    app.register_blueprint(suprimentos_centros_custo_bp, url_prefix="/suprimentos/centros-custo")
+    app.register_blueprint(suprimentos_fornecedor_itens_bp, url_prefix="/suprimentos/fornecedor-itens")
+    app.register_blueprint(suprimentos_requisicoes_bp, url_prefix="/suprimentos/requisicoes")
+    app.register_blueprint(suprimentos_cotacoes_bp, url_prefix="/suprimentos/cotacoes")
     app.register_blueprint(operacao_bp, url_prefix="/operacao")
     app.register_blueprint(seguranca_trabalho_bp, url_prefix="/seguranca-trabalho")
     app.register_blueprint(admin_bp, url_prefix="/admin")

@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Suprimentos</span>
+            <h1>{{ "Nova Cotacao" if modo == "nova" else "Editar Cotacao" }}</h1>
+            <p>Abra a rodada de cotacao a partir de uma requisicao enviada para analise.</p>
+        </div>
+    </div>
+
+    <form class="form-card" method="POST">
+        {% if modo == "nova" %}
+            <div class="form-group">
+                <label for="requisicao_id">Requisicao</label>
+                <select id="requisicao_id" name="requisicao_id" required>
+                    <option value="">Selecione</option>
+                    {% for requisicao in requisicoes %}
+                        <option value="{{ requisicao.id }}">{{ requisicao.numero }} - {{ requisicao.justificativa }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        {% else %}
+            <div class="details-card">
+                <p><strong>Requisicao:</strong> {{ cotacao.requisicao.numero }}</p>
+                <p><strong>Status:</strong> {{ cotacao.status }}</p>
+            </div>
+        {% endif %}
+        <div class="form-group">
+            <label for="observacoes">Observacoes</label>
+            <textarea id="observacoes" name="observacoes" data-uppercase>{{ cotacao.observacoes if cotacao else '' }}</textarea>
+        </div>
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Salvar</button>
+            <a class="btn btn-secondary" href="{{ url_for('suprimentos_cotacoes.listar') }}">Cancelar</a>
+        </div>
+    </form>
+</section>
+{% endblock %}

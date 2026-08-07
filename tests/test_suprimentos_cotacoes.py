@@ -1,0 +1,336 @@
+import unittest
+
+from app import create_app
+from app.extensions import db
+from app.models import (
+    CentroCusto,
+    Departamento,
+    Modulo,
+    NivelAcesso,
+    PermissaoUsuarioModulo,
+    SuprimentosCategoriaItem,
+    SuprimentosCotacao,
+    SuprimentosCotacaoProposta,
+    SuprimentosFornecedor,
+    SuprimentosFornecedorItem,
+    SuprimentosItem,
+    SuprimentosUnidadeMedida,
+    Usuario,
+)
+from app.services.suprimentos_service import (
+    STATUS_COTACAO_ABERTA,
+    STATUS_COTACAO_CANCELADA,
+    STATUS_COTACAO_ENCERRADA,
+    STATUS_REQUISICAO_ENVIADA,
+    adicionar_item_requisicao,
+    cancelar_cotacao,
+    encerrar_cotacao,
+    formatar_moeda_brl,
+    enviar_requisicao_compra,
+    salvar_cotacao,
+    salvar_proposta_cotacao,
+    salvar_requisicao_compra,
+)
+
+
+class SuprimentosCotacoesTestCase(unittest.TestCase):
+    def setUp(self):
+        self.app = create_app()
+        self.app.config.update(
+            SECRET_KEY="test",
+            TESTING=True,
+            SQLALCHEMY_DATABASE_URI="sqlite:///:memory:",
+            SQLALCHEMY_TRACK_MODIFICATIONS=False,
+        )
+
+        self.contexto = self.app.app_context()
+        self.contexto.push()
+        db.drop_all()
+        db.create_all()
+
+        admin = NivelAcesso(nome="Administrador", slug="administrador", ativo=True)
+        comum = NivelAcesso(nome="Usuario", slug="usuario", ativo=True)
+        db.session.add_all([admin, comum])
+        db.session.flush()
+
+        self.admin = Usuario(
+            nome="Admin",
+            email="admin@teste.com",
+            nivel_acesso=admin,
+            ativo=True,
+            precisa_trocar_senha=False,
+        )
+        self.usuario = Usuario(
+            nome="Comum",
+            email="comum@teste.com",
+            nivel_acesso=comum,
+            ativo=True,
+            precisa_trocar_senha=False,
+        )
+        self.admin.definir_senha("teste")
+        self.usuario.definir_senha("teste")
+        db.session.add_all([self.admin, self.usuario])
+
+        departamento = Departamento(
+            nome="Suprimentos",
+            slug="suprimentos",
+            ativo=True,
+            ordem=2,
+        )
+        db.session.add(departamento)
+        db.session.flush()
+
+        self.modulo = Modulo(
+            departamento_id=departamento.id,
+            nome="Cotacoes",
+            slug="cotacoes",
+            ativo=True,
+            ordem=8,
+        )
+        db.session.add(self.modulo)
+
+        self.centro = CentroCusto(codigo="MAN", nome="MANUTENCAO", ativo=True)
+        self.categoria = SuprimentosCategoriaItem(nome="PECAS", slug="pecas", ativo=True)
+        self.unidade = SuprimentosUnidadeMedida(nome="UNIDADE", sigla="UN", ativo=True)
+        db.session.add_all([self.centro, self.categoria, self.unidade])
+        db.session.flush()
+
+        self.item = SuprimentosItem(
+            codigo_interno="PEC-001",
+            descricao="FILTRO DE OLEO",
+            categoria_id=self.categoria.id,
+            unidade_medida_id=self.unidade.id,
+            centro_custo_padrao_id=self.centro.id,
+            tipo="peca",
+            item_estocavel=True,
+            ativo=True,
+        )
+        self.fornecedor = SuprimentosFornecedor(
+            razao_social="FORNECEDOR TESTE LTDA",
+            tipo_pessoa="juridica",
+            cnpj_cpf="11222333000181",
+            email="fornecedor@teste.com",
+            telefone="5513999998888",
+            ativo=True,
+        )
+        db.session.add_all([self.item, self.fornecedor])
+        db.session.flush()
+
+        self.vinculo = SuprimentosFornecedorItem(
+            fornecedor_id=self.fornecedor.id,
+            item_id=self.item.id,
+            ativo=True,
+            fornecedor_preferencial=True,
+        )
+        db.session.add(self.vinculo)
+        db.session.commit()
+
+        _, _, self.requisicao = salvar_requisicao_compra(
+            {"centro_custo_id": str(self.centro.id), "justificativa": "Comprar filtros"},
+            self.admin,
+        )
+        adicionar_item_requisicao(
+            {"item_id": str(self.item.id), "quantidade": "2"},
+            self.requisicao,
+        )
+        enviar_requisicao_compra(self.requisicao)
+        db.session.refresh(self.requisicao)
+        self.requisicao_item = self.requisicao.itens[0]
+
+        self.client = self.app.test_client()
+
+    def tearDown(self):
+        db.session.remove()
+        db.drop_all()
+        self.contexto.pop()
+
+    def _autenticar(self, usuario):
+        with self.client.session_transaction() as sessao:
+            sessao["_user_id"] = str(usuario.id)
+            sessao["_fresh"] = True
+
+    def _liberar_usuario(self, **acoes):
+        permissao = PermissaoUsuarioModulo(
+            usuario_id=self.usuario.id,
+            modulo_id=self.modulo.id,
+            pode_visualizar=acoes.get("visualizar", False),
+            pode_criar=acoes.get("criar", False),
+            pode_editar=acoes.get("editar", False),
+            pode_excluir=acoes.get("excluir", False),
+            ativo=True,
+        )
+        permissao.garantir_visualizacao()
+        db.session.add(permissao)
+        db.session.commit()
+
+    def test_usuario_sem_permissao_nao_acessa_cotacoes(self):
+        self._autenticar(self.usuario)
+
+        resposta = self.client.get("/suprimentos/cotacoes/")
+
+        self.assertEqual(302, resposta.status_code)
+        self.assertIn("/acesso-negado", resposta.headers["Location"])
+
+    def test_usuario_com_visualizar_acessa_listagem(self):
+        self._liberar_usuario(visualizar=True)
+        self._autenticar(self.usuario)
+
+        resposta = self.client.get("/suprimentos/cotacoes/")
+
+        self.assertEqual(200, resposta.status_code)
+        self.assertIn(b"Cotacoes", resposta.data)
+
+    def test_cria_cotacao_apenas_para_requisicao_enviada(self):
+        self.assertEqual(STATUS_REQUISICAO_ENVIADA, self.requisicao.status)
+
+        sucesso, mensagem, cotacao = salvar_cotacao(
+            {
+                "requisicao_id": str(self.requisicao.id),
+                "observacoes": " rodada inicial ",
+            },
+            self.admin,
+        )
+
+        self.assertTrue(sucesso)
+        self.assertEqual("Cotacao salva com sucesso.", mensagem)
+        self.assertEqual(STATUS_COTACAO_ABERTA, cotacao.status)
+        self.assertEqual("RODADA INICIAL", cotacao.observacoes)
+        self.assertTrue(cotacao.numero.startswith("COT-"))
+
+    def test_nao_cria_cotacao_para_requisicao_rascunho(self):
+        _, _, rascunho = salvar_requisicao_compra(
+            {"justificativa": "Ainda em rascunho"},
+            self.admin,
+        )
+
+        sucesso, mensagem, cotacao = salvar_cotacao(
+            {"requisicao_id": str(rascunho.id)},
+            self.admin,
+        )
+
+        self.assertFalse(sucesso)
+        self.assertEqual("Somente requisicoes enviadas para analise podem iniciar cotacao.", mensagem)
+        self.assertIsNone(cotacao)
+
+    def test_registra_proposta_com_fornecedor_vinculado_e_bloqueia_duplicado(self):
+        _, _, cotacao = salvar_cotacao(
+            {"requisicao_id": str(self.requisicao.id)},
+            self.admin,
+        )
+
+        dados = {
+            "requisicao_item_id": str(self.requisicao_item.id),
+            "fornecedor_id": str(self.fornecedor.id),
+            "preco_unitario": "R$ 15,50",
+            "prazo_entrega_dias": "3",
+            "condicao_pagamento": "30 dias",
+            "observacoes": "entrega parcial",
+        }
+        sucesso, mensagem, proposta = salvar_proposta_cotacao(dados, cotacao)
+
+        self.assertTrue(sucesso)
+        self.assertEqual("Proposta registrada com sucesso.", mensagem)
+        self.assertEqual("FORNECEDOR TESTE LTDA", proposta.fornecedor_razao_social_snapshot)
+        self.assertEqual("FILTRO DE OLEO", proposta.item_descricao_snapshot)
+        self.assertEqual("R$ 15,50", formatar_moeda_brl(proposta.preco_unitario))
+        self.assertEqual("R$ 31,00", formatar_moeda_brl(proposta.valor_total))
+        self.assertEqual("30 DIAS", proposta.condicao_pagamento)
+        self.assertEqual("ENTREGA PARCIAL", proposta.observacoes)
+
+        sucesso, mensagem, _ = salvar_proposta_cotacao(dados, cotacao)
+
+        self.assertFalse(sucesso)
+        self.assertEqual("Ja existe proposta deste fornecedor para este item.", mensagem)
+        self.assertEqual(1, SuprimentosCotacaoProposta.query.count())
+
+    def test_bloqueia_fornecedor_sem_vinculo_com_item(self):
+        fornecedor_sem_vinculo = SuprimentosFornecedor(
+            razao_social="SEM VINCULO LTDA",
+            tipo_pessoa="juridica",
+            cnpj_cpf="11444777000161",
+            email="sem@vinculo.com",
+            telefone="551388887777",
+            ativo=True,
+        )
+        db.session.add(fornecedor_sem_vinculo)
+        db.session.commit()
+        _, _, cotacao = salvar_cotacao(
+            {"requisicao_id": str(self.requisicao.id)},
+            self.admin,
+        )
+
+        sucesso, mensagem, _ = salvar_proposta_cotacao(
+            {
+                "requisicao_item_id": str(self.requisicao_item.id),
+                "fornecedor_id": str(fornecedor_sem_vinculo.id),
+                "preco_unitario": "10",
+            },
+            cotacao,
+        )
+
+        self.assertFalse(sucesso)
+        self.assertEqual("Fornecedor nao esta vinculado ao item selecionado.", mensagem)
+
+    def test_nao_encerra_sem_proposta_e_encerra_com_proposta(self):
+        _, _, cotacao = salvar_cotacao(
+            {"requisicao_id": str(self.requisicao.id)},
+            self.admin,
+        )
+
+        sucesso, mensagem = encerrar_cotacao(cotacao)
+
+        self.assertFalse(sucesso)
+        self.assertEqual("Registre ao menos uma proposta antes de encerrar.", mensagem)
+
+        salvar_proposta_cotacao(
+            {
+                "requisicao_item_id": str(self.requisicao_item.id),
+                "fornecedor_id": str(self.fornecedor.id),
+                "preco_unitario": "15",
+            },
+            cotacao,
+        )
+        sucesso, mensagem = encerrar_cotacao(cotacao)
+
+        self.assertTrue(sucesso)
+        self.assertEqual("Cotacao encerrada com sucesso.", mensagem)
+        self.assertEqual(STATUS_COTACAO_ENCERRADA, cotacao.status)
+
+    def test_cancela_cotacao(self):
+        _, _, cotacao = salvar_cotacao(
+            {"requisicao_id": str(self.requisicao.id)},
+            self.admin,
+        )
+
+        sucesso, mensagem = cancelar_cotacao(cotacao)
+
+        self.assertTrue(sucesso)
+        self.assertEqual("Cotacao cancelada com sucesso.", mensagem)
+        self.assertEqual(STATUS_COTACAO_CANCELADA, cotacao.status)
+
+    def test_detalhes_mostra_preco_unitario_com_simbolo_real(self):
+        self._liberar_usuario(visualizar=True, editar=True)
+        self._autenticar(self.usuario)
+        _, _, cotacao = salvar_cotacao(
+            {"requisicao_id": str(self.requisicao.id)},
+            self.admin,
+        )
+        salvar_proposta_cotacao(
+            {
+                "requisicao_item_id": str(self.requisicao_item.id),
+                "fornecedor_id": str(self.fornecedor.id),
+                "preco_unitario": "15,50",
+            },
+            cotacao,
+        )
+
+        resposta = self.client.get(f"/suprimentos/cotacoes/{cotacao.id}")
+
+        self.assertEqual(200, resposta.status_code)
+        self.assertIn(b"R$", resposta.data)
+        self.assertIn(b"R$ 15,50", resposta.data)
+        self.assertIn(b"R$ 31,00", resposta.data)
+
+
+if __name__ == "__main__":
+    unittest.main()
