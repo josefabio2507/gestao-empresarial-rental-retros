@@ -14,6 +14,7 @@ def create_app():
 
     from app.models import Usuario
     from app.startup_migrations import executar_migrations_startup
+    from app.startup_seeds import executar_seeds_startup
 
     @login_manager.user_loader
     def load_user(user_id):
@@ -23,6 +24,7 @@ def create_app():
             return None
 
     executar_migrations_startup(app)
+    executar_seeds_startup(app)
 
     # Importação dos Blueprints
     from app.main.routes import main_bp

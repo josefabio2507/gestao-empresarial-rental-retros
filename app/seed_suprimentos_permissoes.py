@@ -1,4 +1,3 @@
-from app import create_app
 from app.extensions import db
 from app.models import Departamento, Modulo
 
@@ -71,9 +70,10 @@ def executar_seed():
     print("Seed de Suprimentos concluido com sucesso.")
 
 
-app = create_app()
-
-
 if __name__ == "__main__":
+    from app import create_app
+
+    app = create_app()
+
     with app.app_context():
         executar_seed()
