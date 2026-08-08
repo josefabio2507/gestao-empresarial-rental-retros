@@ -29,6 +29,10 @@ def indice_existe(inspector, tabela, indice):
     return indice in {item["name"] for item in inspector.get_indexes(tabela)}
 
 
+def modo_recriacao(bind):
+    return "always" if bind.dialect.name == "sqlite" else "auto"
+
+
 def upgrade():
     bind = op.get_bind()
     inspector = sa.inspect(bind)
@@ -36,7 +40,7 @@ def upgrade():
     if "suprimentos_cotacoes" in inspector.get_table_names():
         colunas = {item["name"] for item in inspector.get_columns("suprimentos_cotacoes")}
 
-        with op.batch_alter_table("suprimentos_cotacoes", recreate="always") as batch_op:
+        with op.batch_alter_table("suprimentos_cotacoes", recreate=modo_recriacao(bind)) as batch_op:
             if "enviada_aprovacao_em" not in colunas:
                 batch_op.add_column(sa.Column("enviada_aprovacao_em", sa.DateTime(), nullable=True))
             if "aprovada_em" not in colunas:
@@ -71,7 +75,7 @@ def upgrade():
     if "suprimentos_cotacao_propostas" in inspector.get_table_names():
         colunas = {item["name"] for item in inspector.get_columns("suprimentos_cotacao_propostas")}
 
-        with op.batch_alter_table("suprimentos_cotacao_propostas", recreate="always") as batch_op:
+        with op.batch_alter_table("suprimentos_cotacao_propostas", recreate=modo_recriacao(bind)) as batch_op:
             if "selecionada" not in colunas:
                 batch_op.add_column(
                     sa.Column("selecionada", sa.Boolean(), nullable=False, server_default=sa.false())
@@ -116,7 +120,7 @@ def downgrade():
     inspector = sa.inspect(bind)
 
     if "suprimentos_cotacao_propostas" in inspector.get_table_names():
-        with op.batch_alter_table("suprimentos_cotacao_propostas", recreate="always") as batch_op:
+        with op.batch_alter_table("suprimentos_cotacao_propostas", recreate=modo_recriacao(bind)) as batch_op:
             for nome in [
                 "ix_suprimentos_cotacao_propostas_selecionada_por_usuario_id",
                 "ix_suprimentos_cotacao_propostas_selecionada",
@@ -140,7 +144,7 @@ def downgrade():
     inspector = sa.inspect(bind)
 
     if "suprimentos_cotacoes" in inspector.get_table_names():
-        with op.batch_alter_table("suprimentos_cotacoes", recreate="always") as batch_op:
+        with op.batch_alter_table("suprimentos_cotacoes", recreate=modo_recriacao(bind)) as batch_op:
             for nome in [
                 "ix_suprimentos_cotacoes_reprovada_por_usuario_id",
                 "ix_suprimentos_cotacoes_aprovada_por_usuario_id",
