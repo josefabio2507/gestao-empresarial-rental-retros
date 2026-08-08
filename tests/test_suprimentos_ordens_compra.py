@@ -21,12 +21,15 @@ from app.services.suprimentos_service import (
     STATUS_COTACAO_APROVADA,
     STATUS_ORDEM_COMPRA_CANCELADA,
     STATUS_ORDEM_COMPRA_GERADA,
+    STATUS_ORDEM_COMPRA_PARCIAL,
+    STATUS_ORDEM_COMPRA_RECEBIDA,
     adicionar_item_requisicao,
     aprovar_cotacao,
     cancelar_ordem_compra,
     enviar_cotacao_para_aprovacao,
     enviar_requisicao_compra,
     gerar_ordens_compra_cotacao,
+    registrar_recebimento_ordem_compra,
     salvar_cotacao,
     salvar_proposta_cotacao,
     salvar_requisicao_compra,
@@ -245,6 +248,124 @@ class SuprimentosOrdensCompraTestCase(unittest.TestCase):
         self.assertEqual(STATUS_ORDEM_COMPRA_CANCELADA, ordem.status)
         self.assertEqual("ERRO DE EMISSAO", ordem.motivo_cancelamento)
 
+    def test_registra_recebimento_parcial_e_total_da_ordem(self):
+        cotacao = self._criar_cotacao_aprovada()
+        _, _, ordens = gerar_ordens_compra_cotacao(cotacao, self.admin)
+        ordem = ordens[0]
+        item = ordem.itens[0]
+
+        sucesso, mensagem, recebimento = registrar_recebimento_ordem_compra(
+            {
+                "tipo_documento": "Nota Fiscal",
+                "numero_documento": "nf 123",
+                "data_documento": "2026-08-08",
+                "observacoes": "recebimento parcial",
+                f"quantidade_recebida_{item.id}": "1",
+            },
+            ordem,
+            self.admin,
+        )
+
+        self.assertTrue(sucesso)
+        self.assertEqual("Recebimento registrado com sucesso.", mensagem)
+        self.assertTrue(recebimento.numero.startswith("REC-"))
+        self.assertEqual("Nota Fiscal", recebimento.tipo_documento)
+        self.assertEqual("NF 123", recebimento.numero_documento)
+        self.assertEqual("2026-08-08", recebimento.data_documento.isoformat())
+        self.assertEqual("RECEBIMENTO PARCIAL", recebimento.observacoes)
+        self.assertEqual(STATUS_ORDEM_COMPRA_PARCIAL, ordem.status)
+        self.assertEqual(Decimal("1.000"), item.quantidade_recebida)
+        self.assertEqual(Decimal("1.000"), item.saldo_receber)
+
+        sucesso, mensagem, recebimento = registrar_recebimento_ordem_compra(
+            {
+                "tipo_documento": "Romaneio",
+                "numero_documento": "rom 55",
+                f"quantidade_recebida_{item.id}": "1",
+            },
+            ordem,
+            self.admin,
+        )
+
+        self.assertTrue(sucesso)
+        self.assertEqual(STATUS_ORDEM_COMPRA_RECEBIDA, ordem.status)
+        self.assertEqual(Decimal("2.000"), item.quantidade_recebida)
+        self.assertEqual(Decimal("0.000"), item.saldo_receber)
+
+    def test_bloqueia_recebimento_acima_do_saldo(self):
+        cotacao = self._criar_cotacao_aprovada()
+        _, _, ordens = gerar_ordens_compra_cotacao(cotacao, self.admin)
+        ordem = ordens[0]
+        item = ordem.itens[0]
+
+        sucesso, mensagem, recebimento = registrar_recebimento_ordem_compra(
+            {
+                "tipo_documento": "Cupom Fiscal",
+                "numero_documento": "cf 1",
+                f"quantidade_recebida_{item.id}": "3",
+            },
+            ordem,
+            self.admin,
+        )
+
+        self.assertFalse(sucesso)
+        self.assertEqual("Quantidade recebida nao pode ser maior que o saldo do item.", mensagem)
+        self.assertIsNone(recebimento)
+        self.assertEqual(STATUS_ORDEM_COMPRA_GERADA, ordem.status)
+
+    def test_exige_tipo_e_numero_documento_no_recebimento(self):
+        cotacao = self._criar_cotacao_aprovada()
+        _, _, ordens = gerar_ordens_compra_cotacao(cotacao, self.admin)
+        ordem = ordens[0]
+        item = ordem.itens[0]
+
+        sucesso, mensagem, recebimento = registrar_recebimento_ordem_compra(
+            {
+                "tipo_documento": "Nota Fiscal",
+                f"quantidade_recebida_{item.id}": "1",
+            },
+            ordem,
+            self.admin,
+        )
+
+        self.assertFalse(sucesso)
+        self.assertEqual("Numero do documento e obrigatorio.", mensagem)
+        self.assertIsNone(recebimento)
+
+        sucesso, mensagem, recebimento = registrar_recebimento_ordem_compra(
+            {
+                "numero_documento": "doc 1",
+                f"quantidade_recebida_{item.id}": "1",
+            },
+            ordem,
+            self.admin,
+        )
+
+        self.assertFalse(sucesso)
+        self.assertEqual("Tipo de documento e obrigatorio.", mensagem)
+        self.assertIsNone(recebimento)
+
+    def test_nao_cancela_ordem_com_recebimento(self):
+        cotacao = self._criar_cotacao_aprovada()
+        _, _, ordens = gerar_ordens_compra_cotacao(cotacao, self.admin)
+        ordem = ordens[0]
+        item = ordem.itens[0]
+        registrar_recebimento_ordem_compra(
+            {
+                "tipo_documento": "Outro",
+                "numero_documento": "doc 1",
+                f"quantidade_recebida_{item.id}": "1",
+            },
+            ordem,
+            self.admin,
+        )
+
+        sucesso, mensagem = cancelar_ordem_compra(ordem, "erro")
+
+        self.assertFalse(sucesso)
+        self.assertEqual("Ordem de compra com recebimento nao pode ser cancelada.", mensagem)
+        self.assertEqual(STATUS_ORDEM_COMPRA_PARCIAL, ordem.status)
+
     def test_usuario_sem_permissao_nao_acessa_ordens_compra(self):
         self._autenticar(self.usuario)
 
@@ -268,6 +389,18 @@ class SuprimentosOrdensCompraTestCase(unittest.TestCase):
         self._autenticar(self.usuario)
 
         resposta = self.client.post(f"/suprimentos/ordens-compra/gerar/cotacao/{cotacao.id}")
+
+        self.assertEqual(302, resposta.status_code)
+        self.assertIn("/acesso-negado", resposta.headers["Location"])
+
+    def test_rota_receber_exige_permissao_de_editar(self):
+        cotacao = self._criar_cotacao_aprovada()
+        _, _, ordens = gerar_ordens_compra_cotacao(cotacao, self.admin)
+        ordem = ordens[0]
+        self._liberar_usuario(visualizar=True)
+        self._autenticar(self.usuario)
+
+        resposta = self.client.get(f"/suprimentos/ordens-compra/{ordem.id}/receber")
 
         self.assertEqual(302, resposta.status_code)
         self.assertIn("/acesso-negado", resposta.headers["Location"])

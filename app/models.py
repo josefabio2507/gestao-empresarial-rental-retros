@@ -1416,6 +1416,11 @@ class SuprimentosOrdemCompra(db.Model):
         back_populates="ordem_compra",
         cascade="all, delete-orphan",
     )
+    recebimentos = db.relationship(
+        "SuprimentosRecebimentoCompra",
+        back_populates="ordem_compra",
+        cascade="all, delete-orphan",
+    )
 
     __table_args__ = (
         db.UniqueConstraint(
@@ -1424,7 +1429,7 @@ class SuprimentosOrdemCompra(db.Model):
             name="uq_suprimentos_ordens_compra_cotacao_fornecedor",
         ),
         db.CheckConstraint(
-            "status in ('Gerada', 'Cancelada')",
+            "status in ('Gerada', 'Parcialmente Recebida', 'Recebida', 'Cancelada')",
             name="ck_suprimentos_ordens_compra_status",
         ),
     )
@@ -1436,6 +1441,10 @@ class SuprimentosOrdemCompra(db.Model):
     @property
     def pode_cancelar(self):
         return self.status == "Gerada"
+
+    @property
+    def pode_receber(self):
+        return self.status in ["Gerada", "Parcialmente Recebida"]
 
     def __repr__(self):
         return f"<SuprimentosOrdemCompra {self.numero}>"
@@ -1489,6 +1498,11 @@ class SuprimentosOrdemCompraItem(db.Model):
     proposta = db.relationship("SuprimentosCotacaoProposta")
     requisicao_item = db.relationship("SuprimentosRequisicaoCompraItem")
     item = db.relationship("SuprimentosItem")
+    recebimentos = db.relationship(
+        "SuprimentosRecebimentoCompraItem",
+        back_populates="ordem_compra_item",
+        cascade="all, delete-orphan",
+    )
 
     __table_args__ = (
         db.UniqueConstraint(
@@ -1514,5 +1528,128 @@ class SuprimentosOrdemCompraItem(db.Model):
     def valor_total(self):
         return self.quantidade * self.preco_unitario
 
+    @property
+    def quantidade_recebida(self):
+        return sum(
+            (
+                recebimento.quantidade_recebida
+                for recebimento in self.recebimentos
+                if recebimento.recebimento and recebimento.recebimento.status == "Registrado"
+            ),
+            start=0,
+        )
+
+    @property
+    def saldo_receber(self):
+        return self.quantidade - self.quantidade_recebida
+
     def __repr__(self):
         return f"<SuprimentosOrdemCompraItem ordem={self.ordem_compra_id} item={self.item_id}>"
+
+
+class SuprimentosRecebimentoCompra(db.Model):
+    __tablename__ = "suprimentos_recebimentos_compra"
+
+    id = db.Column(db.Integer, primary_key=True)
+    numero = db.Column(db.String(30), unique=True, nullable=False, index=True)
+    ordem_compra_id = db.Column(
+        db.Integer,
+        db.ForeignKey("suprimentos_ordens_compra.id"),
+        nullable=False,
+        index=True,
+    )
+    recebido_por_usuario_id = db.Column(
+        db.Integer,
+        db.ForeignKey("usuarios.id"),
+        nullable=False,
+        index=True,
+    )
+    status = db.Column(db.String(30), default="Registrado", nullable=False, index=True)
+    tipo_documento = db.Column(db.String(30), nullable=False)
+    numero_documento = db.Column(db.String(80), nullable=False)
+    data_documento = db.Column(db.Date, nullable=True)
+    observacoes = db.Column(db.Text, nullable=True)
+    recebido_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    cancelado_em = db.Column(db.DateTime, nullable=True)
+    motivo_cancelamento = db.Column(db.Text, nullable=True)
+
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    atualizado_em = db.Column(
+        db.DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False
+    )
+
+    ordem_compra = db.relationship("SuprimentosOrdemCompra", back_populates="recebimentos")
+    recebido_por = db.relationship("Usuario")
+    itens = db.relationship(
+        "SuprimentosRecebimentoCompraItem",
+        back_populates="recebimento",
+        cascade="all, delete-orphan",
+    )
+
+    __table_args__ = (
+        db.CheckConstraint(
+            "status in ('Registrado', 'Cancelado')",
+            name="ck_suprimentos_recebimentos_compra_status",
+        ),
+        db.CheckConstraint(
+            "tipo_documento in ('Nota Fiscal', 'Cupom Fiscal', 'Romaneio', 'Outro')",
+            name="ck_suprimentos_recebimentos_tipo_documento",
+        ),
+    )
+
+    def __repr__(self):
+        return f"<SuprimentosRecebimentoCompra {self.numero}>"
+
+
+class SuprimentosRecebimentoCompraItem(db.Model):
+    __tablename__ = "suprimentos_recebimento_compra_itens"
+
+    id = db.Column(db.Integer, primary_key=True)
+    recebimento_id = db.Column(
+        db.Integer,
+        db.ForeignKey("suprimentos_recebimentos_compra.id"),
+        nullable=False,
+        index=True,
+    )
+    ordem_compra_item_id = db.Column(
+        db.Integer,
+        db.ForeignKey("suprimentos_ordem_compra_itens.id"),
+        nullable=False,
+        index=True,
+    )
+    item_id = db.Column(
+        db.Integer,
+        db.ForeignKey("suprimentos_itens.id"),
+        nullable=False,
+        index=True,
+    )
+    item_codigo_snapshot = db.Column(db.String(60), nullable=True)
+    item_descricao_snapshot = db.Column(db.String(220), nullable=False)
+    unidade_medida_snapshot = db.Column(db.String(20), nullable=False)
+    quantidade_recebida = db.Column(db.Numeric(12, 3), nullable=False)
+    observacoes = db.Column(db.Text, nullable=True)
+
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    atualizado_em = db.Column(
+        db.DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False
+    )
+
+    recebimento = db.relationship("SuprimentosRecebimentoCompra", back_populates="itens")
+    ordem_compra_item = db.relationship("SuprimentosOrdemCompraItem", back_populates="recebimentos")
+    item = db.relationship("SuprimentosItem")
+
+    __table_args__ = (
+        db.CheckConstraint(
+            "quantidade_recebida > 0",
+            name="ck_suprimentos_recebimento_itens_quantidade",
+        ),
+    )
+
+    def __repr__(self):
+        return f"<SuprimentosRecebimentoCompraItem recebimento={self.recebimento_id} item={self.item_id}>"
