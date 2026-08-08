@@ -23,6 +23,10 @@ def indice_existe(inspector, tabela, indice):
     return indice in {item["name"] for item in inspector.get_indexes(tabela)}
 
 
+def modo_recriacao(bind):
+    return "always" if bind.dialect.name == "sqlite" else "auto"
+
+
 def upgrade():
     bind = op.get_bind()
     inspector = sa.inspect(bind)
@@ -32,7 +36,7 @@ def upgrade():
 
     colunas = {item["name"] for item in inspector.get_columns("suprimentos_requisicoes_compra")}
 
-    with op.batch_alter_table("suprimentos_requisicoes_compra", recreate="always") as batch_op:
+    with op.batch_alter_table("suprimentos_requisicoes_compra", recreate=modo_recriacao(bind)) as batch_op:
         if "equipe_id" not in colunas:
             batch_op.add_column(sa.Column("equipe_id", sa.Integer(), nullable=True))
         if "veiculo_placa" not in colunas:
@@ -70,7 +74,7 @@ def downgrade():
 
     colunas = {item["name"] for item in inspector.get_columns("suprimentos_requisicoes_compra")}
 
-    with op.batch_alter_table("suprimentos_requisicoes_compra", recreate="always") as batch_op:
+    with op.batch_alter_table("suprimentos_requisicoes_compra", recreate=modo_recriacao(bind)) as batch_op:
         if "equipe_id" in colunas:
             batch_op.drop_constraint("fk_suprimentos_requisicoes_compra_equipe_id", type_="foreignkey")
             batch_op.drop_column("equipe_id")
