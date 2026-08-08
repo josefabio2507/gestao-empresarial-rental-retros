@@ -39,8 +39,15 @@ STATUS_REQUISICAO_RASCUNHO = "Rascunho"
 STATUS_REQUISICAO_ENVIADA = "Enviada para Analise"
 STATUS_REQUISICAO_CANCELADA = "Cancelada"
 STATUS_COTACAO_ABERTA = "Aberta"
+STATUS_COTACAO_EM_APROVACAO = "Em Aprovacao"
+STATUS_COTACAO_APROVADA = "Aprovada"
+STATUS_COTACAO_REPROVADA = "Reprovada"
 STATUS_COTACAO_ENCERRADA = "Encerrada"
 STATUS_COTACAO_CANCELADA = "Cancelada"
+STATUS_COTACAO_EDITAVEIS = {
+    STATUS_COTACAO_ABERTA,
+    STATUS_COTACAO_REPROVADA,
+}
 
 
 def texto(valor):
@@ -966,6 +973,139 @@ def remover_proposta_cotacao(cotacao, proposta):
     db.session.delete(proposta)
     db.session.commit()
     return True, "Proposta removida com sucesso."
+
+
+def menor_preco_item_cotacao(cotacao, requisicao_item_id):
+    valores = [
+        proposta.preco_unitario
+        for proposta in cotacao.propostas
+        if proposta.requisicao_item_id == requisicao_item_id
+    ]
+
+    return min(valores) if valores else None
+
+
+def propostas_selecionadas_por_item(cotacao):
+    return {
+        proposta.requisicao_item_id: proposta
+        for proposta in cotacao.propostas
+        if proposta.selecionada
+    }
+
+
+def selecionar_proposta_vencedora(form_data, cotacao, usuario):
+    if not cotacao.pode_editar:
+        return False, "Somente cotacoes abertas ou reprovadas podem ter vencedor selecionado.", None
+
+    proposta_id = inteiro_ou_none(form_data.get("proposta_id"))
+    justificativa = texto_maiusculo(form_data.get("justificativa_selecao"))
+
+    if not proposta_id:
+        return False, "Selecione uma proposta.", None
+
+    proposta = SuprimentosCotacaoProposta.query.filter_by(
+        id=proposta_id,
+        cotacao_id=cotacao.id,
+    ).first()
+
+    if not proposta:
+        return False, "Proposta nao encontrada nesta cotacao.", None
+
+    menor_preco = menor_preco_item_cotacao(cotacao, proposta.requisicao_item_id)
+
+    if menor_preco is None:
+        return False, "Nao ha propostas para comparar neste item.", None
+
+    escolha_fora_menor_preco = proposta.preco_unitario > menor_preco
+
+    if escolha_fora_menor_preco and not justificativa:
+        return False, "Informe a justificativa para escolher proposta acima do menor preco.", None
+
+    for proposta_item in cotacao.propostas:
+        if proposta_item.requisicao_item_id == proposta.requisicao_item_id:
+            proposta_item.selecionada = False
+            proposta_item.justificativa_selecao = None
+            proposta_item.selecionada_por_usuario_id = None
+            proposta_item.selecionada_em = None
+
+    proposta.selecionada = True
+    proposta.justificativa_selecao = justificativa
+    proposta.selecionada_por_usuario_id = usuario.id
+    proposta.selecionada_em = datetime.utcnow()
+
+    if cotacao.status == STATUS_COTACAO_REPROVADA:
+        cotacao.status = STATUS_COTACAO_ABERTA
+        cotacao.reprovada_em = None
+        cotacao.reprovada_por_usuario_id = None
+        cotacao.observacoes_aprovacao = None
+
+    db.session.commit()
+
+    return True, "Proposta vencedora selecionada com sucesso.", proposta
+
+
+def enviar_cotacao_para_aprovacao(cotacao, usuario):
+    if not cotacao.pode_editar:
+        return False, "Somente cotacoes abertas ou reprovadas podem ser enviadas para aprovacao."
+
+    if not cotacao.propostas:
+        return False, "Registre propostas antes de enviar para aprovacao."
+
+    selecionadas = propostas_selecionadas_por_item(cotacao)
+    itens_sem_vencedor = [
+        item
+        for item in cotacao.requisicao.itens
+        if item.id not in selecionadas
+    ]
+
+    if itens_sem_vencedor:
+        return False, "Selecione uma proposta vencedora para todos os itens antes de enviar para aprovacao."
+
+    cotacao.status = STATUS_COTACAO_EM_APROVACAO
+    cotacao.enviada_aprovacao_em = datetime.utcnow()
+    cotacao.aprovada_em = None
+    cotacao.aprovada_por_usuario_id = None
+    cotacao.reprovada_em = None
+    cotacao.reprovada_por_usuario_id = None
+    cotacao.observacoes_aprovacao = None
+    db.session.commit()
+
+    return True, "Cotacao enviada para aprovacao com sucesso."
+
+
+def aprovar_cotacao(cotacao, usuario, form_data=None):
+    if cotacao.status != STATUS_COTACAO_EM_APROVACAO:
+        return False, "Somente cotacoes em aprovacao podem ser aprovadas."
+
+    cotacao.status = STATUS_COTACAO_APROVADA
+    cotacao.aprovada_em = datetime.utcnow()
+    cotacao.aprovada_por_usuario_id = usuario.id
+    cotacao.reprovada_em = None
+    cotacao.reprovada_por_usuario_id = None
+    cotacao.observacoes_aprovacao = texto_maiusculo((form_data or {}).get("observacoes_aprovacao"))
+    db.session.commit()
+
+    return True, "Cotacao aprovada com sucesso."
+
+
+def reprovar_cotacao(cotacao, usuario, form_data=None):
+    if cotacao.status != STATUS_COTACAO_EM_APROVACAO:
+        return False, "Somente cotacoes em aprovacao podem ser reprovadas."
+
+    justificativa = texto_maiusculo((form_data or {}).get("observacoes_aprovacao"))
+
+    if not justificativa:
+        return False, "Informe a justificativa da reprovacao."
+
+    cotacao.status = STATUS_COTACAO_REPROVADA
+    cotacao.reprovada_em = datetime.utcnow()
+    cotacao.reprovada_por_usuario_id = usuario.id
+    cotacao.aprovada_em = None
+    cotacao.aprovada_por_usuario_id = None
+    cotacao.observacoes_aprovacao = justificativa
+    db.session.commit()
+
+    return True, "Cotacao reprovada e liberada para ajustes."
 
 
 def encerrar_cotacao(cotacao):

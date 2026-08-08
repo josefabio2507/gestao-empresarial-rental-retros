@@ -6,26 +6,36 @@ from app.models import SuprimentosCotacao, SuprimentosCotacaoProposta
 from app.services.logs_service import registrar_log
 from app.services.suprimentos_service import (
     STATUS_COTACAO_ABERTA,
+    STATUS_COTACAO_APROVADA,
     STATUS_COTACAO_CANCELADA,
+    STATUS_COTACAO_EM_APROVACAO,
     STATUS_COTACAO_ENCERRADA,
+    STATUS_COTACAO_REPROVADA,
+    aprovar_cotacao,
     buscar_cotacoes,
     buscar_por_id,
     cancelar_cotacao,
     encerrar_cotacao,
+    enviar_cotacao_para_aprovacao,
     formatar_moeda_brl,
     formatar_decimal_brasil,
     fornecedores_disponiveis_para_requisicao_item,
     montar_mapa_comparativo_cotacao,
+    reprovar_cotacao,
     requisicoes_disponiveis_para_cotacao,
     remover_proposta_cotacao,
     salvar_cotacao,
     salvar_proposta_cotacao,
+    selecionar_proposta_vencedora,
 )
 from app.suprimentos.cotacoes import suprimentos_cotacoes_bp
 
 
 STATUS_COTACOES = [
     STATUS_COTACAO_ABERTA,
+    STATUS_COTACAO_EM_APROVACAO,
+    STATUS_COTACAO_APROVADA,
+    STATUS_COTACAO_REPROVADA,
     STATUS_COTACAO_ENCERRADA,
     STATUS_COTACAO_CANCELADA,
 ]
@@ -41,6 +51,85 @@ def listar():
         status_cotacoes=STATUS_COTACOES,
         filtros=request.args,
     )
+
+
+@suprimentos_cotacoes_bp.route("/<int:cotacao_id>/selecionar-vencedor", methods=["POST"])
+@login_required
+@module_permission_required("suprimentos", "cotacoes", "editar")
+def selecionar_vencedor(cotacao_id):
+    cotacao = buscar_por_id(SuprimentosCotacao, cotacao_id)
+
+    if not cotacao:
+        flash("Cotacao nao encontrada.", "warning")
+        return redirect(url_for("suprimentos_cotacoes.listar"))
+
+    sucesso, mensagem, proposta = selecionar_proposta_vencedora(request.form, cotacao, current_user)
+
+    if sucesso:
+        registrar_log(
+            "suprimentos_cotacao_vencedor_selecionado",
+            f"Proposta vencedora selecionada. Cotacao ID: {cotacao.id}. Proposta ID: {proposta.id}.",
+        )
+
+    flash(mensagem, "success" if sucesso else "danger")
+    return redirect(url_for("suprimentos_cotacoes.mapa_comparativo", cotacao_id=cotacao.id))
+
+
+@suprimentos_cotacoes_bp.route("/<int:cotacao_id>/enviar-aprovacao", methods=["POST"])
+@login_required
+@module_permission_required("suprimentos", "cotacoes", "editar")
+def enviar_aprovacao(cotacao_id):
+    cotacao = buscar_por_id(SuprimentosCotacao, cotacao_id)
+
+    if not cotacao:
+        flash("Cotacao nao encontrada.", "warning")
+        return redirect(url_for("suprimentos_cotacoes.listar"))
+
+    sucesso, mensagem = enviar_cotacao_para_aprovacao(cotacao, current_user)
+
+    if sucesso:
+        registrar_log("suprimentos_cotacao_enviada_aprovacao", f"Cotacao enviada para aprovacao. ID: {cotacao.id}.")
+
+    flash(mensagem, "success" if sucesso else "danger")
+    return redirect(url_for("suprimentos_cotacoes.mapa_comparativo", cotacao_id=cotacao.id))
+
+
+@suprimentos_cotacoes_bp.route("/<int:cotacao_id>/aprovar", methods=["POST"])
+@login_required
+@module_permission_required("suprimentos", "cotacoes", "aprovar")
+def aprovar(cotacao_id):
+    cotacao = buscar_por_id(SuprimentosCotacao, cotacao_id)
+
+    if not cotacao:
+        flash("Cotacao nao encontrada.", "warning")
+        return redirect(url_for("suprimentos_cotacoes.listar"))
+
+    sucesso, mensagem = aprovar_cotacao(cotacao, current_user, request.form)
+
+    if sucesso:
+        registrar_log("suprimentos_cotacao_aprovada", f"Cotacao aprovada. ID: {cotacao.id}.")
+
+    flash(mensagem, "success" if sucesso else "danger")
+    return redirect(url_for("suprimentos_cotacoes.mapa_comparativo", cotacao_id=cotacao.id))
+
+
+@suprimentos_cotacoes_bp.route("/<int:cotacao_id>/reprovar", methods=["POST"])
+@login_required
+@module_permission_required("suprimentos", "cotacoes", "aprovar")
+def reprovar(cotacao_id):
+    cotacao = buscar_por_id(SuprimentosCotacao, cotacao_id)
+
+    if not cotacao:
+        flash("Cotacao nao encontrada.", "warning")
+        return redirect(url_for("suprimentos_cotacoes.listar"))
+
+    sucesso, mensagem = reprovar_cotacao(cotacao, current_user, request.form)
+
+    if sucesso:
+        registrar_log("suprimentos_cotacao_reprovada", f"Cotacao reprovada. ID: {cotacao.id}.")
+
+    flash(mensagem, "success" if sucesso else "danger")
+    return redirect(url_for("suprimentos_cotacoes.mapa_comparativo", cotacao_id=cotacao.id))
 
 
 @suprimentos_cotacoes_bp.route("/nova", methods=["GET", "POST"])

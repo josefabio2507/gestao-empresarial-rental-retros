@@ -1235,6 +1235,34 @@ textarea:focus {
     flex-wrap: wrap;
 }
 
+.comparison-select-cell {
+    min-width: 220px;
+}
+
+.comparison-select-cell form,
+.approval-form {
+    display: grid;
+    gap: 8px;
+}
+
+.comparison-select-cell textarea {
+    min-height: 58px;
+    padding: 8px;
+    font-size: 13px;
+}
+
+.comparison-select-cell small {
+    display: block;
+    color: var(--rr-muted);
+    line-height: 1.35;
+}
+
+.approval-form {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--rr-border);
+}
+
 @media (max-width: 640px) {
     .input-action-row {
         align-items: stretch;

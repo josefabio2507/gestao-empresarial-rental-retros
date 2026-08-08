@@ -1214,6 +1214,22 @@ class SuprimentosCotacao(db.Model):
     observacoes = db.Column(db.Text, nullable=True)
     aberta_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     encerrada_em = db.Column(db.DateTime, nullable=True)
+    enviada_aprovacao_em = db.Column(db.DateTime, nullable=True)
+    aprovada_em = db.Column(db.DateTime, nullable=True)
+    aprovada_por_usuario_id = db.Column(
+        db.Integer,
+        db.ForeignKey("usuarios.id"),
+        nullable=True,
+        index=True,
+    )
+    reprovada_em = db.Column(db.DateTime, nullable=True)
+    reprovada_por_usuario_id = db.Column(
+        db.Integer,
+        db.ForeignKey("usuarios.id"),
+        nullable=True,
+        index=True,
+    )
+    observacoes_aprovacao = db.Column(db.Text, nullable=True)
 
     criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     atualizado_em = db.Column(
@@ -1224,7 +1240,9 @@ class SuprimentosCotacao(db.Model):
     )
 
     requisicao = db.relationship("SuprimentosRequisicaoCompra")
-    criado_por = db.relationship("Usuario")
+    criado_por = db.relationship("Usuario", foreign_keys=[criado_por_usuario_id])
+    aprovada_por = db.relationship("Usuario", foreign_keys=[aprovada_por_usuario_id])
+    reprovada_por = db.relationship("Usuario", foreign_keys=[reprovada_por_usuario_id])
     propostas = db.relationship(
         "SuprimentosCotacaoProposta",
         back_populates="cotacao",
@@ -1233,14 +1251,14 @@ class SuprimentosCotacao(db.Model):
 
     __table_args__ = (
         db.CheckConstraint(
-            "status in ('Aberta', 'Encerrada', 'Cancelada')",
+            "status in ('Aberta', 'Em Aprovacao', 'Aprovada', 'Reprovada', 'Encerrada', 'Cancelada')",
             name="ck_suprimentos_cotacoes_status",
         ),
     )
 
     @property
     def pode_editar(self):
-        return self.status == "Aberta"
+        return self.status in ["Aberta", "Reprovada"]
 
     def __repr__(self):
         return f"<SuprimentosCotacao {self.numero}>"
@@ -1282,6 +1300,15 @@ class SuprimentosCotacaoProposta(db.Model):
     prazo_entrega_dias = db.Column(db.Integer, nullable=True)
     condicao_pagamento = db.Column(db.String(160), nullable=True)
     observacoes = db.Column(db.Text, nullable=True)
+    selecionada = db.Column(db.Boolean, default=False, nullable=False, index=True)
+    justificativa_selecao = db.Column(db.Text, nullable=True)
+    selecionada_por_usuario_id = db.Column(
+        db.Integer,
+        db.ForeignKey("usuarios.id"),
+        nullable=True,
+        index=True,
+    )
+    selecionada_em = db.Column(db.DateTime, nullable=True)
     ativo = db.Column(db.Boolean, default=True, nullable=False, index=True)
 
     criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
@@ -1296,6 +1323,7 @@ class SuprimentosCotacaoProposta(db.Model):
     fornecedor = db.relationship("SuprimentosFornecedor")
     requisicao_item = db.relationship("SuprimentosRequisicaoCompraItem")
     item = db.relationship("SuprimentosItem")
+    selecionada_por = db.relationship("Usuario")
 
     __table_args__ = (
         db.UniqueConstraint(
