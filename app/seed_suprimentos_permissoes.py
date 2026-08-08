@@ -17,6 +17,7 @@ SUPRIMENTOS = {
         ("Fornecedor x Item", "fornecedor_itens", "Vinculo comercial entre fornecedores e itens"),
         ("Requisicoes de Compra", "requisicoes_compra", "Solicitacao interna de compras e servicos"),
         ("Cotacoes", "cotacoes", "Registro de propostas de fornecedores para requisicoes enviadas"),
+        ("Ordens de Compra", "ordens_compra", "Geracao e consulta de ordens de compra aprovadas"),
     ],
 }
 

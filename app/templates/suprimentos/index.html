@@ -31,6 +31,8 @@
                 {% set destino = url_for('suprimentos_requisicoes.listar') %}
             {% elif slug == "cotacoes" %}
                 {% set destino = url_for('suprimentos_cotacoes.listar') %}
+            {% elif slug == "ordens_compra" %}
+                {% set destino = url_for('suprimentos_ordens_compra.listar') %}
             {% else %}
                 {% set destino = None %}
             {% endif %}
