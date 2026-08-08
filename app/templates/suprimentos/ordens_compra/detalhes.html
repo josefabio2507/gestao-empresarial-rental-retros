@@ -33,6 +33,8 @@
                     <th>Codigo</th>
                     <th>Item</th>
                     <th>Qtd.</th>
+                    <th>Recebido</th>
+                    <th>Saldo</th>
                     <th>Unidade</th>
                     <th>Preco unit.</th>
                     <th>Total</th>
@@ -46,6 +48,8 @@
                         <td>{{ item.item_codigo_snapshot or "-" }}</td>
                         <td>{{ item.item_descricao_snapshot }}</td>
                         <td>{{ formatar_decimal_brasil(item.quantidade) }}</td>
+                        <td>{{ formatar_decimal_brasil(item.quantidade_recebida) }}</td>
+                        <td>{{ formatar_decimal_brasil(item.saldo_receber) }}</td>
                         <td>{{ item.unidade_medida_snapshot }}</td>
                         <td>{{ formatar_moeda_brl(item.preco_unitario) }}</td>
                         <td>{{ formatar_moeda_brl(item.valor_total) }}</td>
@@ -53,7 +57,43 @@
                         <td>{{ item.observacoes or "-" }}</td>
                     </tr>
                 {% else %}
-                    <tr><td class="empty-state" colspan="8">Nenhum item encontrado.</td></tr>
+                    <tr><td class="empty-state" colspan="10">Nenhum item encontrado.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="table-card table-responsive">
+        <h2>Recebimentos</h2>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Numero</th>
+                    <th>Tipo doc.</th>
+                    <th>Numero doc.</th>
+                    <th>Data doc.</th>
+                    <th>Recebido por</th>
+                    <th>Data</th>
+                    <th>Status</th>
+                    <th>Itens</th>
+                    <th>Observacoes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for recebimento in ordem.recebimentos %}
+                    <tr>
+                        <td>{{ recebimento.numero }}</td>
+                        <td>{{ recebimento.tipo_documento }}</td>
+                        <td>{{ recebimento.numero_documento }}</td>
+                        <td>{{ recebimento.data_documento.strftime("%d/%m/%Y") if recebimento.data_documento else "-" }}</td>
+                        <td>{{ recebimento.recebido_por.nome }}</td>
+                        <td>{{ recebimento.recebido_em.strftime("%d/%m/%Y %H:%M") }}</td>
+                        <td><span class="badge badge-success">{{ recebimento.status }}</span></td>
+                        <td>{{ recebimento.itens|length }}</td>
+                        <td>{{ recebimento.observacoes or "-" }}</td>
+                    </tr>
+                {% else %}
+                    <tr><td class="empty-state" colspan="9">Nenhum recebimento registrado.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
@@ -61,10 +101,13 @@
 
     <div class="details-card">
         <p><strong>Total da ordem:</strong> {{ formatar_moeda_brl(ordem.valor_total) }}</p>
-        <p><strong>Proxima etapa:</strong> recebimento fisico e entrada em estoque serao tratados nas proximas missoes.</p>
+        <p><strong>Proxima etapa:</strong> entrada em estoque e financeiro serao tratados nas proximas missoes.</p>
     </div>
 
     <div class="page-actions">
+        {% if ordem.pode_receber %}
+            <a class="btn btn-primary" href="{{ url_for('suprimentos_ordens_compra.receber', ordem_id=ordem.id) }}">Registrar recebimento</a>
+        {% endif %}
         {% if ordem.pode_cancelar %}
             <form class="inline-form" method="POST" action="{{ url_for('suprimentos_ordens_compra.cancelar', ordem_id=ordem.id) }}">
                 <input type="hidden" name="motivo_cancelamento" value="CANCELAMENTO MANUAL">

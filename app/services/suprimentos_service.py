@@ -24,6 +24,8 @@ from app.models import (
     SuprimentosRequisicaoCompraItem,
     SuprimentosOrdemCompra,
     SuprimentosOrdemCompraItem,
+    SuprimentosRecebimentoCompra,
+    SuprimentosRecebimentoCompraItem,
     SuprimentosUnidadeMedida,
 )
 
@@ -52,7 +54,17 @@ STATUS_COTACAO_EDITAVEIS = {
     STATUS_COTACAO_REPROVADA,
 }
 STATUS_ORDEM_COMPRA_GERADA = "Gerada"
+STATUS_ORDEM_COMPRA_PARCIAL = "Parcialmente Recebida"
+STATUS_ORDEM_COMPRA_RECEBIDA = "Recebida"
 STATUS_ORDEM_COMPRA_CANCELADA = "Cancelada"
+STATUS_RECEBIMENTO_COMPRA_REGISTRADO = "Registrado"
+STATUS_RECEBIMENTO_COMPRA_CANCELADO = "Cancelado"
+TIPOS_DOCUMENTO_RECEBIMENTO = {
+    "Nota Fiscal",
+    "Cupom Fiscal",
+    "Romaneio",
+    "Outro",
+}
 
 
 def texto(valor):
@@ -158,6 +170,21 @@ def inteiro_ou_none(valor):
         return int(valor)
     except ValueError:
         return None
+
+
+def data_ou_none(valor):
+    valor = texto(valor)
+
+    if not valor:
+        return None
+
+    for formato in ["%Y-%m-%d", "%d/%m/%Y"]:
+        try:
+            return datetime.strptime(valor, formato).date()
+        except ValueError:
+            continue
+
+    return None
 
 
 def bool_form(valor):
@@ -878,6 +905,27 @@ def gerar_numero_ordem_compra():
     return f"{prefixo}{sequencial:04d}"
 
 
+def gerar_numero_recebimento_compra():
+    ano = datetime.utcnow().year
+    prefixo = f"REC-{ano}-"
+    ultimo = (
+        SuprimentosRecebimentoCompra.query
+        .filter(SuprimentosRecebimentoCompra.numero.like(f"{prefixo}%"))
+        .order_by(SuprimentosRecebimentoCompra.numero.desc())
+        .first()
+    )
+
+    if not ultimo:
+        return f"{prefixo}0001"
+
+    try:
+        sequencial = int(ultimo.numero.rsplit("-", 1)[1]) + 1
+    except (IndexError, ValueError):
+        sequencial = 1
+
+    return f"{prefixo}{sequencial:04d}"
+
+
 def buscar_ordens_compra(numero=None, status=None, fornecedor_id=None):
     query = SuprimentosOrdemCompra.query
     numero = texto(numero).upper()
@@ -1271,9 +1319,105 @@ def gerar_ordens_compra_cotacao(cotacao, usuario, form_data=None):
     return True, "Ordem de compra gerada com sucesso.", ordens
 
 
+def atualizar_status_recebimento_ordem(ordem_compra):
+    if ordem_compra.status == STATUS_ORDEM_COMPRA_CANCELADA:
+        return
+
+    if not ordem_compra.itens:
+        ordem_compra.status = STATUS_ORDEM_COMPRA_GERADA
+        return
+
+    saldos = [item.saldo_receber for item in ordem_compra.itens]
+    quantidades_recebidas = [item.quantidade_recebida for item in ordem_compra.itens]
+
+    if all(saldo <= 0 for saldo in saldos):
+        ordem_compra.status = STATUS_ORDEM_COMPRA_RECEBIDA
+    elif any(quantidade > 0 for quantidade in quantidades_recebidas):
+        ordem_compra.status = STATUS_ORDEM_COMPRA_PARCIAL
+    else:
+        ordem_compra.status = STATUS_ORDEM_COMPRA_GERADA
+
+
+def registrar_recebimento_ordem_compra(form_data, ordem_compra, usuario):
+    if not ordem_compra.pode_receber:
+        return False, "Somente ordens geradas ou parcialmente recebidas podem receber itens.", None
+
+    tipo_documento = texto(form_data.get("tipo_documento"))
+    numero_documento = texto_maiusculo(form_data.get("numero_documento"))
+    data_documento = data_ou_none(form_data.get("data_documento"))
+    observacoes = texto_maiusculo(form_data.get("observacoes")) or None
+    itens_recebidos = []
+
+    if tipo_documento not in TIPOS_DOCUMENTO_RECEBIMENTO:
+        return False, "Tipo de documento e obrigatorio.", None
+
+    if not numero_documento:
+        return False, "Numero do documento e obrigatorio.", None
+
+    if texto(form_data.get("data_documento")) and data_documento is None:
+        return False, "Data do documento invalida.", None
+
+    for item in ordem_compra.itens:
+        quantidade = decimal_ou_none(form_data.get(f"quantidade_recebida_{item.id}"))
+        observacao_item = texto_maiusculo(form_data.get(f"observacoes_item_{item.id}")) or None
+
+        if quantidade is None or quantidade == 0:
+            continue
+
+        if quantidade < 0:
+            return False, "Quantidade recebida nao pode ser negativa.", None
+
+        if quantidade > item.saldo_receber:
+            return False, "Quantidade recebida nao pode ser maior que o saldo do item.", None
+
+        itens_recebidos.append((item, quantidade, observacao_item))
+
+    if not itens_recebidos:
+        return False, "Informe quantidade recebida para ao menos um item.", None
+
+    recebimento = SuprimentosRecebimentoCompra(
+        numero=gerar_numero_recebimento_compra(),
+        ordem_compra_id=ordem_compra.id,
+        recebido_por_usuario_id=usuario.id,
+        status=STATUS_RECEBIMENTO_COMPRA_REGISTRADO,
+        tipo_documento=tipo_documento,
+        numero_documento=numero_documento,
+        data_documento=data_documento,
+        observacoes=observacoes,
+        recebido_em=datetime.utcnow(),
+    )
+    db.session.add(recebimento)
+    db.session.flush()
+
+    for ordem_item, quantidade, observacao_item in itens_recebidos:
+        db.session.add(
+            SuprimentosRecebimentoCompraItem(
+                recebimento_id=recebimento.id,
+                ordem_compra_item_id=ordem_item.id,
+                item_id=ordem_item.item_id,
+                item_codigo_snapshot=ordem_item.item_codigo_snapshot,
+                item_descricao_snapshot=ordem_item.item_descricao_snapshot,
+                unidade_medida_snapshot=ordem_item.unidade_medida_snapshot,
+                quantidade_recebida=quantidade,
+                observacoes=observacao_item,
+            )
+        )
+
+    db.session.flush()
+    for ordem_item in ordem_compra.itens:
+        db.session.expire(ordem_item, ["recebimentos"])
+    atualizar_status_recebimento_ordem(ordem_compra)
+    db.session.commit()
+
+    return True, "Recebimento registrado com sucesso.", recebimento
+
+
 def cancelar_ordem_compra(ordem_compra, motivo=None):
     if ordem_compra.status == STATUS_ORDEM_COMPRA_CANCELADA:
         return False, "Ordem de compra ja esta cancelada."
+
+    if ordem_compra.status in [STATUS_ORDEM_COMPRA_PARCIAL, STATUS_ORDEM_COMPRA_RECEBIDA]:
+        return False, "Ordem de compra com recebimento nao pode ser cancelada."
 
     ordem_compra.status = STATUS_ORDEM_COMPRA_CANCELADA
     ordem_compra.cancelada_em = datetime.utcnow()

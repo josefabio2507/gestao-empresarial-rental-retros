@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Suprimentos</span>
+            <h1>Receber {{ ordem.numero }}</h1>
+            <p>Registre as quantidades recebidas fisicamente. Estoque e financeiro ficam para as proximas missoes.</p>
+        </div>
+        <a class="btn btn-secondary" href="{{ url_for('suprimentos_ordens_compra.detalhes', ordem_id=ordem.id) }}">Voltar</a>
+    </div>
+
+    <form class="form-card" method="POST">
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="tipo_documento">Tipo de documento</label>
+                <select id="tipo_documento" name="tipo_documento" required>
+                    <option value="">Selecione</option>
+                    <option value="Nota Fiscal">Nota Fiscal</option>
+                    <option value="Cupom Fiscal">Cupom Fiscal</option>
+                    <option value="Romaneio">Romaneio</option>
+                    <option value="Outro">Outro</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="numero_documento">Numero do documento</label>
+                <input id="numero_documento" name="numero_documento" maxlength="80" required data-uppercase>
+            </div>
+            <div class="form-group">
+                <label for="data_documento">Data do documento</label>
+                <input id="data_documento" name="data_documento" type="date">
+            </div>
+            <div class="form-group">
+                <label for="observacoes">Observacoes do recebimento</label>
+                <input id="observacoes" name="observacoes" data-uppercase>
+            </div>
+        </div>
+
+        <div class="table-card table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Item</th>
+                        <th>Comprado</th>
+                        <th>Recebido</th>
+                        <th>Saldo</th>
+                        <th>Receber agora</th>
+                        <th>Observacoes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in ordem.itens %}
+                        <tr>
+                            <td>{{ item.item_descricao_snapshot }}</td>
+                            <td>{{ formatar_decimal_brasil(item.quantidade) }} {{ item.unidade_medida_snapshot }}</td>
+                            <td>{{ formatar_decimal_brasil(item.quantidade_recebida) }}</td>
+                            <td>{{ formatar_decimal_brasil(item.saldo_receber) }}</td>
+                            <td>
+                                <input
+                                    name="quantidade_recebida_{{ item.id }}"
+                                    inputmode="decimal"
+                                    value="{{ formatar_decimal_brasil(item.saldo_receber) if item.saldo_receber > 0 else '' }}"
+                                    {% if item.saldo_receber <= 0 %}disabled{% endif %}
+                                >
+                            </td>
+                            <td>
+                                <input name="observacoes_item_{{ item.id }}" data-uppercase {% if item.saldo_receber <= 0 %}disabled{% endif %}>
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr><td class="empty-state" colspan="6">Nenhum item disponivel para recebimento.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Registrar recebimento</button>
+            <a class="btn btn-secondary" href="{{ url_for('suprimentos_ordens_compra.detalhes', ordem_id=ordem.id) }}">Cancelar</a>
+        </div>
+    </form>
+</section>
+{% endblock %}

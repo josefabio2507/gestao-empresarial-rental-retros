@@ -7,6 +7,8 @@ from app.services.logs_service import registrar_log
 from app.services.suprimentos_service import (
     STATUS_ORDEM_COMPRA_CANCELADA,
     STATUS_ORDEM_COMPRA_GERADA,
+    STATUS_ORDEM_COMPRA_PARCIAL,
+    STATUS_ORDEM_COMPRA_RECEBIDA,
     buscar_fornecedores_ativos,
     buscar_ordens_compra,
     buscar_por_id,
@@ -14,12 +16,15 @@ from app.services.suprimentos_service import (
     formatar_decimal_brasil,
     formatar_moeda_brl,
     gerar_ordens_compra_cotacao,
+    registrar_recebimento_ordem_compra,
 )
 from app.suprimentos.ordens_compra import suprimentos_ordens_compra_bp
 
 
 STATUS_ORDENS_COMPRA = [
     STATUS_ORDEM_COMPRA_GERADA,
+    STATUS_ORDEM_COMPRA_PARCIAL,
+    STATUS_ORDEM_COMPRA_RECEBIDA,
     STATUS_ORDEM_COMPRA_CANCELADA,
 ]
 
@@ -57,6 +62,40 @@ def detalhes(ordem_id):
         ordem=ordem,
         formatar_decimal_brasil=formatar_decimal_brasil,
         formatar_moeda_brl=formatar_moeda_brl,
+    )
+
+
+@suprimentos_ordens_compra_bp.route("/<int:ordem_id>/receber", methods=["GET", "POST"])
+@login_required
+@module_permission_required("suprimentos", "ordens_compra", "editar")
+def receber(ordem_id):
+    ordem = buscar_por_id(SuprimentosOrdemCompra, ordem_id)
+
+    if not ordem:
+        flash("Ordem de compra nao encontrada.", "warning")
+        return redirect(url_for("suprimentos_ordens_compra.listar"))
+
+    if request.method == "POST":
+        sucesso, mensagem, recebimento = registrar_recebimento_ordem_compra(
+            request.form,
+            ordem,
+            current_user,
+        )
+
+        if sucesso:
+            registrar_log(
+                "suprimentos_recebimento_compra_registrado",
+                f"Recebimento registrado. ID: {recebimento.id}. Ordem ID: {ordem.id}.",
+            )
+            flash(mensagem, "success")
+            return redirect(url_for("suprimentos_ordens_compra.detalhes", ordem_id=ordem.id))
+
+        flash(mensagem, "danger")
+
+    return render_template(
+        "suprimentos/ordens_compra/receber.html",
+        ordem=ordem,
+        formatar_decimal_brasil=formatar_decimal_brasil,
     )
 
 
