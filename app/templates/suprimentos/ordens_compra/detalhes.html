@@ -86,7 +86,7 @@
                         <td>{{ recebimento.tipo_documento }}</td>
                         <td>{{ recebimento.numero_documento }}</td>
                         <td>{{ recebimento.data_documento.strftime("%d/%m/%Y") if recebimento.data_documento else "-" }}</td>
-                        <td>{{ recebimento.recebido_por.nome }}</td>
+                        <td>{{ recebimento.recebido_por.nome if recebimento.recebido_por else "-" }}</td>
                         <td>{{ recebimento.recebido_em.strftime("%d/%m/%Y %H:%M") }}</td>
                         <td><span class="badge badge-success">{{ recebimento.status }}</span></td>
                         <td>{{ recebimento.itens|length }}</td>

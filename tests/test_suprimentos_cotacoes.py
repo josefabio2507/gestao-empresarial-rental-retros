@@ -25,6 +25,8 @@ from app.services.suprimentos_service import (
     STATUS_COTACAO_EM_APROVACAO,
     STATUS_COTACAO_ENCERRADA,
     STATUS_COTACAO_REPROVADA,
+    STATUS_REQUISICAO_APROVADA,
+    STATUS_REQUISICAO_CANCELADA,
     STATUS_REQUISICAO_ENVIADA,
     adicionar_item_requisicao,
     aprovar_cotacao,
@@ -218,6 +220,7 @@ class SuprimentosCotacoesTestCase(unittest.TestCase):
         self.assertTrue(sucesso)
         self.assertEqual("Cotacao salva com sucesso.", mensagem)
         self.assertEqual(STATUS_COTACAO_ABERTA, cotacao.status)
+        self.assertEqual(STATUS_REQUISICAO_ENVIADA, self.requisicao.status)
         self.assertEqual("RODADA INICIAL", cotacao.observacoes)
         self.assertTrue(cotacao.numero.startswith("COT-"))
 
@@ -319,6 +322,7 @@ class SuprimentosCotacoesTestCase(unittest.TestCase):
         self.assertTrue(sucesso)
         self.assertEqual("Cotacao encerrada com sucesso.", mensagem)
         self.assertEqual(STATUS_COTACAO_ENCERRADA, cotacao.status)
+        self.assertEqual(STATUS_REQUISICAO_APROVADA, cotacao.requisicao.status)
 
     def test_cancela_cotacao(self):
         _, _, cotacao = salvar_cotacao(
@@ -331,6 +335,7 @@ class SuprimentosCotacoesTestCase(unittest.TestCase):
         self.assertTrue(sucesso)
         self.assertEqual("Cotacao cancelada com sucesso.", mensagem)
         self.assertEqual(STATUS_COTACAO_CANCELADA, cotacao.status)
+        self.assertEqual(STATUS_REQUISICAO_CANCELADA, cotacao.requisicao.status)
 
     def test_detalhes_mostra_preco_unitario_com_simbolo_real(self):
         self._liberar_usuario(visualizar=True, editar=True)
@@ -504,6 +509,7 @@ class SuprimentosCotacoesTestCase(unittest.TestCase):
         self.assertTrue(sucesso)
         self.assertEqual("Cotacao enviada para aprovacao com sucesso.", mensagem)
         self.assertEqual(STATUS_COTACAO_EM_APROVACAO, cotacao.status)
+        self.assertEqual(STATUS_REQUISICAO_ENVIADA, cotacao.requisicao.status)
         self.assertIsNotNone(cotacao.enviada_aprovacao_em)
 
     def test_aprova_cotacao_sem_gerar_ordem_de_compra(self):
@@ -531,6 +537,7 @@ class SuprimentosCotacoesTestCase(unittest.TestCase):
         self.assertTrue(sucesso)
         self.assertEqual("Cotacao aprovada com sucesso.", mensagem)
         self.assertEqual(STATUS_COTACAO_APROVADA, cotacao.status)
+        self.assertEqual(STATUS_REQUISICAO_APROVADA, cotacao.requisicao.status)
         self.assertEqual(self.admin.id, cotacao.aprovada_por_usuario_id)
         self.assertEqual("APROVADO DENTRO DA ALCADA", cotacao.observacoes_aprovacao)
 
@@ -564,7 +571,42 @@ class SuprimentosCotacoesTestCase(unittest.TestCase):
         self.assertTrue(sucesso)
         self.assertEqual("Cotacao reprovada e liberada para ajustes.", mensagem)
         self.assertEqual(STATUS_COTACAO_REPROVADA, cotacao.status)
+        self.assertEqual(STATUS_REQUISICAO_CANCELADA, cotacao.requisicao.status)
         self.assertTrue(cotacao.pode_editar)
+
+    def test_requisicao_volta_para_enviada_quando_cotacao_reprovada_e_reaberta(self):
+        _, _, cotacao = salvar_cotacao(
+            {"requisicao_id": str(self.requisicao.id)},
+            self.admin,
+        )
+        _, _, proposta = salvar_proposta_cotacao(
+            {
+                "requisicao_item_id": str(self.requisicao_item.id),
+                "fornecedor_id": str(self.fornecedor.id),
+                "preco_unitario": "15,50",
+            },
+            cotacao,
+        )
+        selecionar_proposta_vencedora({"proposta_id": str(proposta.id)}, cotacao, self.admin)
+        enviar_cotacao_para_aprovacao(cotacao, self.admin)
+        reprovar_cotacao(
+            cotacao,
+            self.admin,
+            {"observacoes_aprovacao": "negociar prazo"},
+        )
+
+        self.assertEqual(STATUS_REQUISICAO_CANCELADA, cotacao.requisicao.status)
+
+        sucesso, mensagem, _ = selecionar_proposta_vencedora(
+            {"proposta_id": str(proposta.id)},
+            cotacao,
+            self.admin,
+        )
+
+        self.assertTrue(sucesso)
+        self.assertEqual("Proposta vencedora selecionada com sucesso.", mensagem)
+        self.assertEqual(STATUS_COTACAO_ABERTA, cotacao.status)
+        self.assertEqual(STATUS_REQUISICAO_ENVIADA, cotacao.requisicao.status)
 
     def test_rota_aprovacao_exige_permissao_de_aprovar(self):
         self._liberar_usuario(visualizar=True, editar=True)

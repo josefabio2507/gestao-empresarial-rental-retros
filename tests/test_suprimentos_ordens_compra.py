@@ -405,6 +405,29 @@ class SuprimentosOrdensCompraTestCase(unittest.TestCase):
         self.assertEqual(302, resposta.status_code)
         self.assertIn("/acesso-negado", resposta.headers["Location"])
 
+    def test_rota_detalhes_exibe_ordem_recebida(self):
+        cotacao = self._criar_cotacao_aprovada()
+        _, _, ordens = gerar_ordens_compra_cotacao(cotacao, self.admin)
+        ordem = ordens[0]
+        item = ordem.itens[0]
+        registrar_recebimento_ordem_compra(
+            {
+                "tipo_documento": "Nota Fiscal",
+                "numero_documento": "nf 123",
+                f"quantidade_recebida_{item.id}": "2",
+            },
+            ordem,
+            self.admin,
+        )
+        self._autenticar(self.admin)
+
+        resposta = self.client.get(f"/suprimentos/ordens-compra/{ordem.id}")
+
+        self.assertEqual(200, resposta.status_code)
+        self.assertIn(b"Recebimentos", resposta.data)
+        self.assertIn(b"NF 123", resposta.data)
+        self.assertIn(b"Recebida", resposta.data)
+
 
 if __name__ == "__main__":
     unittest.main()
