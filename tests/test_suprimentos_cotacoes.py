@@ -20,18 +20,25 @@ from app.models import (
 )
 from app.services.suprimentos_service import (
     STATUS_COTACAO_ABERTA,
+    STATUS_COTACAO_APROVADA,
     STATUS_COTACAO_CANCELADA,
+    STATUS_COTACAO_EM_APROVACAO,
     STATUS_COTACAO_ENCERRADA,
+    STATUS_COTACAO_REPROVADA,
     STATUS_REQUISICAO_ENVIADA,
     adicionar_item_requisicao,
+    aprovar_cotacao,
     cancelar_cotacao,
     encerrar_cotacao,
+    enviar_cotacao_para_aprovacao,
     formatar_moeda_brl,
     enviar_requisicao_compra,
     montar_mapa_comparativo_cotacao,
+    reprovar_cotacao,
     salvar_cotacao,
     salvar_proposta_cotacao,
     salvar_requisicao_compra,
+    selecionar_proposta_vencedora,
 )
 
 
@@ -173,6 +180,7 @@ class SuprimentosCotacoesTestCase(unittest.TestCase):
             pode_criar=acoes.get("criar", False),
             pode_editar=acoes.get("editar", False),
             pode_excluir=acoes.get("excluir", False),
+            pode_aprovar=acoes.get("aprovar", False),
             ativo=True,
         )
         permissao.garantir_visualizacao()
@@ -420,7 +428,156 @@ class SuprimentosCotacoesTestCase(unittest.TestCase):
         self.assertIn(b"Mapa comparativo", resposta.data)
         self.assertIn(b"Menor preco", resposta.data)
         self.assertIn(b"Menor total", resposta.data)
-        self.assertIn(b"Este mapa e apenas comparativo", resposta.data)
+        self.assertIn(b"Enviar para aprovacao", resposta.data)
+
+    def test_seleciona_vencedor_e_exige_justificativa_quando_nao_e_menor_preco(self):
+        _, _, cotacao = salvar_cotacao(
+            {"requisicao_id": str(self.requisicao.id)},
+            self.admin,
+        )
+        _, _, proposta_a = salvar_proposta_cotacao(
+            {
+                "requisicao_item_id": str(self.requisicao_item.id),
+                "fornecedor_id": str(self.fornecedor.id),
+                "preco_unitario": "15,50",
+            },
+            cotacao,
+        )
+        _, _, proposta_b = salvar_proposta_cotacao(
+            {
+                "requisicao_item_id": str(self.requisicao_item.id),
+                "fornecedor_id": str(self.fornecedor_b.id),
+                "preco_unitario": "14,00",
+            },
+            cotacao,
+        )
+
+        sucesso, mensagem, _ = selecionar_proposta_vencedora(
+            {"proposta_id": str(proposta_a.id)},
+            cotacao,
+            self.admin,
+        )
+
+        self.assertFalse(sucesso)
+        self.assertEqual("Informe a justificativa para escolher proposta acima do menor preco.", mensagem)
+
+        sucesso, mensagem, proposta = selecionar_proposta_vencedora(
+            {
+                "proposta_id": str(proposta_a.id),
+                "justificativa_selecao": "melhor prazo de entrega",
+            },
+            cotacao,
+            self.admin,
+        )
+
+        self.assertTrue(sucesso)
+        self.assertEqual("Proposta vencedora selecionada com sucesso.", mensagem)
+        self.assertTrue(proposta.selecionada)
+        self.assertEqual("MELHOR PRAZO DE ENTREGA", proposta.justificativa_selecao)
+        self.assertFalse(proposta_b.selecionada)
+
+    def test_envia_para_aprovacao_somente_com_vencedor_em_todos_os_itens(self):
+        _, _, cotacao = salvar_cotacao(
+            {"requisicao_id": str(self.requisicao.id)},
+            self.admin,
+        )
+        _, _, proposta = salvar_proposta_cotacao(
+            {
+                "requisicao_item_id": str(self.requisicao_item.id),
+                "fornecedor_id": str(self.fornecedor.id),
+                "preco_unitario": "15,50",
+            },
+            cotacao,
+        )
+
+        sucesso, mensagem = enviar_cotacao_para_aprovacao(cotacao, self.admin)
+
+        self.assertFalse(sucesso)
+        self.assertEqual(
+            "Selecione uma proposta vencedora para todos os itens antes de enviar para aprovacao.",
+            mensagem,
+        )
+
+        selecionar_proposta_vencedora({"proposta_id": str(proposta.id)}, cotacao, self.admin)
+        sucesso, mensagem = enviar_cotacao_para_aprovacao(cotacao, self.admin)
+
+        self.assertTrue(sucesso)
+        self.assertEqual("Cotacao enviada para aprovacao com sucesso.", mensagem)
+        self.assertEqual(STATUS_COTACAO_EM_APROVACAO, cotacao.status)
+        self.assertIsNotNone(cotacao.enviada_aprovacao_em)
+
+    def test_aprova_cotacao_sem_gerar_ordem_de_compra(self):
+        _, _, cotacao = salvar_cotacao(
+            {"requisicao_id": str(self.requisicao.id)},
+            self.admin,
+        )
+        _, _, proposta = salvar_proposta_cotacao(
+            {
+                "requisicao_item_id": str(self.requisicao_item.id),
+                "fornecedor_id": str(self.fornecedor.id),
+                "preco_unitario": "15,50",
+            },
+            cotacao,
+        )
+        selecionar_proposta_vencedora({"proposta_id": str(proposta.id)}, cotacao, self.admin)
+        enviar_cotacao_para_aprovacao(cotacao, self.admin)
+
+        sucesso, mensagem = aprovar_cotacao(
+            cotacao,
+            self.admin,
+            {"observacoes_aprovacao": "aprovado dentro da alcada"},
+        )
+
+        self.assertTrue(sucesso)
+        self.assertEqual("Cotacao aprovada com sucesso.", mensagem)
+        self.assertEqual(STATUS_COTACAO_APROVADA, cotacao.status)
+        self.assertEqual(self.admin.id, cotacao.aprovada_por_usuario_id)
+        self.assertEqual("APROVADO DENTRO DA ALCADA", cotacao.observacoes_aprovacao)
+
+    def test_reprova_cotacao_e_libera_para_ajustes(self):
+        _, _, cotacao = salvar_cotacao(
+            {"requisicao_id": str(self.requisicao.id)},
+            self.admin,
+        )
+        _, _, proposta = salvar_proposta_cotacao(
+            {
+                "requisicao_item_id": str(self.requisicao_item.id),
+                "fornecedor_id": str(self.fornecedor.id),
+                "preco_unitario": "15,50",
+            },
+            cotacao,
+        )
+        selecionar_proposta_vencedora({"proposta_id": str(proposta.id)}, cotacao, self.admin)
+        enviar_cotacao_para_aprovacao(cotacao, self.admin)
+
+        sucesso, mensagem = reprovar_cotacao(cotacao, self.admin, {})
+
+        self.assertFalse(sucesso)
+        self.assertEqual("Informe a justificativa da reprovacao.", mensagem)
+
+        sucesso, mensagem = reprovar_cotacao(
+            cotacao,
+            self.admin,
+            {"observacoes_aprovacao": "negociar prazo"},
+        )
+
+        self.assertTrue(sucesso)
+        self.assertEqual("Cotacao reprovada e liberada para ajustes.", mensagem)
+        self.assertEqual(STATUS_COTACAO_REPROVADA, cotacao.status)
+        self.assertTrue(cotacao.pode_editar)
+
+    def test_rota_aprovacao_exige_permissao_de_aprovar(self):
+        self._liberar_usuario(visualizar=True, editar=True)
+        self._autenticar(self.usuario)
+        _, _, cotacao = salvar_cotacao(
+            {"requisicao_id": str(self.requisicao.id)},
+            self.admin,
+        )
+
+        resposta = self.client.post(f"/suprimentos/cotacoes/{cotacao.id}/aprovar")
+
+        self.assertEqual(302, resposta.status_code)
+        self.assertIn("/acesso-negado", resposta.headers["Location"])
 
 
 if __name__ == "__main__":

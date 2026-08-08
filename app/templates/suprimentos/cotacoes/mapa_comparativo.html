@@ -34,6 +34,9 @@
         <p><strong>Status da cotacao:</strong> {{ cotacao.status }}</p>
         <p><strong>Justificativa:</strong> {{ cotacao.requisicao.justificativa }}</p>
         <p><strong>Observacoes:</strong> {{ cotacao.observacoes or "-" }}</p>
+        {% if cotacao.observacoes_aprovacao %}
+            <p><strong>Observacoes da aprovacao:</strong> {{ cotacao.observacoes_aprovacao }}</p>
+        {% endif %}
     </div>
 
     {% for grupo in mapa.grupos %}
@@ -65,6 +68,7 @@
                         <th>Prazo</th>
                         <th>Condicao</th>
                         <th>Destaques</th>
+                        <th>Selecao</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -84,18 +88,41 @@
                             <td>{{ proposta.condicao_pagamento or "-" }}</td>
                             <td>
                                 <div class="comparison-tags">
+                                    {% if proposta.selecionada %}<span class="badge badge-success">Selecionada</span>{% endif %}
                                     {% if linha.menor_preco %}<span class="badge badge-success">Menor preco</span>{% endif %}
                                     {% if linha.menor_total %}<span class="badge badge-success">Menor total</span>{% endif %}
                                     {% if linha.menor_prazo %}<span class="badge badge-warning">Menor prazo</span>{% endif %}
-                                    {% if not linha.menor_preco and not linha.menor_total and not linha.menor_prazo %}
+                                    {% if not proposta.selecionada and not linha.menor_preco and not linha.menor_total and not linha.menor_prazo %}
                                         <span class="module-status">-</span>
                                     {% endif %}
                                 </div>
                             </td>
+                            <td class="comparison-select-cell">
+                                {% if cotacao.pode_editar %}
+                                    <form method="POST" action="{{ url_for('suprimentos_cotacoes.selecionar_vencedor', cotacao_id=cotacao.id) }}">
+                                        <input type="hidden" name="proposta_id" value="{{ proposta.id }}">
+                                        {% if not linha.menor_preco %}
+                                            <textarea name="justificativa_selecao" rows="2" placeholder="Justificativa para escolha acima do menor preco">{{ proposta.justificativa_selecao or '' }}</textarea>
+                                        {% elif proposta.justificativa_selecao %}
+                                            <small>{{ proposta.justificativa_selecao }}</small>
+                                        {% endif %}
+                                        <button class="btn btn-primary" type="submit">
+                                            {{ "Selecionada" if proposta.selecionada else "Selecionar" }}
+                                        </button>
+                                    </form>
+                                {% elif proposta.selecionada %}
+                                    <strong>Selecionada</strong>
+                                    {% if proposta.justificativa_selecao %}
+                                        <small>{{ proposta.justificativa_selecao }}</small>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="module-status">-</span>
+                                {% endif %}
+                            </td>
                         </tr>
                     {% else %}
                         <tr>
-                            <td class="empty-state" colspan="6">Nenhuma proposta registrada para este item.</td>
+                            <td class="empty-state" colspan="7">Nenhuma proposta registrada para este item.</td>
                         </tr>
                     {% endfor %}
                 </tbody>
@@ -103,9 +130,39 @@
         </div>
     {% endfor %}
 
-    <div class="alert-warning-box">
-        Este mapa e apenas comparativo. A selecao de fornecedor vencedor, aprovacao por alcada e ordem de compra serao tratadas nas proximas missoes.
-    </div>
+    {% if cotacao.pode_editar %}
+        <div class="alert-warning-box">
+            Selecione uma proposta vencedora para cada item antes de enviar para aprovacao. Escolhas acima do menor preco exigem justificativa.
+        </div>
+        <div class="page-actions">
+            <form class="inline-form" method="POST" action="{{ url_for('suprimentos_cotacoes.enviar_aprovacao', cotacao_id=cotacao.id) }}">
+                <button class="btn btn-primary" type="submit">Enviar para aprovacao</button>
+            </form>
+        </div>
+    {% elif cotacao.status == "Em Aprovacao" %}
+        <div class="details-card">
+            <h2>Aprovacao por alcada</h2>
+            <p>A aprovacao inicial usa a permissao de aprovar do modulo Cotacoes. Nenhuma ordem de compra sera gerada nesta etapa.</p>
+            <form class="approval-form" method="POST" action="{{ url_for('suprimentos_cotacoes.aprovar', cotacao_id=cotacao.id) }}">
+                <div class="form-group">
+                    <label for="observacoes_aprovacao">Observacoes da aprovacao</label>
+                    <textarea id="observacoes_aprovacao" name="observacoes_aprovacao" rows="2" data-uppercase></textarea>
+                </div>
+                <button class="btn btn-primary" type="submit">Aprovar cotacao</button>
+            </form>
+            <form class="approval-form" method="POST" action="{{ url_for('suprimentos_cotacoes.reprovar', cotacao_id=cotacao.id) }}">
+                <div class="form-group">
+                    <label for="observacoes_reprovacao">Justificativa da reprovacao</label>
+                    <textarea id="observacoes_reprovacao" name="observacoes_aprovacao" rows="2" required data-uppercase></textarea>
+                </div>
+                <button class="btn btn-warning" type="submit">Reprovar para ajustes</button>
+            </form>
+        </div>
+    {% else %}
+        <div class="alert-warning-box">
+            Esta etapa registra a selecao e a aprovacao da cotacao. A ordem de compra sera tratada em missao futura.
+        </div>
+    {% endif %}
 
     <div class="page-actions">
         <a class="btn btn-secondary" href="{{ url_for('suprimentos_cotacoes.detalhes', cotacao_id=cotacao.id) }}">Voltar a cotacao</a>
