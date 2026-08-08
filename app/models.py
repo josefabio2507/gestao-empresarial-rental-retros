@@ -1359,3 +1359,160 @@ class SuprimentosCotacaoProposta(db.Model):
             f"<SuprimentosCotacaoProposta cotacao={self.cotacao_id} "
             f"fornecedor={self.fornecedor_id} item={self.item_id}>"
         )
+
+
+class SuprimentosOrdemCompra(db.Model):
+    __tablename__ = "suprimentos_ordens_compra"
+
+    id = db.Column(db.Integer, primary_key=True)
+    numero = db.Column(db.String(30), unique=True, nullable=False, index=True)
+    cotacao_id = db.Column(
+        db.Integer,
+        db.ForeignKey("suprimentos_cotacoes.id"),
+        nullable=False,
+        index=True,
+    )
+    requisicao_id = db.Column(
+        db.Integer,
+        db.ForeignKey("suprimentos_requisicoes_compra.id"),
+        nullable=False,
+        index=True,
+    )
+    fornecedor_id = db.Column(
+        db.Integer,
+        db.ForeignKey("suprimentos_fornecedores.id"),
+        nullable=False,
+        index=True,
+    )
+    criado_por_usuario_id = db.Column(
+        db.Integer,
+        db.ForeignKey("usuarios.id"),
+        nullable=False,
+        index=True,
+    )
+    fornecedor_razao_social_snapshot = db.Column(db.String(180), nullable=False)
+    fornecedor_cnpj_cpf_snapshot = db.Column(db.String(20), nullable=True)
+    condicao_pagamento_snapshot = db.Column(db.String(160), nullable=True)
+    status = db.Column(db.String(30), default="Gerada", nullable=False, index=True)
+    observacoes = db.Column(db.Text, nullable=True)
+    gerada_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    cancelada_em = db.Column(db.DateTime, nullable=True)
+    motivo_cancelamento = db.Column(db.Text, nullable=True)
+
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    atualizado_em = db.Column(
+        db.DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False
+    )
+
+    cotacao = db.relationship("SuprimentosCotacao")
+    requisicao = db.relationship("SuprimentosRequisicaoCompra")
+    fornecedor = db.relationship("SuprimentosFornecedor")
+    criado_por = db.relationship("Usuario")
+    itens = db.relationship(
+        "SuprimentosOrdemCompraItem",
+        back_populates="ordem_compra",
+        cascade="all, delete-orphan",
+    )
+
+    __table_args__ = (
+        db.UniqueConstraint(
+            "cotacao_id",
+            "fornecedor_id",
+            name="uq_suprimentos_ordens_compra_cotacao_fornecedor",
+        ),
+        db.CheckConstraint(
+            "status in ('Gerada', 'Cancelada')",
+            name="ck_suprimentos_ordens_compra_status",
+        ),
+    )
+
+    @property
+    def valor_total(self):
+        return sum((item.valor_total for item in self.itens), start=0)
+
+    @property
+    def pode_cancelar(self):
+        return self.status == "Gerada"
+
+    def __repr__(self):
+        return f"<SuprimentosOrdemCompra {self.numero}>"
+
+
+class SuprimentosOrdemCompraItem(db.Model):
+    __tablename__ = "suprimentos_ordem_compra_itens"
+
+    id = db.Column(db.Integer, primary_key=True)
+    ordem_compra_id = db.Column(
+        db.Integer,
+        db.ForeignKey("suprimentos_ordens_compra.id"),
+        nullable=False,
+        index=True,
+    )
+    cotacao_proposta_id = db.Column(
+        db.Integer,
+        db.ForeignKey("suprimentos_cotacao_propostas.id"),
+        nullable=False,
+        index=True,
+    )
+    requisicao_item_id = db.Column(
+        db.Integer,
+        db.ForeignKey("suprimentos_requisicao_compra_itens.id"),
+        nullable=False,
+        index=True,
+    )
+    item_id = db.Column(
+        db.Integer,
+        db.ForeignKey("suprimentos_itens.id"),
+        nullable=False,
+        index=True,
+    )
+    item_codigo_snapshot = db.Column(db.String(60), nullable=True)
+    item_descricao_snapshot = db.Column(db.String(220), nullable=False)
+    unidade_medida_snapshot = db.Column(db.String(20), nullable=False)
+    quantidade = db.Column(db.Numeric(12, 3), nullable=False)
+    preco_unitario = db.Column(db.Numeric(12, 2), nullable=False)
+    prazo_entrega_dias = db.Column(db.Integer, nullable=True)
+    observacoes = db.Column(db.Text, nullable=True)
+
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    atualizado_em = db.Column(
+        db.DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False
+    )
+
+    ordem_compra = db.relationship("SuprimentosOrdemCompra", back_populates="itens")
+    proposta = db.relationship("SuprimentosCotacaoProposta")
+    requisicao_item = db.relationship("SuprimentosRequisicaoCompraItem")
+    item = db.relationship("SuprimentosItem")
+
+    __table_args__ = (
+        db.UniqueConstraint(
+            "ordem_compra_id",
+            "cotacao_proposta_id",
+            name="uq_suprimentos_oc_item_proposta",
+        ),
+        db.CheckConstraint(
+            "quantidade > 0",
+            name="ck_suprimentos_oc_itens_quantidade",
+        ),
+        db.CheckConstraint(
+            "preco_unitario >= 0",
+            name="ck_suprimentos_oc_itens_preco_unitario",
+        ),
+        db.CheckConstraint(
+            "prazo_entrega_dias is null or prazo_entrega_dias >= 0",
+            name="ck_suprimentos_oc_itens_prazo",
+        ),
+    )
+
+    @property
+    def valor_total(self):
+        return self.quantidade * self.preco_unitario
+
+    def __repr__(self):
+        return f"<SuprimentosOrdemCompraItem ordem={self.ordem_compra_id} item={self.item_id}>"

@@ -22,6 +22,8 @@ from app.models import (
     SuprimentosCotacaoProposta,
     SuprimentosRequisicaoCompra,
     SuprimentosRequisicaoCompraItem,
+    SuprimentosOrdemCompra,
+    SuprimentosOrdemCompraItem,
     SuprimentosUnidadeMedida,
 )
 
@@ -49,6 +51,8 @@ STATUS_COTACAO_EDITAVEIS = {
     STATUS_COTACAO_ABERTA,
     STATUS_COTACAO_REPROVADA,
 }
+STATUS_ORDEM_COMPRA_GERADA = "Gerada"
+STATUS_ORDEM_COMPRA_CANCELADA = "Cancelada"
 
 
 def texto(valor):
@@ -250,6 +254,15 @@ def buscar_fornecedores(nome=None, documento=None, status=None):
 
     query = filtrar_status(query, SuprimentosFornecedor, status)
     return query.order_by(SuprimentosFornecedor.razao_social.asc()).all()
+
+
+def buscar_fornecedores_ativos():
+    return (
+        SuprimentosFornecedor.query
+        .filter_by(ativo=True)
+        .order_by(SuprimentosFornecedor.razao_social.asc())
+        .all()
+    )
 
 
 def documento_fornecedor_ja_existe(cnpj_cpf, fornecedor_id_ignorado=None):
@@ -844,6 +857,53 @@ def gerar_numero_cotacao():
     return f"{prefixo}{sequencial:04d}"
 
 
+def gerar_numero_ordem_compra():
+    ano = datetime.utcnow().year
+    prefixo = f"OC-{ano}-"
+    ultima = (
+        SuprimentosOrdemCompra.query
+        .filter(SuprimentosOrdemCompra.numero.like(f"{prefixo}%"))
+        .order_by(SuprimentosOrdemCompra.numero.desc())
+        .first()
+    )
+
+    if not ultima:
+        return f"{prefixo}0001"
+
+    try:
+        sequencial = int(ultima.numero.rsplit("-", 1)[1]) + 1
+    except (IndexError, ValueError):
+        sequencial = 1
+
+    return f"{prefixo}{sequencial:04d}"
+
+
+def buscar_ordens_compra(numero=None, status=None, fornecedor_id=None):
+    query = SuprimentosOrdemCompra.query
+    numero = texto(numero).upper()
+    fornecedor_id = inteiro_ou_none(fornecedor_id)
+
+    if numero:
+        query = query.filter(SuprimentosOrdemCompra.numero.ilike(f"%{numero}%"))
+
+    if status:
+        query = query.filter(SuprimentosOrdemCompra.status == status)
+
+    if fornecedor_id:
+        query = query.filter(SuprimentosOrdemCompra.fornecedor_id == fornecedor_id)
+
+    return query.order_by(SuprimentosOrdemCompra.criado_em.desc()).all()
+
+
+def buscar_ordens_compra_cotacao(cotacao):
+    return (
+        SuprimentosOrdemCompra.query
+        .filter_by(cotacao_id=cotacao.id)
+        .order_by(SuprimentosOrdemCompra.numero.asc())
+        .all()
+    )
+
+
 def buscar_cotacoes(numero=None, status=None):
     query = SuprimentosCotacao.query
     numero = texto(numero).upper()
@@ -1120,6 +1180,106 @@ def reprovar_cotacao(cotacao, usuario, form_data=None):
     db.session.commit()
 
     return True, "Cotacao reprovada e liberada para ajustes."
+
+
+def gerar_ordens_compra_cotacao(cotacao, usuario, form_data=None):
+    if cotacao.status != STATUS_COTACAO_APROVADA:
+        return False, "Somente cotacoes aprovadas podem gerar ordem de compra.", []
+
+    existentes = [
+        ordem
+        for ordem in buscar_ordens_compra_cotacao(cotacao)
+        if ordem.status != STATUS_ORDEM_COMPRA_CANCELADA
+    ]
+
+    if existentes:
+        return False, "Esta cotacao ja possui ordem de compra gerada.", existentes
+
+    selecionadas = [
+        proposta
+        for proposta in cotacao.propostas
+        if proposta.selecionada
+    ]
+
+    if not selecionadas:
+        return False, "Selecione propostas vencedoras antes de gerar ordem de compra.", []
+
+    selecionadas_por_item = {proposta.requisicao_item_id: proposta for proposta in selecionadas}
+    itens_sem_vencedor = [
+        item
+        for item in cotacao.requisicao.itens
+        if item.id not in selecionadas_por_item
+    ]
+
+    if itens_sem_vencedor:
+        return False, "A cotacao aprovada precisa ter vencedor em todos os itens.", []
+
+    observacoes = texto_maiusculo((form_data or {}).get("observacoes")) or None
+    propostas_por_fornecedor = {}
+
+    for proposta in selecionadas:
+        propostas_por_fornecedor.setdefault(proposta.fornecedor_id, []).append(proposta)
+
+    ordens = []
+
+    for fornecedor_id, propostas in sorted(propostas_por_fornecedor.items()):
+        fornecedor = propostas[0].fornecedor
+        condicoes = sorted(
+            {
+                proposta.condicao_pagamento
+                for proposta in propostas
+                if proposta.condicao_pagamento
+            }
+        )
+        ordem = SuprimentosOrdemCompra(
+            numero=gerar_numero_ordem_compra(),
+            cotacao_id=cotacao.id,
+            requisicao_id=cotacao.requisicao_id,
+            fornecedor_id=fornecedor_id,
+            criado_por_usuario_id=usuario.id,
+            fornecedor_razao_social_snapshot=fornecedor.razao_social,
+            fornecedor_cnpj_cpf_snapshot=fornecedor.cnpj_cpf,
+            condicao_pagamento_snapshot=" | ".join(condicoes) if condicoes else None,
+            status=STATUS_ORDEM_COMPRA_GERADA,
+            observacoes=observacoes,
+            gerada_em=datetime.utcnow(),
+        )
+        db.session.add(ordem)
+        db.session.flush()
+
+        for proposta in sorted(propostas, key=lambda item: item.item_descricao_snapshot):
+            requisicao_item = proposta.requisicao_item
+            db.session.add(
+                SuprimentosOrdemCompraItem(
+                    ordem_compra_id=ordem.id,
+                    cotacao_proposta_id=proposta.id,
+                    requisicao_item_id=proposta.requisicao_item_id,
+                    item_id=proposta.item_id,
+                    item_codigo_snapshot=requisicao_item.item_codigo_snapshot,
+                    item_descricao_snapshot=proposta.item_descricao_snapshot,
+                    unidade_medida_snapshot=proposta.unidade_medida_snapshot,
+                    quantidade=proposta.quantidade_snapshot,
+                    preco_unitario=proposta.preco_unitario,
+                    prazo_entrega_dias=proposta.prazo_entrega_dias,
+                    observacoes=proposta.observacoes,
+                )
+            )
+
+        ordens.append(ordem)
+
+    db.session.commit()
+    return True, "Ordem de compra gerada com sucesso.", ordens
+
+
+def cancelar_ordem_compra(ordem_compra, motivo=None):
+    if ordem_compra.status == STATUS_ORDEM_COMPRA_CANCELADA:
+        return False, "Ordem de compra ja esta cancelada."
+
+    ordem_compra.status = STATUS_ORDEM_COMPRA_CANCELADA
+    ordem_compra.cancelada_em = datetime.utcnow()
+    ordem_compra.motivo_cancelamento = texto_maiusculo(motivo) or None
+    db.session.commit()
+    return True, "Ordem de compra cancelada com sucesso."
 
 
 def encerrar_cotacao(cotacao):

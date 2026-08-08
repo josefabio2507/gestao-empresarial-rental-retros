@@ -158,9 +158,21 @@
                 <button class="btn btn-warning" type="submit">Reprovar para ajustes</button>
             </form>
         </div>
+    {% elif cotacao.status == "Aprovada" %}
+        <div class="details-card">
+            <h2>Ordem de compra</h2>
+            <p>Gere a ordem de compra a partir das propostas vencedoras aprovadas. A entrada em estoque e o financeiro serao tratados nas proximas missoes.</p>
+            <form class="approval-form" method="POST" action="{{ url_for('suprimentos_ordens_compra.gerar_por_cotacao', cotacao_id=cotacao.id) }}">
+                <div class="form-group">
+                    <label for="observacoes_oc">Observacoes da ordem de compra</label>
+                    <textarea id="observacoes_oc" name="observacoes" rows="2" data-uppercase></textarea>
+                </div>
+                <button class="btn btn-primary" type="submit">Gerar ordem de compra</button>
+            </form>
+        </div>
     {% else %}
         <div class="alert-warning-box">
-            Esta etapa registra a selecao e a aprovacao da cotacao. A ordem de compra sera tratada em missao futura.
+            Esta etapa registra a selecao e a aprovacao da cotacao. A ordem de compra fica disponivel apos a aprovacao.
         </div>
     {% endif %}
 

@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Suprimentos</span>
+            <h1>{{ ordem.numero }}</h1>
+            <p>{{ ordem.status }} - Cotacao {{ ordem.cotacao.numero }}</p>
+        </div>
+        <a class="btn btn-secondary" href="{{ url_for('suprimentos_ordens_compra.listar') }}">Voltar</a>
+    </div>
+
+    <div class="details-card">
+        <p><strong>Fornecedor:</strong> {{ ordem.fornecedor_razao_social_snapshot }}</p>
+        <p><strong>CNPJ/CPF:</strong> {{ ordem.fornecedor_cnpj_cpf_snapshot or "-" }}</p>
+        <p><strong>Requisicao:</strong> {{ ordem.requisicao.numero }}</p>
+        <p><strong>Cotacao:</strong> {{ ordem.cotacao.numero }}</p>
+        <p><strong>Condicao de pagamento:</strong> {{ ordem.condicao_pagamento_snapshot or "-" }}</p>
+        <p><strong>Gerada por:</strong> {{ ordem.criado_por.nome }}</p>
+        <p><strong>Gerada em:</strong> {{ ordem.gerada_em.strftime("%d/%m/%Y %H:%M") }}</p>
+        <p><strong>Observacoes:</strong> {{ ordem.observacoes or "-" }}</p>
+        {% if ordem.cancelada_em %}
+            <p><strong>Cancelada em:</strong> {{ ordem.cancelada_em.strftime("%d/%m/%Y %H:%M") }}</p>
+            <p><strong>Motivo:</strong> {{ ordem.motivo_cancelamento or "-" }}</p>
+        {% endif %}
+    </div>
+
+    <div class="table-card table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Codigo</th>
+                    <th>Item</th>
+                    <th>Qtd.</th>
+                    <th>Unidade</th>
+                    <th>Preco unit.</th>
+                    <th>Total</th>
+                    <th>Prazo</th>
+                    <th>Observacoes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in ordem.itens %}
+                    <tr>
+                        <td>{{ item.item_codigo_snapshot or "-" }}</td>
+                        <td>{{ item.item_descricao_snapshot }}</td>
+                        <td>{{ formatar_decimal_brasil(item.quantidade) }}</td>
+                        <td>{{ item.unidade_medida_snapshot }}</td>
+                        <td>{{ formatar_moeda_brl(item.preco_unitario) }}</td>
+                        <td>{{ formatar_moeda_brl(item.valor_total) }}</td>
+                        <td>{{ item.prazo_entrega_dias if item.prazo_entrega_dias is not none else "-" }}</td>
+                        <td>{{ item.observacoes or "-" }}</td>
+                    </tr>
+                {% else %}
+                    <tr><td class="empty-state" colspan="8">Nenhum item encontrado.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="details-card">
+        <p><strong>Total da ordem:</strong> {{ formatar_moeda_brl(ordem.valor_total) }}</p>
+        <p><strong>Proxima etapa:</strong> recebimento fisico e entrada em estoque serao tratados nas proximas missoes.</p>
+    </div>
+
+    <div class="page-actions">
+        {% if ordem.pode_cancelar %}
+            <form class="inline-form" method="POST" action="{{ url_for('suprimentos_ordens_compra.cancelar', ordem_id=ordem.id) }}">
+                <input type="hidden" name="motivo_cancelamento" value="CANCELAMENTO MANUAL">
+                <button class="btn btn-warning" type="submit">Cancelar ordem</button>
+            </form>
+        {% endif %}
+        <a class="btn btn-secondary" href="{{ url_for('suprimentos_cotacoes.mapa_comparativo', cotacao_id=ordem.cotacao_id) }}">Ver cotacao</a>
+    </div>
+</section>
+{% endblock %}
