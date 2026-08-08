@@ -13,6 +13,7 @@ from sqlalchemy import func
 from app.extensions import db
 from app.models import (
     CentroCusto,
+    Equipe,
     SuprimentosCategoriaItem,
     SuprimentosFornecedor,
     SuprimentosFornecedorItem,
@@ -466,6 +467,10 @@ def buscar_centros_custo_ativos():
     return CentroCusto.query.filter_by(ativo=True).order_by(CentroCusto.nome.asc()).all()
 
 
+def buscar_equipes_ativas():
+    return Equipe.query.filter_by(ativo=True).order_by(Equipe.nome.asc()).all()
+
+
 def codigo_centro_custo_ja_existe(codigo, centro_id_ignorado=None):
     codigo = texto(codigo).upper()
 
@@ -708,9 +713,16 @@ def salvar_requisicao_compra(form_data, usuario, requisicao=None):
     justificativa = texto_maiusculo(form_data.get("justificativa"))
     observacoes = texto_maiusculo(form_data.get("observacoes")) or None
     centro_custo_id = inteiro_ou_none(form_data.get("centro_custo_id"))
+    equipe_id = inteiro_ou_none(form_data.get("equipe_id"))
+    veiculo_placa = texto_maiusculo(form_data.get("veiculo_placa")) or None
 
     if not justificativa:
         return False, "Justificativa e obrigatoria.", requisicao
+
+    if equipe_id:
+        equipe = buscar_por_id(Equipe, equipe_id)
+        if not equipe or not equipe.ativo:
+            return False, "Equipe nao encontrada ou inativa.", requisicao
 
     if requisicao and not requisicao.pode_editar:
         return False, "Somente requisicoes em rascunho podem ser editadas.", requisicao
@@ -724,6 +736,8 @@ def salvar_requisicao_compra(form_data, usuario, requisicao=None):
         db.session.add(requisicao)
 
     requisicao.centro_custo_id = centro_custo_id
+    requisicao.equipe_id = equipe_id
+    requisicao.veiculo_placa = veiculo_placa
     requisicao.justificativa = justificativa
     requisicao.observacoes = observacoes
     db.session.commit()

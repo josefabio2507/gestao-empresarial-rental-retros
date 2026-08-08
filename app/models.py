@@ -1103,6 +1103,13 @@ class SuprimentosRequisicaoCompra(db.Model):
         nullable=True,
         index=True,
     )
+    equipe_id = db.Column(
+        db.Integer,
+        db.ForeignKey("equipes.id"),
+        nullable=True,
+        index=True,
+    )
+    veiculo_placa = db.Column(db.String(20), nullable=True)
     justificativa = db.Column(db.Text, nullable=False)
     observacoes = db.Column(db.Text, nullable=True)
     status = db.Column(db.String(30), default="Rascunho", nullable=False, index=True)
@@ -1120,6 +1127,7 @@ class SuprimentosRequisicaoCompra(db.Model):
 
     solicitante = db.relationship("Usuario")
     centro_custo = db.relationship("CentroCusto")
+    equipe = db.relationship("Equipe")
     itens = db.relationship(
         "SuprimentosRequisicaoCompraItem",
         back_populates="requisicao",
