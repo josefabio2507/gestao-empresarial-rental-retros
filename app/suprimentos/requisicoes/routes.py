@@ -8,6 +8,7 @@ from app.models import (
 )
 from app.services.logs_service import registrar_log
 from app.services.suprimentos_service import (
+    STATUS_REQUISICAO_APROVADA,
     STATUS_REQUISICAO_CANCELADA,
     STATUS_REQUISICAO_ENVIADA,
     STATUS_REQUISICAO_RASCUNHO,
@@ -28,6 +29,7 @@ from app.suprimentos.requisicoes import suprimentos_requisicoes_bp
 STATUS_REQUISICOES = [
     STATUS_REQUISICAO_RASCUNHO,
     STATUS_REQUISICAO_ENVIADA,
+    STATUS_REQUISICAO_APROVADA,
     STATUS_REQUISICAO_CANCELADA,
 ]
 

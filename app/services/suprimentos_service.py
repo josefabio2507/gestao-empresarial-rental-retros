@@ -42,6 +42,7 @@ TIPOS_ITEM = {
 }
 STATUS_REQUISICAO_RASCUNHO = "Rascunho"
 STATUS_REQUISICAO_ENVIADA = "Enviada para Analise"
+STATUS_REQUISICAO_APROVADA = "Aprovada"
 STATUS_REQUISICAO_CANCELADA = "Cancelada"
 STATUS_COTACAO_ABERTA = "Aberta"
 STATUS_COTACAO_EM_APROVACAO = "Em Aprovacao"
@@ -52,6 +53,18 @@ STATUS_COTACAO_CANCELADA = "Cancelada"
 STATUS_COTACAO_EDITAVEIS = {
     STATUS_COTACAO_ABERTA,
     STATUS_COTACAO_REPROVADA,
+}
+STATUS_COTACAO_REQUISICAO_ENVIADA = {
+    STATUS_COTACAO_ABERTA,
+    STATUS_COTACAO_EM_APROVACAO,
+}
+STATUS_COTACAO_REQUISICAO_APROVADA = {
+    STATUS_COTACAO_APROVADA,
+    STATUS_COTACAO_ENCERRADA,
+}
+STATUS_COTACAO_REQUISICAO_CANCELADA = {
+    STATUS_COTACAO_REPROVADA,
+    STATUS_COTACAO_CANCELADA,
 }
 STATUS_ORDEM_COMPRA_GERADA = "Gerada"
 STATUS_ORDEM_COMPRA_PARCIAL = "Parcialmente Recebida"
@@ -863,6 +876,28 @@ def cancelar_requisicao_compra(requisicao, motivo=None):
     return True, "Requisicao cancelada com sucesso."
 
 
+def sincronizar_status_requisicao_por_cotacao(cotacao):
+    if not cotacao or not cotacao.requisicao:
+        return
+
+    if cotacao.status in STATUS_COTACAO_REQUISICAO_ENVIADA:
+        cotacao.requisicao.status = STATUS_REQUISICAO_ENVIADA
+        cotacao.requisicao.cancelada_em = None
+        cotacao.requisicao.motivo_cancelamento = None
+        return
+
+    if cotacao.status in STATUS_COTACAO_REQUISICAO_APROVADA:
+        cotacao.requisicao.status = STATUS_REQUISICAO_APROVADA
+        cotacao.requisicao.cancelada_em = None
+        cotacao.requisicao.motivo_cancelamento = None
+        return
+
+    if cotacao.status in STATUS_COTACAO_REQUISICAO_CANCELADA:
+        cotacao.requisicao.status = STATUS_REQUISICAO_CANCELADA
+        cotacao.requisicao.cancelada_em = datetime.utcnow()
+        cotacao.requisicao.motivo_cancelamento = f"COTACAO {cotacao.status.upper()}"
+
+
 def gerar_numero_cotacao():
     ano = datetime.utcnow().year
     prefixo = f"COT-{ano}-"
@@ -1002,6 +1037,7 @@ def salvar_cotacao(form_data, usuario, cotacao=None):
         db.session.add(cotacao)
 
     cotacao.observacoes = observacoes
+    sincronizar_status_requisicao_por_cotacao(cotacao)
     db.session.commit()
     return True, "Cotacao salva com sucesso.", cotacao
 
@@ -1160,6 +1196,7 @@ def selecionar_proposta_vencedora(form_data, cotacao, usuario):
         cotacao.reprovada_em = None
         cotacao.reprovada_por_usuario_id = None
         cotacao.observacoes_aprovacao = None
+        sincronizar_status_requisicao_por_cotacao(cotacao)
 
     db.session.commit()
 
@@ -1190,6 +1227,7 @@ def enviar_cotacao_para_aprovacao(cotacao, usuario):
     cotacao.reprovada_em = None
     cotacao.reprovada_por_usuario_id = None
     cotacao.observacoes_aprovacao = None
+    sincronizar_status_requisicao_por_cotacao(cotacao)
     db.session.commit()
 
     return True, "Cotacao enviada para aprovacao com sucesso."
@@ -1205,6 +1243,7 @@ def aprovar_cotacao(cotacao, usuario, form_data=None):
     cotacao.reprovada_em = None
     cotacao.reprovada_por_usuario_id = None
     cotacao.observacoes_aprovacao = texto_maiusculo((form_data or {}).get("observacoes_aprovacao"))
+    sincronizar_status_requisicao_por_cotacao(cotacao)
     db.session.commit()
 
     return True, "Cotacao aprovada com sucesso."
@@ -1225,6 +1264,7 @@ def reprovar_cotacao(cotacao, usuario, form_data=None):
     cotacao.aprovada_em = None
     cotacao.aprovada_por_usuario_id = None
     cotacao.observacoes_aprovacao = justificativa
+    sincronizar_status_requisicao_por_cotacao(cotacao)
     db.session.commit()
 
     return True, "Cotacao reprovada e liberada para ajustes."
@@ -1435,6 +1475,7 @@ def encerrar_cotacao(cotacao):
 
     cotacao.status = STATUS_COTACAO_ENCERRADA
     cotacao.encerrada_em = datetime.utcnow()
+    sincronizar_status_requisicao_por_cotacao(cotacao)
     db.session.commit()
     return True, "Cotacao encerrada com sucesso."
 
@@ -1445,6 +1486,7 @@ def cancelar_cotacao(cotacao):
 
     cotacao.status = STATUS_COTACAO_CANCELADA
     cotacao.encerrada_em = datetime.utcnow()
+    sincronizar_status_requisicao_por_cotacao(cotacao)
     db.session.commit()
     return True, "Cotacao cancelada com sucesso."
 

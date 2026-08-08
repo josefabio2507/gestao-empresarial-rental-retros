@@ -1136,7 +1136,7 @@ class SuprimentosRequisicaoCompra(db.Model):
 
     __table_args__ = (
         db.CheckConstraint(
-            "status in ('Rascunho', 'Enviada para Analise', 'Cancelada')",
+            "status in ('Rascunho', 'Enviada para Analise', 'Aprovada', 'Cancelada')",
             name="ck_suprimentos_requisicoes_compra_status",
         ),
     )
