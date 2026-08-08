@@ -16,6 +16,8 @@
     <div class="details-card">
         <p><strong>Solicitante:</strong> {{ requisicao.solicitante.nome }}</p>
         <p><strong>Centro de custo:</strong> {{ requisicao.centro_custo.nome if requisicao.centro_custo else "-" }}</p>
+        <p><strong>Equipe:</strong> {{ requisicao.equipe.nome if requisicao.equipe else "-" }}</p>
+        <p><strong>Placa do veiculo:</strong> {{ requisicao.veiculo_placa or "-" }}</p>
         <p><strong>Justificativa:</strong> {{ requisicao.justificativa }}</p>
         <p><strong>Observacoes:</strong> {{ requisicao.observacoes or "-" }}</p>
         {% if requisicao.enviada_em %}

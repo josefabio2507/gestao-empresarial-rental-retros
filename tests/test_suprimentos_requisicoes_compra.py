@@ -5,6 +5,7 @@ from app.extensions import db
 from app.models import (
     CentroCusto,
     Departamento,
+    Equipe,
     Modulo,
     NivelAcesso,
     PermissaoUsuarioModulo,
@@ -88,6 +89,11 @@ class SuprimentosRequisicoesCompraTestCase(unittest.TestCase):
             nome="MANUTENCAO",
             ativo=True,
         )
+        self.equipe = Equipe(
+            nome="EQUIPE CAMPO",
+            slug="equipe-campo",
+            ativo=True,
+        )
         self.categoria = SuprimentosCategoriaItem(
             nome="PECAS",
             slug="pecas",
@@ -98,7 +104,7 @@ class SuprimentosRequisicoesCompraTestCase(unittest.TestCase):
             sigla="UN",
             ativo=True,
         )
-        db.session.add_all([self.centro, self.categoria, self.unidade])
+        db.session.add_all([self.centro, self.equipe, self.categoria, self.unidade])
         db.session.flush()
 
         self.item = SuprimentosItem(
@@ -161,6 +167,8 @@ class SuprimentosRequisicoesCompraTestCase(unittest.TestCase):
         sucesso, mensagem, requisicao = salvar_requisicao_compra(
             {
                 "centro_custo_id": str(self.centro.id),
+                "equipe_id": str(self.equipe.id),
+                "veiculo_placa": "abc1d23",
                 "justificativa": " comprar filtros ",
                 "observacoes": " manutencao preventiva ",
             },
@@ -170,8 +178,26 @@ class SuprimentosRequisicoesCompraTestCase(unittest.TestCase):
         self.assertTrue(sucesso)
         self.assertEqual("Requisicao salva com sucesso.", mensagem)
         self.assertEqual(STATUS_REQUISICAO_RASCUNHO, requisicao.status)
+        self.assertEqual(self.equipe.id, requisicao.equipe_id)
+        self.assertEqual("ABC1D23", requisicao.veiculo_placa)
         self.assertEqual("COMPRAR FILTROS", requisicao.justificativa)
         self.assertTrue(requisicao.numero.startswith("RC-"))
+
+    def test_nao_aceita_equipe_inativa_na_requisicao(self):
+        self.equipe.ativo = False
+        db.session.commit()
+
+        sucesso, mensagem, requisicao = salvar_requisicao_compra(
+            {
+                "equipe_id": str(self.equipe.id),
+                "justificativa": "Comprar filtros",
+            },
+            self.admin,
+        )
+
+        self.assertFalse(sucesso)
+        self.assertEqual("Equipe nao encontrada ou inativa.", mensagem)
+        self.assertIsNone(requisicao)
 
     def test_nao_cria_requisicao_sem_justificativa(self):
         sucesso, mensagem, requisicao = salvar_requisicao_compra({}, self.admin)

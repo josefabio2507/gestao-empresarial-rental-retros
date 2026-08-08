@@ -13,6 +13,7 @@ from app.services.suprimentos_service import (
     STATUS_REQUISICAO_RASCUNHO,
     adicionar_item_requisicao,
     buscar_centros_custo_ativos,
+    buscar_equipes_ativas,
     buscar_itens_ativos,
     buscar_por_id,
     buscar_requisicoes_compra,
@@ -34,6 +35,7 @@ STATUS_REQUISICOES = [
 def opcoes_formulario():
     return {
         "centros": buscar_centros_custo_ativos(),
+        "equipes": buscar_equipes_ativas(),
         "itens_disponiveis": buscar_itens_ativos(),
     }
 
