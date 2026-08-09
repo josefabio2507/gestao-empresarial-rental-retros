@@ -1098,6 +1098,181 @@ def buscar_movimentacoes_estoque(
     return query.order_by(SuprimentosMovimentacaoEstoque.movimentado_em.desc()).all()
 
 
+def _periodo_relatorios(data_inicio=None, data_fim=None):
+    data_inicio = data_ou_none(data_inicio)
+    data_fim = data_ou_none(data_fim)
+    return data_inicio, data_fim
+
+
+def _dentro_periodo(data_referencia, data_inicio, data_fim):
+    if not data_referencia:
+        return False
+
+    data = data_referencia.date() if hasattr(data_referencia, "date") else data_referencia
+
+    if data_inicio and data < data_inicio:
+        return False
+
+    if data_fim and data > data_fim:
+        return False
+
+    return True
+
+
+def _ordem_passa_filtros(ordem, data_inicio, data_fim, fornecedor_id, centro_custo_id, categoria_id):
+    if not _dentro_periodo(ordem.gerada_em or ordem.criado_em, data_inicio, data_fim):
+        return False
+
+    if ordem.status == STATUS_ORDEM_COMPRA_CANCELADA:
+        return False
+
+    if fornecedor_id and ordem.fornecedor_id != fornecedor_id:
+        return False
+
+    if centro_custo_id and (
+        not ordem.requisicao or ordem.requisicao.centro_custo_id != centro_custo_id
+    ):
+        return False
+
+    if categoria_id:
+        return any(
+            ordem_item.item and ordem_item.item.categoria_id == categoria_id
+            for ordem_item in ordem.itens
+        )
+
+    return True
+
+
+def _valor_ordem_filtrado(ordem, categoria_id=None):
+    total = Decimal("0.00")
+
+    for ordem_item in ordem.itens:
+        if categoria_id and (not ordem_item.item or ordem_item.item.categoria_id != categoria_id):
+            continue
+        total += Decimal(ordem_item.valor_total)
+
+    return total
+
+
+def indicadores_suprimentos(data_inicio=None, data_fim=None, fornecedor_id=None, centro_custo_id=None, categoria_id=None):
+    data_inicio, data_fim = _periodo_relatorios(data_inicio, data_fim)
+    fornecedor_id = inteiro_ou_none(fornecedor_id)
+    centro_custo_id = inteiro_ou_none(centro_custo_id)
+    categoria_id = inteiro_ou_none(categoria_id)
+
+    ordens = (
+        SuprimentosOrdemCompra.query
+        .options(
+            joinedload(SuprimentosOrdemCompra.itens).joinedload(SuprimentosOrdemCompraItem.item),
+            joinedload(SuprimentosOrdemCompra.requisicao).joinedload(SuprimentosRequisicaoCompra.centro_custo),
+            joinedload(SuprimentosOrdemCompra.fornecedor),
+        )
+        .all()
+    )
+    ordens_filtradas = [
+        ordem
+        for ordem in ordens
+        if _ordem_passa_filtros(
+            ordem,
+            data_inicio,
+            data_fim,
+            fornecedor_id,
+            centro_custo_id,
+            categoria_id,
+        )
+    ]
+
+    total_compras = sum(
+        (_valor_ordem_filtrado(ordem, categoria_id) for ordem in ordens_filtradas),
+        Decimal("0.00"),
+    )
+
+    requisicoes = [
+        requisicao
+        for requisicao in SuprimentosRequisicaoCompra.query.all()
+        if _dentro_periodo(requisicao.criado_em, data_inicio, data_fim)
+        and (not centro_custo_id or requisicao.centro_custo_id == centro_custo_id)
+    ]
+    cotacoes = [
+        cotacao
+        for cotacao in SuprimentosCotacao.query.all()
+        if _dentro_periodo(cotacao.criado_em, data_inicio, data_fim)
+    ]
+    movimentacoes = [
+        movimentacao
+        for movimentacao in SuprimentosMovimentacaoEstoque.query.options(
+            joinedload(SuprimentosMovimentacaoEstoque.item),
+        ).all()
+        if _dentro_periodo(movimentacao.movimentado_em, data_inicio, data_fim)
+        and (not categoria_id or (movimentacao.item and movimentacao.item.categoria_id == categoria_id))
+    ]
+
+    return {
+        "filtros": {
+            "data_inicio": data_inicio,
+            "data_fim": data_fim,
+            "fornecedor_id": fornecedor_id,
+            "centro_custo_id": centro_custo_id,
+            "categoria_id": categoria_id,
+        },
+        "cards": {
+            "total_compras": total_compras,
+            "ordens": len(ordens_filtradas),
+            "requisicoes": len(requisicoes),
+            "cotacoes": len(cotacoes),
+            "itens_abaixo_minimo": len(
+                [
+                    item
+                    for item in buscar_saldos_estoque(categoria_id=categoria_id)
+                    if item.estoque_minimo is not None and item.saldo_estoque < item.estoque_minimo
+                ]
+            ),
+        },
+        "compras_por_fornecedor": _agrupar_compras_por_fornecedor(ordens_filtradas, categoria_id),
+        "compras_por_centro_custo": _agrupar_compras_por_centro_custo(ordens_filtradas, categoria_id),
+        "requisicoes_por_status": _contar_por_status(requisicoes),
+        "cotacoes_por_status": _contar_por_status(cotacoes),
+        "ordens_por_status": _contar_por_status(ordens_filtradas),
+        "movimentacoes_por_tipo": _agrupar_movimentacoes_por_tipo(movimentacoes),
+        "itens_abaixo_minimo": [
+            item
+            for item in buscar_saldos_estoque(categoria_id=categoria_id, somente_abaixo_minimo=True)
+        ],
+    }
+
+
+def _contar_por_status(registros):
+    totais = {}
+    for registro in registros:
+        totais[registro.status] = totais.get(registro.status, 0) + 1
+    return sorted(totais.items())
+
+
+def _agrupar_compras_por_fornecedor(ordens, categoria_id=None):
+    totais = {}
+    for ordem in ordens:
+        chave = ordem.fornecedor_razao_social_snapshot or "Fornecedor nao informado"
+        totais[chave] = totais.get(chave, Decimal("0.00")) + _valor_ordem_filtrado(ordem, categoria_id)
+    return sorted(totais.items(), key=lambda item: item[1], reverse=True)
+
+
+def _agrupar_compras_por_centro_custo(ordens, categoria_id=None):
+    totais = {}
+    for ordem in ordens:
+        centro = ordem.requisicao.centro_custo if ordem.requisicao else None
+        chave = centro.nome if centro else "Sem centro definido"
+        totais[chave] = totais.get(chave, Decimal("0.00")) + _valor_ordem_filtrado(ordem, categoria_id)
+    return sorted(totais.items(), key=lambda item: item[1], reverse=True)
+
+
+def _agrupar_movimentacoes_por_tipo(movimentacoes):
+    totais = {}
+    for movimentacao in movimentacoes:
+        chave = f"{movimentacao.tipo} - {movimentacao.origem}"
+        totais[chave] = totais.get(chave, Decimal("0.000")) + Decimal(movimentacao.quantidade)
+    return sorted(totais.items())
+
+
 def registrar_movimentacao_manual_estoque(form_data, usuario):
     item_id = inteiro_ou_none(form_data.get("item_id"))
     operacao = texto(form_data.get("operacao"))

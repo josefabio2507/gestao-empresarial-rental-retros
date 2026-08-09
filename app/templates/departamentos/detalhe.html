@@ -138,6 +138,8 @@
                         {% set destino_suprimentos = url_for('suprimentos_ordens_compra.listar') %}
                     {% elif modulo_slug == "estoque" %}
                         {% set destino_suprimentos = url_for('suprimentos_estoque.listar') %}
+                    {% elif modulo_slug == "indicadores" %}
+                        {% set destino_suprimentos = url_for('suprimentos_indicadores.painel') %}
                     {% else %}
                         {% set destino_suprimentos = url_for('suprimentos.index') %}
                     {% endif %}

@@ -49,6 +49,7 @@ def create_app():
     from app.suprimentos.cotacoes.routes import suprimentos_cotacoes_bp
     from app.suprimentos.ordens_compra.routes import suprimentos_ordens_compra_bp
     from app.suprimentos.estoque.routes import suprimentos_estoque_bp
+    from app.suprimentos.indicadores.routes import suprimentos_indicadores_bp
     from app.operacao.routes import operacao_bp
     from app.seguranca_trabalho.routes import seguranca_trabalho_bp
     from app.admin import admin_bp
@@ -78,6 +79,7 @@ def create_app():
     app.register_blueprint(suprimentos_cotacoes_bp, url_prefix="/suprimentos/cotacoes")
     app.register_blueprint(suprimentos_ordens_compra_bp, url_prefix="/suprimentos/ordens-compra")
     app.register_blueprint(suprimentos_estoque_bp, url_prefix="/suprimentos/estoque")
+    app.register_blueprint(suprimentos_indicadores_bp, url_prefix="/suprimentos/indicadores")
     app.register_blueprint(operacao_bp, url_prefix="/operacao")
     app.register_blueprint(seguranca_trabalho_bp, url_prefix="/seguranca-trabalho")
     app.register_blueprint(admin_bp, url_prefix="/admin")
