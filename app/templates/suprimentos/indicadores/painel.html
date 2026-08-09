@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Suprimentos</span>
+            <h1>Indicadores</h1>
+            <p>Visao gerencial de compras, cotacoes, ordens e estoque.</p>
+        </div>
+        <a class="btn btn-secondary" href="{{ url_for('departamentos.detalhe_departamento', slug_departamento='suprimentos') }}">Voltar</a>
+    </div>
+
+    <form class="filter-card" method="GET">
+        <div class="form-group">
+            <label for="data_inicio">Data inicial</label>
+            <input id="data_inicio" name="data_inicio" type="date" value="{{ filtros.get('data_inicio', '') }}">
+        </div>
+        <div class="form-group">
+            <label for="data_fim">Data final</label>
+            <input id="data_fim" name="data_fim" type="date" value="{{ filtros.get('data_fim', '') }}">
+        </div>
+        <div class="form-group">
+            <label for="fornecedor_id">Fornecedor</label>
+            <select id="fornecedor_id" name="fornecedor_id">
+                <option value="">Todos</option>
+                {% for fornecedor in fornecedores %}
+                    <option value="{{ fornecedor.id }}" {{ "selected" if filtros.get('fornecedor_id')|string == fornecedor.id|string else "" }}>{{ fornecedor.razao_social }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="centro_custo_id">Centro de custo</label>
+            <select id="centro_custo_id" name="centro_custo_id">
+                <option value="">Todos</option>
+                {% for centro in centros_custo %}
+                    <option value="{{ centro.id }}" {{ "selected" if filtros.get('centro_custo_id')|string == centro.id|string else "" }}>{{ centro.codigo or "-" }} - {{ centro.nome }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="categoria_id">Categoria</label>
+            <select id="categoria_id" name="categoria_id">
+                <option value="">Todas</option>
+                {% for categoria in categorias %}
+                    <option value="{{ categoria.id }}" {{ "selected" if filtros.get('categoria_id')|string == categoria.id|string else "" }}>{{ categoria.nome }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Pesquisar</button>
+            <a class="btn btn-secondary" href="{{ url_for('suprimentos_indicadores.painel') }}">Limpar</a>
+        </div>
+    </form>
+
+    <div class="modules-grid">
+        <div class="module-card">
+            <span class="module-card-icon">R</span>
+            <h2>{{ formatar_moeda_brl(indicadores.cards.total_compras) }}</h2>
+            <p>Total comprado no periodo</p>
+            <span class="module-status">Ordens nao canceladas</span>
+        </div>
+        <div class="module-card">
+            <span class="module-card-icon">O</span>
+            <h2>{{ indicadores.cards.ordens }}</h2>
+            <p>Ordens de compra</p>
+            <span class="module-status">Geradas/recebidas</span>
+        </div>
+        <div class="module-card">
+            <span class="module-card-icon">R</span>
+            <h2>{{ indicadores.cards.requisicoes }}</h2>
+            <p>Requisicoes</p>
+            <span class="module-status">Criadas no periodo</span>
+        </div>
+        <div class="module-card">
+            <span class="module-card-icon">C</span>
+            <h2>{{ indicadores.cards.cotacoes }}</h2>
+            <p>Cotacoes</p>
+            <span class="module-status">Criadas no periodo</span>
+        </div>
+        <div class="module-card">
+            <span class="module-card-icon">E</span>
+            <h2>{{ indicadores.cards.itens_abaixo_minimo }}</h2>
+            <p>Itens abaixo do minimo</p>
+            <span class="module-status">Estoque atual</span>
+        </div>
+    </div>
+
+    <div class="table-card table-responsive">
+        <h2>Compras por Fornecedor</h2>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Fornecedor</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for fornecedor, total in indicadores.compras_por_fornecedor %}
+                    <tr>
+                        <td>{{ fornecedor }}</td>
+                        <td>{{ formatar_moeda_brl(total) }}</td>
+                    </tr>
+                {% else %}
+                    <tr><td class="empty-state" colspan="2">Nenhuma compra encontrada.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="table-card table-responsive">
+        <h2>Compras por Centro de Custo</h2>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Centro de custo</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for centro, total in indicadores.compras_por_centro_custo %}
+                    <tr>
+                        <td>{{ centro }}</td>
+                        <td>{{ formatar_moeda_brl(total) }}</td>
+                    </tr>
+                {% else %}
+                    <tr><td class="empty-state" colspan="2">Nenhuma compra encontrada.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="table-card table-responsive">
+        <h2>Status dos Processos</h2>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Grupo</th>
+                    <th>Status</th>
+                    <th>Quantidade</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for status, quantidade in indicadores.requisicoes_por_status %}
+                    <tr><td>Requisicoes</td><td>{{ status }}</td><td>{{ quantidade }}</td></tr>
+                {% endfor %}
+                {% for status, quantidade in indicadores.cotacoes_por_status %}
+                    <tr><td>Cotacoes</td><td>{{ status }}</td><td>{{ quantidade }}</td></tr>
+                {% endfor %}
+                {% for status, quantidade in indicadores.ordens_por_status %}
+                    <tr><td>Ordens de Compra</td><td>{{ status }}</td><td>{{ quantidade }}</td></tr>
+                {% endfor %}
+                {% if not indicadores.requisicoes_por_status and not indicadores.cotacoes_por_status and not indicadores.ordens_por_status %}
+                    <tr><td class="empty-state" colspan="3">Nenhum processo encontrado.</td></tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="table-card table-responsive">
+        <h2>Movimentacoes de Estoque</h2>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Tipo / origem</th>
+                    <th>Quantidade</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for tipo, quantidade in indicadores.movimentacoes_por_tipo %}
+                    <tr>
+                        <td>{{ tipo }}</td>
+                        <td>{{ formatar_decimal_brasil(quantidade) }}</td>
+                    </tr>
+                {% else %}
+                    <tr><td class="empty-state" colspan="2">Nenhuma movimentacao encontrada.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="table-card table-responsive">
+        <h2>Itens Abaixo do Estoque Minimo</h2>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Codigo</th>
+                    <th>Item</th>
+                    <th>Saldo</th>
+                    <th>Minimo</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in indicadores.itens_abaixo_minimo %}
+                    <tr>
+                        <td>{{ item.codigo_interno or "-" }}</td>
+                        <td>{{ item.descricao }}</td>
+                        <td>{{ formatar_decimal_brasil(item.saldo_estoque) }}</td>
+                        <td>{{ formatar_decimal_brasil(item.estoque_minimo) }}</td>
+                    </tr>
+                {% else %}
+                    <tr><td class="empty-state" colspan="4">Nenhum item abaixo do minimo.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}
