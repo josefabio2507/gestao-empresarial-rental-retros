@@ -9,6 +9,7 @@
             <p>Movimentacoes registradas a partir dos recebimentos de Ordens de Compra.</p>
         </div>
         <div class="page-actions">
+            <a class="btn btn-primary" href="{{ url_for('suprimentos_estoque.nova_movimentacao') }}">Nova movimentacao</a>
             <a class="btn btn-secondary" href="{{ url_for('suprimentos_estoque.listar') }}">Estoque</a>
             <a class="btn btn-secondary" href="{{ url_for('suprimentos.index') }}">Voltar</a>
         </div>
@@ -17,14 +18,22 @@
     <form class="filter-card" method="GET">
         <div class="form-group">
             <label for="item_id">Item</label>
-            <select id="item_id" name="item_id">
-                <option value="">Todos</option>
-                {% for item in itens %}
-                    <option value="{{ item.id }}" {{ "selected" if filtros.get('item_id')|string == item.id|string else "" }}>
-                        {{ item.codigo_interno or "-" }} - {{ item.descricao }}
-                    </option>
-                {% endfor %}
-            </select>
+            {% if item_fixado %}
+                <input type="hidden" id="item_id" name="item_id" value="{{ item_fixado.id }}">
+                <input
+                    value="{{ item_fixado.codigo_interno or '-' }} - {{ item_fixado.descricao }}"
+                    readonly
+                >
+            {% else %}
+                <select id="item_id" name="item_id">
+                    <option value="">Todos</option>
+                    {% for item in itens %}
+                        <option value="{{ item.id }}" {{ "selected" if filtros.get('item_id')|string == item.id|string else "" }}>
+                            {{ item.codigo_interno or "-" }} - {{ item.descricao }}
+                        </option>
+                    {% endfor %}
+                </select>
+            {% endif %}
         </div>
         <div class="form-group">
             <label for="fornecedor_id">Fornecedor</label>
@@ -64,6 +73,7 @@
                     <th>Documento</th>
                     <th>OC</th>
                     <th>Fornecedor</th>
+                    <th>Responsavel</th>
                     <th>Qtd.</th>
                     <th>Valor unit.</th>
                     <th>Total</th>
@@ -86,13 +96,14 @@
                             {% endif %}
                         </td>
                         <td>{{ movimentacao.fornecedor.razao_social if movimentacao.fornecedor else "-" }}</td>
+                        <td>{{ movimentacao.responsavel.nome if movimentacao.responsavel else "-" }}</td>
                         <td>{{ formatar_decimal_brasil(movimentacao.quantidade) }}</td>
                         <td>{{ formatar_moeda_brl(movimentacao.valor_unitario) }}</td>
                         <td>{{ formatar_moeda_brl(movimentacao.valor_total_snapshot) }}</td>
                         <td><span class="badge badge-success">{{ movimentacao.status }}</span></td>
                     </tr>
                 {% else %}
-                    <tr><td class="empty-state" colspan="11">Nenhuma movimentacao encontrada.</td></tr>
+                    <tr><td class="empty-state" colspan="12">Nenhuma movimentacao encontrada.</td></tr>
                 {% endfor %}
             </tbody>
         </table>

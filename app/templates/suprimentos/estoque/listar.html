@@ -9,6 +9,7 @@
             <p>Saldos atuais dos itens estocaveis recebidos por Ordem de Compra.</p>
         </div>
         <div class="page-actions">
+            <a class="btn btn-primary" href="{{ url_for('suprimentos_estoque.nova_movimentacao') }}">Nova movimentacao</a>
             <a class="btn btn-secondary" href="{{ url_for('suprimentos_estoque.movimentacoes') }}">Historico</a>
             <a class="btn btn-secondary" href="{{ url_for('suprimentos.index') }}">Voltar</a>
         </div>
@@ -71,6 +72,7 @@
                             </span>
                         </td>
                         <td class="col-acoes">
+                            <a class="btn btn-primary" href="{{ url_for('suprimentos_estoque.nova_movimentacao', item_id=item.id) }}">Movimentar</a>
                             <a class="btn btn-secondary" href="{{ url_for('suprimentos_estoque.movimentacoes', item_id=item.id) }}">Historico</a>
                         </td>
                     </tr>
