@@ -285,6 +285,7 @@ class SuprimentosOrdensCompraTestCase(unittest.TestCase):
             {
                 "tipo_documento": "Romaneio",
                 "numero_documento": "rom 55",
+                "data_documento": "2026-08-09",
                 f"quantidade_recebida_{item.id}": "1",
             },
             ordem,
@@ -307,6 +308,7 @@ class SuprimentosOrdensCompraTestCase(unittest.TestCase):
             {
                 "tipo_documento": "Nota Fiscal",
                 "numero_documento": "nf 123",
+                "data_documento": "2026-08-08",
                 f"quantidade_recebida_{item.id}": "2",
             },
             ordem,
@@ -375,6 +377,7 @@ class SuprimentosOrdensCompraTestCase(unittest.TestCase):
             {
                 "tipo_documento": "Outro",
                 "numero_documento": "serv 1",
+                "data_documento": "2026-08-08",
                 f"quantidade_recebida_{ordem_item.id}": "1",
             },
             ordem,
@@ -396,6 +399,7 @@ class SuprimentosOrdensCompraTestCase(unittest.TestCase):
             {
                 "tipo_documento": "Cupom Fiscal",
                 "numero_documento": "cf 1",
+                "data_documento": "2026-08-08",
                 f"quantidade_recebida_{item.id}": "3",
             },
             ordem,
@@ -416,6 +420,7 @@ class SuprimentosOrdensCompraTestCase(unittest.TestCase):
         sucesso, mensagem, recebimento = registrar_recebimento_ordem_compra(
             {
                 "tipo_documento": "Nota Fiscal",
+                "data_documento": "2026-08-08",
                 f"quantidade_recebida_{item.id}": "1",
             },
             ordem,
@@ -429,6 +434,7 @@ class SuprimentosOrdensCompraTestCase(unittest.TestCase):
         sucesso, mensagem, recebimento = registrar_recebimento_ordem_compra(
             {
                 "numero_documento": "doc 1",
+                "data_documento": "2026-08-08",
                 f"quantidade_recebida_{item.id}": "1",
             },
             ordem,
@@ -437,6 +443,20 @@ class SuprimentosOrdensCompraTestCase(unittest.TestCase):
 
         self.assertFalse(sucesso)
         self.assertEqual("Tipo de documento e obrigatorio.", mensagem)
+        self.assertIsNone(recebimento)
+
+        sucesso, mensagem, recebimento = registrar_recebimento_ordem_compra(
+            {
+                "tipo_documento": "Nota Fiscal",
+                "numero_documento": "doc 1",
+                f"quantidade_recebida_{item.id}": "1",
+            },
+            ordem,
+            self.admin,
+        )
+
+        self.assertFalse(sucesso)
+        self.assertEqual("Data de recebimento e obrigatoria.", mensagem)
         self.assertIsNone(recebimento)
 
     def test_nao_cancela_ordem_com_recebimento(self):
@@ -448,6 +468,7 @@ class SuprimentosOrdensCompraTestCase(unittest.TestCase):
             {
                 "tipo_documento": "Outro",
                 "numero_documento": "doc 1",
+                "data_documento": "2026-08-08",
                 f"quantidade_recebida_{item.id}": "1",
             },
             ordem,
@@ -508,6 +529,7 @@ class SuprimentosOrdensCompraTestCase(unittest.TestCase):
             {
                 "tipo_documento": "Nota Fiscal",
                 "numero_documento": "nf 123",
+                "data_documento": "2026-08-08",
                 f"quantidade_recebida_{item.id}": "2",
             },
             ordem,
