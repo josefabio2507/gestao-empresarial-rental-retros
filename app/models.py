@@ -1704,6 +1704,12 @@ class SuprimentosMovimentacaoEstoque(db.Model):
         nullable=True,
         index=True,
     )
+    responsavel_usuario_id = db.Column(
+        db.Integer,
+        db.ForeignKey("usuarios.id"),
+        nullable=True,
+        index=True,
+    )
     tipo = db.Column(db.String(20), nullable=False)
     origem = db.Column(db.String(40), nullable=False)
     status = db.Column(db.String(30), default="Registrada", nullable=False, index=True)
@@ -1730,10 +1736,11 @@ class SuprimentosMovimentacaoEstoque(db.Model):
     )
     ordem_compra = db.relationship("SuprimentosOrdemCompra")
     fornecedor = db.relationship("SuprimentosFornecedor")
+    responsavel = db.relationship("Usuario")
 
     __table_args__ = (
         db.CheckConstraint(
-            "tipo in ('Entrada')",
+            "tipo in ('Entrada', 'Saida')",
             name="ck_suprimentos_movimentacoes_estoque_tipo",
         ),
         db.CheckConstraint(
@@ -1741,7 +1748,7 @@ class SuprimentosMovimentacaoEstoque(db.Model):
             name="ck_suprimentos_movimentacoes_estoque_status",
         ),
         db.CheckConstraint(
-            "quantidade > 0",
+            "quantidade <> 0",
             name="ck_suprimentos_movimentacoes_estoque_quantidade",
         ),
     )

@@ -16,6 +16,7 @@ from app.models import (
     SuprimentosUnidadeMedida,
     Usuario,
 )
+from app.services.suprimentos_service import registrar_movimentacao_manual_estoque
 
 
 class SuprimentosEstoqueTestCase(unittest.TestCase):
@@ -163,11 +164,12 @@ class SuprimentosEstoqueTestCase(unittest.TestCase):
             sessao["_user_id"] = str(usuario.id)
             sessao["_fresh"] = True
 
-    def _liberar_usuario(self):
+    def _liberar_usuario(self, editar=False):
         permissao = PermissaoUsuarioModulo(
             usuario_id=self.usuario.id,
             modulo_id=self.modulo.id,
             pode_visualizar=True,
+            pode_editar=editar,
             ativo=True,
         )
         db.session.add(permissao)
@@ -226,6 +228,130 @@ class SuprimentosEstoqueTestCase(unittest.TestCase):
         self.assertIn(b"NF 123", resposta.data)
         self.assertIn(b"R$ 125,50", resposta.data)
         self.assertNotIn(b"ROM 55", resposta.data)
+
+    def test_historico_com_item_fixado_bloqueia_troca_item(self):
+        self._liberar_usuario()
+        self._autenticar(self.usuario)
+
+        resposta = self.client.get(f"/suprimentos/estoque/movimentacoes?item_id={self.item.id}")
+
+        self.assertEqual(200, resposta.status_code)
+        self.assertIn(f'name="item_id" value="{self.item.id}"'.encode(), resposta.data)
+        self.assertIn(b"readonly", resposta.data)
+        self.assertNotIn(b"<select id=\"item_id\"", resposta.data)
+        self.assertIn(b"FILTRO DE OLEO", resposta.data)
+        self.assertNotIn(b"ROM 55", resposta.data)
+
+    def test_registra_ajuste_entrada_manual_estoque(self):
+        sucesso, mensagem, movimentacao = registrar_movimentacao_manual_estoque(
+            {
+                "item_id": str(self.item.id),
+                "operacao": "ajuste_entrada",
+                "quantidade": "3",
+                "data_movimentacao": "2026-08-09",
+                "motivo": "ajuste inicial",
+            },
+            self.admin,
+        )
+
+        self.assertTrue(sucesso)
+        self.assertEqual("Movimentacao de estoque registrada com sucesso.", mensagem)
+        self.assertEqual("Entrada", movimentacao.tipo)
+        self.assertEqual("Ajuste Entrada", movimentacao.origem)
+        self.assertEqual(Decimal("3"), movimentacao.quantidade)
+        self.assertEqual("AJUSTE INICIAL", movimentacao.observacoes)
+        self.assertEqual(self.admin.id, movimentacao.responsavel_usuario_id)
+        self.assertEqual(Decimal("5.000"), self.item.saldo_estoque)
+
+    def test_registra_saida_manual_e_bloqueia_saida_acima_do_saldo(self):
+        sucesso, mensagem, movimentacao = registrar_movimentacao_manual_estoque(
+            {
+                "item_id": str(self.item.id),
+                "operacao": "consumo_interno",
+                "quantidade": "1,5",
+                "data_movimentacao": "2026-08-09",
+                "motivo": "uso em manutencao",
+            },
+            self.admin,
+        )
+
+        self.assertTrue(sucesso)
+        self.assertEqual("Saida", movimentacao.tipo)
+        self.assertEqual("Consumo Interno", movimentacao.origem)
+        self.assertEqual(Decimal("-1.5"), movimentacao.quantidade)
+        self.assertEqual(Decimal("0.500"), self.item.saldo_estoque)
+
+        sucesso, mensagem, movimentacao = registrar_movimentacao_manual_estoque(
+            {
+                "item_id": str(self.item.id),
+                "operacao": "ajuste_saida",
+                "quantidade": "1",
+                "data_movimentacao": "2026-08-09",
+                "motivo": "baixa",
+            },
+            self.admin,
+        )
+
+        self.assertFalse(sucesso)
+        self.assertEqual("Saida nao pode ser maior que o saldo atual do item.", mensagem)
+        self.assertIsNone(movimentacao)
+
+    def test_inventario_ajusta_saldo_pela_diferenca(self):
+        sucesso, mensagem, movimentacao = registrar_movimentacao_manual_estoque(
+            {
+                "item_id": str(self.item.id),
+                "operacao": "inventario",
+                "saldo_inventario": "1,250",
+                "data_movimentacao": "2026-08-09",
+                "motivo": "contagem fisica",
+            },
+            self.admin,
+        )
+
+        self.assertTrue(sucesso)
+        self.assertEqual("Saida", movimentacao.tipo)
+        self.assertEqual("Inventario", movimentacao.origem)
+        self.assertEqual(Decimal("-0.750"), movimentacao.quantidade)
+        self.assertEqual(Decimal("1.250"), self.item.saldo_estoque)
+
+    def test_rota_nova_movimentacao_exige_permissao_editar(self):
+        self._liberar_usuario()
+        self._autenticar(self.usuario)
+
+        resposta = self.client.get("/suprimentos/estoque/movimentacoes/nova")
+
+        self.assertEqual(302, resposta.status_code)
+        self.assertIn("/acesso-negado", resposta.headers["Location"])
+
+    def test_rota_nova_movimentacao_com_item_fixado_bloqueia_troca_item(self):
+        self._liberar_usuario(editar=True)
+        self._autenticar(self.usuario)
+
+        resposta = self.client.get(f"/suprimentos/estoque/movimentacoes/nova?item_id={self.item.id}")
+
+        self.assertEqual(200, resposta.status_code)
+        self.assertIn(f'name="item_id" value="{self.item.id}"'.encode(), resposta.data)
+        self.assertIn(b"readonly", resposta.data)
+        self.assertNotIn(b"<select id=\"item_id\"", resposta.data)
+
+    def test_rota_nova_movimentacao_registra_ajuste(self):
+        self._liberar_usuario(editar=True)
+        self._autenticar(self.usuario)
+
+        resposta = self.client.post(
+            "/suprimentos/estoque/movimentacoes/nova",
+            data={
+                "item_id": str(self.item.id),
+                "operacao": "ajuste_entrada",
+                "quantidade": "1",
+                "data_movimentacao": "2026-08-09",
+                "motivo": "ajuste rota",
+            },
+        )
+
+        self.assertEqual(302, resposta.status_code)
+        self.assertIn("/suprimentos/estoque/movimentacoes", resposta.headers["Location"])
+        self.assertEqual(Decimal("3.000"), self.item.saldo_estoque)
 
 
 if __name__ == "__main__":

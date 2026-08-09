@@ -75,9 +75,31 @@ STATUS_ORDEM_COMPRA_CANCELADA = "Cancelada"
 STATUS_RECEBIMENTO_COMPRA_REGISTRADO = "Registrado"
 STATUS_RECEBIMENTO_COMPRA_CANCELADO = "Cancelado"
 TIPO_MOVIMENTACAO_ESTOQUE_ENTRADA = "Entrada"
+TIPO_MOVIMENTACAO_ESTOQUE_SAIDA = "Saida"
 ORIGEM_MOVIMENTACAO_ESTOQUE_RECEBIMENTO_OC = "Recebimento OC"
+ORIGEM_MOVIMENTACAO_ESTOQUE_AJUSTE_ENTRADA = "Ajuste Entrada"
+ORIGEM_MOVIMENTACAO_ESTOQUE_AJUSTE_SAIDA = "Ajuste Saida"
+ORIGEM_MOVIMENTACAO_ESTOQUE_CONSUMO_INTERNO = "Consumo Interno"
+ORIGEM_MOVIMENTACAO_ESTOQUE_INVENTARIO = "Inventario"
 STATUS_MOVIMENTACAO_ESTOQUE_REGISTRADA = "Registrada"
 STATUS_MOVIMENTACAO_ESTOQUE_CANCELADA = "Cancelada"
+TIPOS_MOVIMENTACAO_MANUAL_ESTOQUE = {
+    "ajuste_entrada": {
+        "tipo": TIPO_MOVIMENTACAO_ESTOQUE_ENTRADA,
+        "origem": ORIGEM_MOVIMENTACAO_ESTOQUE_AJUSTE_ENTRADA,
+    },
+    "ajuste_saida": {
+        "tipo": TIPO_MOVIMENTACAO_ESTOQUE_SAIDA,
+        "origem": ORIGEM_MOVIMENTACAO_ESTOQUE_AJUSTE_SAIDA,
+    },
+    "consumo_interno": {
+        "tipo": TIPO_MOVIMENTACAO_ESTOQUE_SAIDA,
+        "origem": ORIGEM_MOVIMENTACAO_ESTOQUE_CONSUMO_INTERNO,
+    },
+    "inventario": {
+        "origem": ORIGEM_MOVIMENTACAO_ESTOQUE_INVENTARIO,
+    },
+}
 TIPOS_DOCUMENTO_RECEBIMENTO = {
     "Nota Fiscal",
     "Cupom Fiscal",
@@ -1051,6 +1073,7 @@ def buscar_movimentacoes_estoque(
             joinedload(SuprimentosMovimentacaoEstoque.item).joinedload(SuprimentosItem.unidade_medida),
             joinedload(SuprimentosMovimentacaoEstoque.ordem_compra),
             joinedload(SuprimentosMovimentacaoEstoque.fornecedor),
+            joinedload(SuprimentosMovimentacaoEstoque.responsavel),
         )
     )
 
@@ -1073,6 +1096,82 @@ def buscar_movimentacoes_estoque(
         )
 
     return query.order_by(SuprimentosMovimentacaoEstoque.movimentado_em.desc()).all()
+
+
+def registrar_movimentacao_manual_estoque(form_data, usuario):
+    item_id = inteiro_ou_none(form_data.get("item_id"))
+    operacao = texto(form_data.get("operacao"))
+    quantidade_informada = decimal_ou_none(form_data.get("quantidade"))
+    saldo_inventario = decimal_ou_none(form_data.get("saldo_inventario"))
+    documento_tipo = texto_maiusculo(form_data.get("documento_tipo")) or None
+    documento_numero = texto_maiusculo(form_data.get("documento_numero")) or None
+    data_movimentacao = data_ou_none(form_data.get("data_movimentacao"))
+    motivo = texto_maiusculo(form_data.get("motivo"))
+    observacoes = texto_maiusculo(form_data.get("observacoes")) or None
+
+    item = buscar_por_id(SuprimentosItem, item_id) if item_id else None
+
+    if not item or not item.ativo or not item.item_estocavel:
+        return False, "Informe um item estocavel ativo.", None
+
+    if operacao not in TIPOS_MOVIMENTACAO_MANUAL_ESTOQUE:
+        return False, "Informe o tipo de movimentacao.", None
+
+    if not data_movimentacao:
+        return False, "Data da movimentacao e obrigatoria.", None
+
+    if not motivo:
+        return False, "Motivo da movimentacao e obrigatorio.", None
+
+    configuracao = TIPOS_MOVIMENTACAO_MANUAL_ESTOQUE[operacao]
+
+    if operacao == "inventario":
+        if saldo_inventario is None:
+            return False, "Informe o saldo contado no inventario.", None
+
+        if saldo_inventario < 0:
+            return False, "Saldo contado no inventario nao pode ser negativo.", None
+
+        saldo_atual = Decimal(item.saldo_estoque).quantize(Decimal("0.001"))
+        diferenca = (saldo_inventario - saldo_atual).quantize(Decimal("0.001"))
+
+        if diferenca == 0:
+            return False, "Inventario sem diferenca nao gera movimentacao.", None
+
+        quantidade = diferenca
+        tipo = TIPO_MOVIMENTACAO_ESTOQUE_ENTRADA if diferenca > 0 else TIPO_MOVIMENTACAO_ESTOQUE_SAIDA
+    else:
+        if quantidade_informada is None:
+            return False, "Quantidade e obrigatoria.", None
+
+        if quantidade_informada <= 0:
+            return False, "Quantidade deve ser maior que zero.", None
+
+        tipo = configuracao["tipo"]
+        quantidade = quantidade_informada
+
+        if tipo == TIPO_MOVIMENTACAO_ESTOQUE_SAIDA:
+            saldo_atual = Decimal(item.saldo_estoque)
+            if quantidade_informada > saldo_atual:
+                return False, "Saida nao pode ser maior que o saldo atual do item.", None
+            quantidade = quantidade_informada * Decimal("-1")
+
+    movimentacao = SuprimentosMovimentacaoEstoque(
+        item_id=item.id,
+        responsavel_usuario_id=usuario.id if usuario else None,
+        tipo=tipo,
+        origem=configuracao["origem"],
+        status=STATUS_MOVIMENTACAO_ESTOQUE_REGISTRADA,
+        documento_tipo=documento_tipo,
+        documento_numero=documento_numero,
+        quantidade=quantidade,
+        observacoes=motivo if not observacoes else f"{motivo} | {observacoes}",
+        movimentado_em=datetime.combine(data_movimentacao, datetime.min.time()),
+    )
+    db.session.add(movimentacao)
+    db.session.commit()
+
+    return True, "Movimentacao de estoque registrada com sucesso.", movimentacao
 
 
 def buscar_cotacoes(numero=None, status=None):

@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Suprimentos</span>
+            <h1>Nova Movimentacao de Estoque</h1>
+            <p>Registre ajustes, saidas e inventario com motivo obrigatorio.</p>
+        </div>
+        <a class="btn btn-secondary" href="{{ url_for('suprimentos_estoque.listar') }}">Voltar</a>
+    </div>
+
+    <form class="form-card" method="POST">
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="item_id">Item</label>
+                {% if item_fixado %}
+                    <input type="hidden" id="item_id" name="item_id" value="{{ item_fixado.id }}">
+                    <input
+                        value="{{ item_fixado.codigo_interno or '-' }} - {{ item_fixado.descricao }} | Saldo: {{ formatar_decimal_brasil(item_fixado.saldo_estoque) }} {{ item_fixado.unidade_medida.sigla }}"
+                        readonly
+                    >
+                {% else %}
+                    <select id="item_id" name="item_id" required>
+                        <option value="">Selecione</option>
+                        {% for item in itens %}
+                            <option
+                                value="{{ item.id }}"
+                                {{ "selected" if filtros.get('item_id')|string == item.id|string else "" }}
+                            >
+                                {{ item.codigo_interno or "-" }} - {{ item.descricao }}
+                                | Saldo: {{ formatar_decimal_brasil(item.saldo_estoque) }} {{ item.unidade_medida.sigla }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                {% endif %}
+            </div>
+            <div class="form-group">
+                <label for="operacao">Tipo de movimentacao</label>
+                <select id="operacao" name="operacao" required>
+                    <option value="">Selecione</option>
+                    <option value="ajuste_entrada">Ajuste de Entrada</option>
+                    <option value="ajuste_saida">Ajuste de Saida</option>
+                    <option value="consumo_interno">Saida por Uso/Consumo Interno</option>
+                    <option value="inventario">Inventario</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="quantidade">Quantidade</label>
+                <input id="quantidade" name="quantidade" inputmode="decimal">
+            </div>
+            <div class="form-group">
+                <label for="saldo_inventario">Saldo contado no inventario</label>
+                <input id="saldo_inventario" name="saldo_inventario" inputmode="decimal">
+            </div>
+            <div class="form-group">
+                <label for="data_movimentacao">Data da movimentacao</label>
+                <input id="data_movimentacao" name="data_movimentacao" type="date" value="{{ hoje }}" required>
+            </div>
+            <div class="form-group">
+                <label for="documento_tipo">Tipo de documento</label>
+                <input id="documento_tipo" name="documento_tipo" maxlength="30" data-uppercase>
+            </div>
+            <div class="form-group">
+                <label for="documento_numero">Numero do documento</label>
+                <input id="documento_numero" name="documento_numero" maxlength="80" data-uppercase>
+            </div>
+            <div class="form-group">
+                <label for="motivo">Motivo</label>
+                <input id="motivo" name="motivo" required data-uppercase>
+            </div>
+            <div class="form-group form-group-full">
+                <label for="observacoes">Observacoes</label>
+                <textarea id="observacoes" name="observacoes" rows="3" data-uppercase></textarea>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Salvar</button>
+            <a class="btn btn-secondary" href="{{ url_for('suprimentos_estoque.listar') }}">Cancelar</a>
+        </div>
+    </form>
+</section>
+{% endblock %}
