@@ -224,6 +224,34 @@ class SuprimentosCotacoesTestCase(unittest.TestCase):
         self.assertEqual("RODADA INICIAL", cotacao.observacoes)
         self.assertTrue(cotacao.numero.startswith("COT-"))
 
+    def test_nova_cotacao_exibe_apenas_requisicoes_enviadas_para_analise(self):
+        _, _, rascunho = salvar_requisicao_compra(
+            {"justificativa": "Requisicao em rascunho"},
+            self.admin,
+        )
+        _, _, aprovada = salvar_requisicao_compra(
+            {"justificativa": "Requisicao aprovada"},
+            self.admin,
+        )
+        _, _, cancelada = salvar_requisicao_compra(
+            {"justificativa": "Requisicao cancelada"},
+            self.admin,
+        )
+        aprovada.status = STATUS_REQUISICAO_APROVADA
+        cancelada.status = STATUS_REQUISICAO_CANCELADA
+        db.session.commit()
+
+        self._liberar_usuario(criar=True)
+        self._autenticar(self.usuario)
+
+        resposta = self.client.get("/suprimentos/cotacoes/nova")
+
+        self.assertEqual(200, resposta.status_code)
+        self.assertIn(self.requisicao.numero.encode(), resposta.data)
+        self.assertNotIn(rascunho.numero.encode(), resposta.data)
+        self.assertNotIn(aprovada.numero.encode(), resposta.data)
+        self.assertNotIn(cancelada.numero.encode(), resposta.data)
+
     def test_nao_cria_cotacao_para_requisicao_rascunho(self):
         _, _, rascunho = salvar_requisicao_compra(
             {"justificativa": "Ainda em rascunho"},

@@ -101,7 +101,39 @@
 
     <div class="details-card">
         <p><strong>Total da ordem:</strong> {{ formatar_moeda_brl(ordem.valor_total) }}</p>
-        <p><strong>Proxima etapa:</strong> entrada em estoque e financeiro serao tratados nas proximas missoes.</p>
+        <p><strong>Proxima etapa:</strong> financeiro sera tratado nas proximas missoes.</p>
+    </div>
+
+    <div class="table-card table-responsive">
+        <h2>Entradas de Estoque</h2>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th>Documento</th>
+                    <th>Qtd.</th>
+                    <th>Valor unit.</th>
+                    <th>Total</th>
+                    <th>Status</th>
+                    <th>Data</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for movimentacao in movimentacoes_estoque %}
+                    <tr>
+                        <td>{{ movimentacao.item.codigo_interno or "-" }} - {{ movimentacao.item.descricao }}</td>
+                        <td>{{ movimentacao.documento_tipo or "-" }} {{ movimentacao.documento_numero or "" }}</td>
+                        <td>{{ formatar_decimal_brasil(movimentacao.quantidade) }}</td>
+                        <td>{{ formatar_moeda_brl(movimentacao.valor_unitario) }}</td>
+                        <td>{{ formatar_moeda_brl(movimentacao.valor_total_snapshot) }}</td>
+                        <td><span class="badge badge-success">{{ movimentacao.status }}</span></td>
+                        <td>{{ movimentacao.movimentado_em.strftime("%d/%m/%Y %H:%M") }}</td>
+                    </tr>
+                {% else %}
+                    <tr><td class="empty-state" colspan="7">Nenhuma entrada de estoque gerada para esta ordem.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
 
     <div class="page-actions">

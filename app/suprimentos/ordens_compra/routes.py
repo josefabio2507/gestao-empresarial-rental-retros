@@ -60,6 +60,12 @@ def detalhes(ordem_id):
     return render_template(
         "suprimentos/ordens_compra/detalhes.html",
         ordem=ordem,
+        movimentacoes_estoque=[
+            recebimento_item.movimentacao_estoque
+            for recebimento in ordem.recebimentos
+            for recebimento_item in recebimento.itens
+            if recebimento_item.movimentacao_estoque
+        ],
         formatar_decimal_brasil=formatar_decimal_brasil,
         formatar_moeda_brl=formatar_moeda_brl,
     )

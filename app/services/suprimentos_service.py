@@ -24,6 +24,7 @@ from app.models import (
     SuprimentosRequisicaoCompraItem,
     SuprimentosOrdemCompra,
     SuprimentosOrdemCompraItem,
+    SuprimentosMovimentacaoEstoque,
     SuprimentosRecebimentoCompra,
     SuprimentosRecebimentoCompraItem,
     SuprimentosUnidadeMedida,
@@ -72,6 +73,10 @@ STATUS_ORDEM_COMPRA_RECEBIDA = "Recebida"
 STATUS_ORDEM_COMPRA_CANCELADA = "Cancelada"
 STATUS_RECEBIMENTO_COMPRA_REGISTRADO = "Registrado"
 STATUS_RECEBIMENTO_COMPRA_CANCELADO = "Cancelado"
+TIPO_MOVIMENTACAO_ESTOQUE_ENTRADA = "Entrada"
+ORIGEM_MOVIMENTACAO_ESTOQUE_RECEBIMENTO_OC = "Recebimento OC"
+STATUS_MOVIMENTACAO_ESTOQUE_REGISTRADA = "Registrada"
+STATUS_MOVIMENTACAO_ESTOQUE_CANCELADA = "Cancelada"
 TIPOS_DOCUMENTO_RECEBIMENTO = {
     "Nota Fiscal",
     "Cupom Fiscal",
@@ -1430,18 +1435,19 @@ def registrar_recebimento_ordem_compra(form_data, ordem_compra, usuario):
     db.session.flush()
 
     for ordem_item, quantidade, observacao_item in itens_recebidos:
-        db.session.add(
-            SuprimentosRecebimentoCompraItem(
-                recebimento_id=recebimento.id,
-                ordem_compra_item_id=ordem_item.id,
-                item_id=ordem_item.item_id,
-                item_codigo_snapshot=ordem_item.item_codigo_snapshot,
-                item_descricao_snapshot=ordem_item.item_descricao_snapshot,
-                unidade_medida_snapshot=ordem_item.unidade_medida_snapshot,
-                quantidade_recebida=quantidade,
-                observacoes=observacao_item,
-            )
+        recebimento_item = SuprimentosRecebimentoCompraItem(
+            recebimento_id=recebimento.id,
+            ordem_compra_item_id=ordem_item.id,
+            item_id=ordem_item.item_id,
+            item_codigo_snapshot=ordem_item.item_codigo_snapshot,
+            item_descricao_snapshot=ordem_item.item_descricao_snapshot,
+            unidade_medida_snapshot=ordem_item.unidade_medida_snapshot,
+            quantidade_recebida=quantidade,
+            observacoes=observacao_item,
         )
+        db.session.add(recebimento_item)
+        db.session.flush()
+        registrar_entrada_estoque_recebimento_item(recebimento_item)
 
     db.session.flush()
     for ordem_item in ordem_compra.itens:
@@ -1450,6 +1456,48 @@ def registrar_recebimento_ordem_compra(form_data, ordem_compra, usuario):
     db.session.commit()
 
     return True, "Recebimento registrado com sucesso.", recebimento
+
+
+def registrar_entrada_estoque_recebimento_item(recebimento_item):
+    item = recebimento_item.item
+
+    if not item or not item.item_estocavel:
+        return None
+
+    existente = SuprimentosMovimentacaoEstoque.query.filter_by(
+        recebimento_item_id=recebimento_item.id,
+    ).first()
+
+    if existente:
+        return existente
+
+    ordem_item = recebimento_item.ordem_compra_item
+    recebimento = recebimento_item.recebimento
+    ordem_compra = recebimento.ordem_compra if recebimento else None
+    valor_unitario = ordem_item.preco_unitario if ordem_item else None
+    valor_total = None
+
+    if valor_unitario is not None:
+        valor_total = recebimento_item.quantidade_recebida * valor_unitario
+
+    movimentacao = SuprimentosMovimentacaoEstoque(
+        item_id=recebimento_item.item_id,
+        recebimento_item_id=recebimento_item.id,
+        ordem_compra_id=ordem_compra.id if ordem_compra else None,
+        fornecedor_id=ordem_compra.fornecedor_id if ordem_compra else None,
+        tipo=TIPO_MOVIMENTACAO_ESTOQUE_ENTRADA,
+        origem=ORIGEM_MOVIMENTACAO_ESTOQUE_RECEBIMENTO_OC,
+        status=STATUS_MOVIMENTACAO_ESTOQUE_REGISTRADA,
+        documento_tipo=recebimento.tipo_documento if recebimento else None,
+        documento_numero=recebimento.numero_documento if recebimento else None,
+        quantidade=recebimento_item.quantidade_recebida,
+        valor_unitario=valor_unitario,
+        valor_total_snapshot=valor_total,
+        observacoes=recebimento_item.observacoes,
+        movimentado_em=recebimento.recebido_em if recebimento else datetime.utcnow(),
+    )
+    db.session.add(movimentacao)
+    return movimentacao
 
 
 def cancelar_ordem_compra(ordem_compra, motivo=None):
