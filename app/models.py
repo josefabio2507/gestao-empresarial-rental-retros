@@ -1011,6 +1011,10 @@ class SuprimentosItem(db.Model):
         back_populates="item",
         cascade="all, delete-orphan",
     )
+    movimentacoes_estoque = db.relationship(
+        "SuprimentosMovimentacaoEstoque",
+        back_populates="item",
+    )
 
     __table_args__ = (
         db.CheckConstraint(
@@ -1022,6 +1026,17 @@ class SuprimentosItem(db.Model):
             name="ck_suprimentos_itens_estoque_minimo",
         ),
     )
+
+    @property
+    def saldo_estoque(self):
+        return sum(
+            (
+                movimentacao.quantidade
+                for movimentacao in self.movimentacoes_estoque
+                if movimentacao.status == "Registrada"
+            ),
+            start=0,
+        )
 
     def __repr__(self):
         return f"<SuprimentosItem {self.codigo_interno or ''} {self.descricao}>"
@@ -1643,6 +1658,11 @@ class SuprimentosRecebimentoCompraItem(db.Model):
     recebimento = db.relationship("SuprimentosRecebimentoCompra", back_populates="itens")
     ordem_compra_item = db.relationship("SuprimentosOrdemCompraItem", back_populates="recebimentos")
     item = db.relationship("SuprimentosItem")
+    movimentacao_estoque = db.relationship(
+        "SuprimentosMovimentacaoEstoque",
+        back_populates="recebimento_item",
+        uselist=False,
+    )
 
     __table_args__ = (
         db.CheckConstraint(
@@ -1653,3 +1673,78 @@ class SuprimentosRecebimentoCompraItem(db.Model):
 
     def __repr__(self):
         return f"<SuprimentosRecebimentoCompraItem recebimento={self.recebimento_id} item={self.item_id}>"
+
+
+class SuprimentosMovimentacaoEstoque(db.Model):
+    __tablename__ = "suprimentos_movimentacoes_estoque"
+
+    id = db.Column(db.Integer, primary_key=True)
+    item_id = db.Column(
+        db.Integer,
+        db.ForeignKey("suprimentos_itens.id"),
+        nullable=False,
+        index=True,
+    )
+    recebimento_item_id = db.Column(
+        db.Integer,
+        db.ForeignKey("suprimentos_recebimento_compra_itens.id"),
+        nullable=True,
+        unique=True,
+        index=True,
+    )
+    ordem_compra_id = db.Column(
+        db.Integer,
+        db.ForeignKey("suprimentos_ordens_compra.id"),
+        nullable=True,
+        index=True,
+    )
+    fornecedor_id = db.Column(
+        db.Integer,
+        db.ForeignKey("suprimentos_fornecedores.id"),
+        nullable=True,
+        index=True,
+    )
+    tipo = db.Column(db.String(20), nullable=False)
+    origem = db.Column(db.String(40), nullable=False)
+    status = db.Column(db.String(30), default="Registrada", nullable=False, index=True)
+    documento_tipo = db.Column(db.String(30), nullable=True)
+    documento_numero = db.Column(db.String(80), nullable=True)
+    quantidade = db.Column(db.Numeric(12, 3), nullable=False)
+    valor_unitario = db.Column(db.Numeric(12, 2), nullable=True)
+    valor_total_snapshot = db.Column(db.Numeric(12, 2), nullable=True)
+    observacoes = db.Column(db.Text, nullable=True)
+    movimentado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    atualizado_em = db.Column(
+        db.DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False
+    )
+
+    item = db.relationship("SuprimentosItem", back_populates="movimentacoes_estoque")
+    recebimento_item = db.relationship(
+        "SuprimentosRecebimentoCompraItem",
+        back_populates="movimentacao_estoque",
+    )
+    ordem_compra = db.relationship("SuprimentosOrdemCompra")
+    fornecedor = db.relationship("SuprimentosFornecedor")
+
+    __table_args__ = (
+        db.CheckConstraint(
+            "tipo in ('Entrada')",
+            name="ck_suprimentos_movimentacoes_estoque_tipo",
+        ),
+        db.CheckConstraint(
+            "status in ('Registrada', 'Cancelada')",
+            name="ck_suprimentos_movimentacoes_estoque_status",
+        ),
+        db.CheckConstraint(
+            "quantidade > 0",
+            name="ck_suprimentos_movimentacoes_estoque_quantidade",
+        ),
+    )
+
+    def __repr__(self):
+        return f"<SuprimentosMovimentacaoEstoque {self.tipo} item={self.item_id}>"

@@ -13,6 +13,7 @@ from app.models import (
     SuprimentosFornecedor,
     SuprimentosFornecedorItem,
     SuprimentosItem,
+    SuprimentosMovimentacaoEstoque,
     SuprimentosOrdemCompra,
     SuprimentosUnidadeMedida,
     Usuario,
@@ -29,6 +30,7 @@ from app.services.suprimentos_service import (
     enviar_cotacao_para_aprovacao,
     enviar_requisicao_compra,
     gerar_ordens_compra_cotacao,
+    registrar_entrada_estoque_recebimento_item,
     registrar_recebimento_ordem_compra,
     salvar_cotacao,
     salvar_proposta_cotacao,
@@ -276,6 +278,8 @@ class SuprimentosOrdensCompraTestCase(unittest.TestCase):
         self.assertEqual(STATUS_ORDEM_COMPRA_PARCIAL, ordem.status)
         self.assertEqual(Decimal("1.000"), item.quantidade_recebida)
         self.assertEqual(Decimal("1.000"), item.saldo_receber)
+        self.assertEqual(1, SuprimentosMovimentacaoEstoque.query.count())
+        self.assertEqual(Decimal("1.000"), self.item.saldo_estoque)
 
         sucesso, mensagem, recebimento = registrar_recebimento_ordem_compra(
             {
@@ -291,6 +295,96 @@ class SuprimentosOrdensCompraTestCase(unittest.TestCase):
         self.assertEqual(STATUS_ORDEM_COMPRA_RECEBIDA, ordem.status)
         self.assertEqual(Decimal("2.000"), item.quantidade_recebida)
         self.assertEqual(Decimal("0.000"), item.saldo_receber)
+        self.assertEqual(2, SuprimentosMovimentacaoEstoque.query.count())
+        self.assertEqual(Decimal("2.000"), self.item.saldo_estoque)
+
+    def test_nao_duplica_entrada_estoque_do_mesmo_item_recebido(self):
+        cotacao = self._criar_cotacao_aprovada()
+        _, _, ordens = gerar_ordens_compra_cotacao(cotacao, self.admin)
+        ordem = ordens[0]
+        item = ordem.itens[0]
+        _, _, recebimento = registrar_recebimento_ordem_compra(
+            {
+                "tipo_documento": "Nota Fiscal",
+                "numero_documento": "nf 123",
+                f"quantidade_recebida_{item.id}": "2",
+            },
+            ordem,
+            self.admin,
+        )
+        recebimento_item = recebimento.itens[0]
+        movimento = recebimento_item.movimentacao_estoque
+
+        movimento_reprocessado = registrar_entrada_estoque_recebimento_item(recebimento_item)
+        db.session.commit()
+
+        self.assertEqual(movimento.id, movimento_reprocessado.id)
+        self.assertEqual(1, SuprimentosMovimentacaoEstoque.query.count())
+        self.assertEqual(Decimal("2.000"), self.item.saldo_estoque)
+
+    def test_nao_movimenta_estoque_para_item_nao_estocavel(self):
+        item_servico = SuprimentosItem(
+            codigo_interno="SRV-001",
+            descricao="SERVICO DE CALIBRAGEM",
+            categoria_id=self.categoria.id,
+            unidade_medida_id=self.unidade.id,
+            centro_custo_padrao_id=self.centro.id,
+            tipo="servico",
+            item_estocavel=False,
+            ativo=True,
+        )
+        db.session.add(item_servico)
+        db.session.flush()
+        db.session.add(
+            SuprimentosFornecedorItem(
+                fornecedor_id=self.fornecedor.id,
+                item_id=item_servico.id,
+                ativo=True,
+                fornecedor_preferencial=False,
+            )
+        )
+        db.session.commit()
+
+        _, _, requisicao = salvar_requisicao_compra(
+            {"centro_custo_id": str(self.centro.id), "justificativa": "Contratar servico"},
+            self.admin,
+        )
+        adicionar_item_requisicao(
+            {"item_id": str(item_servico.id), "quantidade": "1"},
+            requisicao,
+        )
+        enviar_requisicao_compra(requisicao)
+        requisicao_item = requisicao.itens[0]
+        _, _, cotacao = salvar_cotacao({"requisicao_id": str(requisicao.id)}, self.admin)
+        _, _, proposta = salvar_proposta_cotacao(
+            {
+                "requisicao_item_id": str(requisicao_item.id),
+                "fornecedor_id": str(self.fornecedor.id),
+                "preco_unitario": "50",
+            },
+            cotacao,
+        )
+        selecionar_proposta_vencedora({"proposta_id": str(proposta.id)}, cotacao, self.admin)
+        enviar_cotacao_para_aprovacao(cotacao, self.admin)
+        aprovar_cotacao(cotacao, self.admin, {"observacoes_aprovacao": "aprovado"})
+        _, _, ordens = gerar_ordens_compra_cotacao(cotacao, self.admin)
+        ordem = ordens[0]
+        ordem_item = ordem.itens[0]
+
+        sucesso, _, recebimento = registrar_recebimento_ordem_compra(
+            {
+                "tipo_documento": "Outro",
+                "numero_documento": "serv 1",
+                f"quantidade_recebida_{ordem_item.id}": "1",
+            },
+            ordem,
+            self.admin,
+        )
+
+        self.assertTrue(sucesso)
+        self.assertIsNone(recebimento.itens[0].movimentacao_estoque)
+        self.assertEqual(0, SuprimentosMovimentacaoEstoque.query.count())
+        self.assertEqual(0, item_servico.saldo_estoque)
 
     def test_bloqueia_recebimento_acima_do_saldo(self):
         cotacao = self._criar_cotacao_aprovada()
@@ -425,6 +519,7 @@ class SuprimentosOrdensCompraTestCase(unittest.TestCase):
 
         self.assertEqual(200, resposta.status_code)
         self.assertIn(b"Recebimentos", resposta.data)
+        self.assertIn(b"Entradas de Estoque", resposta.data)
         self.assertIn(b"NF 123", resposta.data)
         self.assertIn(b"Recebida", resposta.data)
 
