@@ -118,12 +118,36 @@
                     </a>
 
                 {% elif departamento.slug == "suprimentos" %}
-                    <a class="module-card module-card-link" href="{{ url_for('suprimentos.index') }}">
+                    {% if modulo_slug == "fornecedores" %}
+                        {% set destino_suprimentos = url_for('suprimentos_fornecedores.listar') %}
+                    {% elif modulo_slug == "categorias" %}
+                        {% set destino_suprimentos = url_for('suprimentos_categorias.listar') %}
+                    {% elif modulo_slug == "unidades_medida" %}
+                        {% set destino_suprimentos = url_for('suprimentos_unidades_medida.listar') %}
+                    {% elif modulo_slug == "itens" %}
+                        {% set destino_suprimentos = url_for('suprimentos_itens.listar') %}
+                    {% elif modulo_slug == "centros_custo" %}
+                        {% set destino_suprimentos = url_for('suprimentos_centros_custo.listar') %}
+                    {% elif modulo_slug == "fornecedor_itens" %}
+                        {% set destino_suprimentos = url_for('suprimentos_fornecedor_itens.listar') %}
+                    {% elif modulo_slug == "requisicoes_compra" %}
+                        {% set destino_suprimentos = url_for('suprimentos_requisicoes.listar') %}
+                    {% elif modulo_slug == "cotacoes" %}
+                        {% set destino_suprimentos = url_for('suprimentos_cotacoes.listar') %}
+                    {% elif modulo_slug == "ordens_compra" %}
+                        {% set destino_suprimentos = url_for('suprimentos_ordens_compra.listar') %}
+                    {% elif modulo_slug == "estoque" %}
+                        {% set destino_suprimentos = url_for('suprimentos_estoque.listar') %}
+                    {% else %}
+                        {% set destino_suprimentos = url_for('suprimentos.index') %}
+                    {% endif %}
+
+                    <a class="module-card module-card-link" href="{{ destino_suprimentos }}">
                         <span class="module-card-icon">S</span>
                         <h2>{{ modulo.nome }}</h2>
                         <p>{{ modulo.descricao or "Cadastros base de Suprimentos." }}</p>
                         <span class="badge badge-success">Liberado</span>
-                        <span class="module-status">Acessar suprimentos</span>
+                        <span class="module-status">Acessar modulo</span>
                     </a>
 
                 {% else %}

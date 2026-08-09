@@ -18,6 +18,7 @@ SUPRIMENTOS = {
         ("Requisicoes de Compra", "requisicoes_compra", "Solicitacao interna de compras e servicos"),
         ("Cotacoes", "cotacoes", "Registro de propostas de fornecedores para requisicoes enviadas"),
         ("Ordens de Compra", "ordens_compra", "Geracao e consulta de ordens de compra aprovadas"),
+        ("Estoque", "estoque", "Consulta de saldos e historico de movimentacoes de estoque"),
     ],
 }
 

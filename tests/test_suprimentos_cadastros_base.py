@@ -142,10 +142,10 @@ class SuprimentosCadastrosBaseTestCase(unittest.TestCase):
         db.session.commit()
         return categoria, unidade, centro
 
-    def test_admin_acessa_hub_suprimentos(self):
+    def test_admin_acessa_suprimentos_pela_tela_oficial_do_departamento(self):
         self._autenticar(self.admin)
 
-        resposta = self.client.get("/suprimentos/")
+        resposta = self.client.get("/suprimentos/", follow_redirects=True)
 
         self.assertEqual(200, resposta.status_code)
         self.assertIn(b"Suprimentos", resposta.data)
@@ -159,11 +159,11 @@ class SuprimentosCadastrosBaseTestCase(unittest.TestCase):
         self.assertEqual(302, resposta.status_code)
         self.assertIn("/acesso-negado", resposta.headers["Location"])
 
-    def test_usuario_com_visualizar_acessa_hub_e_fornecedores(self):
+    def test_usuario_com_visualizar_acessa_departamento_e_fornecedores(self):
         self._liberar("fornecedores", visualizar=True)
         self._autenticar(self.usuario)
 
-        hub = self.client.get("/suprimentos/")
+        hub = self.client.get("/suprimentos/", follow_redirects=True)
         fornecedores = self.client.get("/suprimentos/fornecedores/")
 
         self.assertEqual(200, hub.status_code)

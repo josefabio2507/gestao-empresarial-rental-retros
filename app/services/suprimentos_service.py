@@ -5,10 +5,11 @@ import unicodedata
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote
 from urllib.request import Request, urlopen
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal, InvalidOperation
 
 from sqlalchemy import func
+from sqlalchemy.orm import joinedload
 
 from app.extensions import db
 from app.models import (
@@ -992,6 +993,88 @@ def buscar_ordens_compra_cotacao(cotacao):
     )
 
 
+def buscar_saldos_estoque(descricao=None, categoria_id=None, somente_abaixo_minimo=False):
+    descricao = texto(descricao).upper()
+    categoria_id = inteiro_ou_none(categoria_id)
+    somente_abaixo_minimo = bool(somente_abaixo_minimo)
+
+    query = (
+        SuprimentosItem.query
+        .options(
+            joinedload(SuprimentosItem.categoria),
+            joinedload(SuprimentosItem.unidade_medida),
+            joinedload(SuprimentosItem.movimentacoes_estoque),
+        )
+        .filter(
+            SuprimentosItem.item_estocavel.is_(True),
+            SuprimentosItem.ativo.is_(True),
+        )
+    )
+
+    if descricao:
+        query = query.filter(
+            SuprimentosItem.descricao.ilike(f"%{descricao}%")
+            | SuprimentosItem.codigo_interno.ilike(f"%{descricao}%")
+        )
+
+    if categoria_id:
+        query = query.filter(SuprimentosItem.categoria_id == categoria_id)
+
+    itens = query.order_by(SuprimentosItem.descricao.asc()).all()
+
+    if somente_abaixo_minimo:
+        itens = [
+            item
+            for item in itens
+            if item.estoque_minimo is not None and item.saldo_estoque < item.estoque_minimo
+        ]
+
+    return itens
+
+
+def buscar_movimentacoes_estoque(
+    item_id=None,
+    fornecedor_id=None,
+    documento=None,
+    data_inicio=None,
+    data_fim=None,
+):
+    item_id = inteiro_ou_none(item_id)
+    fornecedor_id = inteiro_ou_none(fornecedor_id)
+    documento = texto_maiusculo(documento)
+    data_inicio = data_ou_none(data_inicio)
+    data_fim = data_ou_none(data_fim)
+
+    query = (
+        SuprimentosMovimentacaoEstoque.query
+        .options(
+            joinedload(SuprimentosMovimentacaoEstoque.item).joinedload(SuprimentosItem.unidade_medida),
+            joinedload(SuprimentosMovimentacaoEstoque.ordem_compra),
+            joinedload(SuprimentosMovimentacaoEstoque.fornecedor),
+        )
+    )
+
+    if item_id:
+        query = query.filter(SuprimentosMovimentacaoEstoque.item_id == item_id)
+
+    if fornecedor_id:
+        query = query.filter(SuprimentosMovimentacaoEstoque.fornecedor_id == fornecedor_id)
+
+    if documento:
+        query = query.filter(SuprimentosMovimentacaoEstoque.documento_numero.ilike(f"%{documento}%"))
+
+    if data_inicio:
+        query = query.filter(SuprimentosMovimentacaoEstoque.movimentado_em >= datetime.combine(data_inicio, datetime.min.time()))
+
+    if data_fim:
+        query = query.filter(
+            SuprimentosMovimentacaoEstoque.movimentado_em
+            < datetime.combine(data_fim + timedelta(days=1), datetime.min.time())
+        )
+
+    return query.order_by(SuprimentosMovimentacaoEstoque.movimentado_em.desc()).all()
+
+
 def buscar_cotacoes(numero=None, status=None):
     query = SuprimentosCotacao.query
     numero = texto(numero).upper()
@@ -1399,8 +1482,11 @@ def registrar_recebimento_ordem_compra(form_data, ordem_compra, usuario):
     if not numero_documento:
         return False, "Numero do documento e obrigatorio.", None
 
-    if texto(form_data.get("data_documento")) and data_documento is None:
-        return False, "Data do documento invalida.", None
+    if not texto(form_data.get("data_documento")):
+        return False, "Data de recebimento e obrigatoria.", None
+
+    if data_documento is None:
+        return False, "Data de recebimento invalida.", None
 
     for item in ordem_compra.itens:
         quantidade = decimal_ou_none(form_data.get(f"quantidade_recebida_{item.id}"))

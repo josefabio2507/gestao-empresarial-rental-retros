@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Suprimentos</span>
+            <h1>Estoque</h1>
+            <p>Saldos atuais dos itens estocaveis recebidos por Ordem de Compra.</p>
+        </div>
+        <div class="page-actions">
+            <a class="btn btn-secondary" href="{{ url_for('suprimentos_estoque.movimentacoes') }}">Historico</a>
+            <a class="btn btn-secondary" href="{{ url_for('suprimentos.index') }}">Voltar</a>
+        </div>
+    </div>
+
+    <form class="filter-card" method="GET">
+        <div class="form-group">
+            <label for="descricao">Descricao ou codigo</label>
+            <input id="descricao" name="descricao" value="{{ filtros.get('descricao', '') }}">
+        </div>
+        <div class="form-group">
+            <label for="categoria_id">Categoria</label>
+            <select id="categoria_id" name="categoria_id">
+                <option value="">Todas</option>
+                {% for categoria in categorias %}
+                    <option value="{{ categoria.id }}" {{ "selected" if filtros.get('categoria_id')|string == categoria.id|string else "" }}>{{ categoria.nome }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="abaixo_minimo">Estoque minimo</label>
+            <select id="abaixo_minimo" name="abaixo_minimo">
+                <option value="">Todos</option>
+                <option value="1" {{ "selected" if filtros.get('abaixo_minimo') else "" }}>Abaixo do minimo</option>
+            </select>
+        </div>
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Pesquisar</button>
+            <a class="btn btn-secondary" href="{{ url_for('suprimentos_estoque.listar') }}">Limpar</a>
+        </div>
+    </form>
+
+    <div class="table-card table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Codigo</th>
+                    <th>Item</th>
+                    <th>Categoria</th>
+                    <th>Unidade</th>
+                    <th>Saldo</th>
+                    <th>Estoque minimo</th>
+                    <th>Status</th>
+                    <th>Acoes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in itens %}
+                    {% set abaixo_minimo = item.estoque_minimo is not none and item.saldo_estoque < item.estoque_minimo %}
+                    <tr>
+                        <td>{{ item.codigo_interno or "-" }}</td>
+                        <td>{{ item.descricao }}</td>
+                        <td>{{ item.categoria.nome }}</td>
+                        <td>{{ item.unidade_medida.sigla }}</td>
+                        <td>{{ formatar_decimal_brasil(item.saldo_estoque) }}</td>
+                        <td>{{ formatar_decimal_brasil(item.estoque_minimo) if item.estoque_minimo is not none else "-" }}</td>
+                        <td>
+                            <span class="badge {{ 'badge-danger' if abaixo_minimo else 'badge-success' }}">
+                                {{ "Abaixo do minimo" if abaixo_minimo else "Normal" }}
+                            </span>
+                        </td>
+                        <td class="col-acoes">
+                            <a class="btn btn-secondary" href="{{ url_for('suprimentos_estoque.movimentacoes', item_id=item.id) }}">Historico</a>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr><td class="empty-state" colspan="8">Nenhum item estocavel encontrado.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}
