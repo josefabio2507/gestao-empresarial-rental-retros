@@ -32,6 +32,10 @@
 
     <div class="details-card">
         <p><strong>Status da cotacao:</strong> {{ cotacao.status }}</p>
+        <p><strong>Total selecionado:</strong> {{ formatar_moeda_brl(valor_total_selecionado) }}</p>
+        {% if cotacao.aprovador %}
+            <p><strong>Aprovador da alcada:</strong> {{ cotacao.aprovador.nome }}</p>
+        {% endif %}
         <p><strong>Justificativa:</strong> {{ cotacao.requisicao.justificativa }}</p>
         <p><strong>Observacoes:</strong> {{ cotacao.observacoes or "-" }}</p>
         {% if cotacao.observacoes_aprovacao %}
@@ -132,31 +136,46 @@
 
     {% if cotacao.pode_editar %}
         <div class="alert-warning-box">
-            Selecione uma proposta vencedora para cada item antes de enviar para aprovacao. Escolhas acima do menor preco exigem justificativa.
+            Selecione uma proposta vencedora para cada item antes de enviar via WhatsApp para aprovacao. Escolhas acima do menor preco exigem justificativa.
         </div>
         <div class="page-actions">
-            <form class="inline-form" method="POST" action="{{ url_for('suprimentos_cotacoes.enviar_aprovacao', cotacao_id=cotacao.id) }}">
-                <button class="btn btn-primary" type="submit">Enviar para aprovacao</button>
+            <form class="inline-form" method="POST" action="{{ url_for('suprimentos_cotacoes.enviar_whatsapp_aprovacao', cotacao_id=cotacao.id) }}" target="_blank">
+                <button class="btn btn-whatsapp" type="submit">Enviar via WhatsApp para aprovacao</button>
             </form>
         </div>
     {% elif cotacao.status == "Em Aprovacao" %}
         <div class="details-card">
             <h2>Aprovacao por alcada</h2>
-            <p>A aprovacao inicial usa a permissao de aprovar do modulo Cotacoes. Nenhuma ordem de compra sera gerada nesta etapa.</p>
-            <form class="approval-form" method="POST" action="{{ url_for('suprimentos_cotacoes.aprovar', cotacao_id=cotacao.id) }}">
-                <div class="form-group">
-                    <label for="observacoes_aprovacao">Observacoes da aprovacao</label>
-                    <textarea id="observacoes_aprovacao" name="observacoes_aprovacao" rows="2" data-uppercase></textarea>
+            <p>
+                Aprovador responsavel:
+                <strong>{{ cotacao.aprovador.nome if cotacao.aprovador else "Nao definido" }}</strong>.
+                Nenhuma ordem de compra sera gerada nesta etapa.
+            </p>
+            <div class="page-actions">
+                <a class="btn btn-whatsapp" href="{{ url_for('suprimentos_cotacoes.enviar_whatsapp_aprovacao', cotacao_id=cotacao.id) }}" target="_blank">
+                    Enviar WhatsApp para aprovador
+                </a>
+            </div>
+            {% if usuario_pode_aprovar %}
+                <form class="approval-form" method="POST" action="{{ url_for('suprimentos_cotacoes.aprovar', cotacao_id=cotacao.id) }}">
+                    <div class="form-group">
+                        <label for="observacoes_aprovacao">Observacoes da aprovacao</label>
+                        <textarea id="observacoes_aprovacao" name="observacoes_aprovacao" rows="2" data-uppercase></textarea>
+                    </div>
+                    <button class="btn btn-primary" type="submit">Aprovar cotacao</button>
+                </form>
+                <form class="approval-form" method="POST" action="{{ url_for('suprimentos_cotacoes.reprovar', cotacao_id=cotacao.id) }}">
+                    <div class="form-group">
+                        <label for="observacoes_reprovacao">Justificativa da reprovacao</label>
+                        <textarea id="observacoes_reprovacao" name="observacoes_aprovacao" rows="2" required data-uppercase></textarea>
+                    </div>
+                    <button class="btn btn-warning" type="submit">Reprovar para ajustes</button>
+                </form>
+            {% else %}
+                <div class="alert-warning-box">
+                    Esta cotacao esta aguardando aprovacao do aprovador definido pela alcada.
                 </div>
-                <button class="btn btn-primary" type="submit">Aprovar cotacao</button>
-            </form>
-            <form class="approval-form" method="POST" action="{{ url_for('suprimentos_cotacoes.reprovar', cotacao_id=cotacao.id) }}">
-                <div class="form-group">
-                    <label for="observacoes_reprovacao">Justificativa da reprovacao</label>
-                    <textarea id="observacoes_reprovacao" name="observacoes_aprovacao" rows="2" required data-uppercase></textarea>
-                </div>
-                <button class="btn btn-warning" type="submit">Reprovar para ajustes</button>
-            </form>
+            {% endif %}
         </div>
     {% elif cotacao.status == "Aprovada" %}
         <div class="details-card">

@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Suprimentos</span>
+            <h1>{{ "Nova Alcada" if modo == "nova" else "Editar Alcada" }}</h1>
+            <p>Defina quem aprova propostas dentro da faixa de valor.</p>
+        </div>
+        <a class="btn btn-secondary" href="{{ url_for('suprimentos_alcadas_aprovacao.listar') }}">Voltar</a>
+    </div>
+
+    <form class="form-card" method="POST">
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="usuario_aprovador_id">Aprovador</label>
+                <select id="usuario_aprovador_id" name="usuario_aprovador_id" required>
+                    <option value="">Selecione</option>
+                    {% for usuario in usuarios %}
+                        <option value="{{ usuario.id }}" {{ "selected" if alcada and alcada.usuario_aprovador_id == usuario.id else "" }}>{{ usuario.nome }} - {{ usuario.email }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="valor_minimo">Valor minimo</label>
+                <input id="valor_minimo" name="valor_minimo" type="text" inputmode="decimal" required value="{{ formatar_moeda_brl(alcada.valor_minimo).replace('R$ ', '') if alcada else '0,00' }}">
+            </div>
+            <div class="form-group">
+                <label for="valor_maximo">Valor maximo</label>
+                <input id="valor_maximo" name="valor_maximo" type="text" inputmode="decimal" value="{{ formatar_moeda_brl(alcada.valor_maximo).replace('R$ ', '') if alcada and alcada.valor_maximo is not none else '' }}" placeholder="Sem limite">
+            </div>
+            <div class="form-group">
+                <label for="telefone_whatsapp">Telefone WhatsApp</label>
+                <input id="telefone_whatsapp" name="telefone_whatsapp" type="text" inputmode="tel" value="{{ alcada.telefone_whatsapp if alcada and alcada.telefone_whatsapp else '' }}" placeholder="55DDDNUMERO">
+            </div>
+            <div class="form-group">
+                <label for="centro_custo_id">Centro de custo</label>
+                <select id="centro_custo_id" name="centro_custo_id">
+                    <option value="">Todos</option>
+                    {% for centro in centros_custo %}
+                        <option value="{{ centro.id }}" {{ "selected" if alcada and alcada.centro_custo_id == centro.id else "" }}>{{ centro.codigo or "-" }} - {{ centro.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="categoria_id">Categoria</label>
+                <select id="categoria_id" name="categoria_id">
+                    <option value="">Todas</option>
+                    {% for categoria in categorias %}
+                        <option value="{{ categoria.id }}" {{ "selected" if alcada and alcada.categoria_id == categoria.id else "" }}>{{ categoria.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="ativo">Status</label>
+                <label class="checkbox-line">
+                    <input id="ativo" name="ativo" type="checkbox" {{ "checked" if not alcada or alcada.ativo else "" }}>
+                    Alcada ativa
+                </label>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="observacoes">Observacoes</label>
+            <textarea id="observacoes" name="observacoes" rows="3" data-uppercase>{{ alcada.observacoes if alcada else "" }}</textarea>
+        </div>
+
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Salvar</button>
+            <a class="btn btn-secondary" href="{{ url_for('suprimentos_alcadas_aprovacao.listar') }}">Cancelar</a>
+        </div>
+    </form>
+</section>
+{% endblock %}

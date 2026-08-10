@@ -140,6 +140,12 @@
                         {% set destino_suprimentos = url_for('suprimentos_estoque.listar') %}
                     {% elif modulo_slug == "indicadores" %}
                         {% set destino_suprimentos = url_for('suprimentos_indicadores.painel') %}
+                    {% elif modulo_slug == "alcadas_aprovacao" %}
+                        {% set destino_suprimentos = url_for('suprimentos_alcadas_aprovacao.listar') %}
+                    {% elif modulo_slug == "compradores" %}
+                        {% set destino_suprimentos = url_for('suprimentos_compradores.listar') %}
+                    {% elif modulo_slug == "alertas" %}
+                        {% set destino_suprimentos = url_for('suprimentos_alertas.listar') %}
                     {% else %}
                         {% set destino_suprimentos = url_for('suprimentos.index') %}
                     {% endif %}

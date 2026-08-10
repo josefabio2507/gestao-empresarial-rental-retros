@@ -20,6 +20,8 @@ from app.services.suprimentos_service import (
     buscar_requisicoes_compra,
     cancelar_requisicao_compra,
     enviar_requisicao_compra,
+    enviar_email_requisicao_compra,
+    gerar_link_whatsapp_requisicao_compra,
     remover_item_requisicao,
     salvar_requisicao_compra,
 )
@@ -173,8 +175,53 @@ def enviar(requisicao_id):
 
     if sucesso:
         registrar_log("suprimentos_requisicao_enviada", f"Requisicao enviada. ID: {requisicao.id}.")
+        sucesso_whatsapp, mensagem_whatsapp, link_whatsapp = gerar_link_whatsapp_requisicao_compra(requisicao)
+        if sucesso_whatsapp:
+            flash(mensagem, "success")
+            return redirect(link_whatsapp)
+        flash(mensagem_whatsapp, "warning")
 
     flash(mensagem, "success" if sucesso else "danger")
+    return redirect(url_for("suprimentos_requisicoes.detalhes", requisicao_id=requisicao.id))
+
+
+@suprimentos_requisicoes_bp.route("/<int:requisicao_id>/enviar-email", methods=["POST"])
+@login_required
+@module_permission_required("suprimentos", "requisicoes_compra", "editar")
+def enviar_email(requisicao_id):
+    requisicao = buscar_por_id(SuprimentosRequisicaoCompra, requisicao_id)
+
+    if not requisicao:
+        flash("Requisicao nao encontrada.", "warning")
+        return redirect(url_for("suprimentos_requisicoes.listar"))
+
+    if requisicao.pode_editar:
+        sucesso, mensagem = enviar_requisicao_compra(requisicao)
+        if not sucesso:
+            flash(mensagem, "danger")
+            return redirect(url_for("suprimentos_requisicoes.detalhes", requisicao_id=requisicao.id))
+        registrar_log("suprimentos_requisicao_enviada", f"Requisicao enviada por e-mail. ID: {requisicao.id}.")
+    elif requisicao.status == STATUS_REQUISICAO_ENVIADA:
+        mensagem = "Requisicao ja enviada para analise."
+    else:
+        flash("Somente requisicoes em rascunho ou enviadas para analise podem ser enviadas por e-mail.", "danger")
+        return redirect(url_for("suprimentos_requisicoes.detalhes", requisicao_id=requisicao.id))
+
+    sucesso_email, mensagem_email, link_email = enviar_email_requisicao_compra(requisicao)
+
+    if sucesso_email:
+        if link_email:
+            return render_template(
+                "suprimentos/requisicoes/abrir_email.html",
+                requisicao=requisicao,
+                link_email=link_email,
+                mensagem=mensagem_email,
+            )
+        flash(mensagem, "success")
+        flash(mensagem_email, "success")
+    else:
+        flash(mensagem_email, "warning")
+
     return redirect(url_for("suprimentos_requisicoes.detalhes", requisicao_id=requisicao.id))
 
 

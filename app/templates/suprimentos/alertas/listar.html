@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Suprimentos</span>
+            <h1>Alertas</h1>
+            <p>Alertas internos de ciencia, aprovacao e andamento das cotacoes.</p>
+        </div>
+        <a class="btn btn-secondary" href="{{ url_for('departamentos.detalhe_departamento', slug_departamento='suprimentos') }}">Voltar</a>
+    </div>
+
+    <form class="filter-card" method="GET">
+        <div class="form-group">
+            <label for="status">Status</label>
+            <select id="status" name="status">
+                <option value="">Todos</option>
+                <option value="Nao lido" {{ "selected" if filtros.get('status') == "Nao lido" else "" }}>Nao lidos</option>
+                <option value="Lido" {{ "selected" if filtros.get('status') == "Lido" else "" }}>Lidos</option>
+            </select>
+        </div>
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Pesquisar</button>
+            <a class="btn btn-secondary" href="{{ url_for('suprimentos_alertas.listar') }}">Limpar</a>
+        </div>
+    </form>
+
+    <div class="table-card table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Tipo</th>
+                    <th>Titulo</th>
+                    <th>Mensagem</th>
+                    <th>Status</th>
+                    <th>Criado em</th>
+                    <th>Acoes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for alerta in alertas %}
+                    <tr>
+                        <td>{{ alerta.tipo }}</td>
+                        <td>{{ alerta.titulo }}</td>
+                        <td>{{ alerta.mensagem }}</td>
+                        <td><span class="badge {{ 'badge-warning' if alerta.nao_lido else 'badge-success' }}">{{ alerta.status }}</span></td>
+                        <td>{{ alerta.criado_em.strftime('%d/%m/%Y %H:%M') }}</td>
+                        <td>
+                            {% if alerta.nao_lido %}
+                                <form class="inline-form" method="POST" action="{{ url_for('suprimentos_alertas.ler', alerta_id=alerta.id) }}">
+                                    <button class="btn btn-primary" type="submit">Ler</button>
+                                </form>
+                            {% elif alerta.link_destino %}
+                                <a class="btn btn-secondary" href="{{ alerta.link_destino }}">Abrir</a>
+                            {% else %}
+                                <span class="module-status">-</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td class="empty-state" colspan="6">Nenhum alerta encontrado.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

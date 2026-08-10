@@ -29,6 +29,7 @@ class Config:
     MAIL_PASSWORD = os.getenv("MAIL_PASSWORD")
     MAIL_DEFAULT_SENDER = os.getenv("MAIL_DEFAULT_SENDER", MAIL_USERNAME)
     BASE_URL = os.getenv("BASE_URL", "http://127.0.0.1:5000").rstrip("/")
+    OUTLOOK_CLASSIC_EMAIL_ENABLED = os.getenv("OUTLOOK_CLASSIC_EMAIL_ENABLED", "auto").lower()
     RECUPERACAO_SENHA_EXPIRACAO_MINUTOS = int(
         os.getenv("RECUPERACAO_SENHA_EXPIRACAO_MINUTOS", "60")
     )

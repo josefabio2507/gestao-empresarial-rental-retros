@@ -9,6 +9,7 @@ from app.models import (
     Modulo,
     NivelAcesso,
     PermissaoUsuarioModulo,
+    SuprimentosAlcadaAprovacao,
     SuprimentosCategoriaItem,
     SuprimentosFornecedor,
     SuprimentosFornecedorItem,
@@ -129,6 +130,15 @@ class SuprimentosOrdensCompraTestCase(unittest.TestCase):
             fornecedor_preferencial=True,
         )
         db.session.add(self.vinculo)
+        db.session.commit()
+
+        self.alcada = SuprimentosAlcadaAprovacao(
+            usuario_aprovador_id=self.admin.id,
+            valor_minimo=Decimal("0.00"),
+            valor_maximo=None,
+            ativo=True,
+        )
+        db.session.add(self.alcada)
         db.session.commit()
 
         _, _, self.requisicao = salvar_requisicao_compra(

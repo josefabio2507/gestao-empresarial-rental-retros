@@ -1,7 +1,9 @@
 import re
 import json
 import os
+import platform
 import unicodedata
+from flask import current_app
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote
 from urllib.request import Request, urlopen
@@ -12,10 +14,18 @@ from sqlalchemy import func
 from sqlalchemy.orm import joinedload
 
 from app.extensions import db
+from app.services.email_service import enviar_email, smtp_configurado
 from app.models import (
     CentroCusto,
+    Departamento,
     Equipe,
+    Modulo,
+    NivelAcesso,
+    PermissaoUsuarioModulo,
+    SuprimentosAlcadaAprovacao,
+    SuprimentosAlerta,
     SuprimentosCategoriaItem,
+    SuprimentosComprador,
     SuprimentosFornecedor,
     SuprimentosFornecedorItem,
     SuprimentosItem,
@@ -29,6 +39,7 @@ from app.models import (
     SuprimentosRecebimentoCompra,
     SuprimentosRecebimentoCompraItem,
     SuprimentosUnidadeMedida,
+    Usuario,
 )
 
 
@@ -889,6 +900,7 @@ def enviar_requisicao_compra(requisicao):
 
     requisicao.status = STATUS_REQUISICAO_ENVIADA
     requisicao.enviada_em = datetime.utcnow()
+    criar_alertas_ciencia_requisicao(requisicao)
     db.session.commit()
     return True, "Requisicao enviada para analise."
 
@@ -1371,6 +1383,811 @@ def requisicoes_disponiveis_para_cotacao():
     )
 
 
+def buscar_usuarios_ativos():
+    return (
+        Usuario.query
+        .filter(Usuario.ativo.is_(True))
+        .order_by(Usuario.nome.asc())
+        .all()
+    )
+
+
+def buscar_alcadas_aprovacao(apenas_ativas=False):
+    query = (
+        SuprimentosAlcadaAprovacao.query
+        .options(
+            joinedload(SuprimentosAlcadaAprovacao.usuario_aprovador),
+            joinedload(SuprimentosAlcadaAprovacao.centro_custo),
+            joinedload(SuprimentosAlcadaAprovacao.categoria),
+        )
+    )
+
+    if apenas_ativas:
+        query = query.filter(SuprimentosAlcadaAprovacao.ativo.is_(True))
+
+    return (
+        query
+        .order_by(
+            SuprimentosAlcadaAprovacao.ativo.desc(),
+            SuprimentosAlcadaAprovacao.valor_minimo.asc(),
+        )
+        .all()
+    )
+
+
+def salvar_alcada_aprovacao(form_data, alcada=None):
+    usuario_aprovador_id = inteiro_ou_none(form_data.get("usuario_aprovador_id"))
+    centro_custo_id = inteiro_ou_none(form_data.get("centro_custo_id"))
+    categoria_id = inteiro_ou_none(form_data.get("categoria_id"))
+    valor_minimo = decimal_ou_none(form_data.get("valor_minimo"))
+    valor_maximo = decimal_ou_none(form_data.get("valor_maximo"))
+    telefone_whatsapp = normalizar_telefone_brasil(form_data.get("telefone_whatsapp")) or None
+    observacoes = texto_maiusculo(form_data.get("observacoes")) or None
+    ativo = form_data.get("ativo") == "on" or form_data.get("ativo") == "true"
+
+    usuario = buscar_por_id(Usuario, usuario_aprovador_id)
+    if not usuario or not usuario.ativo:
+        return False, "Aprovador e obrigatorio.", alcada
+
+    if centro_custo_id:
+        centro = buscar_por_id(CentroCusto, centro_custo_id)
+        if not centro or not centro.ativo:
+            return False, "Centro de custo nao encontrado ou inativo.", alcada
+
+    if categoria_id:
+        categoria = buscar_por_id(SuprimentosCategoriaItem, categoria_id)
+        if not categoria or not categoria.ativo:
+            return False, "Categoria nao encontrada ou inativa.", alcada
+
+    if valor_minimo is None or valor_minimo < 0:
+        return False, "Valor minimo deve ser maior ou igual a zero.", alcada
+
+    if valor_maximo is not None and valor_maximo < valor_minimo:
+        return False, "Valor maximo deve ser maior ou igual ao valor minimo.", alcada
+
+    if telefone_whatsapp and not telefone_brasil_valido(telefone_whatsapp):
+        return False, "Telefone WhatsApp da alcada invalido.", alcada
+
+    if alcada is None:
+        alcada = SuprimentosAlcadaAprovacao()
+        db.session.add(alcada)
+
+    alcada.usuario_aprovador_id = usuario.id
+    alcada.centro_custo_id = centro_custo_id
+    alcada.categoria_id = categoria_id
+    alcada.valor_minimo = valor_minimo
+    alcada.valor_maximo = valor_maximo
+    alcada.telefone_whatsapp = telefone_whatsapp
+    alcada.observacoes = observacoes
+    alcada.ativo = ativo
+
+    db.session.commit()
+    return True, "Alcada de aprovacao salva com sucesso.", alcada
+
+
+def alterar_status_alcada_aprovacao(alcada):
+    alcada.ativo = not alcada.ativo
+    db.session.commit()
+    return True, "Status da alcada atualizado com sucesso."
+
+
+def buscar_compradores_suprimentos(apenas_ativos=False):
+    query = (
+        SuprimentosComprador.query
+        .options(
+            joinedload(SuprimentosComprador.usuario_comprador),
+            joinedload(SuprimentosComprador.centro_custo),
+        )
+    )
+
+    if apenas_ativos:
+        query = query.filter(SuprimentosComprador.ativo.is_(True))
+
+    return (
+        query
+        .order_by(
+            SuprimentosComprador.ativo.desc(),
+            SuprimentosComprador.nome.asc(),
+        )
+        .all()
+    )
+
+
+def salvar_comprador_suprimentos(form_data, comprador=None):
+    usuario_comprador_id = inteiro_ou_none(form_data.get("usuario_comprador_id"))
+    centro_custo_id = inteiro_ou_none(form_data.get("centro_custo_id"))
+    nome = texto_maiusculo(form_data.get("nome"))
+    telefone_whatsapp = normalizar_telefone_brasil(form_data.get("telefone_whatsapp"))
+    email = texto(form_data.get("email")).lower() or None
+    observacoes = texto_maiusculo(form_data.get("observacoes")) or None
+    ativo = form_data.get("ativo") == "on" or form_data.get("ativo") == "true"
+
+    if usuario_comprador_id:
+        usuario = buscar_por_id(Usuario, usuario_comprador_id)
+        if not usuario or not usuario.ativo:
+            return False, "Usuario comprador nao encontrado ou inativo.", comprador
+        if not nome:
+            nome = texto_maiusculo(usuario.nome)
+
+    if not nome:
+        return False, "Nome do comprador e obrigatorio.", comprador
+
+    if not telefone_whatsapp:
+        return False, "Telefone WhatsApp do comprador e obrigatorio.", comprador
+
+    if not telefone_brasil_valido(telefone_whatsapp):
+        return False, "Telefone WhatsApp do comprador invalido.", comprador
+
+    if email and not email_valido(email):
+        return False, "E-mail do comprador invalido.", comprador
+
+    if centro_custo_id:
+        centro = buscar_por_id(CentroCusto, centro_custo_id)
+        if not centro or not centro.ativo:
+            return False, "Centro de custo nao encontrado ou inativo.", comprador
+
+    if comprador is None:
+        comprador = SuprimentosComprador()
+        db.session.add(comprador)
+
+    comprador.usuario_comprador_id = usuario_comprador_id
+    comprador.centro_custo_id = centro_custo_id
+    comprador.nome = nome
+    comprador.telefone_whatsapp = telefone_whatsapp
+    comprador.email = email
+    comprador.observacoes = observacoes
+    comprador.ativo = ativo
+
+    db.session.commit()
+    return True, "Comprador salvo com sucesso.", comprador
+
+
+def alterar_status_comprador_suprimentos(comprador):
+    comprador.ativo = not comprador.ativo
+    db.session.commit()
+    return True, "Status do comprador atualizado com sucesso."
+
+
+def encontrar_comprador_para_requisicao(requisicao):
+    if not requisicao:
+        return None
+
+    compradores = buscar_compradores_suprimentos(apenas_ativos=True)
+    comprador_centro = next(
+        (
+            comprador
+            for comprador in compradores
+            if comprador.centro_custo_id and comprador.centro_custo_id == requisicao.centro_custo_id
+        ),
+        None,
+    )
+    if comprador_centro:
+        return comprador_centro
+
+    return next((comprador for comprador in compradores if not comprador.centro_custo_id), None)
+
+
+def link_requisicao_producao(requisicao):
+    base_url = current_app.config.get("BASE_URL", "http://127.0.0.1:5000").rstrip("/")
+    return f"{base_url}/suprimentos/requisicoes/{requisicao.id}"
+
+
+def gerar_mensagem_whatsapp_requisicao_compra(requisicao, comprador=None):
+    linhas = [
+        "*Rental Retros - Nova Requisicao Aberta*",
+        "",
+        f"Requisicao: {requisicao.numero}",
+        f"Solicitante: {requisicao.solicitante.nome if requisicao.solicitante else '-'}",
+        f"Centro de custo: {requisicao.centro_custo.nome if requisicao.centro_custo else '-'}",
+    ]
+
+    if comprador:
+        linhas.append(f"Comprador: {comprador.nome}")
+
+    linhas.extend(
+        [
+            "",
+            "Acesse o link para analisar no sistema:",
+            link_requisicao_producao(requisicao),
+        ]
+    )
+    return "\n".join(linhas)
+
+
+def gerar_link_whatsapp_requisicao_compra(requisicao):
+    if not requisicao:
+        return False, "Requisicao nao encontrada.", None
+
+    comprador = encontrar_comprador_para_requisicao(requisicao)
+    if not comprador:
+        return False, "Cadastre um comprador ativo para enviar a requisicao por WhatsApp.", None
+
+    if not telefone_brasil_valido(comprador.telefone_whatsapp):
+        return False, "Telefone WhatsApp do comprador invalido.", None
+
+    mensagem = gerar_mensagem_whatsapp_requisicao_compra(requisicao, comprador)
+    return True, "Link do WhatsApp gerado com sucesso.", f"https://wa.me/{comprador.telefone_whatsapp}?text={quote(mensagem)}"
+
+
+def email_comprador_requisicao(comprador):
+    if not comprador:
+        return None
+
+    if comprador.email:
+        return comprador.email
+
+    if comprador.usuario_comprador and comprador.usuario_comprador.email:
+        return comprador.usuario_comprador.email
+
+    return None
+
+
+def gerar_assunto_email_requisicao_compra(requisicao):
+    return f"Nova Requisicao de Compra {requisicao.numero}"
+
+
+def gerar_corpo_email_requisicao_compra(requisicao, comprador=None):
+    linhas = [
+        "Rental Retros - Nova Requisicao Aberta",
+        "",
+        f"Requisicao: {requisicao.numero}",
+        f"Solicitante: {requisicao.solicitante.nome if requisicao.solicitante else '-'}",
+        f"Centro de custo: {requisicao.centro_custo.nome if requisicao.centro_custo else '-'}",
+        "",
+        "Acesse o link para analisar no sistema:",
+        link_requisicao_producao(requisicao),
+        "",
+        "Rental Retros",
+    ]
+    return "\n".join(linhas)
+
+
+def gerar_link_mailto_requisicao_compra(requisicao):
+    comprador = encontrar_comprador_para_requisicao(requisicao)
+    destinatario = email_comprador_requisicao(comprador)
+
+    if not destinatario:
+        return False, "Informe o e-mail no cadastro do comprador.", None
+
+    if not email_valido(destinatario):
+        return False, "E-mail do comprador invalido.", None
+
+    assunto = gerar_assunto_email_requisicao_compra(requisicao)
+    corpo = gerar_corpo_email_requisicao_compra(requisicao, comprador)
+    return True, "Link de e-mail gerado com sucesso.", (
+        f"mailto:{destinatario}?subject={quote(assunto)}&body={quote(corpo)}"
+    )
+
+
+def outlook_classic_habilitado():
+    configuracao = str(current_app.config.get("OUTLOOK_CLASSIC_EMAIL_ENABLED", "auto")).lower()
+    if configuracao in {"1", "true", "sim", "yes"}:
+        return True
+    if configuracao in {"0", "false", "nao", "no"}:
+        return False
+
+    base_url = current_app.config.get("BASE_URL", "")
+    return platform.system().lower() == "windows" and (
+        base_url.startswith("http://127.0.0.1")
+        or base_url.startswith("http://localhost")
+    )
+
+
+def enviar_email_outlook_classic(destinatario, assunto, corpo):
+    if not outlook_classic_habilitado():
+        return False, "Outlook Classic nao habilitado neste ambiente."
+
+    try:
+        import pythoncom
+        import win32com.client
+    except ImportError:
+        return False, "Biblioteca local do Outlook nao instalada."
+
+    try:
+        pythoncom.CoInitialize()
+        outlook = win32com.client.Dispatch("Outlook.Application")
+        email = outlook.CreateItem(0)
+        email.To = destinatario
+        email.Subject = assunto
+        email.Body = corpo
+        email.Send()
+        return True, None
+    except Exception:
+        return False, "Nao foi possivel criar/enviar o e-mail pelo Outlook Classic."
+    finally:
+        try:
+            pythoncom.CoUninitialize()
+        except Exception:
+            pass
+
+
+def enviar_email_requisicao_compra(requisicao):
+    comprador = encontrar_comprador_para_requisicao(requisicao)
+    destinatario = email_comprador_requisicao(comprador)
+
+    if not comprador:
+        return False, "Cadastre um comprador ativo para enviar a requisicao por e-mail.", None
+
+    if not destinatario:
+        return False, "Informe o e-mail no cadastro do comprador.", None
+
+    if not email_valido(destinatario):
+        return False, "E-mail do comprador invalido.", None
+
+    assunto = gerar_assunto_email_requisicao_compra(requisicao)
+    corpo = gerar_corpo_email_requisicao_compra(requisicao, comprador)
+
+    if smtp_configurado():
+        sucesso, erro = enviar_email(destinatario, assunto, corpo)
+        if sucesso:
+            return True, "E-mail enviado automaticamente ao comprador.", None
+        return False, erro or "Falha ao enviar e-mail.", None
+
+    sucesso_outlook, erro_outlook = enviar_email_outlook_classic(destinatario, assunto, corpo)
+    if sucesso_outlook:
+        return True, "E-mail criado e enviado automaticamente pelo Outlook Classic.", None
+
+    sucesso, mensagem, link_mailto = gerar_link_mailto_requisicao_compra(requisicao)
+    if not sucesso:
+        return False, mensagem, None
+
+    return True, f"{erro_outlook} Use a abertura manual do e-mail.", link_mailto
+
+
+def fornecedores_disponiveis_para_cotacao(cotacao):
+    fornecedores = {}
+    if not cotacao or not cotacao.requisicao:
+        return []
+
+    for requisicao_item in cotacao.requisicao.itens:
+        for fornecedor in fornecedores_disponiveis_para_requisicao_item(requisicao_item):
+            fornecedores[fornecedor.id] = fornecedor
+
+    return sorted(fornecedores.values(), key=lambda fornecedor: fornecedor.razao_social)
+
+
+def fornecedor_disponivel_para_cotacao(cotacao, fornecedor_id):
+    fornecedor_id = inteiro_ou_none(fornecedor_id)
+    if not fornecedor_id:
+        return None
+
+    return next(
+        (
+            fornecedor
+            for fornecedor in fornecedores_disponiveis_para_cotacao(cotacao)
+            if fornecedor.id == fornecedor_id
+        ),
+        None,
+    )
+
+
+def itens_cotacao_para_fornecedor(cotacao, fornecedor):
+    if not cotacao or not fornecedor or not cotacao.requisicao:
+        return []
+
+    itens = []
+    for requisicao_item in cotacao.requisicao.itens:
+        vinculo = SuprimentosFornecedorItem.query.filter_by(
+            fornecedor_id=fornecedor.id,
+            item_id=requisicao_item.item_id,
+            ativo=True,
+        ).first()
+        if vinculo:
+            itens.append(requisicao_item)
+
+    return itens
+
+
+def gerar_mensagem_solicitacao_cotacao_fornecedor(cotacao, fornecedor):
+    itens = itens_cotacao_para_fornecedor(cotacao, fornecedor)
+    requisicao = cotacao.requisicao
+    linhas = [
+        "*Rental Retros - Solicitacao de Cotacao*",
+        "",
+        f"Cotacao: {cotacao.numero}",
+        f"Requisicao: {requisicao.numero if requisicao else '-'}",
+        f"Fornecedor: {fornecedor.razao_social}",
+        f"Centro de custo: {requisicao.centro_custo.nome if requisicao and requisicao.centro_custo else '-'}",
+        f"Equipe: {requisicao.equipe.nome if requisicao and requisicao.equipe else '-'}",
+        f"Placa do veiculo: {requisicao.veiculo_placa if requisicao and requisicao.veiculo_placa else '-'}",
+        f"Justificativa: {requisicao.justificativa if requisicao else '-'}",
+        "",
+        "*Itens para cotar:*",
+    ]
+
+    if itens:
+        for item in itens:
+            linhas.append(
+                f"- {item.item_descricao_snapshot} | Qtd: "
+                f"{formatar_decimal_brasil(item.quantidade)} {item.unidade_medida_snapshot}"
+            )
+    else:
+        linhas.append("- Nenhum item vinculado ao fornecedor")
+
+    linhas.extend(
+        [
+            "",
+            "Por favor, responder informando preco unitario, prazo de entrega e condicao de pagamento.",
+            "",
+            "Rental Retros",
+        ]
+    )
+    return "\n".join(linhas)
+
+
+def gerar_link_whatsapp_solicitacao_cotacao_fornecedor(cotacao, fornecedor):
+    if not cotacao:
+        return False, "Cotacao nao encontrada.", None
+
+    if not cotacao.pode_editar:
+        return False, "Somente cotacoes abertas podem ser enviadas aos fornecedores.", None
+
+    fornecedores_ids = {item.id for item in fornecedores_disponiveis_para_cotacao(cotacao)}
+    if not fornecedor or fornecedor.id not in fornecedores_ids:
+        return False, "Fornecedor nao disponivel para os itens desta cotacao.", None
+
+    telefone = normalizar_telefone_brasil(fornecedor.telefone)
+    if not telefone:
+        return False, "Fornecedor sem telefone cadastrado.", None
+
+    if not telefone_brasil_valido(telefone):
+        return False, "Telefone do fornecedor invalido.", None
+
+    mensagem = gerar_mensagem_solicitacao_cotacao_fornecedor(cotacao, fornecedor)
+    return True, "Link do WhatsApp gerado com sucesso.", f"https://wa.me/{telefone}?text={quote(mensagem)}"
+
+
+def gerar_assunto_email_solicitacao_cotacao_fornecedor(cotacao):
+    return f"Solicitacao de Cotacao {cotacao.numero}"
+
+
+def gerar_corpo_email_solicitacao_cotacao_fornecedor(cotacao, fornecedor):
+    return gerar_mensagem_solicitacao_cotacao_fornecedor(cotacao, fornecedor).replace("*", "")
+
+
+def gerar_link_mailto_solicitacao_cotacao_fornecedor(cotacao, fornecedor):
+    if not fornecedor.email:
+        return False, "Fornecedor sem e-mail cadastrado.", None
+
+    if not email_valido(fornecedor.email):
+        return False, "E-mail do fornecedor invalido.", None
+
+    assunto = gerar_assunto_email_solicitacao_cotacao_fornecedor(cotacao)
+    corpo = gerar_corpo_email_solicitacao_cotacao_fornecedor(cotacao, fornecedor)
+    return True, "Link de e-mail gerado com sucesso.", (
+        f"mailto:{fornecedor.email}?subject={quote(assunto)}&body={quote(corpo)}"
+    )
+
+
+def enviar_email_solicitacao_cotacao_fornecedor(cotacao, fornecedor):
+    if not cotacao:
+        return False, "Cotacao nao encontrada.", None
+
+    if not cotacao.pode_editar:
+        return False, "Somente cotacoes abertas podem ser enviadas aos fornecedores.", None
+
+    fornecedores_ids = {item.id for item in fornecedores_disponiveis_para_cotacao(cotacao)}
+    if not fornecedor or fornecedor.id not in fornecedores_ids:
+        return False, "Fornecedor nao disponivel para os itens desta cotacao.", None
+
+    if not fornecedor.email:
+        return False, "Fornecedor sem e-mail cadastrado.", None
+
+    if not email_valido(fornecedor.email):
+        return False, "E-mail do fornecedor invalido.", None
+
+    assunto = gerar_assunto_email_solicitacao_cotacao_fornecedor(cotacao)
+    corpo = gerar_corpo_email_solicitacao_cotacao_fornecedor(cotacao, fornecedor)
+
+    if smtp_configurado():
+        sucesso, erro = enviar_email(fornecedor.email, assunto, corpo)
+        if sucesso:
+            return True, "E-mail enviado automaticamente ao fornecedor.", None
+        return False, erro or "Falha ao enviar e-mail.", None
+
+    sucesso_outlook, erro_outlook = enviar_email_outlook_classic(fornecedor.email, assunto, corpo)
+    if sucesso_outlook:
+        return True, "E-mail criado e enviado automaticamente pelo Outlook Classic.", None
+
+    sucesso, mensagem, link_mailto = gerar_link_mailto_solicitacao_cotacao_fornecedor(cotacao, fornecedor)
+    if not sucesso:
+        return False, mensagem, None
+
+    return True, f"{erro_outlook} Use a abertura manual do e-mail.", link_mailto
+
+
+def valor_total_propostas_selecionadas(cotacao):
+    return sum(
+        (Decimal(proposta.valor_total) for proposta in cotacao.propostas if proposta.selecionada),
+        Decimal("0.00"),
+    )
+
+
+def categorias_propostas_selecionadas(cotacao):
+    return {
+        proposta.item.categoria_id
+        for proposta in cotacao.propostas
+        if proposta.selecionada and proposta.item and proposta.item.categoria_id
+    }
+
+
+def encontrar_alcada_para_cotacao(cotacao):
+    total = valor_total_propostas_selecionadas(cotacao)
+    centro_custo_id = cotacao.requisicao.centro_custo_id if cotacao.requisicao else None
+    categorias = categorias_propostas_selecionadas(cotacao)
+
+    candidatas = []
+    for alcada in buscar_alcadas_aprovacao(apenas_ativas=True):
+        if total < Decimal(alcada.valor_minimo):
+            continue
+
+        if alcada.valor_maximo is not None and total > Decimal(alcada.valor_maximo):
+            continue
+
+        if alcada.centro_custo_id and alcada.centro_custo_id != centro_custo_id:
+            continue
+
+        if alcada.categoria_id and alcada.categoria_id not in categorias:
+            continue
+
+        candidatas.append(alcada)
+
+    return sorted(
+        candidatas,
+        key=lambda item: (
+            0 if item.centro_custo_id else 1,
+            0 if item.categoria_id else 1,
+            Decimal(item.valor_minimo),
+        ),
+        reverse=False,
+    )[0] if candidatas else None
+
+
+def usuario_pode_aprovar_cotacao_alcada(cotacao, usuario):
+    if not usuario or not getattr(usuario, "is_authenticated", True):
+        return False
+
+    if getattr(usuario, "is_admin", False):
+        return True
+
+    return cotacao.aprovador_usuario_id == usuario.id
+
+
+def criar_alerta_suprimentos(
+    usuario_destinatario_id,
+    tipo,
+    titulo,
+    mensagem,
+    link_destino=None,
+    criado_por_usuario_id=None,
+    requisicao_id=None,
+    cotacao_id=None,
+):
+    if not usuario_destinatario_id:
+        return None
+
+    alerta = SuprimentosAlerta(
+        usuario_destinatario_id=usuario_destinatario_id,
+        criado_por_usuario_id=criado_por_usuario_id,
+        requisicao_id=requisicao_id,
+        cotacao_id=cotacao_id,
+        tipo=tipo,
+        titulo=titulo,
+        mensagem=mensagem,
+        link_destino=link_destino,
+        status="Nao lido",
+    )
+    db.session.add(alerta)
+    return alerta
+
+
+def usuarios_para_ciencia_suprimentos(excluir_usuario_id=None):
+    usuarios = {
+        usuario.id: usuario
+        for usuario in Usuario.query.join(Usuario.nivel_acesso).filter(
+            Usuario.ativo.is_(True),
+            func.lower(NivelAcesso.slug) == "administrador",
+        )
+    }
+
+    departamento = Departamento.query.filter_by(slug="suprimentos", ativo=True).first()
+    modulo_cotacoes = None
+    if departamento:
+        modulo_cotacoes = Modulo.query.filter_by(
+            departamento_id=departamento.id,
+            slug="cotacoes",
+            ativo=True,
+        ).first()
+
+    if modulo_cotacoes:
+        permissoes = (
+            PermissaoUsuarioModulo.query
+            .filter(
+                PermissaoUsuarioModulo.modulo_id == modulo_cotacoes.id,
+                PermissaoUsuarioModulo.ativo.is_(True),
+                PermissaoUsuarioModulo.pode_visualizar.is_(True),
+            )
+            .all()
+        )
+        for permissao in permissoes:
+            if permissao.usuario and permissao.usuario.ativo:
+                usuarios[permissao.usuario.id] = permissao.usuario
+
+    if excluir_usuario_id:
+        usuarios.pop(excluir_usuario_id, None)
+
+    return list(usuarios.values())
+
+
+def criar_alertas_ciencia_requisicao(requisicao):
+    for usuario in usuarios_para_ciencia_suprimentos(requisicao.solicitante_usuario_id):
+        criar_alerta_suprimentos(
+            usuario.id,
+            "Ciencia",
+            f"Nova requisicao {requisicao.numero}",
+            "Uma requisicao de compra foi enviada para analise.",
+            f"/suprimentos/requisicoes/{requisicao.id}",
+            criado_por_usuario_id=requisicao.solicitante_usuario_id,
+            requisicao_id=requisicao.id,
+        )
+
+
+def criar_alerta_aprovacao_cotacao(cotacao, usuario_origem):
+    if not cotacao.aprovador_usuario_id:
+        return None
+
+    return criar_alerta_suprimentos(
+        cotacao.aprovador_usuario_id,
+        "Aprovacao",
+        f"Cotacao {cotacao.numero} aguardando aprovacao",
+        "Existe uma proposta de cotacao aguardando sua aprovacao por alcada.",
+        f"/suprimentos/cotacoes/{cotacao.id}/mapa-comparativo",
+        criado_por_usuario_id=usuario_origem.id if usuario_origem else None,
+        requisicao_id=cotacao.requisicao_id,
+        cotacao_id=cotacao.id,
+    )
+
+
+def telefone_whatsapp_cotacao(cotacao):
+    if cotacao.alcada_aprovacao and cotacao.alcada_aprovacao.telefone_whatsapp:
+        return cotacao.alcada_aprovacao.telefone_whatsapp
+
+    if cotacao.aprovador and cotacao.aprovador.colaborador and cotacao.aprovador.colaborador.telefone:
+        return normalizar_telefone_brasil(cotacao.aprovador.colaborador.telefone)
+
+    return None
+
+
+def link_cotacao_producao(cotacao):
+    base_url = current_app.config.get("BASE_URL", "http://127.0.0.1:5000").rstrip("/")
+    return f"{base_url}/suprimentos/cotacoes/{cotacao.id}/mapa-comparativo"
+
+
+def gerar_mensagem_whatsapp_aprovacao_cotacao(cotacao):
+    selecionadas = [proposta for proposta in cotacao.propostas if proposta.selecionada]
+    fornecedores = sorted(
+        {
+            proposta.fornecedor_razao_social_snapshot
+            for proposta in selecionadas
+            if proposta.fornecedor_razao_social_snapshot
+        }
+    )
+
+    linhas = [
+        "*Rental Retros - Aprovacao de Cotacao*",
+        "",
+        f"Cotacao: {cotacao.numero}",
+        f"Requisicao: {cotacao.requisicao.numero if cotacao.requisicao else '-'}",
+        f"Valor total: {formatar_moeda_brl(valor_total_propostas_selecionadas(cotacao))}",
+        f"Centro de custo: {cotacao.requisicao.centro_custo.nome if cotacao.requisicao and cotacao.requisicao.centro_custo else '-'}",
+        f"Equipe: {cotacao.requisicao.equipe.nome if cotacao.requisicao and cotacao.requisicao.equipe else '-'}",
+        f"Placa do veiculo: {cotacao.requisicao.veiculo_placa if cotacao.requisicao and cotacao.requisicao.veiculo_placa else '-'}",
+        f"Solicitante: {cotacao.requisicao.solicitante.nome if cotacao.requisicao and cotacao.requisicao.solicitante else '-'}",
+        f"Aprovador: {cotacao.aprovador.nome if cotacao.aprovador else '-'}",
+        "",
+        "*Fornecedores selecionados:*",
+    ]
+
+    if fornecedores:
+        for fornecedor in fornecedores:
+            linhas.append(f"- {fornecedor}")
+    else:
+        linhas.append("- Nenhum fornecedor selecionado")
+
+    linhas.extend(["", "*Itens selecionados:*"])
+    if selecionadas:
+        for proposta in sorted(selecionadas, key=lambda item: item.item_descricao_snapshot):
+            linhas.append(
+                f"- {proposta.item_descricao_snapshot} | Qtd: "
+                f"{formatar_decimal_brasil(proposta.quantidade_snapshot)} "
+                f"{proposta.unidade_medida_snapshot} | Total: {formatar_moeda_brl(proposta.valor_total)}"
+            )
+    else:
+        linhas.append("- Nenhum item selecionado")
+
+    linhas.extend(
+        [
+            "",
+            "Acesse o link para aprovar ou reprovar no sistema:",
+            link_cotacao_producao(cotacao),
+        ]
+    )
+
+    return "\n".join(linhas)
+
+
+def gerar_link_whatsapp_aprovacao_cotacao(cotacao):
+    if not cotacao:
+        return False, "Cotacao nao encontrada.", None
+
+    if cotacao.status != STATUS_COTACAO_EM_APROVACAO:
+        return False, "Somente cotacoes em aprovacao podem ser enviadas por WhatsApp.", None
+
+    telefone = telefone_whatsapp_cotacao(cotacao)
+    if not telefone:
+        return False, "Informe o telefone WhatsApp na alcada do aprovador.", None
+
+    if not telefone_brasil_valido(telefone):
+        return False, "Telefone WhatsApp da alcada invalido.", None
+
+    mensagem = gerar_mensagem_whatsapp_aprovacao_cotacao(cotacao)
+    return True, "Link do WhatsApp gerado com sucesso.", f"https://wa.me/{telefone}?text={quote(mensagem)}"
+
+
+def criar_alertas_cotacao_aprovada(cotacao, usuario_origem):
+    destinatarios = {}
+
+    if cotacao.requisicao and cotacao.requisicao.solicitante:
+        destinatarios[cotacao.requisicao.solicitante.id] = cotacao.requisicao.solicitante
+
+    if cotacao.criado_por:
+        destinatarios[cotacao.criado_por.id] = cotacao.criado_por
+
+    for usuario in usuarios_para_ciencia_suprimentos(usuario_origem.id if usuario_origem else None):
+        destinatarios[usuario.id] = usuario
+
+    for usuario in destinatarios.values():
+        criar_alerta_suprimentos(
+            usuario.id,
+            "Informacao",
+            f"Cotacao {cotacao.numero} aprovada",
+            "A cotacao foi aprovada e ja pode seguir para ordem de compra.",
+            f"/suprimentos/cotacoes/{cotacao.id}/mapa-comparativo",
+            criado_por_usuario_id=usuario_origem.id if usuario_origem else None,
+            requisicao_id=cotacao.requisicao_id,
+            cotacao_id=cotacao.id,
+        )
+
+
+def buscar_alertas_usuario(usuario, status=None):
+    query = SuprimentosAlerta.query.filter_by(usuario_destinatario_id=usuario.id)
+
+    if status:
+        query = query.filter(SuprimentosAlerta.status == status)
+
+    return query.order_by(SuprimentosAlerta.criado_em.desc()).all()
+
+
+def contar_alertas_nao_lidos(usuario):
+    if not usuario or not getattr(usuario, "is_authenticated", False):
+        return 0
+
+    return SuprimentosAlerta.query.filter_by(
+        usuario_destinatario_id=usuario.id,
+        status="Nao lido",
+    ).count()
+
+
+def marcar_alerta_como_lido(alerta, usuario):
+    if not alerta or alerta.usuario_destinatario_id != usuario.id:
+        return False, "Alerta nao encontrado."
+
+    alerta.status = "Lido"
+    alerta.lido_em = datetime.utcnow()
+    db.session.commit()
+    return True, "Alerta marcado como lido."
+
+
 def salvar_cotacao(form_data, usuario, cotacao=None):
     requisicao_id = inteiro_ou_none(form_data.get("requisicao_id"))
     observacoes = texto_maiusculo(form_data.get("observacoes")) or None
@@ -1582,14 +2399,22 @@ def enviar_cotacao_para_aprovacao(cotacao, usuario):
     if itens_sem_vencedor:
         return False, "Selecione uma proposta vencedora para todos os itens antes de enviar para aprovacao."
 
+    alcada = encontrar_alcada_para_cotacao(cotacao)
+
+    if not alcada:
+        return False, "Nao existe aprovador configurado para este valor de proposta."
+
     cotacao.status = STATUS_COTACAO_EM_APROVACAO
     cotacao.enviada_aprovacao_em = datetime.utcnow()
     cotacao.aprovada_em = None
     cotacao.aprovada_por_usuario_id = None
+    cotacao.aprovador_usuario_id = alcada.usuario_aprovador_id
+    cotacao.alcada_aprovacao_id = alcada.id
     cotacao.reprovada_em = None
     cotacao.reprovada_por_usuario_id = None
     cotacao.observacoes_aprovacao = None
     sincronizar_status_requisicao_por_cotacao(cotacao)
+    criar_alerta_aprovacao_cotacao(cotacao, usuario)
     db.session.commit()
 
     return True, "Cotacao enviada para aprovacao com sucesso."
@@ -1599,6 +2424,9 @@ def aprovar_cotacao(cotacao, usuario, form_data=None):
     if cotacao.status != STATUS_COTACAO_EM_APROVACAO:
         return False, "Somente cotacoes em aprovacao podem ser aprovadas."
 
+    if not usuario_pode_aprovar_cotacao_alcada(cotacao, usuario):
+        return False, "Somente o aprovador definido pela alcada pode aprovar esta cotacao."
+
     cotacao.status = STATUS_COTACAO_APROVADA
     cotacao.aprovada_em = datetime.utcnow()
     cotacao.aprovada_por_usuario_id = usuario.id
@@ -1606,6 +2434,7 @@ def aprovar_cotacao(cotacao, usuario, form_data=None):
     cotacao.reprovada_por_usuario_id = None
     cotacao.observacoes_aprovacao = texto_maiusculo((form_data or {}).get("observacoes_aprovacao"))
     sincronizar_status_requisicao_por_cotacao(cotacao)
+    criar_alertas_cotacao_aprovada(cotacao, usuario)
     db.session.commit()
 
     return True, "Cotacao aprovada com sucesso."
@@ -1614,6 +2443,9 @@ def aprovar_cotacao(cotacao, usuario, form_data=None):
 def reprovar_cotacao(cotacao, usuario, form_data=None):
     if cotacao.status != STATUS_COTACAO_EM_APROVACAO:
         return False, "Somente cotacoes em aprovacao podem ser reprovadas."
+
+    if not usuario_pode_aprovar_cotacao_alcada(cotacao, usuario):
+        return False, "Somente o aprovador definido pela alcada pode reprovar esta cotacao."
 
     justificativa = texto_maiusculo((form_data or {}).get("observacoes_aprovacao"))
 

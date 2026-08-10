@@ -1245,6 +1245,18 @@ class SuprimentosCotacao(db.Model):
         nullable=True,
         index=True,
     )
+    aprovador_usuario_id = db.Column(
+        db.Integer,
+        db.ForeignKey("usuarios.id"),
+        nullable=True,
+        index=True,
+    )
+    alcada_aprovacao_id = db.Column(
+        db.Integer,
+        db.ForeignKey("suprimentos_alcadas_aprovacao.id"),
+        nullable=True,
+        index=True,
+    )
     reprovada_em = db.Column(db.DateTime, nullable=True)
     reprovada_por_usuario_id = db.Column(
         db.Integer,
@@ -1265,6 +1277,8 @@ class SuprimentosCotacao(db.Model):
     requisicao = db.relationship("SuprimentosRequisicaoCompra")
     criado_por = db.relationship("Usuario", foreign_keys=[criado_por_usuario_id])
     aprovada_por = db.relationship("Usuario", foreign_keys=[aprovada_por_usuario_id])
+    aprovador = db.relationship("Usuario", foreign_keys=[aprovador_usuario_id])
+    alcada_aprovacao = db.relationship("SuprimentosAlcadaAprovacao")
     reprovada_por = db.relationship("Usuario", foreign_keys=[reprovada_por_usuario_id])
     propostas = db.relationship(
         "SuprimentosCotacaoProposta",
@@ -1285,6 +1299,98 @@ class SuprimentosCotacao(db.Model):
 
     def __repr__(self):
         return f"<SuprimentosCotacao {self.numero}>"
+
+
+class SuprimentosAlcadaAprovacao(db.Model):
+    __tablename__ = "suprimentos_alcadas_aprovacao"
+
+    id = db.Column(db.Integer, primary_key=True)
+    usuario_aprovador_id = db.Column(
+        db.Integer,
+        db.ForeignKey("usuarios.id"),
+        nullable=False,
+        index=True,
+    )
+    centro_custo_id = db.Column(
+        db.Integer,
+        db.ForeignKey("centros_custo.id"),
+        nullable=True,
+        index=True,
+    )
+    categoria_id = db.Column(
+        db.Integer,
+        db.ForeignKey("suprimentos_categorias_itens.id"),
+        nullable=True,
+        index=True,
+    )
+    valor_minimo = db.Column(db.Numeric(12, 2), nullable=False)
+    valor_maximo = db.Column(db.Numeric(12, 2), nullable=True)
+    telefone_whatsapp = db.Column(db.String(20), nullable=True)
+    observacoes = db.Column(db.Text, nullable=True)
+    ativo = db.Column(db.Boolean, default=True, nullable=False, index=True)
+
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    atualizado_em = db.Column(
+        db.DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False
+    )
+
+    usuario_aprovador = db.relationship("Usuario")
+    centro_custo = db.relationship("CentroCusto")
+    categoria = db.relationship("SuprimentosCategoriaItem")
+
+    __table_args__ = (
+        db.CheckConstraint(
+            "valor_minimo >= 0",
+            name="ck_suprimentos_alcadas_valor_minimo",
+        ),
+        db.CheckConstraint(
+            "valor_maximo is null or valor_maximo >= valor_minimo",
+            name="ck_suprimentos_alcadas_valor_maximo",
+        ),
+    )
+
+    def __repr__(self):
+        return f"<SuprimentosAlcadaAprovacao usuario={self.usuario_aprovador_id}>"
+
+
+class SuprimentosComprador(db.Model):
+    __tablename__ = "suprimentos_compradores"
+
+    id = db.Column(db.Integer, primary_key=True)
+    usuario_comprador_id = db.Column(
+        db.Integer,
+        db.ForeignKey("usuarios.id"),
+        nullable=True,
+        index=True,
+    )
+    centro_custo_id = db.Column(
+        db.Integer,
+        db.ForeignKey("centros_custo.id"),
+        nullable=True,
+        index=True,
+    )
+    nome = db.Column(db.String(120), nullable=False)
+    telefone_whatsapp = db.Column(db.String(20), nullable=False)
+    email = db.Column(db.String(150), nullable=True)
+    observacoes = db.Column(db.Text, nullable=True)
+    ativo = db.Column(db.Boolean, default=True, nullable=False, index=True)
+
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    atualizado_em = db.Column(
+        db.DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False
+    )
+
+    usuario_comprador = db.relationship("Usuario")
+    centro_custo = db.relationship("CentroCusto")
+
+    def __repr__(self):
+        return f"<SuprimentosComprador {self.nome}>"
 
 
 class SuprimentosCotacaoProposta(db.Model):
@@ -1755,3 +1861,66 @@ class SuprimentosMovimentacaoEstoque(db.Model):
 
     def __repr__(self):
         return f"<SuprimentosMovimentacaoEstoque {self.tipo} item={self.item_id}>"
+
+
+class SuprimentosAlerta(db.Model):
+    __tablename__ = "suprimentos_alertas"
+
+    id = db.Column(db.Integer, primary_key=True)
+    usuario_destinatario_id = db.Column(
+        db.Integer,
+        db.ForeignKey("usuarios.id"),
+        nullable=False,
+        index=True,
+    )
+    criado_por_usuario_id = db.Column(
+        db.Integer,
+        db.ForeignKey("usuarios.id"),
+        nullable=True,
+        index=True,
+    )
+    requisicao_id = db.Column(
+        db.Integer,
+        db.ForeignKey("suprimentos_requisicoes_compra.id"),
+        nullable=True,
+        index=True,
+    )
+    cotacao_id = db.Column(
+        db.Integer,
+        db.ForeignKey("suprimentos_cotacoes.id"),
+        nullable=True,
+        index=True,
+    )
+    tipo = db.Column(db.String(40), nullable=False, index=True)
+    titulo = db.Column(db.String(160), nullable=False)
+    mensagem = db.Column(db.Text, nullable=False)
+    link_destino = db.Column(db.String(255), nullable=True)
+    status = db.Column(db.String(20), default="Nao lido", nullable=False, index=True)
+    lido_em = db.Column(db.DateTime, nullable=True)
+
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    atualizado_em = db.Column(
+        db.DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False
+    )
+
+    usuario_destinatario = db.relationship("Usuario", foreign_keys=[usuario_destinatario_id])
+    criado_por = db.relationship("Usuario", foreign_keys=[criado_por_usuario_id])
+    requisicao = db.relationship("SuprimentosRequisicaoCompra")
+    cotacao = db.relationship("SuprimentosCotacao")
+
+    __table_args__ = (
+        db.CheckConstraint(
+            "status in ('Nao lido', 'Lido')",
+            name="ck_suprimentos_alertas_status",
+        ),
+    )
+
+    @property
+    def nao_lido(self):
+        return self.status == "Nao lido"
+
+    def __repr__(self):
+        return f"<SuprimentosAlerta usuario={self.usuario_destinatario_id} tipo={self.tipo}>"

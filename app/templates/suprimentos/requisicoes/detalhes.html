@@ -94,8 +94,11 @@
 
     <div class="page-actions">
         {% if requisicao.pode_editar %}
-            <form class="inline-form" method="POST" action="{{ url_for('suprimentos_requisicoes.enviar', requisicao_id=requisicao.id) }}">
-                <button class="btn btn-primary" type="submit">Enviar para analise</button>
+            <form class="inline-form" method="POST" action="{{ url_for('suprimentos_requisicoes.enviar', requisicao_id=requisicao.id) }}" target="_blank">
+                <button class="btn btn-whatsapp" type="submit">Enviar para analise</button>
+            </form>
+            <form class="inline-form" method="POST" action="{{ url_for('suprimentos_requisicoes.enviar_email', requisicao_id=requisicao.id) }}" target="_blank">
+                <button class="btn btn-primary" type="submit">Enviar por e-mail para analise</button>
             </form>
         {% endif %}
         {% if requisicao.status != "Cancelada" %}

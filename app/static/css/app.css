@@ -19,6 +19,25 @@
     gap: 16px;
 }
 
+.quick-alert-bar {
+    display: flex;
+    justify-content: flex-end;
+    margin: 12px 24px 0;
+}
+
+.quick-alert-bar a {
+    align-items: center;
+    background: #ffffff;
+    border: 1px solid #dbe4ef;
+    border-radius: 10px;
+    color: #061b33;
+    display: inline-flex;
+    font-weight: bold;
+    gap: 8px;
+    padding: 8px 12px;
+    text-decoration: none;
+}
+
 .btn-sair {
     text-decoration: none;
     background: #061b33;

@@ -17,9 +17,14 @@ from app.services.suprimentos_service import (
     cancelar_cotacao,
     encerrar_cotacao,
     enviar_cotacao_para_aprovacao,
+    enviar_email_solicitacao_cotacao_fornecedor,
     formatar_moeda_brl,
     formatar_decimal_brasil,
+    fornecedor_disponivel_para_cotacao,
+    fornecedores_disponiveis_para_cotacao,
     fornecedores_disponiveis_para_requisicao_item,
+    gerar_link_whatsapp_aprovacao_cotacao,
+    gerar_link_whatsapp_solicitacao_cotacao_fornecedor,
     montar_mapa_comparativo_cotacao,
     reprovar_cotacao,
     requisicoes_disponiveis_para_cotacao,
@@ -27,6 +32,8 @@ from app.services.suprimentos_service import (
     salvar_cotacao,
     salvar_proposta_cotacao,
     selecionar_proposta_vencedora,
+    usuario_pode_aprovar_cotacao_alcada,
+    valor_total_propostas_selecionadas,
 )
 from app.suprimentos.cotacoes import suprimentos_cotacoes_bp
 
@@ -132,6 +139,100 @@ def reprovar(cotacao_id):
     return redirect(url_for("suprimentos_cotacoes.mapa_comparativo", cotacao_id=cotacao.id))
 
 
+@suprimentos_cotacoes_bp.route("/<int:cotacao_id>/whatsapp-aprovacao", methods=["GET", "POST"])
+@login_required
+@module_permission_required("suprimentos", "cotacoes", "editar")
+def enviar_whatsapp_aprovacao(cotacao_id):
+    cotacao = buscar_por_id(SuprimentosCotacao, cotacao_id)
+
+    if not cotacao:
+        flash("Cotacao nao encontrada.", "warning")
+        return redirect(url_for("suprimentos_cotacoes.listar"))
+
+    if request.method == "POST" and cotacao.pode_editar:
+        sucesso_envio, mensagem_envio = enviar_cotacao_para_aprovacao(cotacao, current_user)
+
+        if not sucesso_envio:
+            flash(mensagem_envio, "danger")
+            return redirect(url_for("suprimentos_cotacoes.mapa_comparativo", cotacao_id=cotacao.id))
+
+        registrar_log(
+            "suprimentos_cotacao_enviada_aprovacao",
+            f"Cotacao enviada para aprovacao antes do WhatsApp. ID: {cotacao.id}.",
+        )
+
+    sucesso, mensagem, link = gerar_link_whatsapp_aprovacao_cotacao(cotacao)
+
+    if not sucesso:
+        flash(mensagem, "danger")
+        return redirect(url_for("suprimentos_cotacoes.mapa_comparativo", cotacao_id=cotacao.id))
+
+    registrar_log(
+        "suprimentos_cotacao_whatsapp_aprovacao",
+        f"WhatsApp de aprovacao gerado. Cotacao ID: {cotacao.id}.",
+    )
+    flash(mensagem, "success")
+    return redirect(link)
+
+
+@suprimentos_cotacoes_bp.route("/<int:cotacao_id>/fornecedor/whatsapp", methods=["POST"])
+@login_required
+@module_permission_required("suprimentos", "cotacoes", "editar")
+def enviar_whatsapp_fornecedor(cotacao_id):
+    cotacao = buscar_por_id(SuprimentosCotacao, cotacao_id)
+
+    if not cotacao:
+        flash("Cotacao nao encontrada.", "warning")
+        return redirect(url_for("suprimentos_cotacoes.listar"))
+
+    fornecedor = fornecedor_disponivel_para_cotacao(cotacao, request.form.get("fornecedor_id"))
+    sucesso, mensagem, link = gerar_link_whatsapp_solicitacao_cotacao_fornecedor(cotacao, fornecedor)
+
+    if not sucesso:
+        flash(mensagem, "danger")
+        return redirect(url_for("suprimentos_cotacoes.detalhes", cotacao_id=cotacao.id))
+
+    registrar_log(
+        "suprimentos_cotacao_whatsapp_fornecedor",
+        f"WhatsApp de solicitacao de cotacao gerado. Cotacao ID: {cotacao.id}. Fornecedor ID: {fornecedor.id}.",
+    )
+    flash(mensagem, "success")
+    return redirect(link)
+
+
+@suprimentos_cotacoes_bp.route("/<int:cotacao_id>/fornecedor/email", methods=["POST"])
+@login_required
+@module_permission_required("suprimentos", "cotacoes", "editar")
+def enviar_email_fornecedor(cotacao_id):
+    cotacao = buscar_por_id(SuprimentosCotacao, cotacao_id)
+
+    if not cotacao:
+        flash("Cotacao nao encontrada.", "warning")
+        return redirect(url_for("suprimentos_cotacoes.listar"))
+
+    fornecedor = fornecedor_disponivel_para_cotacao(cotacao, request.form.get("fornecedor_id"))
+    sucesso, mensagem, link_email = enviar_email_solicitacao_cotacao_fornecedor(cotacao, fornecedor)
+
+    if sucesso:
+        registrar_log(
+            "suprimentos_cotacao_email_fornecedor",
+            f"E-mail de solicitacao de cotacao gerado. Cotacao ID: {cotacao.id}. Fornecedor ID: {fornecedor.id}.",
+        )
+        if link_email:
+            return render_template(
+                "suprimentos/cotacoes/abrir_email.html",
+                cotacao=cotacao,
+                fornecedor=fornecedor,
+                link_email=link_email,
+                mensagem=mensagem,
+            )
+        flash(mensagem, "success")
+    else:
+        flash(mensagem, "danger")
+
+    return redirect(url_for("suprimentos_cotacoes.detalhes", cotacao_id=cotacao.id))
+
+
 @suprimentos_cotacoes_bp.route("/nova", methods=["GET", "POST"])
 @login_required
 @module_permission_required("suprimentos", "cotacoes", "criar")
@@ -173,6 +274,7 @@ def detalhes(cotacao_id):
         "suprimentos/cotacoes/detalhes.html",
         cotacao=cotacao,
         fornecedores_por_item=fornecedores_por_item,
+        fornecedores_cotacao=fornecedores_disponiveis_para_cotacao(cotacao),
         formatar_moeda_brl=formatar_moeda_brl,
     )
 
@@ -193,6 +295,8 @@ def mapa_comparativo(cotacao_id):
         mapa=montar_mapa_comparativo_cotacao(cotacao),
         formatar_moeda_brl=formatar_moeda_brl,
         formatar_decimal_brasil=formatar_decimal_brasil,
+        valor_total_selecionado=valor_total_propostas_selecionadas(cotacao),
+        usuario_pode_aprovar=usuario_pode_aprovar_cotacao_alcada(cotacao, current_user),
     )
 
 
