@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Suprimentos</span>
+            <h1>Alcadas de Aprovacao</h1>
+            <p>Cadastre os aprovadores conforme valor da proposta.</p>
+        </div>
+        <div class="page-actions">
+            <a class="btn btn-primary" href="{{ url_for('suprimentos_alcadas_aprovacao.nova') }}">Nova alcada</a>
+            <a class="btn btn-secondary" href="{{ url_for('departamentos.detalhe_departamento', slug_departamento='suprimentos') }}">Voltar</a>
+        </div>
+    </div>
+
+    <div class="table-card table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Aprovador</th>
+                    <th>Valor minimo</th>
+                    <th>Valor maximo</th>
+                    <th>WhatsApp</th>
+                    <th>Centro de custo</th>
+                    <th>Categoria</th>
+                    <th>Status</th>
+                    <th>Acoes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for alcada in alcadas %}
+                    <tr>
+                        <td>{{ alcada.usuario_aprovador.nome }}</td>
+                        <td>{{ formatar_moeda_brl(alcada.valor_minimo) }}</td>
+                        <td>{{ formatar_moeda_brl(alcada.valor_maximo) if alcada.valor_maximo is not none else "Sem limite" }}</td>
+                        <td>{{ alcada.telefone_whatsapp or "-" }}</td>
+                        <td>{{ alcada.centro_custo.nome if alcada.centro_custo else "Todos" }}</td>
+                        <td>{{ alcada.categoria.nome if alcada.categoria else "Todas" }}</td>
+                        <td><span class="badge {{ 'badge-success' if alcada.ativo else 'badge-danger' }}">{{ "Ativa" if alcada.ativo else "Inativa" }}</span></td>
+                        <td class="actions-cell">
+                            <a class="btn btn-secondary" href="{{ url_for('suprimentos_alcadas_aprovacao.editar', alcada_id=alcada.id) }}">Editar</a>
+                            <form class="inline-form" method="POST" action="{{ url_for('suprimentos_alcadas_aprovacao.status', alcada_id=alcada.id) }}">
+                                <button class="btn btn-warning" type="submit">{{ "Inativar" if alcada.ativo else "Ativar" }}</button>
+                            </form>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td class="empty-state" colspan="8">Nenhuma alcada cadastrada.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

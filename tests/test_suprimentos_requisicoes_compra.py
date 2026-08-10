@@ -10,6 +10,7 @@ from app.models import (
     NivelAcesso,
     PermissaoUsuarioModulo,
     SuprimentosCategoriaItem,
+    SuprimentosComprador,
     SuprimentosItem,
     SuprimentosRequisicaoCompra,
     SuprimentosRequisicaoCompraItem,
@@ -23,6 +24,10 @@ from app.services.suprimentos_service import (
     adicionar_item_requisicao,
     cancelar_requisicao_compra,
     enviar_requisicao_compra,
+    enviar_email_requisicao_compra,
+    gerar_link_whatsapp_requisicao_compra,
+    gerar_mensagem_whatsapp_requisicao_compra,
+    salvar_comprador_suprimentos,
     salvar_requisicao_compra,
 )
 
@@ -33,6 +38,8 @@ class SuprimentosRequisicoesCompraTestCase(unittest.TestCase):
         self.app.config.update(
             SECRET_KEY="test",
             TESTING=True,
+            BASE_URL="https://app.rentalretros.test",
+            OUTLOOK_CLASSIC_EMAIL_ENABLED="false",
             SQLALCHEMY_DATABASE_URI="sqlite:///:memory:",
             SQLALCHEMY_TRACK_MODIFICATIONS=False,
         )
@@ -288,6 +295,191 @@ class SuprimentosRequisicoesCompraTestCase(unittest.TestCase):
 
         self.assertFalse(sucesso)
         self.assertEqual("Somente requisicoes em rascunho podem ser editadas.", mensagem)
+
+    def test_salva_comprador_para_envio_por_whatsapp(self):
+        sucesso, mensagem, comprador = salvar_comprador_suprimentos(
+            {
+                "nome": " comprador suprimentos ",
+                "telefone_whatsapp": "(13) 99999-0001",
+                "email": "COMPRAS@RENTALRETROS.COM.BR",
+                "centro_custo_id": str(self.centro.id),
+                "ativo": "on",
+                "observacoes": " recebe requisicoes ",
+            }
+        )
+
+        self.assertTrue(sucesso)
+        self.assertEqual("Comprador salvo com sucesso.", mensagem)
+        self.assertEqual("COMPRADOR SUPRIMENTOS", comprador.nome)
+        self.assertEqual("5513999990001", comprador.telefone_whatsapp)
+        self.assertEqual("compras@rentalretros.com.br", comprador.email)
+        self.assertEqual("RECEBE REQUISICOES", comprador.observacoes)
+
+    def test_gera_link_whatsapp_requisicao_enviada_para_comprador(self):
+        _, _, requisicao = salvar_requisicao_compra(
+            {
+                "centro_custo_id": str(self.centro.id),
+                "justificativa": "Comprar item",
+            },
+            self.admin,
+        )
+        adicionar_item_requisicao(
+            {"item_id": str(self.item.id), "quantidade": "1"},
+            requisicao,
+        )
+        db.session.add(
+            SuprimentosComprador(
+                nome="COMPRADOR",
+                telefone_whatsapp="5513999990001",
+                centro_custo_id=self.centro.id,
+                ativo=True,
+            )
+        )
+        db.session.commit()
+        enviar_requisicao_compra(requisicao)
+
+        mensagem = gerar_mensagem_whatsapp_requisicao_compra(requisicao)
+        sucesso, texto_mensagem, link = gerar_link_whatsapp_requisicao_compra(requisicao)
+
+        self.assertIn("*Rental Retros - Nova Requisicao Aberta*", mensagem)
+        self.assertIn(f"Requisicao: {requisicao.numero}", mensagem)
+        self.assertIn("Solicitante: Admin", mensagem)
+        self.assertIn("Centro de custo: MANUTENCAO", mensagem)
+        self.assertTrue(sucesso)
+        self.assertEqual("Link do WhatsApp gerado com sucesso.", texto_mensagem)
+        self.assertTrue(link.startswith("https://wa.me/5513999990001?text="))
+
+    def test_rota_enviar_requisicao_abre_whatsapp_do_comprador(self):
+        _, _, requisicao = salvar_requisicao_compra(
+            {
+                "centro_custo_id": str(self.centro.id),
+                "justificativa": "Comprar item",
+            },
+            self.admin,
+        )
+        adicionar_item_requisicao(
+            {"item_id": str(self.item.id), "quantidade": "1"},
+            requisicao,
+        )
+        db.session.add(
+            SuprimentosComprador(
+                nome="COMPRADOR",
+                telefone_whatsapp="5513999990001",
+                ativo=True,
+            )
+        )
+        db.session.commit()
+        self._autenticar(self.admin)
+
+        resposta = self.client.post(f"/suprimentos/requisicoes/{requisicao.id}/enviar")
+
+        self.assertEqual(302, resposta.status_code)
+        self.assertTrue(resposta.headers["Location"].startswith("https://wa.me/5513999990001?text="))
+        db.session.refresh(requisicao)
+        self.assertEqual(STATUS_REQUISICAO_ENVIADA, requisicao.status)
+
+    def test_rota_enviar_requisicao_por_email_abre_outlook_sem_smtp(self):
+        _, _, requisicao = salvar_requisicao_compra(
+            {
+                "centro_custo_id": str(self.centro.id),
+                "justificativa": "Comprar item",
+            },
+            self.admin,
+        )
+        adicionar_item_requisicao(
+            {"item_id": str(self.item.id), "quantidade": "1"},
+            requisicao,
+        )
+        db.session.add(
+            SuprimentosComprador(
+                nome="COMPRADOR",
+                telefone_whatsapp="5513999990001",
+                email="compras@rentalretros.com.br",
+                ativo=True,
+            )
+        )
+        db.session.commit()
+        self._autenticar(self.admin)
+
+        resposta = self.client.post(f"/suprimentos/requisicoes/{requisicao.id}/enviar-email")
+
+        self.assertEqual(200, resposta.status_code)
+        self.assertIn(b"Abrir e-mail no Outlook", resposta.data)
+        self.assertIn(b"mailto:compras@rentalretros.com.br?", resposta.data)
+        self.assertIn(b"Nova%20Requisicao%20de%20Compra", resposta.data)
+        db.session.refresh(requisicao)
+        self.assertEqual(STATUS_REQUISICAO_ENVIADA, requisicao.status)
+
+    def test_reenvia_email_requisicao_ja_enviada_sem_erro(self):
+        _, _, requisicao = salvar_requisicao_compra(
+            {
+                "centro_custo_id": str(self.centro.id),
+                "justificativa": "Comprar item",
+            },
+            self.admin,
+        )
+        adicionar_item_requisicao(
+            {"item_id": str(self.item.id), "quantidade": "1"},
+            requisicao,
+        )
+        db.session.add(
+            SuprimentosComprador(
+                nome="COMPRADOR",
+                telefone_whatsapp="5513999990001",
+                email="compras@rentalretros.com.br",
+                ativo=True,
+            )
+        )
+        db.session.commit()
+        enviar_requisicao_compra(requisicao)
+        self._autenticar(self.admin)
+
+        resposta = self.client.post(f"/suprimentos/requisicoes/{requisicao.id}/enviar-email")
+
+        self.assertEqual(200, resposta.status_code)
+        self.assertIn(b"Abrir e-mail no Outlook", resposta.data)
+        self.assertNotIn(b"Somente requisicoes em rascunho podem ser enviadas.", resposta.data)
+
+    def test_envia_email_requisicao_automaticamente_quando_smtp_configurado(self):
+        _, _, requisicao = salvar_requisicao_compra(
+            {
+                "centro_custo_id": str(self.centro.id),
+                "justificativa": "Comprar item",
+            },
+            self.admin,
+        )
+        db.session.add(
+            SuprimentosComprador(
+                nome="COMPRADOR",
+                telefone_whatsapp="5513999990001",
+                email="compras@rentalretros.com.br",
+                ativo=True,
+            )
+        )
+        db.session.commit()
+
+        import app.services.suprimentos_service as service
+
+        smtp_original = service.smtp_configurado
+        enviar_original = service.enviar_email
+        chamados = []
+        service.smtp_configurado = lambda: True
+        service.enviar_email = lambda destinatario, assunto, corpo: chamados.append(
+            (destinatario, assunto, corpo)
+        ) or (True, None)
+
+        try:
+            sucesso, mensagem, link = enviar_email_requisicao_compra(requisicao)
+        finally:
+            service.smtp_configurado = smtp_original
+            service.enviar_email = enviar_original
+
+        self.assertTrue(sucesso)
+        self.assertEqual("E-mail enviado automaticamente ao comprador.", mensagem)
+        self.assertIsNone(link)
+        self.assertEqual("compras@rentalretros.com.br", chamados[0][0])
+        self.assertIn(requisicao.numero, chamados[0][1])
+        self.assertIn("Centro de custo: MANUTENCAO", chamados[0][2])
 
     def test_cancela_requisicao(self):
         _, _, requisicao = salvar_requisicao_compra(

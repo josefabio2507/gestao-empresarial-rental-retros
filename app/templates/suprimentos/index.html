@@ -37,6 +37,12 @@
                 {% set destino = url_for('suprimentos_estoque.listar') %}
             {% elif slug == "indicadores" %}
                 {% set destino = url_for('suprimentos_indicadores.painel') %}
+            {% elif slug == "alcadas_aprovacao" %}
+                {% set destino = url_for('suprimentos_alcadas_aprovacao.listar') %}
+            {% elif slug == "compradores" %}
+                {% set destino = url_for('suprimentos_compradores.listar') %}
+            {% elif slug == "alertas" %}
+                {% set destino = url_for('suprimentos_alertas.listar') %}
             {% else %}
                 {% set destino = None %}
             {% endif %}

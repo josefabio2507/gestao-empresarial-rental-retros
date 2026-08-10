@@ -6,9 +6,12 @@ from app.extensions import db
 from app.models import (
     CentroCusto,
     Departamento,
+    Equipe,
     Modulo,
     NivelAcesso,
     PermissaoUsuarioModulo,
+    SuprimentosAlcadaAprovacao,
+    SuprimentosAlerta,
     SuprimentosCategoriaItem,
     SuprimentosCotacao,
     SuprimentosCotacaoProposta,
@@ -33,7 +36,13 @@ from app.services.suprimentos_service import (
     cancelar_cotacao,
     encerrar_cotacao,
     enviar_cotacao_para_aprovacao,
+    enviar_email_solicitacao_cotacao_fornecedor,
     formatar_moeda_brl,
+    fornecedores_disponiveis_para_cotacao,
+    gerar_link_whatsapp_aprovacao_cotacao,
+    gerar_link_whatsapp_solicitacao_cotacao_fornecedor,
+    gerar_mensagem_whatsapp_aprovacao_cotacao,
+    gerar_mensagem_solicitacao_cotacao_fornecedor,
     enviar_requisicao_compra,
     montar_mapa_comparativo_cotacao,
     reprovar_cotacao,
@@ -50,6 +59,7 @@ class SuprimentosCotacoesTestCase(unittest.TestCase):
         self.app.config.update(
             SECRET_KEY="test",
             TESTING=True,
+            OUTLOOK_CLASSIC_EMAIL_ENABLED="false",
             SQLALCHEMY_DATABASE_URI="sqlite:///:memory:",
             SQLALCHEMY_TRACK_MODIFICATIONS=False,
         )
@@ -101,9 +111,10 @@ class SuprimentosCotacoesTestCase(unittest.TestCase):
         db.session.add(self.modulo)
 
         self.centro = CentroCusto(codigo="MAN", nome="MANUTENCAO", ativo=True)
+        self.equipe = Equipe(nome="Equipe Demo", slug="equipe-demo", ativo=True)
         self.categoria = SuprimentosCategoriaItem(nome="PECAS", slug="pecas", ativo=True)
         self.unidade = SuprimentosUnidadeMedida(nome="UNIDADE", sigla="UN", ativo=True)
-        db.session.add_all([self.centro, self.categoria, self.unidade])
+        db.session.add_all([self.centro, self.equipe, self.categoria, self.unidade])
         db.session.flush()
 
         self.item = SuprimentosItem(
@@ -150,8 +161,23 @@ class SuprimentosCotacoesTestCase(unittest.TestCase):
         db.session.add_all([self.vinculo, self.vinculo_b])
         db.session.commit()
 
+        self.alcada = SuprimentosAlcadaAprovacao(
+            usuario_aprovador_id=self.admin.id,
+            valor_minimo=Decimal("0.00"),
+            valor_maximo=None,
+            telefone_whatsapp="5513999990001",
+            ativo=True,
+        )
+        db.session.add(self.alcada)
+        db.session.commit()
+
         _, _, self.requisicao = salvar_requisicao_compra(
-            {"centro_custo_id": str(self.centro.id), "justificativa": "Comprar filtros"},
+            {
+                "centro_custo_id": str(self.centro.id),
+                "equipe_id": str(self.equipe.id),
+                "veiculo_placa": "ABC1D23",
+                "justificativa": "Comprar filtros",
+            },
             self.admin,
         )
         adicionar_item_requisicao(
@@ -388,6 +414,103 @@ class SuprimentosCotacoesTestCase(unittest.TestCase):
         self.assertIn(b"R$ 15,50", resposta.data)
         self.assertIn(b"R$ 31,00", resposta.data)
 
+    def test_detalhes_mostra_envio_para_fornecedores(self):
+        _, _, cotacao = salvar_cotacao(
+            {"requisicao_id": str(self.requisicao.id)},
+            self.admin,
+        )
+        self._autenticar(self.admin)
+
+        resposta = self.client.get(f"/suprimentos/cotacoes/{cotacao.id}")
+
+        self.assertEqual(200, resposta.status_code)
+        self.assertIn(b"Enviar requisicao aos fornecedores", resposta.data)
+        self.assertIn(b"Enviar WhatsApp", resposta.data)
+        self.assertIn(b"Enviar e-mail", resposta.data)
+        self.assertIn(b"FORNECEDOR TESTE LTDA", resposta.data)
+
+    def test_gera_mensagem_whatsapp_para_fornecedor_receber_proposta(self):
+        _, _, cotacao = salvar_cotacao(
+            {"requisicao_id": str(self.requisicao.id)},
+            self.admin,
+        )
+
+        fornecedores = fornecedores_disponiveis_para_cotacao(cotacao)
+        mensagem = gerar_mensagem_solicitacao_cotacao_fornecedor(cotacao, self.fornecedor)
+        sucesso, texto_mensagem, link = gerar_link_whatsapp_solicitacao_cotacao_fornecedor(
+            cotacao,
+            self.fornecedor,
+        )
+
+        self.assertIn(self.fornecedor, fornecedores)
+        self.assertIn(f"Cotacao: {cotacao.numero}", mensagem)
+        self.assertIn(f"Requisicao: {self.requisicao.numero}", mensagem)
+        self.assertIn("FILTRO DE OLEO", mensagem)
+        self.assertIn("preco unitario", mensagem)
+        self.assertTrue(sucesso)
+        self.assertEqual("Link do WhatsApp gerado com sucesso.", texto_mensagem)
+        self.assertTrue(link.startswith("https://wa.me/5513999998888?text="))
+
+    def test_rota_whatsapp_fornecedor_abre_link(self):
+        _, _, cotacao = salvar_cotacao(
+            {"requisicao_id": str(self.requisicao.id)},
+            self.admin,
+        )
+        self._autenticar(self.admin)
+
+        resposta = self.client.post(
+            f"/suprimentos/cotacoes/{cotacao.id}/fornecedor/whatsapp",
+            data={"fornecedor_id": str(self.fornecedor.id)},
+        )
+
+        self.assertEqual(302, resposta.status_code)
+        self.assertTrue(resposta.headers["Location"].startswith("https://wa.me/5513999998888?text="))
+
+    def test_rota_email_fornecedor_abre_outlook_sem_smtp(self):
+        _, _, cotacao = salvar_cotacao(
+            {"requisicao_id": str(self.requisicao.id)},
+            self.admin,
+        )
+        self._autenticar(self.admin)
+
+        resposta = self.client.post(
+            f"/suprimentos/cotacoes/{cotacao.id}/fornecedor/email",
+            data={"fornecedor_id": str(self.fornecedor.id)},
+        )
+
+        self.assertEqual(200, resposta.status_code)
+        self.assertIn(b"Abrir e-mail no Outlook", resposta.data)
+        self.assertIn(b"mailto:fornecedor@teste.com?", resposta.data)
+
+    def test_envia_email_fornecedor_automaticamente_quando_smtp_configurado(self):
+        _, _, cotacao = salvar_cotacao(
+            {"requisicao_id": str(self.requisicao.id)},
+            self.admin,
+        )
+
+        import app.services.suprimentos_service as service
+
+        smtp_original = service.smtp_configurado
+        enviar_original = service.enviar_email
+        chamados = []
+        service.smtp_configurado = lambda: True
+        service.enviar_email = lambda destinatario, assunto, corpo: chamados.append(
+            (destinatario, assunto, corpo)
+        ) or (True, None)
+
+        try:
+            sucesso, mensagem, link = enviar_email_solicitacao_cotacao_fornecedor(cotacao, self.fornecedor)
+        finally:
+            service.smtp_configurado = smtp_original
+            service.enviar_email = enviar_original
+
+        self.assertTrue(sucesso)
+        self.assertEqual("E-mail enviado automaticamente ao fornecedor.", mensagem)
+        self.assertIsNone(link)
+        self.assertEqual("fornecedor@teste.com", chamados[0][0])
+        self.assertIn(cotacao.numero, chamados[0][1])
+        self.assertIn("FILTRO DE OLEO", chamados[0][2])
+
     def test_monta_mapa_comparativo_destacando_melhores_criterios(self):
         _, _, cotacao = salvar_cotacao(
             {"requisicao_id": str(self.requisicao.id)},
@@ -461,7 +584,7 @@ class SuprimentosCotacoesTestCase(unittest.TestCase):
         self.assertIn(b"Mapa comparativo", resposta.data)
         self.assertIn(b"Menor preco", resposta.data)
         self.assertIn(b"Menor total", resposta.data)
-        self.assertIn(b"Enviar para aprovacao", resposta.data)
+        self.assertIn(b"Enviar via WhatsApp para aprovacao", resposta.data)
 
     def test_seleciona_vencedor_e_exige_justificativa_quando_nao_e_menor_preco(self):
         _, _, cotacao = salvar_cotacao(
@@ -539,6 +662,68 @@ class SuprimentosCotacoesTestCase(unittest.TestCase):
         self.assertEqual(STATUS_COTACAO_EM_APROVACAO, cotacao.status)
         self.assertEqual(STATUS_REQUISICAO_ENVIADA, cotacao.requisicao.status)
         self.assertIsNotNone(cotacao.enviada_aprovacao_em)
+        self.assertEqual(self.admin.id, cotacao.aprovador_usuario_id)
+        self.assertEqual(self.alcada.id, cotacao.alcada_aprovacao_id)
+        self.assertEqual(1, SuprimentosAlerta.query.filter_by(tipo="Aprovacao").count())
+
+        mensagem_whatsapp = gerar_mensagem_whatsapp_aprovacao_cotacao(cotacao)
+        sucesso_link, mensagem_link, link = gerar_link_whatsapp_aprovacao_cotacao(cotacao)
+
+        self.assertIn(f"Cotacao: {cotacao.numero}", mensagem_whatsapp)
+        self.assertIn("Valor total: R$ 31,00", mensagem_whatsapp)
+        self.assertIn("Equipe: Equipe Demo", mensagem_whatsapp)
+        self.assertIn("Placa do veiculo: ABC1D23", mensagem_whatsapp)
+        self.assertIn("FORNECEDOR TESTE LTDA", mensagem_whatsapp)
+        self.assertTrue(sucesso_link)
+        self.assertEqual("Link do WhatsApp gerado com sucesso.", mensagem_link)
+        self.assertTrue(link.startswith("https://wa.me/5513999990001?text="))
+
+    def test_rota_whatsapp_envia_cotacao_para_aprovacao_e_abre_link(self):
+        _, _, cotacao = salvar_cotacao(
+            {"requisicao_id": str(self.requisicao.id)},
+            self.admin,
+        )
+        _, _, proposta = salvar_proposta_cotacao(
+            {
+                "requisicao_item_id": str(self.requisicao_item.id),
+                "fornecedor_id": str(self.fornecedor.id),
+                "preco_unitario": "15,50",
+            },
+            cotacao,
+        )
+        selecionar_proposta_vencedora({"proposta_id": str(proposta.id)}, cotacao, self.admin)
+        self._autenticar(self.admin)
+
+        resposta = self.client.post(f"/suprimentos/cotacoes/{cotacao.id}/whatsapp-aprovacao")
+
+        self.assertEqual(302, resposta.status_code)
+        self.assertTrue(resposta.headers["Location"].startswith("https://wa.me/5513999990001?text="))
+        db.session.refresh(cotacao)
+        self.assertEqual(STATUS_COTACAO_EM_APROVACAO, cotacao.status)
+        self.assertEqual(self.admin.id, cotacao.aprovador_usuario_id)
+
+    def test_envio_para_aprovacao_exige_alcada_configurada(self):
+        db.session.delete(self.alcada)
+        db.session.commit()
+        _, _, cotacao = salvar_cotacao(
+            {"requisicao_id": str(self.requisicao.id)},
+            self.admin,
+        )
+        _, _, proposta = salvar_proposta_cotacao(
+            {
+                "requisicao_item_id": str(self.requisicao_item.id),
+                "fornecedor_id": str(self.fornecedor.id),
+                "preco_unitario": "15,50",
+            },
+            cotacao,
+        )
+        selecionar_proposta_vencedora({"proposta_id": str(proposta.id)}, cotacao, self.admin)
+
+        sucesso, mensagem = enviar_cotacao_para_aprovacao(cotacao, self.admin)
+
+        self.assertFalse(sucesso)
+        self.assertEqual("Nao existe aprovador configurado para este valor de proposta.", mensagem)
+        self.assertEqual(STATUS_COTACAO_ABERTA, cotacao.status)
 
     def test_aprova_cotacao_sem_gerar_ordem_de_compra(self):
         _, _, cotacao = salvar_cotacao(
@@ -568,6 +753,29 @@ class SuprimentosCotacoesTestCase(unittest.TestCase):
         self.assertEqual(STATUS_REQUISICAO_APROVADA, cotacao.requisicao.status)
         self.assertEqual(self.admin.id, cotacao.aprovada_por_usuario_id)
         self.assertEqual("APROVADO DENTRO DA ALCADA", cotacao.observacoes_aprovacao)
+        self.assertGreaterEqual(SuprimentosAlerta.query.filter_by(tipo="Informacao").count(), 1)
+
+    def test_somente_aprovador_da_alcada_aprova_cotacao(self):
+        _, _, cotacao = salvar_cotacao(
+            {"requisicao_id": str(self.requisicao.id)},
+            self.admin,
+        )
+        _, _, proposta = salvar_proposta_cotacao(
+            {
+                "requisicao_item_id": str(self.requisicao_item.id),
+                "fornecedor_id": str(self.fornecedor.id),
+                "preco_unitario": "15,50",
+            },
+            cotacao,
+        )
+        selecionar_proposta_vencedora({"proposta_id": str(proposta.id)}, cotacao, self.admin)
+        enviar_cotacao_para_aprovacao(cotacao, self.admin)
+
+        sucesso, mensagem = aprovar_cotacao(cotacao, self.usuario, {"observacoes_aprovacao": "aprovado"})
+
+        self.assertFalse(sucesso)
+        self.assertEqual("Somente o aprovador definido pela alcada pode aprovar esta cotacao.", mensagem)
+        self.assertEqual(STATUS_COTACAO_EM_APROVACAO, cotacao.status)
 
     def test_reprova_cotacao_e_libera_para_ajustes(self):
         _, _, cotacao = salvar_cotacao(

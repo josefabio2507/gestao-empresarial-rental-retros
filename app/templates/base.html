@@ -11,6 +11,17 @@
 <body>
 
     <main>
+        {% if current_user.is_authenticated %}
+            <div class="quick-alert-bar">
+                <a href="{{ url_for('suprimentos_alertas.listar') }}">
+                    Alertas de Suprimentos
+                    {% if alertas_suprimentos_nao_lidos %}
+                        <span class="badge badge-warning">{{ alertas_suprimentos_nao_lidos }}</span>
+                    {% endif %}
+                </a>
+            </div>
+        {% endif %}
+
         {% with mensagens = get_flashed_messages(with_categories=true) %}
             {% if mensagens %}
                 <div class="flash-area">

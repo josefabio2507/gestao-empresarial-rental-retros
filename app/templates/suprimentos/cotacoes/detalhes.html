@@ -22,6 +22,46 @@
     </div>
 
     {% if cotacao.pode_editar %}
+        <div class="form-card">
+            <h2>Enviar requisicao aos fornecedores</h2>
+            <p>Envie a solicitacao de cotacao para os fornecedores vinculados aos itens da requisicao.</p>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Fornecedor</th>
+                            <th>Telefone</th>
+                            <th>E-mail</th>
+                            <th>Acoes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for fornecedor in fornecedores_cotacao %}
+                            <tr>
+                                <td>{{ fornecedor.razao_social }}</td>
+                                <td>{{ fornecedor.telefone or "-" }}</td>
+                                <td>{{ fornecedor.email or "-" }}</td>
+                                <td class="actions-cell">
+                                    <form class="inline-form" method="POST" action="{{ url_for('suprimentos_cotacoes.enviar_whatsapp_fornecedor', cotacao_id=cotacao.id) }}" target="_blank">
+                                        <input type="hidden" name="fornecedor_id" value="{{ fornecedor.id }}">
+                                        <button class="btn btn-whatsapp" type="submit">Enviar WhatsApp</button>
+                                    </form>
+                                    <form class="inline-form" method="POST" action="{{ url_for('suprimentos_cotacoes.enviar_email_fornecedor', cotacao_id=cotacao.id) }}" target="_blank">
+                                        <input type="hidden" name="fornecedor_id" value="{{ fornecedor.id }}">
+                                        <button class="btn btn-primary" type="submit">Enviar e-mail</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        {% else %}
+                            <tr>
+                                <td class="empty-state" colspan="4">Nenhum fornecedor vinculado aos itens desta requisicao.</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
         <form class="form-card" method="POST" action="{{ url_for('suprimentos_cotacoes.adicionar_proposta', cotacao_id=cotacao.id) }}">
             <h2>Registrar proposta</h2>
             <div class="form-grid">

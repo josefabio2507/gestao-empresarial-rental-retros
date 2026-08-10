@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Suprimentos</span>
+            <h1>Compradores</h1>
+            <p>Cadastre quem recebe as requisicoes de compra por WhatsApp.</p>
+        </div>
+        <div class="page-actions">
+            <a class="btn btn-primary" href="{{ url_for('suprimentos_compradores.novo') }}">Novo comprador</a>
+            <a class="btn btn-secondary" href="{{ url_for('departamentos.detalhe_departamento', slug_departamento='suprimentos') }}">Voltar</a>
+        </div>
+    </div>
+
+    <div class="table-card table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Nome</th>
+                    <th>Usuario vinculado</th>
+                    <th>WhatsApp</th>
+                    <th>E-mail</th>
+                    <th>Centro de custo</th>
+                    <th>Status</th>
+                    <th>Acoes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for comprador in compradores %}
+                    <tr>
+                        <td>{{ comprador.nome }}</td>
+                        <td>{{ comprador.usuario_comprador.nome if comprador.usuario_comprador else "-" }}</td>
+                        <td>{{ comprador.telefone_whatsapp }}</td>
+                        <td>{{ comprador.email or (comprador.usuario_comprador.email if comprador.usuario_comprador else "-") }}</td>
+                        <td>{{ comprador.centro_custo.nome if comprador.centro_custo else "Todos" }}</td>
+                        <td><span class="badge {{ 'badge-success' if comprador.ativo else 'badge-danger' }}">{{ "Ativo" if comprador.ativo else "Inativo" }}</span></td>
+                        <td class="actions-cell">
+                            <a class="btn btn-secondary" href="{{ url_for('suprimentos_compradores.editar', comprador_id=comprador.id) }}">Editar</a>
+                            <form class="inline-form" method="POST" action="{{ url_for('suprimentos_compradores.status', comprador_id=comprador.id) }}">
+                                <button class="btn btn-warning" type="submit">{{ "Inativar" if comprador.ativo else "Ativar" }}</button>
+                            </form>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td class="empty-state" colspan="7">Nenhum comprador cadastrado.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

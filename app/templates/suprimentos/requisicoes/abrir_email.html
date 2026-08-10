@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Suprimentos</span>
+            <h1>Abrir e-mail</h1>
+            <p>{{ mensagem }}</p>
+        </div>
+        <a class="btn btn-secondary" href="{{ url_for('suprimentos_requisicoes.detalhes', requisicao_id=requisicao.id) }}">Voltar</a>
+    </div>
+
+    <div class="details-card">
+        <p><strong>Requisicao:</strong> {{ requisicao.numero }}</p>
+        <p><strong>Status:</strong> {{ requisicao.status }}</p>
+        <p>O Outlook deve abrir automaticamente com o e-mail preenchido. Se isso nao acontecer, use o botao abaixo.</p>
+    </div>
+
+    <div class="page-actions">
+        <a class="btn btn-primary" href="{{ link_email }}">Abrir e-mail no Outlook</a>
+        <a class="btn btn-secondary" href="{{ url_for('suprimentos_requisicoes.detalhes', requisicao_id=requisicao.id) }}">Voltar para requisicao</a>
+    </div>
+</section>
+
+<script>
+    window.addEventListener("load", function () {
+        window.location.href = "{{ link_email }}";
+    });
+</script>
+{% endblock %}

@@ -23,6 +23,17 @@ def create_app():
         except (TypeError, ValueError):
             return None
 
+    @app.context_processor
+    def contexto_alertas_suprimentos():
+        from flask_login import current_user
+
+        if not getattr(current_user, "is_authenticated", False):
+            return {"alertas_suprimentos_nao_lidos": 0}
+
+        from app.services.suprimentos_service import contar_alertas_nao_lidos
+
+        return {"alertas_suprimentos_nao_lidos": contar_alertas_nao_lidos(current_user)}
+
     executar_migrations_startup(app)
     executar_seeds_startup(app)
 
@@ -50,6 +61,9 @@ def create_app():
     from app.suprimentos.ordens_compra.routes import suprimentos_ordens_compra_bp
     from app.suprimentos.estoque.routes import suprimentos_estoque_bp
     from app.suprimentos.indicadores.routes import suprimentos_indicadores_bp
+    from app.suprimentos.alcadas_aprovacao.routes import suprimentos_alcadas_aprovacao_bp
+    from app.suprimentos.compradores.routes import suprimentos_compradores_bp
+    from app.suprimentos.alertas.routes import suprimentos_alertas_bp
     from app.operacao.routes import operacao_bp
     from app.seguranca_trabalho.routes import seguranca_trabalho_bp
     from app.admin import admin_bp
@@ -80,6 +94,9 @@ def create_app():
     app.register_blueprint(suprimentos_ordens_compra_bp, url_prefix="/suprimentos/ordens-compra")
     app.register_blueprint(suprimentos_estoque_bp, url_prefix="/suprimentos/estoque")
     app.register_blueprint(suprimentos_indicadores_bp, url_prefix="/suprimentos/indicadores")
+    app.register_blueprint(suprimentos_alcadas_aprovacao_bp, url_prefix="/suprimentos/alcadas-aprovacao")
+    app.register_blueprint(suprimentos_compradores_bp, url_prefix="/suprimentos/compradores")
+    app.register_blueprint(suprimentos_alertas_bp, url_prefix="/suprimentos/alertas")
     app.register_blueprint(operacao_bp, url_prefix="/operacao")
     app.register_blueprint(seguranca_trabalho_bp, url_prefix="/seguranca-trabalho")
     app.register_blueprint(admin_bp, url_prefix="/admin")
