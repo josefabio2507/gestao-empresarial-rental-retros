@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Suprimentos</span>
+            <h1>OCs aguardando financeiro</h1>
+            <p>Ordens com dados financeiros pendentes ou preparados para o futuro modulo Financeiro.</p>
+        </div>
+        <a class="btn btn-secondary" href="{{ url_for('suprimentos_ordens_compra.listar') }}">Voltar</a>
+    </div>
+
+    <div class="table-card table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>OC</th>
+                    <th>Fornecedor</th>
+                    <th>Centro de custo</th>
+                    <th>Status financeiro</th>
+                    <th>Vencimento</th>
+                    <th>Parcelas</th>
+                    <th>Total</th>
+                    <th>Acoes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ordem in ordens %}
+                    <tr>
+                        <td>{{ ordem.numero }}</td>
+                        <td>{{ ordem.fornecedor_razao_social_snapshot }}</td>
+                        <td>{{ ordem.requisicao.centro_custo.nome if ordem.requisicao and ordem.requisicao.centro_custo else "-" }}</td>
+                        <td><span class="badge badge-secondary">{{ ordem.status_financeiro }}</span></td>
+                        <td>{{ ordem.previsao_vencimento.strftime("%d/%m/%Y") if ordem.previsao_vencimento else "-" }}</td>
+                        <td>{{ ordem.quantidade_parcelas }}</td>
+                        <td>{{ formatar_moeda_brl(ordem.valor_total) }}</td>
+                        <td class="col-acoes">
+                            <a class="btn btn-secondary" href="{{ url_for('suprimentos_ordens_compra.detalhes', ordem_id=ordem.id) }}">Ver</a>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr><td class="empty-state" colspan="8">Nenhuma OC aguardando financeiro.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

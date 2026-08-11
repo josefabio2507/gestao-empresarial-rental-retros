@@ -1,4 +1,5 @@
 import unittest
+from datetime import date
 from decimal import Decimal
 
 from app import create_app
@@ -16,21 +17,29 @@ from app.models import (
     SuprimentosItem,
     SuprimentosMovimentacaoEstoque,
     SuprimentosOrdemCompra,
+    SuprimentosOrdemCompraParcela,
     SuprimentosUnidadeMedida,
     Usuario,
 )
 from app.services.suprimentos_service import (
     STATUS_COTACAO_APROVADA,
+    STATUS_FINANCEIRO_CANCELADO,
+    STATUS_FINANCEIRO_PENDENTE,
+    STATUS_FINANCEIRO_PREPARADO,
+    STATUS_FINANCEIRO_PROVISIONADO,
     STATUS_ORDEM_COMPRA_CANCELADA,
     STATUS_ORDEM_COMPRA_GERADA,
     STATUS_ORDEM_COMPRA_PARCIAL,
     STATUS_ORDEM_COMPRA_RECEBIDA,
     adicionar_item_requisicao,
     aprovar_cotacao,
+    buscar_ordens_aguardando_financeiro,
     cancelar_ordem_compra,
     enviar_cotacao_para_aprovacao,
     enviar_requisicao_compra,
     gerar_ordens_compra_cotacao,
+    preparar_financeiro_ordem_compra,
+    provisionar_financeiro_ordem_compra,
     registrar_entrada_estoque_recebimento_item,
     registrar_recebimento_ordem_compra,
     salvar_cotacao,
@@ -224,6 +233,88 @@ class SuprimentosOrdensCompraTestCase(unittest.TestCase):
         self.assertEqual("COMPRAR CONFORME APROVADO", ordem.observacoes)
         self.assertEqual(1, len(ordem.itens))
         self.assertEqual(Decimal("251.00"), ordem.valor_total)
+        self.assertEqual(STATUS_FINANCEIRO_PENDENTE, ordem.status_financeiro)
+        self.assertEqual(1, ordem.quantidade_parcelas)
+        self.assertEqual([], ordem.parcelas_financeiras)
+
+    def test_gera_ordem_compra_com_preparacao_financeira(self):
+        cotacao = self._criar_cotacao_aprovada()
+
+        sucesso, mensagem, ordens = gerar_ordens_compra_cotacao(
+            cotacao,
+            self.admin,
+            {
+                "observacoes": "comprar conforme aprovado",
+                "previsao_vencimento": "2026-09-10",
+                "quantidade_parcelas": "2",
+                "observacoes_financeiras": "pagar apos recebimento",
+            },
+        )
+
+        self.assertTrue(sucesso)
+        self.assertEqual("Ordem de compra gerada com sucesso.", mensagem)
+        ordem = ordens[0]
+        self.assertEqual(STATUS_FINANCEIRO_PREPARADO, ordem.status_financeiro)
+        self.assertEqual(date(2026, 9, 10), ordem.previsao_vencimento)
+        self.assertEqual(2, ordem.quantidade_parcelas)
+        self.assertEqual("PAGAR APOS RECEBIMENTO", ordem.observacoes_financeiras)
+        self.assertIsNotNone(ordem.preparado_financeiro_em)
+        self.assertEqual(2, len(ordem.parcelas_financeiras))
+        self.assertEqual(Decimal("125.50"), ordem.parcelas_financeiras[0].valor_previsto)
+        self.assertEqual(Decimal("125.50"), ordem.parcelas_financeiras[1].valor_previsto)
+        self.assertEqual(date(2026, 9, 10), ordem.parcelas_financeiras[0].data_vencimento)
+        self.assertEqual(date(2026, 10, 10), ordem.parcelas_financeiras[1].data_vencimento)
+
+    def test_prepara_e_provisiona_financeiro_da_ordem_compra(self):
+        cotacao = self._criar_cotacao_aprovada()
+        _, _, ordens = gerar_ordens_compra_cotacao(cotacao, self.admin)
+        ordem = ordens[0]
+
+        sucesso, mensagem = provisionar_financeiro_ordem_compra(ordem)
+        self.assertFalse(sucesso)
+        self.assertEqual("Prepare as parcelas financeiras antes de provisionar.", mensagem)
+
+        sucesso, mensagem = preparar_financeiro_ordem_compra(
+            ordem,
+            {
+                "previsao_vencimento": "2026-09-15",
+                "quantidade_parcelas": "3",
+                "observacoes_financeiras": "parcelar compra",
+            },
+        )
+
+        self.assertTrue(sucesso)
+        self.assertEqual("Dados financeiros preparados com sucesso.", mensagem)
+        self.assertEqual(STATUS_FINANCEIRO_PREPARADO, ordem.status_financeiro)
+        self.assertEqual(3, SuprimentosOrdemCompraParcela.query.filter_by(ordem_compra_id=ordem.id).count())
+        self.assertEqual(Decimal("83.67"), ordem.parcelas_financeiras[0].valor_previsto)
+        self.assertEqual(Decimal("83.67"), ordem.parcelas_financeiras[1].valor_previsto)
+        self.assertEqual(Decimal("83.66"), ordem.parcelas_financeiras[2].valor_previsto)
+
+        sucesso, mensagem = provisionar_financeiro_ordem_compra(ordem)
+
+        self.assertTrue(sucesso)
+        self.assertEqual("Ordem de compra provisionada para o futuro Financeiro.", mensagem)
+        self.assertEqual(STATUS_FINANCEIRO_PROVISIONADO, ordem.status_financeiro)
+        self.assertIsNotNone(ordem.provisionado_financeiro_em)
+
+    def test_listagem_de_ordens_aguardando_financeiro(self):
+        cotacao = self._criar_cotacao_aprovada()
+        _, _, ordens = gerar_ordens_compra_cotacao(cotacao, self.admin)
+        ordem = ordens[0]
+
+        aguardando = buscar_ordens_aguardando_financeiro()
+
+        self.assertIn(ordem, aguardando)
+
+        preparar_financeiro_ordem_compra(
+            ordem,
+            {"previsao_vencimento": "2026-09-15", "quantidade_parcelas": "1"},
+        )
+        provisionar_financeiro_ordem_compra(ordem)
+
+        aguardando = buscar_ordens_aguardando_financeiro()
+        self.assertNotIn(ordem, aguardando)
 
     def test_nao_gera_ordem_compra_duplicada_para_mesma_cotacao(self):
         cotacao = self._criar_cotacao_aprovada()
@@ -258,7 +349,24 @@ class SuprimentosOrdensCompraTestCase(unittest.TestCase):
         self.assertTrue(sucesso)
         self.assertEqual("Ordem de compra cancelada com sucesso.", mensagem)
         self.assertEqual(STATUS_ORDEM_COMPRA_CANCELADA, ordem.status)
+        self.assertEqual(STATUS_FINANCEIRO_CANCELADO, ordem.status_financeiro)
         self.assertEqual("ERRO DE EMISSAO", ordem.motivo_cancelamento)
+
+    def test_cancelamento_cancela_parcelas_financeiras(self):
+        cotacao = self._criar_cotacao_aprovada()
+        _, _, ordens = gerar_ordens_compra_cotacao(
+            cotacao,
+            self.admin,
+            {"previsao_vencimento": "2026-09-10", "quantidade_parcelas": "2"},
+        )
+        ordem = ordens[0]
+
+        sucesso, mensagem = cancelar_ordem_compra(ordem, "erro de emissao")
+
+        self.assertTrue(sucesso)
+        self.assertEqual("Ordem de compra cancelada com sucesso.", mensagem)
+        self.assertEqual(STATUS_FINANCEIRO_CANCELADO, ordem.status_financeiro)
+        self.assertEqual(["Cancelada", "Cancelada"], [parcela.status for parcela in ordem.parcelas_financeiras])
 
     def test_registra_recebimento_parcial_e_total_da_ordem(self):
         cotacao = self._criar_cotacao_aprovada()
@@ -507,6 +615,19 @@ class SuprimentosOrdensCompraTestCase(unittest.TestCase):
 
         self.assertEqual(200, resposta.status_code)
         self.assertIn(b"Ordens de Compra", resposta.data)
+        self.assertIn(b"Aguardando financeiro", resposta.data)
+
+    def test_rota_aguardando_financeiro_exibe_ordem_pendente(self):
+        cotacao = self._criar_cotacao_aprovada()
+        _, _, ordens = gerar_ordens_compra_cotacao(cotacao, self.admin)
+        ordem = ordens[0]
+        self._autenticar(self.admin)
+
+        resposta = self.client.get("/suprimentos/ordens-compra/aguardando-financeiro")
+
+        self.assertEqual(200, resposta.status_code)
+        self.assertIn(b"OCs aguardando financeiro", resposta.data)
+        self.assertIn(ordem.numero.encode(), resposta.data)
 
     def test_rota_gerar_exige_permissao_de_criar(self):
         cotacao = self._criar_cotacao_aprovada()
@@ -552,6 +673,7 @@ class SuprimentosOrdensCompraTestCase(unittest.TestCase):
         self.assertEqual(200, resposta.status_code)
         self.assertIn(b"Recebimentos", resposta.data)
         self.assertIn(b"Entradas de Estoque", resposta.data)
+        self.assertIn(b"Preparacao Financeira", resposta.data)
         self.assertIn(b"NF 123", resposta.data)
         self.assertIn(b"Recebida", resposta.data)
 

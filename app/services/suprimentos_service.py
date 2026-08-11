@@ -23,7 +23,6 @@ from app.models import (
     NivelAcesso,
     PermissaoUsuarioModulo,
     SuprimentosAlcadaAprovacao,
-    SuprimentosAlerta,
     SuprimentosCategoriaItem,
     SuprimentosComprador,
     SuprimentosFornecedor,
@@ -35,6 +34,7 @@ from app.models import (
     SuprimentosRequisicaoCompraItem,
     SuprimentosOrdemCompra,
     SuprimentosOrdemCompraItem,
+    SuprimentosOrdemCompraParcela,
     SuprimentosMovimentacaoEstoque,
     SuprimentosRecebimentoCompra,
     SuprimentosRecebimentoCompraItem,
@@ -83,6 +83,10 @@ STATUS_ORDEM_COMPRA_GERADA = "Gerada"
 STATUS_ORDEM_COMPRA_PARCIAL = "Parcialmente Recebida"
 STATUS_ORDEM_COMPRA_RECEBIDA = "Recebida"
 STATUS_ORDEM_COMPRA_CANCELADA = "Cancelada"
+STATUS_FINANCEIRO_PENDENTE = "Pendente de Financeiro"
+STATUS_FINANCEIRO_PREPARADO = "Preparado para Financeiro"
+STATUS_FINANCEIRO_PROVISIONADO = "Provisionado"
+STATUS_FINANCEIRO_CANCELADO = "Cancelado"
 STATUS_RECEBIMENTO_COMPRA_REGISTRADO = "Registrado"
 STATUS_RECEBIMENTO_COMPRA_CANCELADO = "Cancelado"
 TIPO_MOVIMENTACAO_ESTOQUE_ENTRADA = "Entrada"
@@ -900,7 +904,6 @@ def enviar_requisicao_compra(requisicao):
 
     requisicao.status = STATUS_REQUISICAO_ENVIADA
     requisicao.enviada_em = datetime.utcnow()
-    criar_alertas_ciencia_requisicao(requisicao)
     db.session.commit()
     return True, "Requisicao enviada para analise."
 
@@ -1001,7 +1004,7 @@ def gerar_numero_recebimento_compra():
     return f"{prefixo}{sequencial:04d}"
 
 
-def buscar_ordens_compra(numero=None, status=None, fornecedor_id=None):
+def buscar_ordens_compra(numero=None, status=None, fornecedor_id=None, status_financeiro=None):
     query = SuprimentosOrdemCompra.query
     numero = texto(numero).upper()
     fornecedor_id = inteiro_ou_none(fornecedor_id)
@@ -1015,7 +1018,24 @@ def buscar_ordens_compra(numero=None, status=None, fornecedor_id=None):
     if fornecedor_id:
         query = query.filter(SuprimentosOrdemCompra.fornecedor_id == fornecedor_id)
 
+    if status_financeiro:
+        query = query.filter(SuprimentosOrdemCompra.status_financeiro == status_financeiro)
+
     return query.order_by(SuprimentosOrdemCompra.criado_em.desc()).all()
+
+
+def buscar_ordens_aguardando_financeiro():
+    return (
+        SuprimentosOrdemCompra.query
+        .filter(
+            SuprimentosOrdemCompra.status != STATUS_ORDEM_COMPRA_CANCELADA,
+            SuprimentosOrdemCompra.status_financeiro.in_(
+                [STATUS_FINANCEIRO_PENDENTE, STATUS_FINANCEIRO_PREPARADO]
+            ),
+        )
+        .order_by(SuprimentosOrdemCompra.previsao_vencimento.asc(), SuprimentosOrdemCompra.gerada_em.desc())
+        .all()
+    )
 
 
 def buscar_ordens_compra_cotacao(cotacao):
@@ -1025,6 +1045,77 @@ def buscar_ordens_compra_cotacao(cotacao):
         .order_by(SuprimentosOrdemCompra.numero.asc())
         .all()
     )
+
+
+def calcular_parcelas_previstas(valor_total, quantidade_parcelas):
+    quantidade_parcelas = int(quantidade_parcelas or 1)
+    valor_total = Decimal(valor_total or 0).quantize(Decimal("0.01"))
+
+    if quantidade_parcelas <= 1:
+        return [valor_total]
+
+    valor_base = (valor_total / Decimal(quantidade_parcelas)).quantize(Decimal("0.01"))
+    parcelas = [valor_base for _ in range(quantidade_parcelas)]
+    diferenca = valor_total - sum(parcelas, Decimal("0.00"))
+    parcelas[-1] = (parcelas[-1] + diferenca).quantize(Decimal("0.01"))
+    return parcelas
+
+
+def criar_parcelas_financeiras_ordem(ordem, previsao_vencimento, quantidade_parcelas, observacoes=None):
+    for parcela in list(ordem.parcelas_financeiras):
+        db.session.delete(parcela)
+    db.session.flush()
+
+    valores = calcular_parcelas_previstas(ordem.valor_total, quantidade_parcelas)
+    for indice, valor in enumerate(valores, start=1):
+        vencimento = previsao_vencimento + timedelta(days=30 * (indice - 1))
+        db.session.add(
+            SuprimentosOrdemCompraParcela(
+                ordem_compra_id=ordem.id,
+                numero_parcela=indice,
+                valor_previsto=valor,
+                data_vencimento=vencimento,
+                status="Prevista",
+                observacoes=observacoes,
+            )
+        )
+
+
+def preparar_financeiro_ordem_compra(ordem, form_data):
+    if ordem.status == STATUS_ORDEM_COMPRA_CANCELADA:
+        return False, "Ordem de compra cancelada nao pode ser preparada para financeiro."
+
+    previsao_vencimento = data_ou_none((form_data or {}).get("previsao_vencimento"))
+    quantidade_parcelas = inteiro_ou_none((form_data or {}).get("quantidade_parcelas")) or 1
+    observacoes = texto_maiusculo((form_data or {}).get("observacoes_financeiras")) or None
+
+    if not previsao_vencimento:
+        return False, "Previsao de vencimento e obrigatoria."
+
+    if quantidade_parcelas < 1:
+        return False, "Quantidade de parcelas deve ser maior ou igual a 1."
+
+    ordem.previsao_vencimento = previsao_vencimento
+    ordem.quantidade_parcelas = quantidade_parcelas
+    ordem.observacoes_financeiras = observacoes
+    ordem.status_financeiro = STATUS_FINANCEIRO_PREPARADO
+    ordem.preparado_financeiro_em = datetime.utcnow()
+    criar_parcelas_financeiras_ordem(ordem, previsao_vencimento, quantidade_parcelas, observacoes)
+    db.session.commit()
+    return True, "Dados financeiros preparados com sucesso."
+
+
+def provisionar_financeiro_ordem_compra(ordem):
+    if ordem.status == STATUS_ORDEM_COMPRA_CANCELADA:
+        return False, "Ordem de compra cancelada nao pode ser provisionada."
+
+    if not ordem.parcelas_financeiras:
+        return False, "Prepare as parcelas financeiras antes de provisionar."
+
+    ordem.status_financeiro = STATUS_FINANCEIRO_PROVISIONADO
+    ordem.provisionado_financeiro_em = datetime.utcnow()
+    db.session.commit()
+    return True, "Ordem de compra provisionada para o futuro Financeiro."
 
 
 def buscar_saldos_estoque(descricao=None, categoria_id=None, somente_abaixo_minimo=False):
@@ -1953,101 +2044,6 @@ def usuario_pode_aprovar_cotacao_alcada(cotacao, usuario):
     return cotacao.aprovador_usuario_id == usuario.id
 
 
-def criar_alerta_suprimentos(
-    usuario_destinatario_id,
-    tipo,
-    titulo,
-    mensagem,
-    link_destino=None,
-    criado_por_usuario_id=None,
-    requisicao_id=None,
-    cotacao_id=None,
-):
-    if not usuario_destinatario_id:
-        return None
-
-    alerta = SuprimentosAlerta(
-        usuario_destinatario_id=usuario_destinatario_id,
-        criado_por_usuario_id=criado_por_usuario_id,
-        requisicao_id=requisicao_id,
-        cotacao_id=cotacao_id,
-        tipo=tipo,
-        titulo=titulo,
-        mensagem=mensagem,
-        link_destino=link_destino,
-        status="Nao lido",
-    )
-    db.session.add(alerta)
-    return alerta
-
-
-def usuarios_para_ciencia_suprimentos(excluir_usuario_id=None):
-    usuarios = {
-        usuario.id: usuario
-        for usuario in Usuario.query.join(Usuario.nivel_acesso).filter(
-            Usuario.ativo.is_(True),
-            func.lower(NivelAcesso.slug) == "administrador",
-        )
-    }
-
-    departamento = Departamento.query.filter_by(slug="suprimentos", ativo=True).first()
-    modulo_cotacoes = None
-    if departamento:
-        modulo_cotacoes = Modulo.query.filter_by(
-            departamento_id=departamento.id,
-            slug="cotacoes",
-            ativo=True,
-        ).first()
-
-    if modulo_cotacoes:
-        permissoes = (
-            PermissaoUsuarioModulo.query
-            .filter(
-                PermissaoUsuarioModulo.modulo_id == modulo_cotacoes.id,
-                PermissaoUsuarioModulo.ativo.is_(True),
-                PermissaoUsuarioModulo.pode_visualizar.is_(True),
-            )
-            .all()
-        )
-        for permissao in permissoes:
-            if permissao.usuario and permissao.usuario.ativo:
-                usuarios[permissao.usuario.id] = permissao.usuario
-
-    if excluir_usuario_id:
-        usuarios.pop(excluir_usuario_id, None)
-
-    return list(usuarios.values())
-
-
-def criar_alertas_ciencia_requisicao(requisicao):
-    for usuario in usuarios_para_ciencia_suprimentos(requisicao.solicitante_usuario_id):
-        criar_alerta_suprimentos(
-            usuario.id,
-            "Ciencia",
-            f"Nova requisicao {requisicao.numero}",
-            "Uma requisicao de compra foi enviada para analise.",
-            f"/suprimentos/requisicoes/{requisicao.id}",
-            criado_por_usuario_id=requisicao.solicitante_usuario_id,
-            requisicao_id=requisicao.id,
-        )
-
-
-def criar_alerta_aprovacao_cotacao(cotacao, usuario_origem):
-    if not cotacao.aprovador_usuario_id:
-        return None
-
-    return criar_alerta_suprimentos(
-        cotacao.aprovador_usuario_id,
-        "Aprovacao",
-        f"Cotacao {cotacao.numero} aguardando aprovacao",
-        "Existe uma proposta de cotacao aguardando sua aprovacao por alcada.",
-        f"/suprimentos/cotacoes/{cotacao.id}/mapa-comparativo",
-        criado_por_usuario_id=usuario_origem.id if usuario_origem else None,
-        requisicao_id=cotacao.requisicao_id,
-        cotacao_id=cotacao.id,
-    )
-
-
 def telefone_whatsapp_cotacao(cotacao):
     if cotacao.alcada_aprovacao and cotacao.alcada_aprovacao.telefone_whatsapp:
         return cotacao.alcada_aprovacao.telefone_whatsapp
@@ -2132,60 +2128,6 @@ def gerar_link_whatsapp_aprovacao_cotacao(cotacao):
 
     mensagem = gerar_mensagem_whatsapp_aprovacao_cotacao(cotacao)
     return True, "Link do WhatsApp gerado com sucesso.", f"https://wa.me/{telefone}?text={quote(mensagem)}"
-
-
-def criar_alertas_cotacao_aprovada(cotacao, usuario_origem):
-    destinatarios = {}
-
-    if cotacao.requisicao and cotacao.requisicao.solicitante:
-        destinatarios[cotacao.requisicao.solicitante.id] = cotacao.requisicao.solicitante
-
-    if cotacao.criado_por:
-        destinatarios[cotacao.criado_por.id] = cotacao.criado_por
-
-    for usuario in usuarios_para_ciencia_suprimentos(usuario_origem.id if usuario_origem else None):
-        destinatarios[usuario.id] = usuario
-
-    for usuario in destinatarios.values():
-        criar_alerta_suprimentos(
-            usuario.id,
-            "Informacao",
-            f"Cotacao {cotacao.numero} aprovada",
-            "A cotacao foi aprovada e ja pode seguir para ordem de compra.",
-            f"/suprimentos/cotacoes/{cotacao.id}/mapa-comparativo",
-            criado_por_usuario_id=usuario_origem.id if usuario_origem else None,
-            requisicao_id=cotacao.requisicao_id,
-            cotacao_id=cotacao.id,
-        )
-
-
-def buscar_alertas_usuario(usuario, status=None):
-    query = SuprimentosAlerta.query.filter_by(usuario_destinatario_id=usuario.id)
-
-    if status:
-        query = query.filter(SuprimentosAlerta.status == status)
-
-    return query.order_by(SuprimentosAlerta.criado_em.desc()).all()
-
-
-def contar_alertas_nao_lidos(usuario):
-    if not usuario or not getattr(usuario, "is_authenticated", False):
-        return 0
-
-    return SuprimentosAlerta.query.filter_by(
-        usuario_destinatario_id=usuario.id,
-        status="Nao lido",
-    ).count()
-
-
-def marcar_alerta_como_lido(alerta, usuario):
-    if not alerta or alerta.usuario_destinatario_id != usuario.id:
-        return False, "Alerta nao encontrado."
-
-    alerta.status = "Lido"
-    alerta.lido_em = datetime.utcnow()
-    db.session.commit()
-    return True, "Alerta marcado como lido."
 
 
 def salvar_cotacao(form_data, usuario, cotacao=None):
@@ -2414,7 +2356,6 @@ def enviar_cotacao_para_aprovacao(cotacao, usuario):
     cotacao.reprovada_por_usuario_id = None
     cotacao.observacoes_aprovacao = None
     sincronizar_status_requisicao_por_cotacao(cotacao)
-    criar_alerta_aprovacao_cotacao(cotacao, usuario)
     db.session.commit()
 
     return True, "Cotacao enviada para aprovacao com sucesso."
@@ -2434,7 +2375,6 @@ def aprovar_cotacao(cotacao, usuario, form_data=None):
     cotacao.reprovada_por_usuario_id = None
     cotacao.observacoes_aprovacao = texto_maiusculo((form_data or {}).get("observacoes_aprovacao"))
     sincronizar_status_requisicao_por_cotacao(cotacao)
-    criar_alertas_cotacao_aprovada(cotacao, usuario)
     db.session.commit()
 
     return True, "Cotacao aprovada com sucesso."
@@ -2497,6 +2437,13 @@ def gerar_ordens_compra_cotacao(cotacao, usuario, form_data=None):
         return False, "A cotacao aprovada precisa ter vencedor em todos os itens.", []
 
     observacoes = texto_maiusculo((form_data or {}).get("observacoes")) or None
+    previsao_vencimento = data_ou_none((form_data or {}).get("previsao_vencimento"))
+    quantidade_parcelas = inteiro_ou_none((form_data or {}).get("quantidade_parcelas")) or 1
+    observacoes_financeiras = texto_maiusculo((form_data or {}).get("observacoes_financeiras")) or None
+
+    if quantidade_parcelas < 1:
+        return False, "Quantidade de parcelas deve ser maior ou igual a 1.", []
+
     propostas_por_fornecedor = {}
 
     for proposta in selecionadas:
@@ -2523,6 +2470,10 @@ def gerar_ordens_compra_cotacao(cotacao, usuario, form_data=None):
             fornecedor_cnpj_cpf_snapshot=fornecedor.cnpj_cpf,
             condicao_pagamento_snapshot=" | ".join(condicoes) if condicoes else None,
             status=STATUS_ORDEM_COMPRA_GERADA,
+            status_financeiro=STATUS_FINANCEIRO_PENDENTE,
+            previsao_vencimento=previsao_vencimento,
+            quantidade_parcelas=quantidade_parcelas,
+            observacoes_financeiras=observacoes_financeiras,
             observacoes=observacoes,
             gerada_em=datetime.utcnow(),
         )
@@ -2545,6 +2496,16 @@ def gerar_ordens_compra_cotacao(cotacao, usuario, form_data=None):
                     prazo_entrega_dias=proposta.prazo_entrega_dias,
                     observacoes=proposta.observacoes,
                 )
+            )
+
+        if previsao_vencimento:
+            ordem.status_financeiro = STATUS_FINANCEIRO_PREPARADO
+            ordem.preparado_financeiro_em = datetime.utcnow()
+            criar_parcelas_financeiras_ordem(
+                ordem,
+                previsao_vencimento,
+                quantidade_parcelas,
+                observacoes_financeiras,
             )
 
         ordens.append(ordem)
@@ -2700,8 +2661,11 @@ def cancelar_ordem_compra(ordem_compra, motivo=None):
         return False, "Ordem de compra com recebimento nao pode ser cancelada."
 
     ordem_compra.status = STATUS_ORDEM_COMPRA_CANCELADA
+    ordem_compra.status_financeiro = STATUS_FINANCEIRO_CANCELADO
     ordem_compra.cancelada_em = datetime.utcnow()
     ordem_compra.motivo_cancelamento = texto_maiusculo(motivo) or None
+    for parcela in ordem_compra.parcelas_financeiras:
+        parcela.status = "Cancelada"
     db.session.commit()
     return True, "Ordem de compra cancelada com sucesso."
 

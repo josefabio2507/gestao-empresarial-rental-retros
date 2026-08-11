@@ -26,6 +26,72 @@
         {% endif %}
     </div>
 
+    <div class="details-card">
+        <h2>Preparacao Financeira</h2>
+        <p><strong>Status financeiro:</strong> {{ ordem.status_financeiro }}</p>
+        <p><strong>Valor previsto:</strong> {{ formatar_moeda_brl(ordem.valor_total) }}</p>
+        <p><strong>Previsao de vencimento:</strong> {{ ordem.previsao_vencimento.strftime("%d/%m/%Y") if ordem.previsao_vencimento else "-" }}</p>
+        <p><strong>Parcelas:</strong> {{ ordem.quantidade_parcelas }}</p>
+        <p><strong>Observacoes financeiras:</strong> {{ ordem.observacoes_financeiras or "-" }}</p>
+        {% if ordem.preparado_financeiro_em %}
+            <p><strong>Preparado em:</strong> {{ ordem.preparado_financeiro_em.strftime("%d/%m/%Y %H:%M") }}</p>
+        {% endif %}
+        {% if ordem.provisionado_financeiro_em %}
+            <p><strong>Provisionado em:</strong> {{ ordem.provisionado_financeiro_em.strftime("%d/%m/%Y %H:%M") }}</p>
+        {% endif %}
+    </div>
+
+    {% if ordem.status != "Cancelada" and ordem.status_financeiro != "Provisionado" %}
+        <form class="form-card" method="POST" action="{{ url_for('suprimentos_ordens_compra.preparar_financeiro', ordem_id=ordem.id) }}">
+            <h2>Preparar para o futuro Financeiro</h2>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="previsao_vencimento">Previsao de vencimento</label>
+                    <input id="previsao_vencimento" name="previsao_vencimento" type="date" required value="{{ ordem.previsao_vencimento.isoformat() if ordem.previsao_vencimento else '' }}">
+                </div>
+                <div class="form-group">
+                    <label for="quantidade_parcelas">Quantidade de parcelas</label>
+                    <input id="quantidade_parcelas" name="quantidade_parcelas" type="number" min="1" value="{{ ordem.quantidade_parcelas or 1 }}" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="observacoes_financeiras">Observacoes financeiras</label>
+                <textarea id="observacoes_financeiras" name="observacoes_financeiras" data-uppercase>{{ ordem.observacoes_financeiras or "" }}</textarea>
+            </div>
+            <div class="form-actions">
+                <button class="btn btn-primary" type="submit">Preparar financeiro</button>
+            </div>
+        </form>
+    {% endif %}
+
+    <div class="table-card table-responsive">
+        <h2>Parcelas previstas</h2>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Parcela</th>
+                    <th>Vencimento</th>
+                    <th>Valor previsto</th>
+                    <th>Status</th>
+                    <th>Observacoes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for parcela in ordem.parcelas_financeiras %}
+                    <tr>
+                        <td>{{ parcela.numero_parcela }}</td>
+                        <td>{{ parcela.data_vencimento.strftime("%d/%m/%Y") }}</td>
+                        <td>{{ formatar_moeda_brl(parcela.valor_previsto) }}</td>
+                        <td><span class="badge badge-secondary">{{ parcela.status }}</span></td>
+                        <td>{{ parcela.observacoes or "-" }}</td>
+                    </tr>
+                {% else %}
+                    <tr><td class="empty-state" colspan="5">Nenhuma parcela prevista.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
     <div class="table-card table-responsive">
         <table class="table">
             <thead>
@@ -101,7 +167,7 @@
 
     <div class="details-card">
         <p><strong>Total da ordem:</strong> {{ formatar_moeda_brl(ordem.valor_total) }}</p>
-        <p><strong>Proxima etapa:</strong> financeiro sera tratado nas proximas missoes.</p>
+        <p><strong>Proxima etapa:</strong> os dados acima serao usados pelo futuro modulo Financeiro.</p>
     </div>
 
     <div class="table-card table-responsive">
@@ -139,6 +205,11 @@
     <div class="page-actions">
         {% if ordem.pode_receber %}
             <a class="btn btn-primary" href="{{ url_for('suprimentos_ordens_compra.receber', ordem_id=ordem.id) }}">Registrar recebimento</a>
+        {% endif %}
+        {% if ordem.status_financeiro == "Preparado para Financeiro" %}
+            <form class="inline-form" method="POST" action="{{ url_for('suprimentos_ordens_compra.provisionar_financeiro', ordem_id=ordem.id) }}">
+                <button class="btn btn-primary" type="submit">Marcar como provisionado</button>
+            </form>
         {% endif %}
         {% if ordem.pode_cancelar %}
             <form class="inline-form" method="POST" action="{{ url_for('suprimentos_ordens_compra.cancelar', ordem_id=ordem.id) }}">

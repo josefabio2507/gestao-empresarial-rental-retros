@@ -136,7 +136,6 @@ def executar_seed():
 
     for usuario in aprovadores_demo:
         garantir_permissao(usuario, "suprimentos", "cotacoes", visualizar=True, aprovar=True)
-        garantir_permissao(usuario, "suprimentos", "alertas", visualizar=True)
 
     categorias = {}
     for nome in ["PECAS", "EPI", "FERRAMENTAS", "SERVICOS", "CONSUMO"]:

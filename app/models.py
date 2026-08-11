@@ -1515,6 +1515,12 @@ class SuprimentosOrdemCompra(db.Model):
     fornecedor_cnpj_cpf_snapshot = db.Column(db.String(20), nullable=True)
     condicao_pagamento_snapshot = db.Column(db.String(160), nullable=True)
     status = db.Column(db.String(30), default="Gerada", nullable=False, index=True)
+    status_financeiro = db.Column(db.String(30), default="Pendente de Financeiro", nullable=False, index=True)
+    previsao_vencimento = db.Column(db.Date, nullable=True, index=True)
+    quantidade_parcelas = db.Column(db.Integer, default=1, nullable=False)
+    observacoes_financeiras = db.Column(db.Text, nullable=True)
+    preparado_financeiro_em = db.Column(db.DateTime, nullable=True)
+    provisionado_financeiro_em = db.Column(db.DateTime, nullable=True)
     observacoes = db.Column(db.Text, nullable=True)
     gerada_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     cancelada_em = db.Column(db.DateTime, nullable=True)
@@ -1542,6 +1548,12 @@ class SuprimentosOrdemCompra(db.Model):
         back_populates="ordem_compra",
         cascade="all, delete-orphan",
     )
+    parcelas_financeiras = db.relationship(
+        "SuprimentosOrdemCompraParcela",
+        back_populates="ordem_compra",
+        cascade="all, delete-orphan",
+        order_by="SuprimentosOrdemCompraParcela.numero_parcela",
+    )
 
     __table_args__ = (
         db.UniqueConstraint(
@@ -1552,6 +1564,14 @@ class SuprimentosOrdemCompra(db.Model):
         db.CheckConstraint(
             "status in ('Gerada', 'Parcialmente Recebida', 'Recebida', 'Cancelada')",
             name="ck_suprimentos_ordens_compra_status",
+        ),
+        db.CheckConstraint(
+            "status_financeiro in ('Pendente de Financeiro', 'Preparado para Financeiro', 'Provisionado', 'Cancelado')",
+            name="ck_suprimentos_ordens_compra_status_financeiro",
+        ),
+        db.CheckConstraint(
+            "quantidade_parcelas >= 1",
+            name="ck_suprimentos_ordens_compra_qtd_parcelas",
         ),
     )
 
@@ -1569,6 +1589,56 @@ class SuprimentosOrdemCompra(db.Model):
 
     def __repr__(self):
         return f"<SuprimentosOrdemCompra {self.numero}>"
+
+
+class SuprimentosOrdemCompraParcela(db.Model):
+    __tablename__ = "suprimentos_ordem_compra_parcelas"
+
+    id = db.Column(db.Integer, primary_key=True)
+    ordem_compra_id = db.Column(
+        db.Integer,
+        db.ForeignKey("suprimentos_ordens_compra.id"),
+        nullable=False,
+        index=True,
+    )
+    numero_parcela = db.Column(db.Integer, nullable=False)
+    valor_previsto = db.Column(db.Numeric(12, 2), nullable=False)
+    data_vencimento = db.Column(db.Date, nullable=False, index=True)
+    status = db.Column(db.String(30), default="Prevista", nullable=False, index=True)
+    observacoes = db.Column(db.Text, nullable=True)
+
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    atualizado_em = db.Column(
+        db.DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False
+    )
+
+    ordem_compra = db.relationship("SuprimentosOrdemCompra", back_populates="parcelas_financeiras")
+
+    __table_args__ = (
+        db.UniqueConstraint(
+            "ordem_compra_id",
+            "numero_parcela",
+            name="uq_suprimentos_oc_parcela_numero",
+        ),
+        db.CheckConstraint(
+            "numero_parcela >= 1",
+            name="ck_suprimentos_oc_parcelas_numero",
+        ),
+        db.CheckConstraint(
+            "valor_previsto >= 0",
+            name="ck_suprimentos_oc_parcelas_valor",
+        ),
+        db.CheckConstraint(
+            "status in ('Prevista', 'Cancelada')",
+            name="ck_suprimentos_oc_parcelas_status",
+        ),
+    )
+
+    def __repr__(self):
+        return f"<SuprimentosOrdemCompraParcela ordem={self.ordem_compra_id} parcela={self.numero_parcela}>"
 
 
 class SuprimentosOrdemCompraItem(db.Model):
@@ -1863,64 +1933,3 @@ class SuprimentosMovimentacaoEstoque(db.Model):
         return f"<SuprimentosMovimentacaoEstoque {self.tipo} item={self.item_id}>"
 
 
-class SuprimentosAlerta(db.Model):
-    __tablename__ = "suprimentos_alertas"
-
-    id = db.Column(db.Integer, primary_key=True)
-    usuario_destinatario_id = db.Column(
-        db.Integer,
-        db.ForeignKey("usuarios.id"),
-        nullable=False,
-        index=True,
-    )
-    criado_por_usuario_id = db.Column(
-        db.Integer,
-        db.ForeignKey("usuarios.id"),
-        nullable=True,
-        index=True,
-    )
-    requisicao_id = db.Column(
-        db.Integer,
-        db.ForeignKey("suprimentos_requisicoes_compra.id"),
-        nullable=True,
-        index=True,
-    )
-    cotacao_id = db.Column(
-        db.Integer,
-        db.ForeignKey("suprimentos_cotacoes.id"),
-        nullable=True,
-        index=True,
-    )
-    tipo = db.Column(db.String(40), nullable=False, index=True)
-    titulo = db.Column(db.String(160), nullable=False)
-    mensagem = db.Column(db.Text, nullable=False)
-    link_destino = db.Column(db.String(255), nullable=True)
-    status = db.Column(db.String(20), default="Nao lido", nullable=False, index=True)
-    lido_em = db.Column(db.DateTime, nullable=True)
-
-    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-    atualizado_em = db.Column(
-        db.DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
-        nullable=False
-    )
-
-    usuario_destinatario = db.relationship("Usuario", foreign_keys=[usuario_destinatario_id])
-    criado_por = db.relationship("Usuario", foreign_keys=[criado_por_usuario_id])
-    requisicao = db.relationship("SuprimentosRequisicaoCompra")
-    cotacao = db.relationship("SuprimentosCotacao")
-
-    __table_args__ = (
-        db.CheckConstraint(
-            "status in ('Nao lido', 'Lido')",
-            name="ck_suprimentos_alertas_status",
-        ),
-    )
-
-    @property
-    def nao_lido(self):
-        return self.status == "Nao lido"
-
-    def __repr__(self):
-        return f"<SuprimentosAlerta usuario={self.usuario_destinatario_id} tipo={self.tipo}>"
