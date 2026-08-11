@@ -144,8 +144,6 @@
                         {% set destino_suprimentos = url_for('suprimentos_alcadas_aprovacao.listar') %}
                     {% elif modulo_slug == "compradores" %}
                         {% set destino_suprimentos = url_for('suprimentos_compradores.listar') %}
-                    {% elif modulo_slug == "alertas" %}
-                        {% set destino_suprimentos = url_for('suprimentos_alertas.listar') %}
                     {% else %}
                         {% set destino_suprimentos = url_for('suprimentos.index') %}
                     {% endif %}

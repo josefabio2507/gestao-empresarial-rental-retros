@@ -8,17 +8,12 @@ from app.models import (
     Modulo,
     NivelAcesso,
     SuprimentosAlcadaAprovacao,
-    SuprimentosAlerta,
     Usuario,
 )
-from app.services.suprimentos_service import (
-    buscar_alertas_usuario,
-    marcar_alerta_como_lido,
-    salvar_alcada_aprovacao,
-)
+from app.services.suprimentos_service import salvar_alcada_aprovacao
 
 
-class SuprimentosAlcadasAlertasTestCase(unittest.TestCase):
+class SuprimentosAlcadasTestCase(unittest.TestCase):
     def setUp(self):
         self.app = create_app()
         self.app.config.update(
@@ -59,13 +54,6 @@ class SuprimentosAlcadasAlertasTestCase(unittest.TestCase):
                     slug="alcadas_aprovacao",
                     ativo=True,
                     ordem=12,
-                ),
-                Modulo(
-                    departamento_id=departamento.id,
-                    nome="Alertas",
-                    slug="alertas",
-                    ativo=True,
-                    ordem=13,
                 ),
             ]
         )
@@ -119,27 +107,6 @@ class SuprimentosAlcadasAlertasTestCase(unittest.TestCase):
         self.assertEqual(200, resposta.status_code)
         self.assertIn(b"Alcadas de Aprovacao", resposta.data)
         self.assertIn(b"Admin", resposta.data)
-
-    def test_alerta_usuario_pode_ser_lido(self):
-        alerta = SuprimentosAlerta(
-            usuario_destinatario_id=self.admin.id,
-            tipo="Aprovacao",
-            titulo="Cotacao aguardando aprovacao",
-            mensagem="Existe uma cotacao aguardando aprovacao.",
-            link_destino="/suprimentos/cotacoes/",
-        )
-        db.session.add(alerta)
-        db.session.commit()
-
-        self.assertEqual(1, len(buscar_alertas_usuario(self.admin, "Nao lido")))
-
-        sucesso, mensagem = marcar_alerta_como_lido(alerta, self.admin)
-
-        self.assertTrue(sucesso)
-        self.assertEqual("Alerta marcado como lido.", mensagem)
-        self.assertEqual("Lido", alerta.status)
-        self.assertIsNotNone(alerta.lido_em)
-
 
 if __name__ == "__main__":
     unittest.main()

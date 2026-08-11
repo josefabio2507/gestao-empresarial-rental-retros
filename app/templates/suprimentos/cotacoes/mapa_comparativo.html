@@ -186,6 +186,20 @@
                     <label for="observacoes_oc">Observacoes da ordem de compra</label>
                     <textarea id="observacoes_oc" name="observacoes" rows="2" data-uppercase></textarea>
                 </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="previsao_vencimento">Previsao de vencimento</label>
+                        <input id="previsao_vencimento" name="previsao_vencimento" type="date">
+                    </div>
+                    <div class="form-group">
+                        <label for="quantidade_parcelas">Quantidade de parcelas</label>
+                        <input id="quantidade_parcelas" name="quantidade_parcelas" type="number" min="1" value="1">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="observacoes_financeiras">Observacoes financeiras</label>
+                    <textarea id="observacoes_financeiras" name="observacoes_financeiras" rows="2" data-uppercase></textarea>
+                </div>
                 <button class="btn btn-primary" type="submit">Gerar ordem de compra</button>
             </form>
         </div>

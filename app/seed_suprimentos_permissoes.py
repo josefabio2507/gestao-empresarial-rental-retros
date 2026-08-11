@@ -22,7 +22,6 @@ SUPRIMENTOS = {
         ("Indicadores", "indicadores", "Indicadores e relatorios gerenciais de Suprimentos"),
         ("Alcadas de Aprovacao", "alcadas_aprovacao", "Cadastro de aprovadores por valor de proposta"),
         ("Compradores", "compradores", "Cadastro de compradores para envio de requisicoes por WhatsApp"),
-        ("Alertas", "alertas", "Central de alertas internos de Suprimentos"),
     ],
 }
 

@@ -11,7 +11,6 @@ from app.models import (
     NivelAcesso,
     PermissaoUsuarioModulo,
     SuprimentosAlcadaAprovacao,
-    SuprimentosAlerta,
     SuprimentosCategoriaItem,
     SuprimentosCotacao,
     SuprimentosCotacaoProposta,
@@ -664,7 +663,6 @@ class SuprimentosCotacoesTestCase(unittest.TestCase):
         self.assertIsNotNone(cotacao.enviada_aprovacao_em)
         self.assertEqual(self.admin.id, cotacao.aprovador_usuario_id)
         self.assertEqual(self.alcada.id, cotacao.alcada_aprovacao_id)
-        self.assertEqual(1, SuprimentosAlerta.query.filter_by(tipo="Aprovacao").count())
 
         mensagem_whatsapp = gerar_mensagem_whatsapp_aprovacao_cotacao(cotacao)
         sucesso_link, mensagem_link, link = gerar_link_whatsapp_aprovacao_cotacao(cotacao)
@@ -753,7 +751,6 @@ class SuprimentosCotacoesTestCase(unittest.TestCase):
         self.assertEqual(STATUS_REQUISICAO_APROVADA, cotacao.requisicao.status)
         self.assertEqual(self.admin.id, cotacao.aprovada_por_usuario_id)
         self.assertEqual("APROVADO DENTRO DA ALCADA", cotacao.observacoes_aprovacao)
-        self.assertGreaterEqual(SuprimentosAlerta.query.filter_by(tipo="Informacao").count(), 1)
 
     def test_somente_aprovador_da_alcada_aprova_cotacao(self):
         _, _, cotacao = salvar_cotacao(
