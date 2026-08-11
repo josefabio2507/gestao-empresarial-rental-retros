@@ -11,3 +11,4 @@ email-validator
 reportlab
 google-api-python-client
 google-auth
+Pillow

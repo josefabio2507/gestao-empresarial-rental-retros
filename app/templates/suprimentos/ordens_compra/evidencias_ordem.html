@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Suprimentos</span>
+            <h1>Evidencias - {{ ordem.numero }}</h1>
+            <p>{{ ordem.fornecedor_razao_social_snapshot }}</p>
+        </div>
+        <div class="page-actions">
+            <a class="btn btn-secondary" href="{{ url_for('suprimentos_ordens_compra.detalhes', ordem_id=ordem.id) }}">Ver OC</a>
+            <a class="btn btn-secondary" href="{{ url_for('suprimentos_ordens_compra.evidencias') }}">Voltar</a>
+        </div>
+    </div>
+
+    {% set total = totalizar_evidencias_ordem_compra(ordem) %}
+    <div class="details-card">
+        <p><strong>Total de itens:</strong> {{ total.total_itens }}</p>
+        <p><strong>Evidenciados:</strong> {{ total.evidenciados }}</p>
+        <p><strong>Pendentes:</strong> {{ total.pendentes }}</p>
+        <p><strong>Requisicao:</strong> {{ ordem.requisicao.numero if ordem.requisicao else "-" }}</p>
+    </div>
+
+    <div class="table-card table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th>Descricao</th>
+                    <th>Qtd.</th>
+                    <th>Unidade</th>
+                    <th>Status</th>
+                    <th>Data evidencia</th>
+                    <th>Destino/aplicacao</th>
+                    <th>Fotos</th>
+                    <th>Acoes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in ordem.itens %}
+                    {% set evidencia = item.evidencia %}
+                    {% set status_evidencia = status_evidencia_item_oc(item) %}
+                    <tr>
+                        <td>{{ "%03d"|format(loop.index) }}</td>
+                        <td>{{ item.item_codigo_snapshot or "-" }} - {{ item.item_descricao_snapshot }}</td>
+                        <td>{{ formatar_decimal_brasil(item.quantidade) }}</td>
+                        <td>{{ item.unidade_medida_snapshot }}</td>
+                        <td><span class="badge {{ 'badge-success' if status_evidencia == 'Evidenciado' else 'badge-warning' }}">{{ status_evidencia }}</span></td>
+                        <td>{{ evidencia.data_evidencia.strftime("%d/%m/%Y") if evidencia else "-" }}</td>
+                        <td>{{ evidencia.destino_real if evidencia else "-" }}</td>
+                        <td>
+                            {% if evidencia %}
+                                <a href="{{ evidencia.foto_1_link }}" target="_blank" rel="noopener">Foto 1</a>
+                                {% if evidencia.foto_2_link %}
+                                    | <a href="{{ evidencia.foto_2_link }}" target="_blank" rel="noopener">Foto 2</a>
+                                {% endif %}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td class="col-acoes">
+                            {% if pode_editar_ordem %}
+                                <a class="btn btn-secondary" href="{{ url_for('suprimentos_ordens_compra.evidencia_item', ordem_id=ordem.id, item_id=item.id) }}">
+                                    {{ "Editar" if evidencia else "Registrar" }}
+                                </a>
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr><td class="empty-state" colspan="9">Nenhum item encontrado.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

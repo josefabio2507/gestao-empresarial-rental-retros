@@ -1,4 +1,5 @@
 import json
+from io import BytesIO
 
 from flask import current_app
 
@@ -6,17 +7,19 @@ from flask import current_app
 GOOGLE_DRIVE_FOLDER_MIME_TYPE = "application/vnd.google-apps.folder"
 GOOGLE_DRIVE_PDF_MIME_TYPE = "application/pdf"
 GOOGLE_DRIVE_SCOPES = ["https://www.googleapis.com/auth/drive.readonly"]
+GOOGLE_DRIVE_UPLOAD_SCOPES = ["https://www.googleapis.com/auth/drive.file"]
 GOOGLE_DRIVE_LIST_FIELDS = (
     "nextPageToken,"
     "files(id,name,mimeType,webViewLink,webContentLink,createdTime)"
 )
+GOOGLE_DRIVE_UPLOAD_FIELDS = "id,name,webViewLink,webContentLink"
 
 
 class GoogleDriveConfiguracaoErro(Exception):
     pass
 
 
-def carregar_credenciais_service_account():
+def carregar_credenciais_service_account(scopes=None):
     try:
         from google.oauth2 import service_account
     except ImportError as exc:
@@ -37,13 +40,13 @@ def carregar_credenciais_service_account():
 
         return service_account.Credentials.from_service_account_info(
             dados,
-            scopes=GOOGLE_DRIVE_SCOPES,
+            scopes=scopes or GOOGLE_DRIVE_SCOPES,
         )
 
     if arquivo_json:
         return service_account.Credentials.from_service_account_file(
             arquivo_json,
-            scopes=GOOGLE_DRIVE_SCOPES,
+            scopes=scopes or GOOGLE_DRIVE_SCOPES,
         )
 
     raise GoogleDriveConfiguracaoErro(
@@ -51,7 +54,7 @@ def carregar_credenciais_service_account():
     )
 
 
-def criar_google_drive_client():
+def criar_google_drive_client(scopes=None):
     try:
         from googleapiclient.discovery import build
     except ImportError as exc:
@@ -59,8 +62,38 @@ def criar_google_drive_client():
             "Bibliotecas do Google Drive não instaladas."
         ) from exc
 
-    credenciais = carregar_credenciais_service_account()
+    credenciais = carregar_credenciais_service_account(scopes=scopes)
     return build("drive", "v3", credentials=credenciais, cache_discovery=False)
+
+
+def upload_arquivo_google_drive(service, folder_id, nome_arquivo, conteudo, mime_type):
+    try:
+        from googleapiclient.http import MediaIoBaseUpload
+    except ImportError as exc:
+        raise GoogleDriveConfiguracaoErro(
+            "Bibliotecas do Google Drive não instaladas."
+        ) from exc
+
+    media = MediaIoBaseUpload(
+        BytesIO(conteudo),
+        mimetype=mime_type,
+        resumable=False,
+    )
+    metadados = {
+        "name": nome_arquivo,
+        "parents": [folder_id],
+    }
+
+    return (
+        service.files()
+        .create(
+            body=metadados,
+            media_body=media,
+            fields=GOOGLE_DRIVE_UPLOAD_FIELDS,
+            supportsAllDrives=True,
+        )
+        .execute()
+    )
 
 
 def _escapar_query_drive(valor):

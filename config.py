@@ -38,5 +38,9 @@ class Config:
         "GOOGLE_DRIVE_HOLERITES_FOLDER_ID",
         "",
     ).strip()
+    GOOGLE_DRIVE_EVIDENCIAS_OC_FOLDER_ID = os.getenv(
+        "GOOGLE_DRIVE_EVIDENCIAS_OC_FOLDER_ID",
+        "",
+    ).strip()
     GOOGLE_SERVICE_ACCOUNT_JSON = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON", "").strip()
     GOOGLE_SERVICE_ACCOUNT_FILE = os.getenv("GOOGLE_SERVICE_ACCOUNT_FILE", "").strip()
