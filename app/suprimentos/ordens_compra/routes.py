@@ -1,9 +1,12 @@
+from datetime import date
+
 from flask import flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from app.decorators import module_permission_required
-from app.models import SuprimentosCotacao, SuprimentosOrdemCompra
+from app.models import SuprimentosCotacao, SuprimentosOrdemCompra, SuprimentosOrdemCompraItem
 from app.services.logs_service import registrar_log
+from app.services.permissoes_service import usuario_tem_permissao
 from app.services.suprimentos_service import (
     STATUS_ORDEM_COMPRA_CANCELADA,
     STATUS_ORDEM_COMPRA_GERADA,
@@ -24,6 +27,9 @@ from app.services.suprimentos_service import (
     preparar_financeiro_ordem_compra,
     provisionar_financeiro_ordem_compra,
     registrar_recebimento_ordem_compra,
+    salvar_evidencia_item_ordem_compra,
+    status_evidencia_item_oc,
+    totalizar_evidencias_ordem_compra,
 )
 from app.suprimentos.ordens_compra import suprimentos_ordens_compra_bp
 
@@ -74,6 +80,26 @@ def aguardando_financeiro():
     )
 
 
+@suprimentos_ordens_compra_bp.route("/evidencias")
+@login_required
+@module_permission_required("suprimentos", "ordens_compra", "visualizar")
+def evidencias():
+    ordens = buscar_ordens_compra(
+        request.args.get("numero"),
+        request.args.get("status"),
+        request.args.get("fornecedor_id"),
+        request.args.get("status_financeiro"),
+    )
+    return render_template(
+        "suprimentos/ordens_compra/evidencias.html",
+        ordens=ordens,
+        fornecedores=buscar_fornecedores_ativos(),
+        status_ordens=STATUS_ORDENS_COMPRA,
+        filtros=request.args,
+        totalizar_evidencias_ordem_compra=totalizar_evidencias_ordem_compra,
+    )
+
+
 @suprimentos_ordens_compra_bp.route("/<int:ordem_id>")
 @login_required
 @module_permission_required("suprimentos", "ordens_compra", "visualizar")
@@ -95,6 +121,81 @@ def detalhes(ordem_id):
         ],
         formatar_decimal_brasil=formatar_decimal_brasil,
         formatar_moeda_brl=formatar_moeda_brl,
+        status_evidencia_item_oc=status_evidencia_item_oc,
+        pode_editar_ordem=usuario_tem_permissao(
+            current_user,
+            "suprimentos",
+            "ordens_compra",
+            "editar",
+        ),
+    )
+
+
+@suprimentos_ordens_compra_bp.route("/<int:ordem_id>/evidencias")
+@login_required
+@module_permission_required("suprimentos", "ordens_compra", "visualizar")
+def evidencias_ordem(ordem_id):
+    ordem = buscar_por_id(SuprimentosOrdemCompra, ordem_id)
+
+    if not ordem:
+        flash("Ordem de compra nao encontrada.", "warning")
+        return redirect(url_for("suprimentos_ordens_compra.evidencias"))
+
+    return render_template(
+        "suprimentos/ordens_compra/evidencias_ordem.html",
+        ordem=ordem,
+        formatar_decimal_brasil=formatar_decimal_brasil,
+        status_evidencia_item_oc=status_evidencia_item_oc,
+        totalizar_evidencias_ordem_compra=totalizar_evidencias_ordem_compra,
+        pode_editar_ordem=usuario_tem_permissao(
+            current_user,
+            "suprimentos",
+            "ordens_compra",
+            "editar",
+        ),
+    )
+
+
+@suprimentos_ordens_compra_bp.route(
+    "/<int:ordem_id>/itens/<int:item_id>/evidencia",
+    methods=["GET", "POST"],
+)
+@login_required
+@module_permission_required("suprimentos", "ordens_compra", "editar")
+def evidencia_item(ordem_id, item_id):
+    ordem = buscar_por_id(SuprimentosOrdemCompra, ordem_id)
+    item = buscar_por_id(SuprimentosOrdemCompraItem, item_id)
+
+    if not ordem or not item or item.ordem_compra_id != ordem.id:
+        flash("Item da ordem de compra nao encontrado.", "warning")
+        return redirect(url_for("suprimentos_ordens_compra.evidencias"))
+
+    if request.method == "POST":
+        sucesso, mensagem, evidencia = salvar_evidencia_item_ordem_compra(
+            ordem,
+            item,
+            request.form,
+            request.files,
+            current_user,
+        )
+
+        if sucesso:
+            registrar_log(
+                "suprimentos_oc_item_evidencia_salva",
+                f"Evidencia salva. Ordem ID: {ordem.id}. Item ID: {item.id}. Evidencia ID: {evidencia.id}.",
+            )
+            flash(mensagem, "success")
+            return redirect(url_for("suprimentos_ordens_compra.evidencias_ordem", ordem_id=ordem.id))
+
+        flash(mensagem, "danger")
+
+    return render_template(
+        "suprimentos/ordens_compra/evidencia_item.html",
+        ordem=ordem,
+        item=item,
+        evidencia=item.evidencia,
+        formatar_decimal_brasil=formatar_decimal_brasil,
+        hoje=date.today().isoformat(),
     )
 
 

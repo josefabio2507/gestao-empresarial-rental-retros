@@ -93,6 +93,7 @@
     </div>
 
     <div class="table-card table-responsive">
+        <h2>Itens da Ordem</h2>
         <table class="table">
             <thead>
                 <tr>
@@ -105,7 +106,9 @@
                     <th>Preco unit.</th>
                     <th>Total</th>
                     <th>Prazo</th>
+                    <th>Evidencia</th>
                     <th>Observacoes</th>
+                    <th>Acoes</th>
                 </tr>
             </thead>
             <tbody>
@@ -120,10 +123,23 @@
                         <td>{{ formatar_moeda_brl(item.preco_unitario) }}</td>
                         <td>{{ formatar_moeda_brl(item.valor_total) }}</td>
                         <td>{{ item.prazo_entrega_dias if item.prazo_entrega_dias is not none else "-" }}</td>
+                        <td>
+                            {% set status_evidencia = status_evidencia_item_oc(item) %}
+                            <span class="badge {{ 'badge-success' if status_evidencia == 'Evidenciado' else 'badge-warning' }}">{{ status_evidencia }}</span>
+                        </td>
                         <td>{{ item.observacoes or "-" }}</td>
+                        <td class="col-acoes">
+                            {% if pode_editar_ordem %}
+                                <a class="btn btn-secondary" href="{{ url_for('suprimentos_ordens_compra.evidencia_item', ordem_id=ordem.id, item_id=item.id) }}">
+                                    {{ "Editar evidencia" if item.evidencia else "Registrar evidencia" }}
+                                </a>
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
                     </tr>
                 {% else %}
-                    <tr><td class="empty-state" colspan="10">Nenhum item encontrado.</td></tr>
+                    <tr><td class="empty-state" colspan="12">Nenhum item encontrado.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
@@ -217,6 +233,7 @@
                 <button class="btn btn-warning" type="submit">Cancelar ordem</button>
             </form>
         {% endif %}
+        <a class="btn btn-primary" href="{{ url_for('suprimentos_ordens_compra.evidencias_ordem', ordem_id=ordem.id) }}">Evidencias dos itens</a>
         <a class="btn btn-secondary" href="{{ url_for('suprimentos_cotacoes.mapa_comparativo', cotacao_id=ordem.cotacao_id) }}">Ver cotacao</a>
     </div>
 </section>

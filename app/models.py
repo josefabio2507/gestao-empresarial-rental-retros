@@ -1543,6 +1543,11 @@ class SuprimentosOrdemCompra(db.Model):
         back_populates="ordem_compra",
         cascade="all, delete-orphan",
     )
+    evidencias_itens = db.relationship(
+        "SuprimentosOrdemCompraItemEvidencia",
+        back_populates="ordem_compra",
+        cascade="all, delete-orphan",
+    )
     recebimentos = db.relationship(
         "SuprimentosRecebimentoCompra",
         back_populates="ordem_compra",
@@ -1694,6 +1699,12 @@ class SuprimentosOrdemCompraItem(db.Model):
         back_populates="ordem_compra_item",
         cascade="all, delete-orphan",
     )
+    evidencia = db.relationship(
+        "SuprimentosOrdemCompraItemEvidencia",
+        back_populates="ordem_compra_item",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
 
     __table_args__ = (
         db.UniqueConstraint(
@@ -1736,6 +1747,72 @@ class SuprimentosOrdemCompraItem(db.Model):
 
     def __repr__(self):
         return f"<SuprimentosOrdemCompraItem ordem={self.ordem_compra_id} item={self.item_id}>"
+
+
+class SuprimentosOrdemCompraItemEvidencia(db.Model):
+    __tablename__ = "suprimentos_oc_item_evidencias"
+
+    id = db.Column(db.Integer, primary_key=True)
+    ordem_compra_id = db.Column(
+        db.Integer,
+        db.ForeignKey("suprimentos_ordens_compra.id"),
+        nullable=False,
+        index=True,
+    )
+    ordem_compra_item_id = db.Column(
+        db.Integer,
+        db.ForeignKey("suprimentos_ordem_compra_itens.id"),
+        nullable=False,
+        unique=True,
+        index=True,
+    )
+    criado_por_usuario_id = db.Column(
+        db.Integer,
+        db.ForeignKey("usuarios.id"),
+        nullable=False,
+        index=True,
+    )
+    numero_oc_snapshot = db.Column(db.String(30), nullable=False)
+    numero_item_snapshot = db.Column(db.String(20), nullable=False)
+    descricao_item_snapshot = db.Column(db.String(220), nullable=False)
+    unidade_medida_snapshot = db.Column(db.String(20), nullable=False)
+    quantidade_snapshot = db.Column(db.Numeric(12, 3), nullable=False)
+    destino_real = db.Column(db.Text, nullable=False)
+    observacao = db.Column(db.Text, nullable=True)
+    data_evidencia = db.Column(db.Date, nullable=False, index=True)
+    foto_1_drive_file_id = db.Column(db.String(120), nullable=False)
+    foto_1_nome_arquivo = db.Column(db.String(180), nullable=False)
+    foto_1_link = db.Column(db.String(500), nullable=True)
+    foto_2_drive_file_id = db.Column(db.String(120), nullable=True)
+    foto_2_nome_arquivo = db.Column(db.String(180), nullable=True)
+    foto_2_link = db.Column(db.String(500), nullable=True)
+    status = db.Column(db.String(30), default="Evidenciado", nullable=False, index=True)
+
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    atualizado_em = db.Column(
+        db.DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False
+    )
+
+    ordem_compra = db.relationship("SuprimentosOrdemCompra", back_populates="evidencias_itens")
+    ordem_compra_item = db.relationship("SuprimentosOrdemCompraItem", back_populates="evidencia")
+    criado_por = db.relationship("Usuario")
+
+    __table_args__ = (
+        db.CheckConstraint(
+            "status in ('Pendente', 'Evidenciado', 'Cancelado')",
+            name="ck_suprimentos_oc_item_evidencias_status",
+        ),
+    )
+
+    @property
+    def possui_foto_2(self):
+        return bool(self.foto_2_drive_file_id)
+
+    def __repr__(self):
+        return f"<SuprimentosOrdemCompraItemEvidencia oc_item={self.ordem_compra_item_id}>"
 
 
 class SuprimentosRecebimentoCompra(db.Model):

@@ -1,6 +1,10 @@
 import unittest
+from io import BytesIO
 from datetime import date
 from decimal import Decimal
+
+from PIL import Image
+from werkzeug.datastructures import FileStorage
 
 from app import create_app
 from app.extensions import db
@@ -17,6 +21,7 @@ from app.models import (
     SuprimentosItem,
     SuprimentosMovimentacaoEstoque,
     SuprimentosOrdemCompra,
+    SuprimentosOrdemCompraItemEvidencia,
     SuprimentosOrdemCompraParcela,
     SuprimentosUnidadeMedida,
     Usuario,
@@ -42,11 +47,52 @@ from app.services.suprimentos_service import (
     provisionar_financeiro_ordem_compra,
     registrar_entrada_estoque_recebimento_item,
     registrar_recebimento_ordem_compra,
+    salvar_evidencia_item_ordem_compra,
     salvar_cotacao,
     salvar_proposta_cotacao,
     salvar_requisicao_compra,
     selecionar_proposta_vencedora,
+    status_evidencia_item_oc,
 )
+
+
+class FakeDriveCreateRequest:
+    def __init__(self, resposta):
+        self.resposta = resposta
+
+    def execute(self):
+        return self.resposta
+
+
+class FakeDriveFiles:
+    def __init__(self):
+        self.uploads = []
+
+    def create(self, body, media_body, fields, supportsAllDrives):
+        self.uploads.append(
+            {
+                "body": body,
+                "media_body": media_body,
+                "fields": fields,
+                "supportsAllDrives": supportsAllDrives,
+            }
+        )
+        indice = len(self.uploads)
+        return FakeDriveCreateRequest(
+            {
+                "id": f"drive-file-{indice}",
+                "name": body["name"],
+                "webViewLink": f"https://drive.google.com/file/{indice}",
+            }
+        )
+
+
+class FakeDriveService:
+    def __init__(self):
+        self._files = FakeDriveFiles()
+
+    def files(self):
+        return self._files
 
 
 class SuprimentosOrdensCompraTestCase(unittest.TestCase):
@@ -210,6 +256,18 @@ class SuprimentosOrdensCompraTestCase(unittest.TestCase):
         db.session.refresh(cotacao)
         self.assertEqual(STATUS_COTACAO_APROVADA, cotacao.status)
         return cotacao
+
+    def _criar_ordem_compra(self):
+        cotacao = self._criar_cotacao_aprovada()
+        _, _, ordens = gerar_ordens_compra_cotacao(cotacao, self.admin)
+        return ordens[0]
+
+    def _arquivo_imagem(self, nome="foto.png", tamanho=(1200, 900), cor=(20, 120, 40)):
+        buffer = BytesIO()
+        imagem = Image.new("RGB", tamanho, cor)
+        imagem.save(buffer, format="PNG")
+        buffer.seek(0)
+        return FileStorage(stream=buffer, filename=nome, content_type="image/png")
 
     def test_gera_ordem_compra_a_partir_de_cotacao_aprovada(self):
         cotacao = self._criar_cotacao_aprovada()
@@ -676,6 +734,104 @@ class SuprimentosOrdensCompraTestCase(unittest.TestCase):
         self.assertIn(b"Preparacao Financeira", resposta.data)
         self.assertIn(b"NF 123", resposta.data)
         self.assertIn(b"Recebida", resposta.data)
+
+    def test_salva_evidencia_item_ordem_compra_com_foto(self):
+        ordem = self._criar_ordem_compra()
+        item = ordem.itens[0]
+        self.app.config["GOOGLE_DRIVE_EVIDENCIAS_OC_FOLDER_ID"] = "pasta-drive"
+        drive = FakeDriveService()
+
+        sucesso, mensagem, evidencia = salvar_evidencia_item_ordem_compra(
+            ordem,
+            item,
+            {
+                "data_evidencia": "2026-08-10",
+                "destino_real": "Aplicado na retro R01",
+                "observacao": "foto no recebimento",
+            },
+            {"foto_1": self._arquivo_imagem()},
+            self.admin,
+            drive_service=drive,
+        )
+
+        self.assertTrue(sucesso)
+        self.assertEqual("Evidencia salva com sucesso.", mensagem)
+        self.assertEqual("Evidenciado", evidencia.status)
+        self.assertEqual("APLICADO NA RETRO R01", evidencia.destino_real)
+        self.assertEqual("drive-file-1", evidencia.foto_1_drive_file_id)
+        self.assertEqual("Evidenciado", status_evidencia_item_oc(item))
+        self.assertEqual(1, SuprimentosOrdemCompraItemEvidencia.query.count())
+        self.assertEqual(1, len(drive.files().uploads))
+        self.assertIn("OC-", evidencia.foto_1_nome_arquivo)
+        self.assertTrue(evidencia.foto_1_nome_arquivo.endswith(".jpg"))
+
+    def test_nao_salva_evidencia_sem_foto_nova(self):
+        ordem = self._criar_ordem_compra()
+        item = ordem.itens[0]
+
+        sucesso, mensagem, evidencia = salvar_evidencia_item_ordem_compra(
+            ordem,
+            item,
+            {
+                "data_evidencia": "2026-08-10",
+                "destino_real": "Aplicado na retro R01",
+            },
+            {},
+            self.admin,
+            drive_service=FakeDriveService(),
+        )
+
+        self.assertFalse(sucesso)
+        self.assertEqual("Envie ao menos uma foto para registrar a evidencia.", mensagem)
+        self.assertIsNone(evidencia)
+        self.assertEqual(0, SuprimentosOrdemCompraItemEvidencia.query.count())
+
+    def test_bloqueia_arquivo_que_nao_e_imagem(self):
+        ordem = self._criar_ordem_compra()
+        item = ordem.itens[0]
+        arquivo = FileStorage(
+            stream=BytesIO(b"texto"),
+            filename="foto.txt",
+            content_type="text/plain",
+        )
+
+        sucesso, mensagem, evidencia = salvar_evidencia_item_ordem_compra(
+            ordem,
+            item,
+            {
+                "data_evidencia": "2026-08-10",
+                "destino_real": "Aplicado na retro R01",
+            },
+            {"foto_1": arquivo},
+            self.admin,
+            drive_service=FakeDriveService(),
+        )
+
+        self.assertFalse(sucesso)
+        self.assertIn("JPG, JPEG, PNG ou WEBP", mensagem)
+        self.assertIsNone(evidencia)
+
+    def test_rota_evidencias_ordem_exibe_status_dos_itens(self):
+        ordem = self._criar_ordem_compra()
+        self._autenticar(self.admin)
+
+        resposta = self.client.get(f"/suprimentos/ordens-compra/{ordem.id}/evidencias")
+
+        self.assertEqual(200, resposta.status_code)
+        self.assertIn(b"Evidencias", resposta.data)
+        self.assertIn(b"Pendente", resposta.data)
+        self.assertIn(ordem.numero.encode(), resposta.data)
+
+    def test_rota_evidencia_item_exige_permissao_editar(self):
+        ordem = self._criar_ordem_compra()
+        item = ordem.itens[0]
+        self._liberar_usuario(visualizar=True)
+        self._autenticar(self.usuario)
+
+        resposta = self.client.get(f"/suprimentos/ordens-compra/{ordem.id}/itens/{item.id}/evidencia")
+
+        self.assertEqual(302, resposta.status_code)
+        self.assertIn("/acesso-negado", resposta.headers["Location"])
 
 
 if __name__ == "__main__":

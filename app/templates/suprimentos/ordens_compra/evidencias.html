@@ -5,12 +5,11 @@
     <div class="top-bar">
         <div>
             <span class="page-kicker">Suprimentos</span>
-            <h1>Ordens de Compra</h1>
-            <p>Ordens geradas a partir de cotacoes aprovadas.</p>
+            <h1>Evidencias das Ordens de Compra</h1>
+            <p>Acompanhe os itens pendentes e evidenciados por ordem.</p>
         </div>
         <div class="page-actions">
-            <a class="btn btn-primary" href="{{ url_for('suprimentos_ordens_compra.evidencias') }}">Evidencias</a>
-            <a class="btn btn-primary" href="{{ url_for('suprimentos_ordens_compra.aguardando_financeiro') }}">Aguardando financeiro</a>
+            <a class="btn btn-secondary" href="{{ url_for('suprimentos_ordens_compra.listar') }}">Ordens de compra</a>
             <a class="btn btn-secondary" href="{{ url_for('suprimentos.index') }}">Voltar</a>
         </div>
     </div>
@@ -32,7 +31,7 @@
             </select>
         </div>
         <div class="form-group">
-            <label for="status">Status</label>
+            <label for="status">Status da OC</label>
             <select id="status" name="status">
                 <option value="">Todos</option>
                 {% for status in status_ordens %}
@@ -40,18 +39,9 @@
                 {% endfor %}
             </select>
         </div>
-        <div class="form-group">
-            <label for="status_financeiro">Status financeiro</label>
-            <select id="status_financeiro" name="status_financeiro">
-                <option value="">Todos</option>
-                {% for status in status_financeiros %}
-                    <option value="{{ status }}" {{ "selected" if filtros.get('status_financeiro') == status else "" }}>{{ status }}</option>
-                {% endfor %}
-            </select>
-        </div>
         <div class="form-actions">
             <button class="btn btn-primary" type="submit">Pesquisar</button>
-            <a class="btn btn-secondary" href="{{ url_for('suprimentos_ordens_compra.listar') }}">Limpar</a>
+            <a class="btn btn-secondary" href="{{ url_for('suprimentos_ordens_compra.evidencias') }}">Limpar</a>
         </div>
     </form>
 
@@ -59,35 +49,31 @@
         <table class="table">
             <thead>
                 <tr>
-                    <th>Numero</th>
+                    <th>OC</th>
                     <th>Fornecedor</th>
-                    <th>Cotacao</th>
                     <th>Status</th>
-                    <th>Status financeiro</th>
-                    <th>Vencimento</th>
                     <th>Itens</th>
-                    <th>Total</th>
+                    <th>Evidenciados</th>
+                    <th>Pendentes</th>
                     <th>Acoes</th>
                 </tr>
             </thead>
             <tbody>
                 {% for ordem in ordens %}
+                    {% set total = totalizar_evidencias_ordem_compra(ordem) %}
                     <tr>
                         <td>{{ ordem.numero }}</td>
                         <td>{{ ordem.fornecedor_razao_social_snapshot }}</td>
-                        <td>{{ ordem.cotacao.numero }}</td>
-                        <td><span class="badge badge-success">{{ ordem.status }}</span></td>
-                        <td><span class="badge badge-secondary">{{ ordem.status_financeiro }}</span></td>
-                        <td>{{ ordem.previsao_vencimento.strftime("%d/%m/%Y") if ordem.previsao_vencimento else "-" }}</td>
-                        <td>{{ ordem.itens|length }}</td>
-                        <td>{{ formatar_moeda_brl(ordem.valor_total) }}</td>
+                        <td><span class="badge badge-secondary">{{ ordem.status }}</span></td>
+                        <td>{{ total.total_itens }}</td>
+                        <td><span class="badge badge-success">{{ total.evidenciados }}</span></td>
+                        <td><span class="badge {{ 'badge-success' if total.pendentes == 0 else 'badge-warning' }}">{{ total.pendentes }}</span></td>
                         <td class="col-acoes">
-                            <a class="btn btn-secondary" href="{{ url_for('suprimentos_ordens_compra.detalhes', ordem_id=ordem.id) }}">Ver</a>
-                            <a class="btn btn-secondary" href="{{ url_for('suprimentos_ordens_compra.evidencias_ordem', ordem_id=ordem.id) }}">Evidencias</a>
+                            <a class="btn btn-secondary" href="{{ url_for('suprimentos_ordens_compra.evidencias_ordem', ordem_id=ordem.id) }}">Ver itens</a>
                         </td>
                     </tr>
                 {% else %}
-                    <tr><td class="empty-state" colspan="9">Nenhuma ordem de compra encontrada.</td></tr>
+                    <tr><td class="empty-state" colspan="7">Nenhuma ordem de compra encontrada.</td></tr>
                 {% endfor %}
             </tbody>
         </table>

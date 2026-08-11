@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Suprimentos</span>
+            <h1>{{ "Editar Evidencia" if evidencia else "Nova Evidencia" }}</h1>
+            <p>{{ ordem.numero }} - {{ item.item_descricao_snapshot }}</p>
+        </div>
+        <a class="btn btn-secondary" href="{{ url_for('suprimentos_ordens_compra.evidencias_ordem', ordem_id=ordem.id) }}">Voltar</a>
+    </div>
+
+    <div class="details-card">
+        <p><strong>OC:</strong> {{ ordem.numero }}</p>
+        <p><strong>Fornecedor:</strong> {{ ordem.fornecedor_razao_social_snapshot }}</p>
+        <p><strong>Item:</strong> {{ item.item_codigo_snapshot or "-" }} - {{ item.item_descricao_snapshot }}</p>
+        <p><strong>Quantidade:</strong> {{ formatar_decimal_brasil(item.quantidade) }} {{ item.unidade_medida_snapshot }}</p>
+    </div>
+
+    <form class="form-card" method="POST" enctype="multipart/form-data">
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="data_evidencia">Data da evidencia</label>
+                <input id="data_evidencia" name="data_evidencia" type="date" required value="{{ request.form.get('data_evidencia') or (evidencia.data_evidencia.isoformat() if evidencia else hoje) }}">
+            </div>
+            <div class="form-group">
+                <label for="foto_1">Foto 1</label>
+                {% if evidencia and evidencia.foto_1_link %}
+                    <p><a href="{{ evidencia.foto_1_link }}" target="_blank" rel="noopener">{{ evidencia.foto_1_nome_arquivo }}</a></p>
+                    <input id="foto_1" name="foto_1" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" disabled>
+                {% else %}
+                    <input id="foto_1" name="foto_1" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
+                {% endif %}
+            </div>
+            <div class="form-group">
+                <label for="foto_2">Foto 2</label>
+                {% if evidencia and evidencia.foto_2_link %}
+                    <p><a href="{{ evidencia.foto_2_link }}" target="_blank" rel="noopener">{{ evidencia.foto_2_nome_arquivo }}</a></p>
+                    <input id="foto_2" name="foto_2" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" disabled>
+                {% else %}
+                    <input id="foto_2" name="foto_2" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
+                {% endif %}
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="destino_real">Destino/aplicacao real</label>
+            <textarea id="destino_real" name="destino_real" required data-uppercase>{{ request.form.get('destino_real') or (evidencia.destino_real if evidencia else '') }}</textarea>
+        </div>
+        <div class="form-group">
+            <label for="observacao">Observacoes</label>
+            <textarea id="observacao" name="observacao" data-uppercase>{{ request.form.get('observacao') or (evidencia.observacao if evidencia else '') }}</textarea>
+        </div>
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Salvar</button>
+            <a class="btn btn-secondary" href="{{ url_for('suprimentos_ordens_compra.evidencias_ordem', ordem_id=ordem.id) }}">Cancelar</a>
+        </div>
+    </form>
+</section>
+{% endblock %}

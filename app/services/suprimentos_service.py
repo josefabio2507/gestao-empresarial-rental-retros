@@ -3,11 +3,12 @@ import json
 import os
 import platform
 import unicodedata
+from io import BytesIO
 from flask import current_app
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote
 from urllib.request import Request, urlopen
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 
 from sqlalchemy import func
@@ -38,8 +39,15 @@ from app.models import (
     SuprimentosMovimentacaoEstoque,
     SuprimentosRecebimentoCompra,
     SuprimentosRecebimentoCompraItem,
+    SuprimentosOrdemCompraItemEvidencia,
     SuprimentosUnidadeMedida,
     Usuario,
+)
+from app.services.google_drive_service import (
+    GOOGLE_DRIVE_UPLOAD_SCOPES,
+    GoogleDriveConfiguracaoErro,
+    criar_google_drive_client,
+    upload_arquivo_google_drive,
 )
 
 
@@ -121,6 +129,13 @@ TIPOS_DOCUMENTO_RECEBIMENTO = {
     "Romaneio",
     "Outro",
 }
+STATUS_EVIDENCIA_OC_PENDENTE = "Pendente"
+STATUS_EVIDENCIA_OC_EVIDENCIADO = "Evidenciado"
+STATUS_EVIDENCIA_OC_CANCELADO = "Cancelado"
+EXTENSOES_IMAGEM_EVIDENCIA_OC = {".jpg", ".jpeg", ".png", ".webp"}
+MIME_IMAGEM_EVIDENCIA_OC = "image/jpeg"
+TAMANHO_MAXIMO_IMAGEM_EVIDENCIA_OC = (800, 800)
+QUALIDADE_IMAGEM_EVIDENCIA_OC = 70
 
 
 def texto(valor):
@@ -241,6 +256,211 @@ def data_ou_none(valor):
             continue
 
     return None
+
+
+def _extensao_arquivo(nome_arquivo):
+    nome_arquivo = texto(nome_arquivo).lower()
+    if "." not in nome_arquivo:
+        return ""
+    return f".{nome_arquivo.rsplit('.', 1)[1]}"
+
+
+def _normalizar_imagem_para_jpg(file_storage):
+    if not file_storage or not texto(file_storage.filename):
+        return None, None
+
+    extensao = _extensao_arquivo(file_storage.filename)
+    if extensao not in EXTENSOES_IMAGEM_EVIDENCIA_OC:
+        return None, "Arquivo invalido. Envie apenas imagens JPG, JPEG, PNG ou WEBP."
+
+    try:
+        from PIL import Image, ImageOps, UnidentifiedImageError
+    except ImportError as exc:
+        raise RuntimeError("Biblioteca Pillow nao instalada.") from exc
+
+    try:
+        file_storage.stream.seek(0)
+        imagem = Image.open(file_storage.stream)
+        imagem.load()
+    except (UnidentifiedImageError, OSError, ValueError):
+        return None, "Arquivo invalido. A foto enviada nao foi reconhecida como imagem."
+
+    imagem = ImageOps.exif_transpose(imagem)
+
+    if imagem.mode in ("RGBA", "LA") or (
+        imagem.mode == "P" and "transparency" in imagem.info
+    ):
+        fundo = Image.new("RGB", imagem.size, (255, 255, 255))
+        fundo.paste(imagem.convert("RGBA"), mask=imagem.convert("RGBA").split()[-1])
+        imagem = fundo
+    else:
+        imagem = imagem.convert("RGB")
+
+    imagem.thumbnail(TAMANHO_MAXIMO_IMAGEM_EVIDENCIA_OC)
+    saida = BytesIO()
+    imagem.save(
+        saida,
+        format="JPEG",
+        quality=QUALIDADE_IMAGEM_EVIDENCIA_OC,
+        optimize=True,
+    )
+
+    return saida.getvalue(), None
+
+
+def _sequencia_item_ordem_compra(ordem_compra, ordem_compra_item):
+    itens = sorted(ordem_compra.itens, key=lambda item: item.id or 0)
+    for indice, item in enumerate(itens, start=1):
+        if item.id == ordem_compra_item.id:
+            return indice
+    return 1
+
+
+def _nome_arquivo_evidencia_oc(ordem_compra, ordem_compra_item, numero_foto):
+    sequencia = _sequencia_item_ordem_compra(ordem_compra, ordem_compra_item)
+    numero_oc = re.sub(r"[^A-Za-z0-9_-]+", "-", ordem_compra.numero or str(ordem_compra.id))
+    timestamp = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
+    return f"OC-{numero_oc}_ITEM-{sequencia:03d}_FOTO-{numero_foto}_{timestamp}.jpg"
+
+
+def status_evidencia_item_oc(ordem_compra_item):
+    evidencia = getattr(ordem_compra_item, "evidencia", None)
+    if evidencia and evidencia.status != STATUS_EVIDENCIA_OC_CANCELADO:
+        return STATUS_EVIDENCIA_OC_EVIDENCIADO
+    return STATUS_EVIDENCIA_OC_PENDENTE
+
+
+def totalizar_evidencias_ordem_compra(ordem_compra):
+    total_itens = len(ordem_compra.itens)
+    evidenciados = sum(
+        1
+        for item in ordem_compra.itens
+        if status_evidencia_item_oc(item) == STATUS_EVIDENCIA_OC_EVIDENCIADO
+    )
+    return {
+        "total_itens": total_itens,
+        "evidenciados": evidenciados,
+        "pendentes": max(total_itens - evidenciados, 0),
+    }
+
+
+def salvar_evidencia_item_ordem_compra(
+    ordem_compra,
+    ordem_compra_item,
+    form_data,
+    files_data,
+    usuario,
+    drive_service=None,
+):
+    if not ordem_compra or not ordem_compra_item:
+        return False, "Ordem de compra ou item nao encontrado.", None
+
+    if ordem_compra_item.ordem_compra_id != ordem_compra.id:
+        return False, "Item nao pertence a ordem de compra informada.", None
+
+    data_evidencia = data_ou_none(form_data.get("data_evidencia")) or date.today()
+    destino_real = texto_maiusculo(form_data.get("destino_real"))
+    observacao = texto_maiusculo(form_data.get("observacao")) or None
+
+    if not destino_real:
+        return False, "Destino/aplicacao real e obrigatorio.", None
+
+    evidencia = ordem_compra_item.evidencia
+    foto_1 = files_data.get("foto_1") if files_data else None
+    foto_2 = files_data.get("foto_2") if files_data else None
+    tem_foto_1_nova = bool(foto_1 and texto(foto_1.filename))
+    tem_foto_2_nova = bool(foto_2 and texto(foto_2.filename))
+
+    if not evidencia and not tem_foto_1_nova and not tem_foto_2_nova:
+        return False, "Envie ao menos uma foto para registrar a evidencia.", None
+
+    if evidencia and evidencia.foto_1_drive_file_id and tem_foto_1_nova:
+        return False, "A foto 1 ja foi registrada. Nesta versao, fotos registradas nao sao substituidas.", evidencia
+
+    if evidencia and evidencia.foto_2_drive_file_id and tem_foto_2_nova:
+        return False, "A foto 2 ja foi registrada. Nesta versao, fotos registradas nao sao substituidas.", evidencia
+
+    imagens_para_upload = []
+    for numero_foto, arquivo in [(1, foto_1), (2, foto_2)]:
+        if not arquivo or not texto(arquivo.filename):
+            continue
+
+        conteudo, erro = _normalizar_imagem_para_jpg(arquivo)
+        if erro:
+            return False, erro, evidencia
+
+        imagens_para_upload.append(
+            {
+                "numero_foto": numero_foto,
+                "nome": _nome_arquivo_evidencia_oc(ordem_compra, ordem_compra_item, numero_foto),
+                "conteudo": conteudo,
+            }
+        )
+
+    uploads = {}
+    if imagens_para_upload:
+        folder_id = current_app.config.get("GOOGLE_DRIVE_EVIDENCIAS_OC_FOLDER_ID", "").strip()
+        if not folder_id:
+            return False, "Configure GOOGLE_DRIVE_EVIDENCIAS_OC_FOLDER_ID para salvar as fotos no Google Drive.", evidencia
+
+        try:
+            service = drive_service or criar_google_drive_client(scopes=GOOGLE_DRIVE_UPLOAD_SCOPES)
+            for imagem in imagens_para_upload:
+                arquivo_drive = upload_arquivo_google_drive(
+                    service,
+                    folder_id,
+                    imagem["nome"],
+                    imagem["conteudo"],
+                    MIME_IMAGEM_EVIDENCIA_OC,
+                )
+                uploads[imagem["numero_foto"]] = {
+                    "id": arquivo_drive.get("id"),
+                    "nome": arquivo_drive.get("name") or imagem["nome"],
+                    "link": arquivo_drive.get("webViewLink") or arquivo_drive.get("webContentLink"),
+                }
+        except GoogleDriveConfiguracaoErro as exc:
+            return False, str(exc), evidencia
+        except Exception:
+            current_app.logger.exception("Falha ao enviar evidencia de OC para o Google Drive.")
+            return False, "Nao foi possivel enviar a foto para o Google Drive.", evidencia
+
+    if not evidencia:
+        evidencia = SuprimentosOrdemCompraItemEvidencia(
+            ordem_compra=ordem_compra,
+            ordem_compra_item=ordem_compra_item,
+            criado_por=usuario,
+            numero_oc_snapshot=ordem_compra.numero,
+            numero_item_snapshot=f"{_sequencia_item_ordem_compra(ordem_compra, ordem_compra_item):03d}",
+            descricao_item_snapshot=ordem_compra_item.item_descricao_snapshot,
+            unidade_medida_snapshot=ordem_compra_item.unidade_medida_snapshot,
+            quantidade_snapshot=ordem_compra_item.quantidade,
+        )
+        db.session.add(evidencia)
+
+    evidencia.destino_real = destino_real
+    evidencia.observacao = observacao
+    evidencia.data_evidencia = data_evidencia
+    evidencia.status = STATUS_EVIDENCIA_OC_EVIDENCIADO
+
+    if 1 in uploads:
+        evidencia.foto_1_drive_file_id = uploads[1]["id"]
+        evidencia.foto_1_nome_arquivo = uploads[1]["nome"]
+        evidencia.foto_1_link = uploads[1]["link"]
+    if 2 in uploads:
+        evidencia.foto_2_drive_file_id = uploads[2]["id"]
+        evidencia.foto_2_nome_arquivo = uploads[2]["nome"]
+        evidencia.foto_2_link = uploads[2]["link"]
+
+    if not evidencia.foto_1_drive_file_id and evidencia.foto_2_drive_file_id:
+        evidencia.foto_1_drive_file_id = evidencia.foto_2_drive_file_id
+        evidencia.foto_1_nome_arquivo = evidencia.foto_2_nome_arquivo
+        evidencia.foto_1_link = evidencia.foto_2_link
+        evidencia.foto_2_drive_file_id = None
+        evidencia.foto_2_nome_arquivo = None
+        evidencia.foto_2_link = None
+
+    db.session.commit()
+    return True, "Evidencia salva com sucesso.", evidencia
 
 
 def bool_form(valor):
