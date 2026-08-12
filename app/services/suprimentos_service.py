@@ -666,6 +666,30 @@ def buscar_categorias_ativas():
     )
 
 
+def obter_categoria_padrao_item():
+    categoria = (
+        SuprimentosCategoriaItem.query
+        .filter_by(slug="item_sem_categoria")
+        .first()
+    )
+
+    if categoria:
+        if not categoria.ativo:
+            categoria.ativo = True
+            db.session.flush()
+        return categoria
+
+    categoria = SuprimentosCategoriaItem(
+        nome="ITEM SEM CATEGORIA",
+        slug="item_sem_categoria",
+        descricao="CATEGORIA TECNICA PARA ITENS CLASSIFICADOS PELO CAMPO TIPO.",
+        ativo=True,
+    )
+    db.session.add(categoria)
+    db.session.flush()
+    return categoria
+
+
 def categoria_ja_existe(nome, categoria_id_ignorado=None):
     nome = texto(nome)
 
@@ -879,9 +903,6 @@ def salvar_item(form_data, item=None):
     if not descricao:
         return False, "Descricao do item e obrigatoria.", item
 
-    if not categoria_id:
-        return False, "Categoria e obrigatoria.", item
-
     if not unidade_medida_id:
         return False, "Unidade de medida e obrigatoria.", item
 
@@ -893,6 +914,9 @@ def salvar_item(form_data, item=None):
 
     if estoque_minimo is not None and estoque_minimo < 0:
         return False, "Estoque minimo nao pode ser negativo.", item
+
+    if not categoria_id:
+        categoria_id = item.categoria_id if item and item.categoria_id else obter_categoria_padrao_item().id
 
     if item is None:
         item = SuprimentosItem(ativo=True)

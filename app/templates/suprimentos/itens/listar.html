@@ -17,15 +17,6 @@
             <input id="descricao" name="descricao" value="{{ filtros.get('descricao', '') }}">
         </div>
         <div class="form-group">
-            <label for="categoria_id">Categoria</label>
-            <select id="categoria_id" name="categoria_id">
-                <option value="">Todas</option>
-                {% for categoria in categorias %}
-                    <option value="{{ categoria.id }}" {{ "selected" if filtros.get('categoria_id')|string == categoria.id|string else "" }}>{{ categoria.nome }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="form-group">
             <label for="tipo">Tipo</label>
             <select id="tipo" name="tipo">
                 <option value="">Todos</option>
@@ -42,13 +33,12 @@
 
     <div class="table-card table-responsive">
         <table class="table">
-            <thead><tr><th>Codigo</th><th>Descricao</th><th>Categoria</th><th>Unidade</th><th>Tipo</th><th>Status</th><th>Acoes</th></tr></thead>
+            <thead><tr><th>Codigo</th><th>Descricao</th><th>Unidade</th><th>Tipo</th><th>Status</th><th>Acoes</th></tr></thead>
             <tbody>
                 {% for item in itens %}
                     <tr>
                         <td>{{ item.codigo_interno or "-" }}</td>
                         <td>{{ item.descricao }}</td>
-                        <td>{{ item.categoria.nome }}</td>
                         <td>{{ item.unidade_medida.sigla }}</td>
                         <td>{{ item.tipo }}</td>
                         <td><span class="badge {{ 'badge-success' if item.ativo else 'badge-danger' }}">{{ "Ativo" if item.ativo else "Inativo" }}</span></td>
@@ -62,7 +52,7 @@
                         </td>
                     </tr>
                 {% else %}
-                    <tr><td class="empty-state" colspan="7">Nenhum item encontrado.</td></tr>
+                    <tr><td class="empty-state" colspan="6">Nenhum item encontrado.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
