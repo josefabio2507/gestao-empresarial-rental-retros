@@ -20,6 +20,10 @@ class Config:
         "AUTO_SEED_MODULES_ON_START",
         "true" if SQLALCHEMY_DATABASE_URI.startswith("postgresql://") else "false",
     ).lower() == "true"
+    AUTO_SEED_SUPRIMENTOS_UNIDADES_ON_START = os.getenv(
+        "AUTO_SEED_SUPRIMENTOS_UNIDADES_ON_START",
+        "true" if SQLALCHEMY_DATABASE_URI.startswith("postgresql://") else "false",
+    ).lower() == "true"
     AUTO_SEED_SUPRIMENTOS_ITENS_ON_START = os.getenv(
         "AUTO_SEED_SUPRIMENTOS_ITENS_ON_START",
         "true" if SQLALCHEMY_DATABASE_URI.startswith("postgresql://") else "false",
