@@ -970,7 +970,7 @@ class SuprimentosItem(db.Model):
     categoria_id = db.Column(
         db.Integer,
         db.ForeignKey("suprimentos_categorias_itens.id"),
-        nullable=False,
+        nullable=True,
         index=True,
     )
     unidade_medida_id = db.Column(
