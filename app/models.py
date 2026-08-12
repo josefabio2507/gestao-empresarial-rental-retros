@@ -970,7 +970,7 @@ class SuprimentosItem(db.Model):
     categoria_id = db.Column(
         db.Integer,
         db.ForeignKey("suprimentos_categorias_itens.id"),
-        nullable=False,
+        nullable=True,
         index=True,
     )
     unidade_medida_id = db.Column(
@@ -1265,6 +1265,9 @@ class SuprimentosCotacao(db.Model):
         index=True,
     )
     observacoes_aprovacao = db.Column(db.Text, nullable=True)
+    aprovacao_publica_token_hash = db.Column(db.String(64), nullable=True, unique=True, index=True)
+    aprovacao_publica_expira_em = db.Column(db.DateTime, nullable=True, index=True)
+    aprovacao_publica_usado_em = db.Column(db.DateTime, nullable=True)
 
     criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     atualizado_em = db.Column(

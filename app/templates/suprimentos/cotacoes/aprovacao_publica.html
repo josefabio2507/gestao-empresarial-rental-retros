@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page public-approval-page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Suprimentos</span>
+            <h1>Aprovacao de proposta</h1>
+            <p>Analise a cotacao e registre a decisao.</p>
+        </div>
+    </div>
+
+    {% if erro and not cotacao %}
+        <div class="details-card">
+            <h2>Link indisponivel</h2>
+            <p>{{ erro }}</p>
+        </div>
+    {% elif cotacao %}
+        <div class="details-card">
+            <p><strong>Cotacao:</strong> {{ cotacao.numero }}</p>
+            <p><strong>Requisicao:</strong> {{ cotacao.requisicao.numero if cotacao.requisicao else "-" }}</p>
+            <p><strong>Status:</strong> {{ cotacao.status }}</p>
+            <p><strong>Total selecionado:</strong> {{ formatar_moeda_brl(valor_total_selecionado) }}</p>
+            <p><strong>Centro de custo:</strong> {{ cotacao.requisicao.centro_custo.nome if cotacao.requisicao and cotacao.requisicao.centro_custo else "-" }}</p>
+            <p><strong>Equipe:</strong> {{ cotacao.requisicao.equipe.nome if cotacao.requisicao and cotacao.requisicao.equipe else "-" }}</p>
+            <p><strong>Placa do veiculo:</strong> {{ cotacao.requisicao.veiculo_placa if cotacao.requisicao and cotacao.requisicao.veiculo_placa else "-" }}</p>
+            <p><strong>Solicitante:</strong> {{ cotacao.requisicao.solicitante.nome if cotacao.requisicao and cotacao.requisicao.solicitante else "-" }}</p>
+            <p><strong>Aprovador:</strong> {{ cotacao.aprovador.nome if cotacao.aprovador else "-" }}</p>
+            {% if cotacao.observacoes %}
+                <p><strong>Observacoes:</strong> {{ cotacao.observacoes }}</p>
+            {% endif %}
+            {% if cotacao.observacoes_aprovacao %}
+                <p><strong>Observacoes da decisao:</strong> {{ cotacao.observacoes_aprovacao }}</p>
+            {% endif %}
+        </div>
+
+        {% if mapa %}
+            {% for grupo in mapa.grupos %}
+                <div class="table-card table-responsive comparison-card">
+                    <div class="section-header">
+                        <div>
+                            <h2>{{ grupo.item.item_descricao_snapshot }}</h2>
+                            <p>
+                                Quantidade:
+                                {{ formatar_decimal_brasil(grupo.item.quantidade) }}
+                                {{ grupo.item.unidade_medida_snapshot }}
+                            </p>
+                        </div>
+                    </div>
+
+                    <table class="table comparison-table">
+                        <thead>
+                            <tr>
+                                <th>Fornecedor</th>
+                                <th>Preco unit.</th>
+                                <th>Total</th>
+                                <th>Prazo</th>
+                                <th>Condicao</th>
+                                <th>Selecao</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for linha in grupo.propostas %}
+                                {% set proposta = linha.proposta %}
+                                {% if proposta.selecionada %}
+                                    <tr class="comparison-row-best">
+                                        <td>{{ proposta.fornecedor_razao_social_snapshot }}</td>
+                                        <td>{{ formatar_moeda_brl(proposta.preco_unitario) }}</td>
+                                        <td>{{ formatar_moeda_brl(linha.valor_total) }}</td>
+                                        <td>{{ proposta.prazo_entrega_dias if proposta.prazo_entrega_dias is not none else "-" }}</td>
+                                        <td>{{ proposta.condicao_pagamento or "-" }}</td>
+                                        <td><span class="badge badge-success">Selecionada</span></td>
+                                    </tr>
+                                {% endif %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        {% if decisao_concluida or cotacao.status != "Em Aprovacao" %}
+            <div class="details-card">
+                <h2>Decisao registrada</h2>
+                <p>A cotacao foi atualizada para o status: <strong>{{ cotacao.status }}</strong>.</p>
+            </div>
+        {% else %}
+            <div class="details-card">
+                <h2>Registrar decisao</h2>
+                <form class="approval-form" method="POST">
+                    <div class="form-group">
+                        <label for="observacoes_aprovacao">Observacoes da aprovacao</label>
+                        <textarea id="observacoes_aprovacao" name="observacoes_aprovacao" rows="2" data-uppercase></textarea>
+                    </div>
+                    <button class="btn btn-primary" type="submit" name="acao" value="aprovar">Aprovar proposta</button>
+                </form>
+
+                <form class="approval-form" method="POST">
+                    <div class="form-group">
+                        <label for="observacoes_reprovacao">Justificativa da reprovacao</label>
+                        <textarea id="observacoes_reprovacao" name="observacoes_aprovacao" rows="2" required data-uppercase></textarea>
+                    </div>
+                    <button class="btn btn-warning" type="submit" name="acao" value="reprovar">Reprovar para ajustes</button>
+                </form>
+            </div>
+        {% endif %}
+    {% endif %}
+</section>
+{% endblock %}

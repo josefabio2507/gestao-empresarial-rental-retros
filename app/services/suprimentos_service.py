@@ -1,7 +1,9 @@
+import hashlib
 import re
 import json
 import os
 import platform
+import secrets
 import unicodedata
 from io import BytesIO
 from flask import current_app
@@ -871,16 +873,12 @@ def salvar_item(form_data, item=None):
     codigo = texto(form_data.get("codigo_interno")).upper() or None
     descricao = texto_maiusculo(form_data.get("descricao"))
     tipo = texto(form_data.get("tipo"))
-    categoria_id = inteiro_ou_none(form_data.get("categoria_id"))
     unidade_medida_id = inteiro_ou_none(form_data.get("unidade_medida_id"))
     centro_custo_padrao_id = inteiro_ou_none(form_data.get("centro_custo_padrao_id"))
     estoque_minimo = decimal_ou_none(form_data.get("estoque_minimo"))
 
     if not descricao:
         return False, "Descricao do item e obrigatoria.", item
-
-    if not categoria_id:
-        return False, "Categoria e obrigatoria.", item
 
     if not unidade_medida_id:
         return False, "Unidade de medida e obrigatoria.", item
@@ -900,7 +898,7 @@ def salvar_item(form_data, item=None):
 
     item.codigo_interno = codigo
     item.descricao = descricao
-    item.categoria_id = categoria_id
+    item.categoria_id = None
     item.unidade_medida_id = unidade_medida_id
     item.centro_custo_padrao_id = centro_custo_padrao_id
     item.tipo = tipo
@@ -2279,7 +2277,58 @@ def link_cotacao_producao(cotacao):
     return f"{base_url}/suprimentos/cotacoes/{cotacao.id}/mapa-comparativo"
 
 
+def _hash_token_aprovacao_publica(token):
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def link_aprovacao_publica_cotacao(token):
+    base_url = current_app.config.get("BASE_URL", "http://127.0.0.1:5000").rstrip("/")
+    return f"{base_url}/suprimentos/cotacoes/aprovacao/{token}"
+
+
+def gerar_token_aprovacao_publica_cotacao(cotacao):
+    token = secrets.token_urlsafe(40)
+    validade_dias = inteiro_ou_none(
+        current_app.config.get("SUPRIMENTOS_APROVACAO_PUBLICA_VALIDADE_DIAS")
+    ) or 7
+
+    cotacao.aprovacao_publica_token_hash = _hash_token_aprovacao_publica(token)
+    cotacao.aprovacao_publica_expira_em = datetime.utcnow() + timedelta(days=validade_dias)
+    cotacao.aprovacao_publica_usado_em = None
+    db.session.commit()
+
+    return token
+
+
+def buscar_cotacao_por_token_aprovacao_publica(token):
+    token = texto(token)
+    if not token:
+        return None, "Link de aprovacao invalido."
+
+    cotacao = SuprimentosCotacao.query.filter_by(
+        aprovacao_publica_token_hash=_hash_token_aprovacao_publica(token)
+    ).first()
+
+    if not cotacao:
+        return None, "Link de aprovacao invalido."
+
+    if cotacao.aprovacao_publica_usado_em:
+        return None, "Este link de aprovacao ja foi utilizado."
+
+    if cotacao.aprovacao_publica_expira_em and cotacao.aprovacao_publica_expira_em < datetime.utcnow():
+        return None, "Este link de aprovacao expirou. Solicite um novo envio pelo WhatsApp."
+
+    if cotacao.status != STATUS_COTACAO_EM_APROVACAO:
+        return None, "Esta cotacao nao esta mais aguardando aprovacao."
+
+    if not cotacao.aprovador_usuario_id:
+        return None, "Esta cotacao nao possui aprovador definido."
+
+    return cotacao, None
+
+
 def gerar_mensagem_whatsapp_aprovacao_cotacao(cotacao):
+    token = gerar_token_aprovacao_publica_cotacao(cotacao)
     selecionadas = [proposta for proposta in cotacao.propostas if proposta.selecionada]
     fornecedores = sorted(
         {
@@ -2324,8 +2373,8 @@ def gerar_mensagem_whatsapp_aprovacao_cotacao(cotacao):
     linhas.extend(
         [
             "",
-            "Acesse o link para aprovar ou reprovar no sistema:",
-            link_cotacao_producao(cotacao),
+            "Acesse o link direto para aprovar ou reprovar:",
+            link_aprovacao_publica_cotacao(token),
         ]
     )
 
@@ -2575,6 +2624,9 @@ def enviar_cotacao_para_aprovacao(cotacao, usuario):
     cotacao.reprovada_em = None
     cotacao.reprovada_por_usuario_id = None
     cotacao.observacoes_aprovacao = None
+    cotacao.aprovacao_publica_token_hash = None
+    cotacao.aprovacao_publica_expira_em = None
+    cotacao.aprovacao_publica_usado_em = None
     sincronizar_status_requisicao_por_cotacao(cotacao)
     db.session.commit()
 
@@ -2618,6 +2670,49 @@ def reprovar_cotacao(cotacao, usuario, form_data=None):
     cotacao.aprovada_em = None
     cotacao.aprovada_por_usuario_id = None
     cotacao.observacoes_aprovacao = justificativa
+    sincronizar_status_requisicao_por_cotacao(cotacao)
+    db.session.commit()
+
+    return True, "Cotacao reprovada e liberada para ajustes."
+
+
+def aprovar_cotacao_por_link_publico(cotacao, form_data=None):
+    if cotacao.status != STATUS_COTACAO_EM_APROVACAO:
+        return False, "Somente cotacoes em aprovacao podem ser aprovadas."
+
+    cotacao.status = STATUS_COTACAO_APROVADA
+    cotacao.aprovada_em = datetime.utcnow()
+    cotacao.aprovada_por_usuario_id = cotacao.aprovador_usuario_id
+    cotacao.reprovada_em = None
+    cotacao.reprovada_por_usuario_id = None
+    cotacao.observacoes_aprovacao = texto_maiusculo((form_data or {}).get("observacoes_aprovacao"))
+    cotacao.aprovacao_publica_usado_em = datetime.utcnow()
+    cotacao.aprovacao_publica_token_hash = None
+    cotacao.aprovacao_publica_expira_em = None
+    sincronizar_status_requisicao_por_cotacao(cotacao)
+    db.session.commit()
+
+    return True, "Cotacao aprovada com sucesso."
+
+
+def reprovar_cotacao_por_link_publico(cotacao, form_data=None):
+    if cotacao.status != STATUS_COTACAO_EM_APROVACAO:
+        return False, "Somente cotacoes em aprovacao podem ser reprovadas."
+
+    justificativa = texto_maiusculo((form_data or {}).get("observacoes_aprovacao"))
+
+    if not justificativa:
+        return False, "Informe a justificativa da reprovacao."
+
+    cotacao.status = STATUS_COTACAO_REPROVADA
+    cotacao.reprovada_em = datetime.utcnow()
+    cotacao.reprovada_por_usuario_id = cotacao.aprovador_usuario_id
+    cotacao.aprovada_em = None
+    cotacao.aprovada_por_usuario_id = None
+    cotacao.observacoes_aprovacao = justificativa
+    cotacao.aprovacao_publica_usado_em = datetime.utcnow()
+    cotacao.aprovacao_publica_token_hash = None
+    cotacao.aprovacao_publica_expira_em = None
     sincronizar_status_requisicao_por_cotacao(cotacao)
     db.session.commit()
 

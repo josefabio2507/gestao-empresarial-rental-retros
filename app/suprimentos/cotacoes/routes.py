@@ -12,7 +12,9 @@ from app.services.suprimentos_service import (
     STATUS_COTACAO_ENCERRADA,
     STATUS_COTACAO_REPROVADA,
     aprovar_cotacao,
+    aprovar_cotacao_por_link_publico,
     buscar_cotacoes,
+    buscar_cotacao_por_token_aprovacao_publica,
     buscar_por_id,
     cancelar_cotacao,
     encerrar_cotacao,
@@ -27,6 +29,7 @@ from app.services.suprimentos_service import (
     gerar_link_whatsapp_solicitacao_cotacao_fornecedor,
     montar_mapa_comparativo_cotacao,
     reprovar_cotacao,
+    reprovar_cotacao_por_link_publico,
     requisicoes_disponiveis_para_cotacao,
     remover_proposta_cotacao,
     salvar_cotacao,
@@ -173,6 +176,67 @@ def enviar_whatsapp_aprovacao(cotacao_id):
     )
     flash(mensagem, "success")
     return redirect(link)
+
+
+@suprimentos_cotacoes_bp.route("/aprovacao/<token>", methods=["GET", "POST"])
+def aprovacao_publica(token):
+    cotacao, erro = buscar_cotacao_por_token_aprovacao_publica(token)
+
+    if erro:
+        return render_template(
+            "suprimentos/cotacoes/aprovacao_publica.html",
+            cotacao=None,
+            erro=erro,
+            token=token,
+            mapa=None,
+            formatar_moeda_brl=formatar_moeda_brl,
+            formatar_decimal_brasil=formatar_decimal_brasil,
+            valor_total_selecionado=None,
+        )
+
+    if request.method == "POST":
+        acao = request.form.get("acao")
+        if acao == "aprovar":
+            sucesso, mensagem = aprovar_cotacao_por_link_publico(cotacao, request.form)
+            acao_log = "suprimentos_cotacao_aprovada_link_publico"
+        elif acao == "reprovar":
+            sucesso, mensagem = reprovar_cotacao_por_link_publico(cotacao, request.form)
+            acao_log = "suprimentos_cotacao_reprovada_link_publico"
+        else:
+            sucesso, mensagem = False, "Acao de aprovacao invalida."
+            acao_log = None
+
+        if sucesso and acao_log:
+            registrar_log(
+                acao_log,
+                f"Cotacao decidida por link publico. ID: {cotacao.id}.",
+                usuario=cotacao.aprovador,
+            )
+
+        flash(mensagem, "success" if sucesso else "danger")
+        return render_template(
+            "suprimentos/cotacoes/aprovacao_publica.html",
+            cotacao=cotacao,
+            erro=None if sucesso else mensagem,
+            token=token,
+            mapa=montar_mapa_comparativo_cotacao(cotacao),
+            formatar_moeda_brl=formatar_moeda_brl,
+            formatar_decimal_brasil=formatar_decimal_brasil,
+            valor_total_selecionado=valor_total_propostas_selecionadas(cotacao),
+            decisao_concluida=sucesso,
+        )
+
+    return render_template(
+        "suprimentos/cotacoes/aprovacao_publica.html",
+        cotacao=cotacao,
+        erro=None,
+        token=token,
+        mapa=montar_mapa_comparativo_cotacao(cotacao),
+        formatar_moeda_brl=formatar_moeda_brl,
+        formatar_decimal_brasil=formatar_decimal_brasil,
+        valor_total_selecionado=valor_total_propostas_selecionadas(cotacao),
+        decisao_concluida=False,
+    )
 
 
 @suprimentos_cotacoes_bp.route("/<int:cotacao_id>/fornecedor/whatsapp", methods=["POST"])
