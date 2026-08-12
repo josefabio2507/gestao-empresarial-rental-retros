@@ -30,20 +30,20 @@
                 </select>
             </div>
             <div class="form-group">
-                <label for="tipo">Tipo</label>
-                <select id="tipo" name="tipo" required>
-                    <option value="">Selecione</option>
-                    {% for tipo in tipos_item %}
-                        <option value="{{ tipo }}" {{ "selected" if item and item.tipo == tipo else "" }}>{{ tipo }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="form-group">
                 <label for="centro_custo_padrao_id">Centro de custo padrao</label>
                 <select id="centro_custo_padrao_id" name="centro_custo_padrao_id">
                     <option value="">Sem padrao</option>
                     {% for centro in centros %}
                         <option value="{{ centro.id }}" {{ "selected" if item and item.centro_custo_padrao_id == centro.id else "" }}>{{ centro.codigo or "-" }} - {{ centro.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="tipo">Tipo</label>
+                <select id="tipo" name="tipo" required>
+                    <option value="">Selecione</option>
+                    {% for tipo in tipos_item %}
+                        <option value="{{ tipo }}" {{ "selected" if item and item.tipo == tipo else "" }}>{{ tipo }}</option>
                     {% endfor %}
                 </select>
             </div>

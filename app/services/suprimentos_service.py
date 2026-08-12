@@ -873,16 +873,12 @@ def salvar_item(form_data, item=None):
     codigo = texto(form_data.get("codigo_interno")).upper() or None
     descricao = texto_maiusculo(form_data.get("descricao"))
     tipo = texto(form_data.get("tipo"))
-    categoria_id = inteiro_ou_none(form_data.get("categoria_id"))
     unidade_medida_id = inteiro_ou_none(form_data.get("unidade_medida_id"))
     centro_custo_padrao_id = inteiro_ou_none(form_data.get("centro_custo_padrao_id"))
     estoque_minimo = decimal_ou_none(form_data.get("estoque_minimo"))
 
     if not descricao:
         return False, "Descricao do item e obrigatoria.", item
-
-    if not categoria_id:
-        return False, "Categoria e obrigatoria.", item
 
     if not unidade_medida_id:
         return False, "Unidade de medida e obrigatoria.", item
@@ -902,7 +898,7 @@ def salvar_item(form_data, item=None):
 
     item.codigo_interno = codigo
     item.descricao = descricao
-    item.categoria_id = categoria_id
+    item.categoria_id = None
     item.unidade_medida_id = unidade_medida_id
     item.centro_custo_padrao_id = centro_custo_padrao_id
     item.tipo = tipo
