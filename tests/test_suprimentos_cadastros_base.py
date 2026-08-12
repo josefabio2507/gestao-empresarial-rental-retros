@@ -312,6 +312,24 @@ class SuprimentosCadastrosBaseTestCase(unittest.TestCase):
         self.assertFalse(item.item_estocavel)
         self.assertEqual("SERVICO DE MANUTENCAO", item.descricao)
 
+    def test_item_salva_sem_categoria_informada(self):
+        _, unidade, centro = self._criar_base_item()
+
+        sucesso, mensagem, item = salvar_item(
+            {
+                "codigo_interno": "mat-001",
+                "descricao": "Material sem categoria",
+                "unidade_medida_id": str(unidade.id),
+                "centro_custo_padrao_id": str(centro.id),
+                "tipo": "material",
+            }
+        )
+
+        self.assertTrue(sucesso, mensagem)
+        self.assertIsNotNone(item.categoria_id)
+        self.assertEqual("ITEM SEM CATEGORIA", item.categoria.nome)
+        self.assertEqual("MATERIAL SEM CATEGORIA", item.descricao)
+
     def test_vinculo_fornecedor_item_bloqueia_duplicidade(self):
         categoria, unidade, centro = self._criar_base_item()
         sucesso, _, fornecedor = salvar_fornecedor(
