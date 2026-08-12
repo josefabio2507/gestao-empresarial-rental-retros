@@ -55,7 +55,53 @@
         </div>
     </form>
 
+    {% if cotacoes_aprovadas_sem_oc %}
+        <div class="table-card table-responsive">
+            <div class="section-header">
+                <div>
+                    <h2>Cotacoes aprovadas aguardando ordem de compra</h2>
+                    <p>Propostas aprovadas que ainda precisam gerar a OC.</p>
+                </div>
+            </div>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Cotacao</th>
+                        <th>Requisicao</th>
+                        <th>Aprovada em</th>
+                        <th>Aprovador</th>
+                        <th>Total aprovado</th>
+                        <th>Acoes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cotacao in cotacoes_aprovadas_sem_oc %}
+                        <tr>
+                            <td>{{ cotacao.numero }}</td>
+                            <td>{{ cotacao.requisicao.numero if cotacao.requisicao else "-" }}</td>
+                            <td>{{ cotacao.aprovada_em.strftime("%d/%m/%Y %H:%M") if cotacao.aprovada_em else "-" }}</td>
+                            <td>{{ cotacao.aprovada_por.nome if cotacao.aprovada_por else "-" }}</td>
+                            <td>{{ formatar_moeda_brl(valor_total_propostas_selecionadas(cotacao)) }}</td>
+                            <td class="col-acoes">
+                                <form class="inline-form" method="POST" action="{{ url_for('suprimentos_ordens_compra.gerar_por_cotacao', cotacao_id=cotacao.id) }}">
+                                    <button class="btn btn-primary" type="submit">Gerar OC</button>
+                                </form>
+                                <a class="btn btn-secondary" href="{{ url_for('suprimentos_cotacoes.mapa_comparativo', cotacao_id=cotacao.id) }}">Mapa</a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endif %}
+
     <div class="table-card table-responsive">
+        <div class="section-header">
+            <div>
+                <h2>Ordens de compra geradas</h2>
+                <p>OCs ja criadas a partir das cotacoes aprovadas.</p>
+            </div>
+        </div>
         <table class="table">
             <thead>
                 <tr>

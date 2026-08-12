@@ -17,6 +17,7 @@ from app.services.suprimentos_service import (
     STATUS_FINANCEIRO_PREPARADO,
     STATUS_FINANCEIRO_PROVISIONADO,
     buscar_fornecedores_ativos,
+    buscar_cotacoes_aprovadas_sem_ordem_compra,
     buscar_ordens_aguardando_financeiro,
     buscar_ordens_compra,
     buscar_por_id,
@@ -30,6 +31,7 @@ from app.services.suprimentos_service import (
     salvar_evidencia_item_ordem_compra,
     status_evidencia_item_oc,
     totalizar_evidencias_ordem_compra,
+    valor_total_propostas_selecionadas,
 )
 from app.suprimentos.ordens_compra import suprimentos_ordens_compra_bp
 
@@ -61,11 +63,13 @@ def listar():
             request.args.get("fornecedor_id"),
             request.args.get("status_financeiro"),
         ),
+        cotacoes_aprovadas_sem_oc=buscar_cotacoes_aprovadas_sem_ordem_compra(request.args.get("numero")),
         fornecedores=buscar_fornecedores_ativos(),
         status_ordens=STATUS_ORDENS_COMPRA,
         status_financeiros=STATUS_FINANCEIROS_OC,
         filtros=request.args,
         formatar_moeda_brl=formatar_moeda_brl,
+        valor_total_propostas_selecionadas=valor_total_propostas_selecionadas,
     )
 
 

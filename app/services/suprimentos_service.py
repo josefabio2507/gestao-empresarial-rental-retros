@@ -1265,6 +1265,26 @@ def buscar_ordens_compra_cotacao(cotacao):
     )
 
 
+def buscar_cotacoes_aprovadas_sem_ordem_compra(numero=None):
+    numero = texto(numero).upper()
+    query = SuprimentosCotacao.query.filter(
+        SuprimentosCotacao.status == STATUS_COTACAO_APROVADA,
+    )
+
+    if numero:
+        query = query.filter(SuprimentosCotacao.numero.ilike(f"%{numero}%"))
+
+    cotacoes = query.order_by(SuprimentosCotacao.aprovada_em.desc(), SuprimentosCotacao.criado_em.desc()).all()
+    return [
+        cotacao
+        for cotacao in cotacoes
+        if not any(
+            ordem.status != STATUS_ORDEM_COMPRA_CANCELADA
+            for ordem in buscar_ordens_compra_cotacao(cotacao)
+        )
+    ]
+
+
 def calcular_parcelas_previstas(valor_total, quantidade_parcelas):
     quantidade_parcelas = int(quantidade_parcelas or 1)
     valor_total = Decimal(valor_total or 0).quantize(Decimal("0.01"))
