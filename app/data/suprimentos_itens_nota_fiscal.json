@@ -1,0 +1,7274 @@
+[
+  {
+    "codigo_interno": "1",
+    "descricao": "JJ-105FE",
+    "ncm": "85071090",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "2",
+    "descricao": "CEL.DESB.MOTOROLA G15 4/256GB XT2521-2 - GRAFITE",
+    "ncm": "85171300",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "3",
+    "descricao": "MOURAO DE PONTA INCLINADA H=3,00+0,40M",
+    "ncm": "68109100",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "4",
+    "descricao": "DESJEJUM",
+    "ncm": "21069090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "5",
+    "descricao": "REFEIÇÃO",
+    "ncm": "21069090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "6",
+    "descricao": "CESTO LIXO 60 L RED TAMPA VM",
+    "ncm": "39249000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "7",
+    "descricao": "CESTO LIXO 60 L RED TAMPA AZ",
+    "ncm": "39249000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "8",
+    "descricao": "ARO CHAPA 3.25 3.50 X 8 ROLETE",
+    "ncm": "87168000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "9",
+    "descricao": "PORTA ELETRODO 500A",
+    "ncm": "85159000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "10",
+    "descricao": "MASSEIRA PLASTICA 160L AZUL",
+    "ncm": "39259090",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "11",
+    "descricao": "CESTO LIXO 100 L RED TAMPA CZ",
+    "ncm": "39249000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "12",
+    "descricao": "DISCO DESBASTE 4.1 2\"X1 4\"X7 8\" BDA600",
+    "ncm": "68042211",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "13",
+    "descricao": "DISCO CORTE 4.1 2\" X 1 8\" X 7 8\" AR312",
+    "ncm": "68042211",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "14",
+    "descricao": "LONA PLASTICA PRETA 04 X 100 R25",
+    "ncm": "39259090",
+    "unidade": "RL"
+  },
+  {
+    "codigo_interno": "15",
+    "descricao": "ESPIGAO DO FEIXE TRASEIRO",
+    "ncm": "73181500",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "16",
+    "descricao": "PORCA SEXTAVADA DO ESPIGAO",
+    "ncm": "73181600",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "17",
+    "descricao": "MOLA-REFORCO DO FEIXE TRASEIRO",
+    "ncm": "73201000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "18",
+    "descricao": "PINO ELASTICO 12 X 70",
+    "ncm": "73182900",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "19",
+    "descricao": "PROTETOR FACIAL 41200 PLASTIDUR",
+    "ncm": "65061000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "20",
+    "descricao": "BOTINA AMARRAR 40 MET C/ BICO COMP 4031BMMS1662LL CA 48582 BRACOL",
+    "ncm": "64039190",
+    "unidade": "PR"
+  },
+  {
+    "codigo_interno": "21",
+    "descricao": "LUVA VAQUETA P7 T13 PROTIMINAS CA 40054",
+    "ncm": "42032900",
+    "unidade": "PR"
+  },
+  {
+    "codigo_interno": "22",
+    "descricao": "OCULOS INCOLOR LEOPARDO CA 11268 KALIPSO",
+    "ncm": "90049020",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "23",
+    "descricao": "OCULOS CINZA LEOPARDO CA 11268 KALIPSO",
+    "ncm": "90049020",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "24",
+    "descricao": "FITA ISOLANTE B&D VERDE 10MT",
+    "ncm": "39191020",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "25",
+    "descricao": "FITA ISOLANTE B&D VERMELHO 10MT",
+    "ncm": "39191020",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "26",
+    "descricao": "FITA ISOLANTE B&D AZUL 10MT",
+    "ncm": "39191020",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "27",
+    "descricao": "OCULOS CINZA PANDA CA 10344 KALIPSO",
+    "ncm": "90049020",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "28",
+    "descricao": "PROTETOR AURICULAR PLUG CA10043 UMP",
+    "ncm": "39269040",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "30",
+    "descricao": "AVENTAL BARBEIRO CA 48779 THECOM",
+    "ncm": "42032900",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "31",
+    "descricao": "PERNEIRA RASPA",
+    "ncm": "64069090",
+    "unidade": "PR"
+  },
+  {
+    "codigo_interno": "32",
+    "descricao": "CASCO MSA",
+    "ncm": "65061000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "33",
+    "descricao": "JUGULAR TECIDO CAMPER",
+    "ncm": "65070000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "34",
+    "descricao": "MASCARA PFF-2 C/ VALV ECOAR CA 38812 PLASTCOR",
+    "ncm": "63079010",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "35",
+    "descricao": "LUVA HANDEX TATIL 10(EG) PRETA CA 41628",
+    "ncm": "61161000",
+    "unidade": "PR"
+  },
+  {
+    "codigo_interno": "36",
+    "descricao": "LUVA HANDEX LATEX LONGAFLEX 10(EG) CA 48645",
+    "ncm": "40151900",
+    "unidade": "PR"
+  },
+  {
+    "codigo_interno": "37",
+    "descricao": "LUVA HANDEX NITRIL 10(EG) VERDE CA 48761",
+    "ncm": "40151900",
+    "unidade": "PR"
+  },
+  {
+    "codigo_interno": "38",
+    "descricao": "LUVA HANDEX VULCANO 10(EG) CA 41666",
+    "ncm": "61161000",
+    "unidade": "PR"
+  },
+  {
+    "codigo_interno": "39",
+    "descricao": "BOTINA AMARRAR 38 MET C/ BICO COMP 4031BMMS1662LL CA 48582 BRACOL",
+    "ncm": "64039190",
+    "unidade": "PAR"
+  },
+  {
+    "codigo_interno": "40",
+    "descricao": "BOTINA AMARRAR 39 MET C/ BICO COMP 4031BMMS1662LL CA 48582 BRACOL",
+    "ncm": "64039190",
+    "unidade": "PAR"
+  },
+  {
+    "codigo_interno": "42",
+    "descricao": "BOTINA AMARRAR 41 MET C/ BICO COMP 4031BMMS1662LL CA 48582 BRACOL",
+    "ncm": "64039190",
+    "unidade": "PR"
+  },
+  {
+    "codigo_interno": "43",
+    "descricao": "BOTINA AMARRAR 42 MET C/ BICO COMP 4031BMMS1662LL CA 48582 BRACOL",
+    "ncm": "64039190",
+    "unidade": "PR"
+  },
+  {
+    "codigo_interno": "44",
+    "descricao": "BOTINA AMARRAR 43 MET C/ BICO COMP 4031BMMS1662LL CA 48582 BRACOL",
+    "ncm": "64039190",
+    "unidade": "PAR"
+  },
+  {
+    "codigo_interno": "45",
+    "descricao": "BOTINA AMARRAR 44 MET C/ BICO COMP 4031BMMS1662LL CA 48582 BRACOL",
+    "ncm": "64039190",
+    "unidade": "PAR"
+  },
+  {
+    "codigo_interno": "46",
+    "descricao": "TELA TAPUME 1.20M X 50M LARANJA",
+    "ncm": "39269090",
+    "unidade": "RL"
+  },
+  {
+    "codigo_interno": "47",
+    "descricao": "FITA DEMARCACAO SOLO 48MMX30M ZEBRADA",
+    "ncm": "39191020",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "48",
+    "descricao": "FITA ZEBRADA AMARELO/PRETO 200 MT PLASTCOR",
+    "ncm": "39189000",
+    "unidade": "RL"
+  },
+  {
+    "codigo_interno": "49",
+    "descricao": "LUVA VAQUETA PETROLEIRA P7 T13 CA 40054 PROTIMINAS",
+    "ncm": "42032900",
+    "unidade": "PR"
+  },
+  {
+    "codigo_interno": "52",
+    "descricao": "OCULOS INCOLOR PROTECTOR VALEPLAS",
+    "ncm": "90049020",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "53",
+    "descricao": "LUVA VAQUETA PETROLEIRA P7 CA 40054 PROTIMINAS",
+    "ncm": "42032900",
+    "unidade": "PR"
+  },
+  {
+    "codigo_interno": "54",
+    "descricao": "BOTINA ELASTICO 44 C/ PLAST 4098USES4600US CA 48413 BRACOL/USAFE",
+    "ncm": "64039190",
+    "unidade": "PAR"
+  },
+  {
+    "codigo_interno": "55",
+    "descricao": "REPELENTE SPRAY NUTRIEX 10H 100ML",
+    "ncm": "38089199",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "56",
+    "descricao": "GLASU ESM BR PRETO 3,6L",
+    "ncm": "32081010",
+    "unidade": "GL"
+  },
+  {
+    "codigo_interno": "57",
+    "descricao": "BALDE P CONCRETO METALICO 10L NOVE54",
+    "ncm": "73269090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "58",
+    "descricao": "FIXADOR PORTA SOPRANO RODAPE NIQ001",
+    "ncm": "83024100",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "59",
+    "descricao": "MARRETA MTX CABO FIBRA 2000GR",
+    "ncm": "82052000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "60",
+    "descricao": "MARRETA MTX CABO FIBRA 5000GR",
+    "ncm": "82052000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "61",
+    "descricao": "CABO DE ENXADA 1,45M EUCAL C CUNHA",
+    "ncm": "44170090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "62",
+    "descricao": "LAPIS CARPINT.BRASF/1A.1/2 G.72P8262",
+    "ncm": "96091000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "63",
+    "descricao": "SERRA BIMETAL 18D IRWIN",
+    "ncm": "82029990",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "64",
+    "descricao": "CADEADO LAND 45",
+    "ncm": "83011000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "65",
+    "descricao": "DISCO CORTE AR312 4.1/2\" X 3.0\" X 7/8\" NORTON",
+    "ncm": "68042211",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "66",
+    "descricao": "DISCO DIAMANTADO TURBO CLASSIC 110 X 20 NORTON",
+    "ncm": "68042211",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "67",
+    "descricao": "CHAVE PHILLIPS PH2 1/4 X 4\" CRV MTX",
+    "ncm": "82054000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "68",
+    "descricao": "PREGO GERDAU CC 15 X 15",
+    "ncm": "73170090",
+    "unidade": "KG"
+  },
+  {
+    "codigo_interno": "69",
+    "descricao": "CAIXA FERRAMENTA 07 5 X 50 AZL FERCAR",
+    "ncm": "73269090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "70",
+    "descricao": "SERRA CIRC.4.38 X 40 X 20 BRASFORT",
+    "ncm": "82023900",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "71",
+    "descricao": "DESEMPENADEIRA PVC PRETA EMAVE",
+    "ncm": "39269090",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "72",
+    "descricao": "GANCHO ICAMENTO 580L",
+    "ncm": "84314929",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "73",
+    "descricao": "OLEO DIESEL B S10",
+    "ncm": "27101921",
+    "unidade": "LT"
+  },
+  {
+    "codigo_interno": "74",
+    "descricao": "GELO 5KG",
+    "ncm": "22019000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "75",
+    "descricao": "GASOLINA ADITIVADA",
+    "ncm": "27101259",
+    "unidade": "LT"
+  },
+  {
+    "codigo_interno": "76",
+    "descricao": "AROMATIZANTE HAPPY AIR VANILLA",
+    "ncm": "33074900",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "77",
+    "descricao": "GASOLINA COMUM",
+    "ncm": "27101259",
+    "unidade": "LT"
+  },
+  {
+    "codigo_interno": "78",
+    "descricao": "HELIX ULTRA ECT C2 5W30",
+    "ncm": "27101932",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "79",
+    "descricao": "AROMATIZANTE HAPPY AIR MANGA ROSA 10G",
+    "ncm": "33074900",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "80",
+    "descricao": "RADIBRAS VISION CLEAR 100ML",
+    "ncm": "34025000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "81",
+    "descricao": "ARLA 32 20LT",
+    "ncm": "31021010",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "82",
+    "descricao": "AROMATIZANTE HAPPY AIR TUTTI FRUTTI",
+    "ncm": "33074900",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "83",
+    "descricao": "FILTRO WEGA FCD0728",
+    "ncm": "84212990",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "84",
+    "descricao": "ORIGINAL DIESEL S10",
+    "ncm": "27101921",
+    "unidade": "L"
+  },
+  {
+    "codigo_interno": "85",
+    "descricao": "ORIGINAL GASOLINA",
+    "ncm": "27101259",
+    "unidade": "L"
+  },
+  {
+    "codigo_interno": "88",
+    "descricao": "AROMATIZANTE LITTLE TREES VANILLAROM 1UN",
+    "ncm": "33074900",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "89",
+    "descricao": "POWER VIEW PALHETA SPECIFIC B19",
+    "ncm": "85129000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "90",
+    "descricao": "CAL HIDRATADA ITAU CH-III 20KG VOTORAN",
+    "ncm": "25221000",
+    "unidade": "SAC"
+  },
+  {
+    "codigo_interno": "91",
+    "descricao": "GUARNITAL GI41 1.6 MM",
+    "ncm": "48115130",
+    "unidade": "MT"
+  },
+  {
+    "codigo_interno": "92",
+    "descricao": "BICO GRAXEIRO M10 X 1",
+    "ncm": "84879000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "93",
+    "descricao": "BICO GRAXEIRO 1 8 NPT RETO",
+    "ncm": "84879000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "94",
+    "descricao": "BATERIA LF100MF",
+    "ncm": "85071090",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "95",
+    "descricao": "CINTO SEGURANCA 3 PONTOS",
+    "ncm": "87082100",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "96",
+    "descricao": "FILTRO LUBRIFICANTE",
+    "ncm": "84219999",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "97",
+    "descricao": "FILTRO COMBUSTIVEL",
+    "ncm": "84219999",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "98",
+    "descricao": "FILTRO AR",
+    "ncm": "84219999",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "100",
+    "descricao": "BALDE OLEO 5W30",
+    "ncm": "27101932",
+    "unidade": "BD"
+  },
+  {
+    "codigo_interno": "101",
+    "descricao": "GALAO OLEO 5W30",
+    "ncm": "27101932",
+    "unidade": "GL"
+  },
+  {
+    "codigo_interno": "102",
+    "descricao": "CARCACA BATERIA",
+    "ncm": "85071090",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "103",
+    "descricao": "FERRO PUA IRWIN(I)3/4\" R.MATHIESON",
+    "ncm": "82075090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "104",
+    "descricao": "PNEU 12.5/80-18 12L TL R4 ERTMXHGA02 SPM",
+    "ncm": "40117090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "105",
+    "descricao": "DISCO DE CORTE",
+    "ncm": "68042211",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "106",
+    "descricao": "BARRA DE DIRECAO 580N",
+    "ncm": "84314929",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "107",
+    "descricao": "REPARO DA DIRECAO 580N S-3",
+    "ncm": "40169300",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "108",
+    "descricao": "CUBA DO FILTRO DE AR D4D/D4E/120B/930",
+    "ncm": "84213100",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "109",
+    "descricao": "REPARO DO CILINDRO DO GIRO 214E / C3",
+    "ncm": "40169300",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "110",
+    "descricao": "VALVULA IMPORTADA",
+    "ncm": "84818092",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "111",
+    "descricao": "CANTONEIRA 3/16 X 1.1/2",
+    "ncm": "72162100",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "112",
+    "descricao": "PASTILHA KC5010",
+    "ncm": "82090011",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "113",
+    "descricao": "PASTILHA KC725M",
+    "ncm": "82090011",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "114",
+    "descricao": "SUPORTE DE BROCA 1.1/8",
+    "ncm": "82075011",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "115",
+    "descricao": "CORRENTE",
+    "ncm": "82024000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "116",
+    "descricao": "CHAVE COMBINADA",
+    "ncm": "82041100",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "117",
+    "descricao": "LIMA REDONDA 4,8X200",
+    "ncm": "82031010",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "118",
+    "descricao": "LIMA REDONDA 5,2X200",
+    "ncm": "82031010",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "119",
+    "descricao": "LIMA REDONDA 4X200",
+    "ncm": "82031010",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "120",
+    "descricao": "DENTE JOHN DEERE",
+    "ncm": "84339090",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "121",
+    "descricao": "PINO TRAVA",
+    "ncm": "84314929",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "122",
+    "descricao": "LANTERNA PISCA 580N",
+    "ncm": "85391010",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "123",
+    "descricao": "TONER COMP.(MC) HP 105A/W1105A 5K (COM CHIP) (M107/M135)",
+    "ncm": "84439933",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "124",
+    "descricao": "VALVULA TERMOSTATICA UNO 10/ 1.0 1.4 8V EVO PALIO",
+    "ncm": "84818021",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "125",
+    "descricao": "RESERVATORIO RADIADOR UNO 10/ 1.0 1.4 8V FIORINO 1",
+    "ncm": "87089990",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "126",
+    "descricao": "CHEIRINHO PINHEIRO LITTLE TREES 4GR LONGA DURACAO",
+    "ncm": "33074900",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "127",
+    "descricao": "ADITIVO RADIADOR HILL CLASSIC ROSA CONCENTRADO - F",
+    "ncm": "38249941",
+    "unidade": "LT"
+  },
+  {
+    "codigo_interno": "129",
+    "descricao": "PNEU 19.5L-24 12L TL R4 ERTMX HGA01 SPM",
+    "ncm": "40117090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "130",
+    "descricao": "PNEU 12-16.5 12L G-MPT 920JD I-3 GRP TL",
+    "ncm": "40117090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "132",
+    "descricao": "IMANTADO NATURAL 0,8MM DE ESPESSURA COM ADESIVO COM IMAGEM DIGITAL.",
+    "ncm": "39199090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "133",
+    "descricao": "SOLUVEL A 12X1",
+    "ncm": "27101932",
+    "unidade": "CX"
+  },
+  {
+    "codigo_interno": "134",
+    "descricao": "IPIRANGA ULTRAGEAR 90 GL4 24X1",
+    "ncm": "27101932",
+    "unidade": "CX"
+  },
+  {
+    "codigo_interno": "135",
+    "descricao": "F1 MASTER PROT 20W50 SL 24X1",
+    "ncm": "27101932",
+    "unidade": "CX"
+  },
+  {
+    "codigo_interno": "136",
+    "descricao": "O-RING 1216 C-101",
+    "ncm": "40169300",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "137",
+    "descricao": "RASPADOR 32093 R1 C-810",
+    "ncm": "39269090",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "138",
+    "descricao": "O-RING 1208 C-101",
+    "ncm": "40169300",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "139",
+    "descricao": "ANEL ELASTICO E-020",
+    "ncm": "73182900",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "140",
+    "descricao": "ANTI-EXTRUSAO 8116 C-105",
+    "ncm": "40169300",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "141",
+    "descricao": "RASPADOR 161091 PU U-25",
+    "ncm": "39269090",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "142",
+    "descricao": "ANEL ELASTICO E-030 #",
+    "ncm": "73182900",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "143",
+    "descricao": "ANEL ELASTICO E-050",
+    "ncm": "73182900",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "144",
+    "descricao": "ANEL ELASTICO E-040",
+    "ncm": "73182900",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "145",
+    "descricao": "PINO ELASTICO 5.0X40 FOSF",
+    "ncm": "73182900",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "146",
+    "descricao": "PARLOCK ZINC. MA M16",
+    "ncm": "73181600",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "147",
+    "descricao": "8.8 MA RP M16 X 180",
+    "ncm": "73181500",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "148",
+    "descricao": "DOBR.LEVE GALV 2 1 2",
+    "ncm": "83021000",
+    "unidade": "CART"
+  },
+  {
+    "codigo_interno": "149",
+    "descricao": "BROCA DE VIDEA M 08",
+    "ncm": "82075011",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "150",
+    "descricao": "OLEO DESENGRIPANTE M1",
+    "ncm": "27101932",
+    "unidade": "LT"
+  },
+  {
+    "codigo_interno": "151",
+    "descricao": "TRINCHA 1 NOLL",
+    "ncm": "96034090",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "152",
+    "descricao": "TRINCHA 1 1 2 NOLL",
+    "ncm": "96034090",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "153",
+    "descricao": "ELETRODO 78 2,50 X 350MM LT",
+    "ncm": "83111000",
+    "unidade": "KG"
+  },
+  {
+    "codigo_interno": "154",
+    "descricao": "CHAVE DE FENDA GENERAL PRO 3 8 X 6",
+    "ncm": "82054000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "155",
+    "descricao": "CHAVE PHILLIPS GP 1 4 X 4",
+    "ncm": "82054000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "156",
+    "descricao": "115 BDA 50",
+    "ncm": "68042211",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "157",
+    "descricao": "CHAVE COMBINADA C CATRACA 11MM",
+    "ncm": "82041100",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "158",
+    "descricao": "ALICATE MEIA CANA 6",
+    "ncm": "82032010",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "159",
+    "descricao": "JG CHAVE ALLEN 1.5 A 8.0MM 8PC CANIVETE",
+    "ncm": "82055900",
+    "unidade": "JG"
+  },
+  {
+    "codigo_interno": "160",
+    "descricao": "SHAMPOO CREMOSO GL 50LTS",
+    "ncm": "34025000",
+    "unidade": "GL"
+  },
+  {
+    "codigo_interno": "161",
+    "descricao": "DESENGRAXANTE GL 50LTS",
+    "ncm": "34025000",
+    "unidade": "GL"
+  },
+  {
+    "codigo_interno": "162",
+    "descricao": "VALVULA",
+    "ncm": "84814000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "163",
+    "descricao": "MARMITEX",
+    "ncm": "21069090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "164",
+    "descricao": "REFRIGERANTE 2 LTS",
+    "ncm": "22021000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "165",
+    "descricao": "REFEIÇAO",
+    "ncm": "21069090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "167",
+    "descricao": "MANGUEIRA MONTADA",
+    "ncm": "40092290",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "168",
+    "descricao": "PAPEL SULFITE A4 75G 210MMX297MM CHAMEX PT 500 FL",
+    "ncm": "48025610",
+    "unidade": "PT"
+  },
+  {
+    "codigo_interno": "169",
+    "descricao": "PRESILHA JACARE P CRACHA 233 PLASTPARK PT 50 UN",
+    "ncm": "83089090",
+    "unidade": "PT"
+  },
+  {
+    "codigo_interno": "170",
+    "descricao": "PLASTICO PARA PLASTIFICACAO 220X307X0,05 A4 02342 SPIRAL PT 100 UN",
+    "ncm": "39219090",
+    "unidade": "PT"
+  },
+  {
+    "codigo_interno": "171",
+    "descricao": "PLASTICO PARA PLASTIFICACAO 59X86X0,05 CRACHA SPIRAL PT 100 UN",
+    "ncm": "39219090",
+    "unidade": "PT"
+  },
+  {
+    "codigo_interno": "172",
+    "descricao": "CARTUCHO HP 667XL PRETO 3YM81AB HP CX 1 UN",
+    "ncm": "84439923",
+    "unidade": "CX"
+  },
+  {
+    "codigo_interno": "173",
+    "descricao": "CARTUCHO HP 667XL COLORIDO 3YM80AB HP CX 1 UN",
+    "ncm": "84439923",
+    "unidade": "CX"
+  },
+  {
+    "codigo_interno": "174",
+    "descricao": "CLIMATIZADOR",
+    "ncm": "84796000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "175",
+    "descricao": "BOMBINHA CLIMATIZADOR",
+    "ncm": "40169990",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "176",
+    "descricao": "GARRA FLORESTAL R400-ROTATOR 12T",
+    "ncm": "84368000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "177",
+    "descricao": "KIT INSTALACAO GARRA EM ESCAVADEIRA - ( MAQUINA COM LINHA ROMPEDOR)",
+    "ncm": "84314929",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "178",
+    "descricao": "PONTEIRA ESCAVADEIRA 18TON A 22TON - PINO 80",
+    "ncm": "84369900",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "179",
+    "descricao": "CJ FECHADURA ACO PCABINE",
+    "ncm": "83012000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "180",
+    "descricao": "PARAFUSO DE ACO M8 X 14 1",
+    "ncm": "73181500",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "181",
+    "descricao": "ESPACADOR",
+    "ncm": "39269090",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "182",
+    "descricao": "PORCA FLANGEADA",
+    "ncm": "73181600",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "183",
+    "descricao": "GUIA DE PERFURACAO",
+    "ncm": "84679900",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "184",
+    "descricao": "PORTA CANHAO",
+    "ncm": "84669200",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "185",
+    "descricao": "SUPORTE DE GUIA",
+    "ncm": "84679900",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "186",
+    "descricao": "PINO 8X32",
+    "ncm": "73181500",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "187",
+    "descricao": "JOGO DISCO DE FREIO VENTILADO",
+    "ncm": "85052010",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "188",
+    "descricao": "JOGO PASTILHA",
+    "ncm": "87089200",
+    "unidade": "JG"
+  },
+  {
+    "codigo_interno": "189",
+    "descricao": "CABO FREIO DE MAO",
+    "ncm": "87089300",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "190",
+    "descricao": "FLUIDO FREIO DOT 4",
+    "ncm": "38190000",
+    "unidade": "LT"
+  },
+  {
+    "codigo_interno": "191",
+    "descricao": "ALAVANCA FREIO DE MAO REPARO",
+    "ncm": "87089300",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "192",
+    "descricao": "CABECOTE FILTRO ALUMINIO",
+    "ncm": "84219999",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "193",
+    "descricao": "FILTRO SEPARADOR AGUA",
+    "ncm": "84212300",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "194",
+    "descricao": "COPO FILTRO SEPARADOR",
+    "ncm": "84219999",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "195",
+    "descricao": "BUJAO 14M/M",
+    "ncm": "87082999",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "196",
+    "descricao": "ARRUELA ALUMINIO 14M/M",
+    "ncm": "73182100",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "201",
+    "descricao": "HELIX ULTRAPROFESSIONAL 0W-20 1L",
+    "ncm": "27101932",
+    "unidade": "LT"
+  },
+  {
+    "codigo_interno": "202",
+    "descricao": "FILTRO TECFIL PSL55",
+    "ncm": "84212300",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "203",
+    "descricao": "FILTRO WEGA FAP9054",
+    "ncm": "84219999",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "204",
+    "descricao": "TECBRIL LIMPA AR CONDICIONADO GRANADA NOVO 250ML",
+    "ncm": "34029019",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "205",
+    "descricao": "FILTRO WEGA AKX35323",
+    "ncm": "84213990",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "206",
+    "descricao": "PALHETA DYNA S440",
+    "ncm": "85129000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "207",
+    "descricao": "PALHETA DYNA S460",
+    "ncm": "85129000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "208",
+    "descricao": "HIPERVISAO AUTOMOTIVO ANTINEBLINA 120ML",
+    "ncm": "34029090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "209",
+    "descricao": "RADIBRAS ADITIVO RADIADOR RX-120 1L",
+    "ncm": "34029019",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "210",
+    "descricao": "ARLA 32 BIOARLA 5L",
+    "ncm": "31021010",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "211",
+    "descricao": "AROMATIZANTE HAPPY AIR MELANCIA",
+    "ncm": "33074900",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "216",
+    "descricao": "IPIMAX GASOLINA ADITIVADA",
+    "ncm": "27101259",
+    "unidade": "L"
+  },
+  {
+    "codigo_interno": "217",
+    "descricao": "MANOMETRO PARA EXTINTOR PO/AP 1.0 MPA",
+    "ncm": "90262010",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "218",
+    "descricao": "FERRO PUA IRWIN(H)11/16\"R.MATHIESON",
+    "ncm": "82075090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "220",
+    "descricao": "PICARETA DE PONTA PONTA",
+    "ncm": "73029000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "221",
+    "descricao": "GRAXA DE LITIO TEXACO MARFAK MP 2 - 20KG",
+    "ncm": "27101932",
+    "unidade": "BD"
+  },
+  {
+    "codigo_interno": "222",
+    "descricao": "LUB DE MOTOR IPIRANGA BRUTUS PERFORMANCE 15W40 CI4 - 20LT",
+    "ncm": "27101932",
+    "unidade": "BD"
+  },
+  {
+    "codigo_interno": "223",
+    "descricao": "LUB DE TRANSMISSAO OU DIFERENCIAL IPIRANGA ULTRAGEAR GL5 90 - 20LT",
+    "ncm": "27101932",
+    "unidade": "BD"
+  },
+  {
+    "codigo_interno": "224",
+    "descricao": "LUB HIDRAULICO IPIRANGA IPITUR AW HLP 68 - 20LT",
+    "ncm": "27101932",
+    "unidade": "BD"
+  },
+  {
+    "codigo_interno": "229",
+    "descricao": "FILTRO AR VALVULA APU",
+    "ncm": "84213990",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "230",
+    "descricao": "FILTRO HIDRAULICO",
+    "ncm": "84219999",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "235",
+    "descricao": "MACANETA PORTA",
+    "ncm": "83023000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "236",
+    "descricao": "CABO FECHADURA",
+    "ncm": "87089990",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "237",
+    "descricao": "MACANETA INTERNA PORTA ESQUERDA",
+    "ncm": "87082993",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "238",
+    "descricao": "CHIC.2 VIAS INJ BOMBA COMBUST",
+    "ncm": "85444200",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "239",
+    "descricao": "BUJAO JIC 1.5 16 FEMEA",
+    "ncm": "73071920",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "240",
+    "descricao": "BUJAO ORS 1.3 16 FEMEA",
+    "ncm": "73071920",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "241",
+    "descricao": "BUJAO JIC 7 8 FEMEA",
+    "ncm": "73071920",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "242",
+    "descricao": "BUJAO JIC 7 8 MACHO",
+    "ncm": "73071920",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "243",
+    "descricao": "FECHADURA PORTA",
+    "ncm": "83012000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "244",
+    "descricao": "VELA BRAVO 15/ 1.8 16V DOBLO 15/ 1.8 16V GRAND SIE",
+    "ncm": "85111000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "245",
+    "descricao": "JUNTA TAMPA VALVULA FIAT ARGO ARGO 17/ 1.0 6V 3CC",
+    "ncm": "40169300",
+    "unidade": "KT"
+  },
+  {
+    "codigo_interno": "246",
+    "descricao": "JOGO CABO VELA GRAND SIENA 16/ 1.0 8V FIRE EVO MOB",
+    "ncm": "85443000",
+    "unidade": "JG"
+  },
+  {
+    "codigo_interno": "247",
+    "descricao": "CORREIA 16PJ 610",
+    "ncm": "40103900",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "248",
+    "descricao": "MANGUEIRA PARA EXTINTOR P4/P6/P8 - 500MM",
+    "ncm": "39173100",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "249",
+    "descricao": "ANEL ORING P/VALVULA M-30 - PO/AP",
+    "ncm": "40169300",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "250",
+    "descricao": "PERA DE BORRACHA PARA EXTINTOR P4/AP - M30",
+    "ncm": "40169300",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "251",
+    "descricao": "CJ TRINCO PLASTICO PCABINE",
+    "ncm": "83023000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "254",
+    "descricao": "CJTRINCO ACO PVIDRO CABIN",
+    "ncm": "83023000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "260",
+    "descricao": "SHELL HELIX ULTRA PROFESSIONAL 5W-40 1L",
+    "ncm": "27101932",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "262",
+    "descricao": "ELEM FILT MANN HU711/51X",
+    "ncm": "84219999",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "263",
+    "descricao": "FILTRO MANN WK58/3",
+    "ncm": "84212990",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "264",
+    "descricao": "FILTRO MANN C3485/3",
+    "ncm": "84219999",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "265",
+    "descricao": "FILTRO WEGA AKX1446",
+    "ncm": "84213990",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "266",
+    "descricao": "PALHETA TRASEIRA DYNA 206 14\"",
+    "ncm": "85129000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "267",
+    "descricao": "PALHETA BOSCH AEROFIT AF18M",
+    "ncm": "85129000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "268",
+    "descricao": "PALHETA BOSCH AEROFIT AF24M",
+    "ncm": "85129000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "269",
+    "descricao": "ETANOL COMUM",
+    "ncm": "22071090",
+    "unidade": "LT"
+  },
+  {
+    "codigo_interno": "270",
+    "descricao": "AROMATIZANTE PET AIR TUTTI FRUTTI",
+    "ncm": "33074900",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "275",
+    "descricao": "VOLLT ADITIVO RADIADOR 1 LT",
+    "ncm": "38249941",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "276",
+    "descricao": "WEGA FILTRO DE CABINE AKX35163",
+    "ncm": "84213990",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "277",
+    "descricao": "TECFIL FILTRO DE OLEO PSL545",
+    "ncm": "84212300",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "278",
+    "descricao": "BARDAHL ADITIVO B12 PLUS 500ML",
+    "ncm": "38112150",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "279",
+    "descricao": "CENTRALSUL LIMPA AR CONDICIONADO 200ML",
+    "ncm": "29161990",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "280",
+    "descricao": "MANN FILTRO DE AR C29015",
+    "ncm": "84219999",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "281",
+    "descricao": "IPIRANGA OLEO SINTETI F1 MASTER 5W40 1L",
+    "ncm": "27101932",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "282",
+    "descricao": "CENTRALSUL SILICONE DEST PERF ITAL 400ML",
+    "ncm": "39100012",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "285",
+    "descricao": "LUB HIDRAULICO IPIRANGA IPITUR AW HLP 46 - 20LT",
+    "ncm": "27101932",
+    "unidade": "BD"
+  },
+  {
+    "codigo_interno": "286",
+    "descricao": "LUB HIDRAULICO IPIRANGA IPITUR 68 - 20LT",
+    "ncm": "27101932",
+    "unidade": "BD"
+  },
+  {
+    "codigo_interno": "287",
+    "descricao": "LUB HIDRAULICO TEXACO HIDRAULICO HD 68 - 20LT",
+    "ncm": "27101932",
+    "unidade": "BD"
+  },
+  {
+    "codigo_interno": "288",
+    "descricao": "FILTRO COMBUSTIVEL WEGA",
+    "ncm": "84212990",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "289",
+    "descricao": "FILTRO DE AR EXTERNO WEGA",
+    "ncm": "84212990",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "290",
+    "descricao": "FILTRO INTERNO DE AR WEGA",
+    "ncm": "84219999",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "291",
+    "descricao": "FILTRO LUBRIFICANTE WEGA",
+    "ncm": "84212990",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "292",
+    "descricao": "FILTRO WEGA",
+    "ncm": "84212990",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "293",
+    "descricao": "FILTRO DE AR EXTERNO 580N S2 / B90C",
+    "ncm": "84212990",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "294",
+    "descricao": "FILTRO DE AR INTERNO 580N S2 / B90C",
+    "ncm": "84212990",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "295",
+    "descricao": "FILTRO LUBRIFICANTE #",
+    "ncm": "84219999",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "296",
+    "descricao": "FILTRO DE AR CONDICIONADO WEGA",
+    "ncm": "84212990",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "297",
+    "descricao": "FILTRO DO AR CONDICIONADO B90B",
+    "ncm": "84212990",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "298",
+    "descricao": "FILTRO AR CONDICIONADO CABINE",
+    "ncm": "84213990",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "299",
+    "descricao": "FILTRO DONALDSON",
+    "ncm": "84212990",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "300",
+    "descricao": "FITA DUPLA FACE 3M VHB TRANSP.INT.19X20M",
+    "ncm": "35061090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "301",
+    "descricao": "FITA DUPLA FACE 3M VHB 25MMX20M",
+    "ncm": "35061090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "302",
+    "descricao": "DISCO CORTE BNA RAIL 356X4.0X25.40 NORTON",
+    "ncm": "68042211",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "304",
+    "descricao": "BROCA ACO RAPIDO MTX 8,00 MM",
+    "ncm": "82075011",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "305",
+    "descricao": "BROCA ACO RAPIDO MTX 10,00 MM",
+    "ncm": "82075011",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "308",
+    "descricao": "TALHADEIRA RED NP FERRO 3/4X12",
+    "ncm": "82055900",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "309",
+    "descricao": "PONTEIRO COSTA 34 X 12",
+    "ncm": "82055100",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "310",
+    "descricao": "TRINCHA 500 4\" TIGRE",
+    "ncm": "96034090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "311",
+    "descricao": "ROLO LA COMPEL POLIPOP 23CM S/C 2023",
+    "ncm": "96034010",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "312",
+    "descricao": "GARFO C BUCHA P ROLO 23CM COMPEL",
+    "ncm": "73269090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "313",
+    "descricao": "TORQUES SAO ROMAO ARMADOR 12\"",
+    "ncm": "82032090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "314",
+    "descricao": "ALICATE UNIVERSAL CB DUPLA 8\" MTX",
+    "ncm": "82032010",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "315",
+    "descricao": "CHAVE INGLESA 12\" SPARTA",
+    "ncm": "82041200",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "316",
+    "descricao": "PITAO 08 C BUCHA",
+    "ncm": "73181300",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "317",
+    "descricao": "FITA ISOLANTE B&D PRETA 20MT",
+    "ncm": "39191020",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "318",
+    "descricao": "ARAME RECOZIDO TORCIDO BWG 18 01KG VONDER",
+    "ncm": "72171090",
+    "unidade": "KG"
+  },
+  {
+    "codigo_interno": "320",
+    "descricao": "TINTA ESMALTE BRILHO COR E PROT AMARELO OURO 3,6L SUVINIL",
+    "ncm": "32081010",
+    "unidade": "GL"
+  },
+  {
+    "codigo_interno": "321",
+    "descricao": "TINTA ESMALTE BRILHO COR E PROT AZUL DEL REY 3,6L SUVINIL",
+    "ncm": "32081010",
+    "unidade": "GL"
+  },
+  {
+    "codigo_interno": "322",
+    "descricao": "TINTA ESMALTE BRILHO COR E PROT PRETO 3,6L SUVINIL",
+    "ncm": "32081010",
+    "unidade": "GL"
+  },
+  {
+    "codigo_interno": "323",
+    "descricao": "TINTA ESMALTE BRILHO COR E PROT BRANCO 3,6L SUVINIL",
+    "ncm": "32081010",
+    "unidade": "GL"
+  },
+  {
+    "codigo_interno": "324",
+    "descricao": "TINTA ESMALTE BRILHO COR E PROT VERMELHO 3,6L SUVINIL",
+    "ncm": "32081010",
+    "unidade": "GL"
+  },
+  {
+    "codigo_interno": "328",
+    "descricao": "BOTINA AMARRAR 45 MET C/ BICO COMP 4031BMMS1662LL CA 48582 BRACOL",
+    "ncm": "64039190",
+    "unidade": "PAR"
+  },
+  {
+    "codigo_interno": "329",
+    "descricao": "BOTA PVC C/L BICO COMP N45 C.A 46877 CALFOR",
+    "ncm": "64019200",
+    "unidade": "PR"
+  },
+  {
+    "codigo_interno": "332",
+    "descricao": "ENXADA GOIV LARGA CC 1,3M MAX",
+    "ncm": "82013000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "333",
+    "descricao": "PENEIRA PLAS 55CM VONDER",
+    "ncm": "96040000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "335",
+    "descricao": "TINTA SPRAY ALUMINIO 340ML1 90G ORBI",
+    "ncm": "32082011",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "336",
+    "descricao": "CARTUCHO DE TONER COMP. HP 105A/107A 1K (COM CHIP) EVOLUT SUPREME",
+    "ncm": "84439933",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "338",
+    "descricao": "REFEICAO",
+    "ncm": "21069090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "339",
+    "descricao": "PERNEIRA BIDIN 3 TC PVC VELCRO FLASH C/ PRESILHA CA:46870 PRETO SEM METATARSO VIES FITA NYLON 1 VELCRO",
+    "ncm": "64069090",
+    "unidade": "PAR"
+  },
+  {
+    "codigo_interno": "342",
+    "descricao": "SUPORTE VEICULAR PARA EXTINTOR P2",
+    "ncm": "73259990",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "343",
+    "descricao": "CALCA NYLON - MODELO SEGURANCA - (AZUL MARINHO) - GG",
+    "ncm": "62104000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "344",
+    "descricao": "JAQUETA NYLON C/ REFLETIVO SEM LOGOMARCA - (AZUL MARINHO) - GG",
+    "ncm": "62104000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "345",
+    "descricao": "JAQUETA NYLON C/ REFLETIVO SEM LOGOMARCA - (AZUL MARINHO) - G",
+    "ncm": "62104000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "346",
+    "descricao": "JAQUETA NYLON C/ REFLETIVO SEM LOGOMARCA - (AZUL MARINHO) - M",
+    "ncm": "62104000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "347",
+    "descricao": "BALDE OLEO 15W40",
+    "ncm": "27101932",
+    "unidade": "BD"
+  },
+  {
+    "codigo_interno": "351",
+    "descricao": "FILTRO AR CABINE CS",
+    "ncm": "84213990",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "353",
+    "descricao": "PONTA INFFINITY (LONGA)",
+    "ncm": "84314100",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "354",
+    "descricao": "PINO DA UNHA",
+    "ncm": "84314929",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "355",
+    "descricao": "TRAVA",
+    "ncm": "73182900",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "356",
+    "descricao": "PARAF CAB SEXT M20X2,5X50MM CLASSE 10.9",
+    "ncm": "73181500",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "357",
+    "descricao": "PORCA M20X2.5",
+    "ncm": "73181600",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "358",
+    "descricao": "ADAPTADOR",
+    "ncm": "39269090",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "359",
+    "descricao": "CANTO",
+    "ncm": "84314200",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "361",
+    "descricao": "PARLOCK ZINC. MA M14",
+    "ncm": "73181600",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "362",
+    "descricao": "8.8 MA RI M14 X 50",
+    "ncm": "73181500",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "363",
+    "descricao": "ARRUELA 125 CENTO M 14",
+    "ncm": "73182200",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "364",
+    "descricao": "PUNCAO DE CENTRO 3 8 X 5",
+    "ncm": "82055900",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "366",
+    "descricao": "BNA 12-EXTRA 115X1.0X22.22",
+    "ncm": "68042211",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "367",
+    "descricao": "DISCO FLAP CLASSIC 115X22 60",
+    "ncm": "68053090",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "368",
+    "descricao": "DISCO FLAP CLASSIC 115X22 120",
+    "ncm": "68053090",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "369",
+    "descricao": "AL.CH.INOX M08 X 30",
+    "ncm": "73181500",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "370",
+    "descricao": "AL.CH.INOX M08 X 35",
+    "ncm": "73181500",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "371",
+    "descricao": "8.8 MA RI M08 X 45",
+    "ncm": "73181500",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "372",
+    "descricao": "PARLOCK ZINC. MA M08",
+    "ncm": "73181600",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "373",
+    "descricao": "ARRUELA 125 CENTO M 08",
+    "ncm": "73182200",
+    "unidade": "CENTO"
+  },
+  {
+    "codigo_interno": "374",
+    "descricao": "FRANCES ZC 1 2 X 2.1 2",
+    "ncm": "73181500",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "375",
+    "descricao": "ALLEM C C MA M8 X 25",
+    "ncm": "73181500",
+    "unidade": "CENTO"
+  },
+  {
+    "codigo_interno": "376",
+    "descricao": "ALLEM C C MA M8 X 40",
+    "ncm": "73181500",
+    "unidade": "CENTO"
+  },
+  {
+    "codigo_interno": "377",
+    "descricao": "UNC RI ZC 1 4 X 2",
+    "ncm": "73181500",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "378",
+    "descricao": "UNC RI ZC 1 4 X 1.1 4",
+    "ncm": "73181500",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "379",
+    "descricao": "8.8 MA RI M08 X 30",
+    "ncm": "73181500",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "380",
+    "descricao": "PORCA ZINC. MA M08",
+    "ncm": "73181600",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "381",
+    "descricao": "PORCA ZINC. UNC 1 4",
+    "ncm": "73181600",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "382",
+    "descricao": "A.A.PANELA PH INOX 4.8 X 13",
+    "ncm": "73181500",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "383",
+    "descricao": "PARAF CHIP CH 4.5 X 22",
+    "ncm": "73181200",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "384",
+    "descricao": "PO SEXT FLANG M5 MA INOX",
+    "ncm": "73181600",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "385",
+    "descricao": "PORCA BORBOLETA MA 6",
+    "ncm": "73181600",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "386",
+    "descricao": "REBITES A-312 1 8",
+    "ncm": "83082000",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "387",
+    "descricao": "REBITES A-410 5 32",
+    "ncm": "83082000",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "388",
+    "descricao": "REBITES A-612 1 4",
+    "ncm": "83082000",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "389",
+    "descricao": "BROCA ACO RAPIDO 3.00",
+    "ncm": "82075011",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "390",
+    "descricao": "BROCA ACO RAPIDO 4.00",
+    "ncm": "82075011",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "391",
+    "descricao": "BROCA ACO RAPIDO 6.00",
+    "ncm": "82075011",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "393",
+    "descricao": "FITA ISOLANTE 19MMX20M N",
+    "ncm": "39191020",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "395",
+    "descricao": "ADESIVO INST 793 50G BICO ANTIENTUPIMENT",
+    "ncm": "35061010",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "396",
+    "descricao": "BUCHA S 10",
+    "ncm": "39269090",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "397",
+    "descricao": "SOBERBA ZINC 1 4 X 60",
+    "ncm": "73181200",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "398",
+    "descricao": "ABRAC. NYLON F7028 283X4,8 PR",
+    "ncm": "39269090",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "399",
+    "descricao": "ESCOVA ACO MANUAL 3 FIL COM CABO MADEIR",
+    "ncm": "96039000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "400",
+    "descricao": "BUCHA S 08",
+    "ncm": "39269090",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "401",
+    "descricao": "SOBERBA ZINC 3 16 X 50",
+    "ncm": "73181200",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "403",
+    "descricao": "BROCA DE VIDEA M 10",
+    "ncm": "82075011",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "408",
+    "descricao": "CENTRALSUL SILICONE MEN GERMANY 400ML",
+    "ncm": "39100012",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "410",
+    "descricao": "TECFIL FILTRO DE OLEO TM5",
+    "ncm": "84212300",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "411",
+    "descricao": "IPIRANGA OLEO SINTETICO 5W30 SP 1L",
+    "ncm": "27101932",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "412",
+    "descricao": "ORIGINAL ETANOL",
+    "ncm": "22071090",
+    "unidade": "L"
+  },
+  {
+    "codigo_interno": "413",
+    "descricao": "TAMBOR 200L",
+    "ncm": "40169300",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "414",
+    "descricao": "B. 12V ELETRICA TRANSFERIDORA DIESEL 303 SF",
+    "ncm": "84138100",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "415",
+    "descricao": "BUJAO",
+    "ncm": "73071920",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "420",
+    "descricao": "AROMATIZANTE HAPPY AIR CITRUS",
+    "ncm": "33074900",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "421",
+    "descricao": "AROMATIZANTE HAPPY AIR MORANGO",
+    "ncm": "33074900",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "422",
+    "descricao": "AROMATIZANTE HAPPY AIR BLACK 10G",
+    "ncm": "33074900",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "423",
+    "descricao": "OLEO ATF GM SAE 20W GEAR ULTRA 500ML",
+    "ncm": "27101932",
+    "unidade": "LT"
+  },
+  {
+    "codigo_interno": "424",
+    "descricao": "RADIBRAS FLUIDO DE FREIO DOT4 200ML",
+    "ncm": "38190000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "430",
+    "descricao": "RADIBRAS ADITIVO RX-FLEX 200ML",
+    "ncm": "38119010",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "431",
+    "descricao": "HELIX ULTRA ECT C2/C3 0W30 1L",
+    "ncm": "27101932",
+    "unidade": "LT"
+  },
+  {
+    "codigo_interno": "432",
+    "descricao": "FILTRO WEGA FAP4064",
+    "ncm": "84219999",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "433",
+    "descricao": "FILTRO DE OLEO WEGA WOE702",
+    "ncm": "84219999",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "434",
+    "descricao": "FILTRO CABINE WEGA AKX 1445-2",
+    "ncm": "84213990",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "436",
+    "descricao": "TAR607410A-VALVULA DE DESCARGA RAPIDA M16X1.5 X M16X1.5 BRAKEMATIC",
+    "ncm": "87169090",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "439",
+    "descricao": "FITA CREPE USO GERAL 24X50M NORTON",
+    "ncm": "48114110",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "440",
+    "descricao": "FITA ADESIVA 48MMX45M TRANSP 954",
+    "ncm": "39191010",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "443",
+    "descricao": "CACAMBA P TINTA ROMA 10LT",
+    "ncm": "39269090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "444",
+    "descricao": "FITA ISOLANTE B&D PRETA 10MT",
+    "ncm": "39191020",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "445",
+    "descricao": "NIVEL ALUMINIO 72\" STANLEY",
+    "ncm": "90318099",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "446",
+    "descricao": "CABO DE PICARETA 84CM MALINSKI",
+    "ncm": "44170010",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "447",
+    "descricao": "ABRACADEIRA NYLON BRANCA 2,5X100 NOVE54",
+    "ncm": "39269090",
+    "unidade": "PCT"
+  },
+  {
+    "codigo_interno": "448",
+    "descricao": "PREGO ACO SFOR C C 15X15 (2,5X35MM)",
+    "ncm": "73170090",
+    "unidade": "PA"
+  },
+  {
+    "codigo_interno": "452",
+    "descricao": "ARQUIVO MORTO PAPELAO 2 CAPAS KRAFT (344X125X237) WESTROCK UN 1 UN",
+    "ncm": "48191000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "456",
+    "descricao": "ELASTICO AMARELO N.18 C120UN. REA04 RED BOR PT 1 UN",
+    "ncm": "40169990",
+    "unidade": "PT"
+  },
+  {
+    "codigo_interno": "457",
+    "descricao": "AGENDA DIARIA SOOTHING LILAS2026 2633699 SPIRAL SOOT PT 1 UN",
+    "ncm": "48201000",
+    "unidade": "PT"
+  },
+  {
+    "codigo_interno": "458",
+    "descricao": "BLOCO AUTOADESIVO 50X50MM NEON CORES C250FLS STICK NOTE PT 1 UN",
+    "ncm": "48201000",
+    "unidade": "PT"
+  },
+  {
+    "codigo_interno": "459",
+    "descricao": "COLA EM BASTAO 40G PRITT 1905655 HENKEL BT 1 UN",
+    "ncm": "35061090",
+    "unidade": "BT"
+  },
+  {
+    "codigo_interno": "461",
+    "descricao": "ESTABILIZADOR BIVOLT SIDE WIDE 1000VA 20SWE5393 RAGTECH CX 1 UN",
+    "ncm": "90328911",
+    "unidade": "CX"
+  },
+  {
+    "codigo_interno": "463",
+    "descricao": "PILHA ALCALINA PALITO AAA 1.5V 80661330 DURACELL BT 8 UN",
+    "ncm": "85061019",
+    "unidade": "BT"
+  },
+  {
+    "codigo_interno": "467",
+    "descricao": "CENTRALSUL AROMATIZADOR NATUAR MAX AMER",
+    "ncm": "33074900",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "468",
+    "descricao": "IPIRANGA BRUTUS PROTECTION T5 15W40 CH4.",
+    "ncm": "27101932",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "472",
+    "descricao": "ROLAMENTO ESTICADOR CORREIA CVA PALIO 08/ 1.0 1.4",
+    "ncm": "84835090",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "473",
+    "descricao": "PASTILHA FREIO TRASEIRA FIAT SCUDO 22/ 1.5 16V TUR",
+    "ncm": "87083090",
+    "unidade": "JG"
+  },
+  {
+    "codigo_interno": "474",
+    "descricao": "PASTILHA FREIO DIANTEIRA CITROEN JUMPY 18/ 1.6 TUR",
+    "ncm": "87083090",
+    "unidade": "JG"
+  },
+  {
+    "codigo_interno": "475",
+    "descricao": "OLEO MOTOR 05W30 SINTETICO MOBIL SUPER 3000 D1 FOR",
+    "ncm": "27101932",
+    "unidade": "LT"
+  },
+  {
+    "codigo_interno": "476",
+    "descricao": "JOGO JUNTA CABECOTE PALIO 11/ 1.0 1.3 8V EVO UNO 1",
+    "ncm": "84849000",
+    "unidade": "JG"
+  },
+  {
+    "codigo_interno": "478",
+    "descricao": "FILTRO OLEO PALIO 01/ 1.0 1.3 1.4 8V 16V PALIO WEE",
+    "ncm": "84212300",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "479",
+    "descricao": "FILTRO INJECAO ELETRONICA PALIO 05/ 1.0 1.3 1.8 07",
+    "ncm": "84212300",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "480",
+    "descricao": "FILTRO AR FIORINO 14/ 1.4 8V EVO GRAND SIENA 12/ 1",
+    "ncm": "84219999",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "481",
+    "descricao": "COXIM MOTOR PALIO 12/ 1.4 8V GRAND SIENA 12/ 1.4 8",
+    "ncm": "40169990",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "482",
+    "descricao": "CORREIA CVA PALIO 01/05 1.3 8V 05/ 1.4 8V FIRE PAL",
+    "ncm": "40103500",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "483",
+    "descricao": "CORREIA ALT PALIO 00/ 1.0 1.3 8V 16V FIRE PALIO WE",
+    "ncm": "40103100",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "484",
+    "descricao": "CORREIA ALT BRAVO 11/ 1.4 16V T-JET LINEA 09/12 1.",
+    "ncm": "40103100",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "485",
+    "descricao": "CHAVE RODA 19 M.M. \"L\" C/ ESPATULA",
+    "ncm": "87089990",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "490",
+    "descricao": "ELEM FILT WEGA FAP2829",
+    "ncm": "84219999",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "492",
+    "descricao": "FILTRO WEGA WO121",
+    "ncm": "84212300",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "496",
+    "descricao": "AROMATIZANTE CENTRALSUL AIR FRESHENER HOTROD SPEED 400ML",
+    "ncm": "33029019",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "499",
+    "descricao": "AROMATIZANTE HAPPY AIR LAVANDA",
+    "ncm": "33074900",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "500",
+    "descricao": "AROMATIZANTE CENTRALSUL AIR FRESHENER HOTROD RACING 400ML",
+    "ncm": "33029019",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "502",
+    "descricao": "MACANETA DO PARALAMA",
+    "ncm": "84314929",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "507",
+    "descricao": "ZARCAO EUCATEX 3.6 LT",
+    "ncm": "32081010",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "508",
+    "descricao": "AGUARRAS ITAQUA 900ML",
+    "ncm": "27101230",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "509",
+    "descricao": "PULVERIZADOR DOM BOMBA FLITZ GUARANY",
+    "ncm": "84248990",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "510",
+    "descricao": "TRINCHA 500 2\" TIGRE",
+    "ncm": "96034090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "511",
+    "descricao": "CADEADO LAND 20",
+    "ncm": "83011000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "512",
+    "descricao": "CADEADO LAND 50",
+    "ncm": "83011000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "513",
+    "descricao": "TINTA SPRAY ALUMINIO 350ML TEKBOND",
+    "ncm": "32082019",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "514",
+    "descricao": "CABO ESTABILIZADOR 310-L",
+    "ncm": "87089990",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "522",
+    "descricao": "MARRETA 5.0KG C CABO FIBRA QUADRADA",
+    "ncm": "82052000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "524",
+    "descricao": "BOTAO CORTA PARTIDA",
+    "ncm": "85365090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "525",
+    "descricao": "GADANHO 8 DENTES COM CABO DE MADEIRA E PUNHO METALICO",
+    "ncm": "82019000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "526",
+    "descricao": "FILTRO DE COMBUSTIVEL PARKER",
+    "ncm": "84212990",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "528",
+    "descricao": "FILTRO DE AR EXTERNO",
+    "ncm": "84212990",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "529",
+    "descricao": "FILTRO INTERNO DE AR",
+    "ncm": "84219999",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "530",
+    "descricao": "FILTRO DIESEL",
+    "ncm": "84212300",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "531",
+    "descricao": "FILTRO LUBRIFICANTE BLINDADO",
+    "ncm": "84212300",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "532",
+    "descricao": "FILTRO DE AR EXTERNO IMPORTADO BLUMAQ",
+    "ncm": "84213100",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "533",
+    "descricao": "FILTRO DE AR INTERNO WEGA",
+    "ncm": "84213100",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "534",
+    "descricao": "BOMBA HIDRAULICA MEDAL",
+    "ncm": "84136011",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "538",
+    "descricao": "CALCA CINZA C REFORCO GRANDE E FAIXA REFLETIVA - TAM M",
+    "ncm": "62046300",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "539",
+    "descricao": "CALCA CINZA C REFORCO GRANDE E FAIXA REFLETIVA - TAM G",
+    "ncm": "62046300",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "540",
+    "descricao": "CALCA CINZA C REFORCO GRANDE E FAIXA REFLETIVA - TAM GG",
+    "ncm": "62046300",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "541",
+    "descricao": "CAMISETA DE MALHA M LONGA MARINHO C FAIXA REFLETIVA - TAM M",
+    "ncm": "62179000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "542",
+    "descricao": "CAMISETA DE MALHA M LONGA MARINHO C FAIXA RELETIVA - TAM G",
+    "ncm": "62179000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "543",
+    "descricao": "CAMISETA DE MALHA M LONGA MARINHO C FAIXA RELETIVA - TAM GG",
+    "ncm": "62179000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "544",
+    "descricao": "CAMISETA DE MALHA M LONGA MARINHO C FAIXA RELETIVA - TAM EXG",
+    "ncm": "62179000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "549",
+    "descricao": "MANN FILTRO DE AR C29003/1",
+    "ncm": "84219999",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "554",
+    "descricao": "IPIRANGA ODORIZADOR GEL TUTI-FRUTI",
+    "ncm": "33029019",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "556",
+    "descricao": "WEGA FILTRO DE CABINE AKX35323",
+    "ncm": "84213990",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "558",
+    "descricao": "SUPORTE DE BROCA 1.1/2",
+    "ncm": "82075011",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "559",
+    "descricao": "LUB DE TRANSMISSAO IPIRANGA ISAFLUIDO 433 HD 80W - 20LT",
+    "ncm": "27101932",
+    "unidade": "BD"
+  },
+  {
+    "codigo_interno": "564",
+    "descricao": "ADITIVO ARLA GRANEL",
+    "ncm": "31021010",
+    "unidade": "L"
+  },
+  {
+    "codigo_interno": "571",
+    "descricao": "GAL&ATILDE;O 5 L",
+    "ncm": "39233090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "572",
+    "descricao": "ABRACADEIRA NYLON PERKON PTA 3,5X250 100P",
+    "ncm": "39269090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "573",
+    "descricao": "TRENA CURTA 5MM 19MM MTX",
+    "ncm": "90178010",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "574",
+    "descricao": "CHAVE COMBINADA CROMO VANADIO CROMO FOSCO 11MM MTX",
+    "ncm": "82041100",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "576",
+    "descricao": "BOMBONA 20L NATURAL SELO INMETRO",
+    "ncm": "39233090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "577",
+    "descricao": "PILHA COMUM AAA PANASONIC",
+    "ncm": "85072010",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "578",
+    "descricao": "FITA ISOLANTE BD AMAR 10MT",
+    "ncm": "39191020",
+    "unidade": "RL"
+  },
+  {
+    "codigo_interno": "582",
+    "descricao": "OCULOS INCOLOR PANDA CA 10344 KALIPSO",
+    "ncm": "90049020",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "583",
+    "descricao": "PROTETOR AURICULAR PLUG 12DB CA10043 UMP",
+    "ncm": "39269040",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "586",
+    "descricao": "CARNEIRA TEXTIL JUG TEXTIL P/ CAPACETE V-GARD PUSH KEY MSA 311687",
+    "ncm": "65070000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "587",
+    "descricao": "MASCARA PFF2 C/ VALV ECOAR CA 38812 PLASTCOR",
+    "ncm": "63079010",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "588",
+    "descricao": "LUVA HANDEX LATEX LONGAFLEX 09(G) CA 48645",
+    "ncm": "61161000",
+    "unidade": "PR"
+  },
+  {
+    "codigo_interno": "591",
+    "descricao": "LUVA VAQUETA PETROLEIRA P7 T11 CA 40054 PROTIMINAS",
+    "ncm": "42032900",
+    "unidade": "PR"
+  },
+  {
+    "codigo_interno": "592",
+    "descricao": "BOTINA AMARRAR 36 MET C/ BICO COMP 4031BMMS1662LL CA 48582 BRACOL",
+    "ncm": "64039190",
+    "unidade": "PAR"
+  },
+  {
+    "codigo_interno": "600",
+    "descricao": "BOTINA AMARRAR 46 MET C/ BICO COMP 4031BMMS1662LL CA 48582 BRACOL",
+    "ncm": "64039190",
+    "unidade": "PAR"
+  },
+  {
+    "codigo_interno": "601",
+    "descricao": "BOTA PVC C/L BICO COMP N39 C.A 46877 CALFOR",
+    "ncm": "64019200",
+    "unidade": "PR"
+  },
+  {
+    "codigo_interno": "602",
+    "descricao": "BOTA PVC C/L BICO COMP N40 C.A 46877 CALFOR",
+    "ncm": "64019200",
+    "unidade": "PR"
+  },
+  {
+    "codigo_interno": "603",
+    "descricao": "TELA TAPUME 1.20M X 50M LARANJA BRANCA MOSQUETEIRO",
+    "ncm": "39259090",
+    "unidade": "RL"
+  },
+  {
+    "codigo_interno": "607",
+    "descricao": "FITA SILVER TAPE 48MMX50M ALLTAPE",
+    "ncm": "59061000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "613",
+    "descricao": "PERNEIRA RASPA LUVEQ",
+    "ncm": "64069090",
+    "unidade": "PR"
+  },
+  {
+    "codigo_interno": "614",
+    "descricao": "PROTETOR SOLAR FPS 60 C/ REPELENTE 1LT NUTRIEX",
+    "ncm": "33049990",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "616",
+    "descricao": "BOTA PVC C/L BICO COMP N37 C.A 46877 CALFOR",
+    "ncm": "64019200",
+    "unidade": "PR"
+  },
+  {
+    "codigo_interno": "617",
+    "descricao": "BOTA PVC C/L BICO COMP N41 C.A 46877 CALFOR",
+    "ncm": "64019200",
+    "unidade": "PR"
+  },
+  {
+    "codigo_interno": "618",
+    "descricao": "BOTA PVC C/L BICO COMP N42 C.A 46877 CALFOR",
+    "ncm": "64019200",
+    "unidade": "PR"
+  },
+  {
+    "codigo_interno": "621",
+    "descricao": "PROTETOR SOLAR C/REPELENTE FPS 60 120ML NUTRIEX",
+    "ncm": "33049990",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "627",
+    "descricao": "REPARO TRAMBULADOR",
+    "ncm": "87089990",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "635",
+    "descricao": "BP 232 BATERIA DE IONS DE LITIO",
+    "ncm": "85076000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "636",
+    "descricao": "BC 160 CARREGADOR PARA BATERIAS ICOM F-14/F-24",
+    "ncm": "85044010",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "637",
+    "descricao": "BOMBA INJETORA REMANUFATURADA",
+    "ncm": "90312090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "638",
+    "descricao": "BICOS INJETORES REMANUFATURADO",
+    "ncm": "85364100",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "639",
+    "descricao": "BOMBA ALIMENTADORA",
+    "ncm": "84133090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "642",
+    "descricao": "ANEL ELASTICO E-010",
+    "ncm": "73182900",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "643",
+    "descricao": "ANEL ELASTICO E-015",
+    "ncm": "73182900",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "645",
+    "descricao": "ANEL ELASTICO E-025",
+    "ncm": "73182900",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "649",
+    "descricao": "TONER COMP.(MC) HP 105A/W1105A (COM CHIP)(M107/M135) 1K",
+    "ncm": "84439933",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "652",
+    "descricao": "FILTRO DE COMBUSTIVEL DONALDSON (15MICRONS)",
+    "ncm": "84212300",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "653",
+    "descricao": "FILTRO COMBUSTIVEL DONALDSON (25 MICRONS)",
+    "ncm": "84212300",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "654",
+    "descricao": "CONJUNTO NYLON C/ REFLETIVO SEM LOGOMARCA - (AZUL MARINHO) - G",
+    "ncm": "62104000",
+    "unidade": "CJ"
+  },
+  {
+    "codigo_interno": "656",
+    "descricao": "CABO CABINE",
+    "ncm": "87089990",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "665",
+    "descricao": "ARRUELA 75,5X100X0,3",
+    "ncm": "73182200",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "666",
+    "descricao": "ANEL DE BORRACHA",
+    "ncm": "40169990",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "667",
+    "descricao": "FLANGE",
+    "ncm": "84679900",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "669",
+    "descricao": "PROTECAO 0 400 MM",
+    "ncm": "84679900",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "670",
+    "descricao": "FILTRO ADICIONAL",
+    "ncm": "84213100",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "671",
+    "descricao": "JOGO PECAS DO CARBURADOR",
+    "ncm": "84099190",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "672",
+    "descricao": "JUNTA DE VEDACAO DO SILENCIADOR",
+    "ncm": "84841000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "673",
+    "descricao": "FILTRO DE AR",
+    "ncm": "84213100",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "674",
+    "descricao": "VELA DE IGNICAO",
+    "ncm": "85111000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "675",
+    "descricao": "BICO DE ALAVANCA PANDROL",
+    "ncm": "73029000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "676",
+    "descricao": "TERMINAL DIRECAO DOBLO 01/ ( EXCETO ADVENTURE ) FI",
+    "ncm": "87089990",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "678",
+    "descricao": "OLEO CAMBIO 75W80 RADNAQ API GL5 SAE EP SEMI SINTE",
+    "ncm": "87089990",
+    "unidade": "LT"
+  },
+  {
+    "codigo_interno": "679",
+    "descricao": "LIMPA BICO INJETOR E CARBURADOR ( TBI DESCARBONIZA",
+    "ncm": "38249941",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "680",
+    "descricao": "CORREIA ALT RENAULT CLIO 96/97 1.2 8V TWINGO 93/96",
+    "ncm": "40103200",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "681",
+    "descricao": "CABO SELECAO COMANDO MARCHAS ARGO 17/ 1.3 8V 1.8 1",
+    "ncm": "87089990",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "682",
+    "descricao": "CABO ENGATE COMANDO MARCHAS ARGO 17/ 1.3 8V 1.8 16",
+    "ncm": "87089990",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "683",
+    "descricao": "BRACO AXIAL CAIXA DIRECAO HIDRAULICA / MECANICA FI",
+    "ncm": "87089990",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "685",
+    "descricao": "REBITES A-514 3 16",
+    "ncm": "83082000",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "686",
+    "descricao": "REBITES A-512 3 16",
+    "ncm": "83082000",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "687",
+    "descricao": "CATRACA REVERSIVEL 1 2",
+    "ncm": "82079000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "688",
+    "descricao": "SOQUETE ESTRIADO LONGO ENCAIXE 1 2 10 MM",
+    "ncm": "82042000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "690",
+    "descricao": "CHAVE PHILLIPS GP 3 16 X 5",
+    "ncm": "82054000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "691",
+    "descricao": "CHAVE DE FENDA GENERAL PRO 1 8 X 4",
+    "ncm": "82054000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "693",
+    "descricao": "TRINCHA 3 4 NOLL",
+    "ncm": "96034090",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "695",
+    "descricao": "DISCO CORTE 115X1.0X22.23 T41 CLASSIC",
+    "ncm": "68042211",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "696",
+    "descricao": "JG ESCOVAS MANUAIS 3PCS",
+    "ncm": "96039000",
+    "unidade": "JG"
+  },
+  {
+    "codigo_interno": "697",
+    "descricao": "BROCA ACO RAPIDO 9 64",
+    "ncm": "82075011",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "698",
+    "descricao": "BROCA ACO RAPIDO 15 64",
+    "ncm": "82075011",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "699",
+    "descricao": "BROCA ACO RAPIDO 8.50",
+    "ncm": "82075011",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "700",
+    "descricao": "BROCA ACO RAPIDO 7.50",
+    "ncm": "82075011",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "701",
+    "descricao": "BROCA AR TW100 8.00",
+    "ncm": "82075011",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "702",
+    "descricao": "TINTA AEROSSOL PRETO BRILHANTE 350ML",
+    "ncm": "32082019",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "706",
+    "descricao": "UNC RI ZC 1 4 X 2.1 2",
+    "ncm": "73181500",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "707",
+    "descricao": "PARLOCK ZINC. UNC 1 4",
+    "ncm": "73181600",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "708",
+    "descricao": "ARRUELA ZINC. CENTO 1 4",
+    "ncm": "73182200",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "709",
+    "descricao": "PORCA BORBOLETA UNC 1 4",
+    "ncm": "73181600",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "710",
+    "descricao": "LAMINA BI-METAL 18D",
+    "ncm": "82029100",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "711",
+    "descricao": "PAR DRYWALL TPB # 8X3 4",
+    "ncm": "73181500",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "714",
+    "descricao": "PARLOCK ZINC. MA M05",
+    "ncm": "73181600",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "715",
+    "descricao": "8.8 MA RI M05 X 30",
+    "ncm": "73181500",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "716",
+    "descricao": "PORCA ZINC. MA M05",
+    "ncm": "73181600",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "717",
+    "descricao": "A.A. PAN PHILLIPS 4.2X 16",
+    "ncm": "73181400",
+    "unidade": "CENTO"
+  },
+  {
+    "codigo_interno": "718",
+    "descricao": "CHAVE DE FENDA GENERAL PRO 3 16 X 4",
+    "ncm": "82054000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "719",
+    "descricao": "CHAVE DE FENDA GENERAL PRO 1 4 X 8",
+    "ncm": "82054000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "720",
+    "descricao": "IMPULSOR DE ACO",
+    "ncm": "84314929",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "729",
+    "descricao": "CAPUZ BRIM BRASCAMP SOLDADOR C/VELCRO",
+    "ncm": "62171000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "730",
+    "descricao": "BOTINA NOBUCK MARROM 35 4031BAEN4400LL CA 48383 BRACOL",
+    "ncm": "64039190",
+    "unidade": "PAR"
+  },
+  {
+    "codigo_interno": "732",
+    "descricao": "CAMARA DE AR 3,25 X 8 VONDER/NOVE54",
+    "ncm": "40131010",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "733",
+    "descricao": "DISCO CORTE BNA12 4.1/2 X 1,0X 7/8 NORTON",
+    "ncm": "68042211",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "737",
+    "descricao": "MARCADOR INDUSTRIAL 3MM AMARELO",
+    "ncm": "96089990",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "740",
+    "descricao": "KIT BUCHA ALAVANCA CAMBIO CITROEN C3 02/12 TODOS (",
+    "ncm": "87084090",
+    "unidade": "KI"
+  },
+  {
+    "codigo_interno": "741",
+    "descricao": "KIT BATENTE AMORTECEDOR DIANTEIRO CITROEN AIRCROSS",
+    "ncm": "87088000",
+    "unidade": "KI"
+  },
+  {
+    "codigo_interno": "742",
+    "descricao": "ANTI-CORROSIVO SPRAY CAR LUB DESENGRIPANTE 300ML/2",
+    "ncm": "38249941",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "743",
+    "descricao": "GAXETA 51330 U2 810",
+    "ncm": "39269090",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "744",
+    "descricao": "O-RING 1219 C-101",
+    "ncm": "40169300",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "745",
+    "descricao": "RASPADOR 32778 R1 C-810",
+    "ncm": "39269090",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "746",
+    "descricao": "O-RING 120318 NBR 70",
+    "ncm": "40169300",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "749",
+    "descricao": "COCA COLA KS",
+    "ncm": "22021000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "752",
+    "descricao": "DESTAQUE SILICONE POWER GEL 250G",
+    "ncm": "39100013",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "756",
+    "descricao": "BOMBA ALIMENTADORA 12V C/ 2 FIOS",
+    "ncm": "84136011",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "757",
+    "descricao": "PINO CACAMBA",
+    "ncm": "84314929",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "760",
+    "descricao": "FILTRO DE OLEO LUBRIFICANTE DONALDSON",
+    "ncm": "84212300",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "764",
+    "descricao": "BOMBA DE COMBUSTIVEL 580N S2",
+    "ncm": "84136011",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "765",
+    "descricao": "PNEU 12-16.5 12PR [455] L2 TL MALHOTRA",
+    "ncm": "40118090",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "766",
+    "descricao": "PNEU 12.5/80-18 12PR [ATU410] TL MALHOTR",
+    "ncm": "40118090",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "767",
+    "descricao": "PNEU 19.5L24-12PR G-MPT 641WD GRIPMASTER",
+    "ncm": "40117090",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "768",
+    "descricao": "EXTINTOR AUTOMOTIVO P.ABC 1KG 3&QUOT; UNIVERSAL",
+    "ncm": "84241000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "770",
+    "descricao": "ENGATE FEMEA 1/4",
+    "ncm": "84811000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "771",
+    "descricao": "ESPIGAO DE LATAO P/MANGUEIRA",
+    "ncm": "74122000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "772",
+    "descricao": "PULVERIZADOR 5 0L COMP PREVIA PL005 VD",
+    "ncm": "84244100",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "773",
+    "descricao": "FITA VEDA ROSCA",
+    "ncm": "40092190",
+    "unidade": "RL"
+  },
+  {
+    "codigo_interno": "774",
+    "descricao": "CHAVE AJUSTAVEL VONDER",
+    "ncm": "82041200",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "777",
+    "descricao": "BORRACHA PORTA MOBI 16/",
+    "ncm": "87089990",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "778",
+    "descricao": "REPARO DO CIL. DA CACAMBA TRASEIRA DA RETRO IMPORTADO",
+    "ncm": "40169300",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "779",
+    "descricao": "REPARO IMPORTADO",
+    "ncm": "40169300",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "780",
+    "descricao": "VARETA",
+    "ncm": "87089990",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "781",
+    "descricao": "REPARO DO LEVANTE CACAMBA DIANT.LB90/110",
+    "ncm": "40169300",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "784",
+    "descricao": "LUB DE MOTOR TEXACO URSA PREMIUM TDS 15W40 CI4 - 20LT",
+    "ncm": "27101932",
+    "unidade": "BD"
+  },
+  {
+    "codigo_interno": "788",
+    "descricao": "PLASTICO PARA PLASTIFICACAO 220X307X0,05 A4 02427 SPIRAL PT 50 UN",
+    "ncm": "39219090",
+    "unidade": "PT"
+  },
+  {
+    "codigo_interno": "789",
+    "descricao": "MOUSE OPTICO USB M90 CINZA 910-004053 LOGITECH BT 1 UN",
+    "ncm": "84716053",
+    "unidade": "BT"
+  },
+  {
+    "codigo_interno": "793",
+    "descricao": "MANDRIL 1.1/8",
+    "ncm": "82032010",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "794",
+    "descricao": "GAXETA 30.00 X 40.00 X 9.00 UA-02 MM PU 90SH",
+    "ncm": "39169090",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "795",
+    "descricao": "GAXETA 35.00 X 45.00 X 10.00 UA-02 MM PU 90SH",
+    "ncm": "39169090",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "796",
+    "descricao": "ANEL ORING 40.87 X 3.53 NBR 70SH",
+    "ncm": "40169300",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "797",
+    "descricao": "BACK UP 41.83 X 47.83 X 3.00 X 1.27 NBR",
+    "ncm": "40169300",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "798",
+    "descricao": "RASPADOR 35.00 X 45.00 X 7.00 X 10.00 AS-01 NBR",
+    "ncm": "40169300",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "799",
+    "descricao": "ANEL ORING 47.29 X 2.62 NBR 70SH",
+    "ncm": "40169300",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "800",
+    "descricao": "ANEL ORING 63.17 X 2.62 NBR 70SH",
+    "ncm": "40169300",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "801",
+    "descricao": "ANEL ORING 56.74 X 3.53 NBR 70SH",
+    "ncm": "40169300",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "802",
+    "descricao": "BACK UP 89.05 X 95.05 X 3.00 X 1.27 NBR",
+    "ncm": "40169300",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "803",
+    "descricao": "RASPADOR C/C 30.00 X 40.00 X 5.00 X 8.00 NBR",
+    "ncm": "40169300",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "804",
+    "descricao": "TONER COMP.(INT.) HP 105A/W1105A 5K (COM CHIP) (M107/M135)",
+    "ncm": "84439933",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "805",
+    "descricao": "SUPORTE DE BROCA 1.1/8 BRASTAN",
+    "ncm": "84661000",
+    "unidade": "CJ"
+  },
+  {
+    "codigo_interno": "807",
+    "descricao": "SILICONE CINZA",
+    "ncm": "35069190",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "808",
+    "descricao": "MANGUEIRA AGUA/AR 300PSI",
+    "ncm": "39173900",
+    "unidade": "MT"
+  },
+  {
+    "codigo_interno": "809",
+    "descricao": "ABRACADEIRA ROSCA SEM FIM",
+    "ncm": "73269090",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "812",
+    "descricao": "ABRACADEIRA NYLON - ENFORCA GATO C/100 COD 16658",
+    "ncm": "39269090",
+    "unidade": "PT"
+  },
+  {
+    "codigo_interno": "813",
+    "descricao": "CHAVE CANHAO 11 MM",
+    "ncm": "82054000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "814",
+    "descricao": "ESPIGAO DE LATAO P/ MANGUEIRA",
+    "ncm": "74122000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "815",
+    "descricao": "PINO MACHO P/ENGATE LATAO",
+    "ncm": "74122000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "817",
+    "descricao": "PISTOLA DE AR P/LIMPEZA C/BICO EM LATAO",
+    "ncm": "84242000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "818",
+    "descricao": "PULVERIZADOR PNEUMATICO C/BICO DE LATAO",
+    "ncm": "84242000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "822",
+    "descricao": "FILTRO AR CABINE",
+    "ncm": "84213990",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "826",
+    "descricao": "RASP. 66D-2500 C.810 #",
+    "ncm": "39269090",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "828",
+    "descricao": "CEBOLINHA MARCHA RE FIAT DUCATO 02/ (TODOS) PEUGEO",
+    "ncm": "85365090",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "829",
+    "descricao": "ADITIVO RADIADOR STARKE PRONTO PARA USO ANTICORROS",
+    "ncm": "38200000",
+    "unidade": "LT"
+  },
+  {
+    "codigo_interno": "843",
+    "descricao": "FILTRO WEGA AKX35163",
+    "ncm": "84213990",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "844",
+    "descricao": "FILTRO MANN C29015",
+    "ncm": "84219999",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "847",
+    "descricao": "PALHETA BOSCH AEROFIT AF16M",
+    "ncm": "85129000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "848",
+    "descricao": "PALHETA BOSCH AEROFIT AF22M",
+    "ncm": "85129000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "849",
+    "descricao": "FILTRO TECFIL PSL545",
+    "ncm": "84212300",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "850",
+    "descricao": "JUGULAR TECIDO CA00000 MSA",
+    "ncm": "65070000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "852",
+    "descricao": "ESCOVA MANUAL AC 3 FILEIRAS CB MAD SPARTA MTX",
+    "ncm": "96039000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "853",
+    "descricao": "CHAVE FENDA SL6 1/4 X 5 POL 125MM CRV MTX",
+    "ncm": "82054000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "855",
+    "descricao": "DESEMPENADEIRA ACO LISA 12X27CM CASTOR",
+    "ncm": "82055900",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "856",
+    "descricao": "DESEMPENADEIRA PVC 18X30 CORRUG PTA CASTOR",
+    "ncm": "39269090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "857",
+    "descricao": "CHAVE ALLEN 5,0MM GEDORE",
+    "ncm": "82054000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "858",
+    "descricao": "TINTA SPRAY CHEMIC.ALUM.400ML 0088",
+    "ncm": "32082011",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "862",
+    "descricao": "SILICONE SPRAY SPAIN 400ML",
+    "ncm": "39100012",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "866",
+    "descricao": "FECHO CINTO SEGURANCA",
+    "ncm": "87082100",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "867",
+    "descricao": "BOLA CAMBIO",
+    "ncm": "87089990",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "868",
+    "descricao": "ROLAMENTO K12X16X10",
+    "ncm": "84824000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "869",
+    "descricao": "RETENTOR 01481 BA SABO",
+    "ncm": "40169300",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "870",
+    "descricao": "=PARAFLU LONG LIFE CONC ROSA 3001 1LT",
+    "ncm": "38249941",
+    "unidade": "FR"
+  },
+  {
+    "codigo_interno": "871",
+    "descricao": "=AGUA DESMINERALIZADA",
+    "ncm": "28539090",
+    "unidade": "LT"
+  },
+  {
+    "codigo_interno": "872",
+    "descricao": "PALHETA LIMPADOR",
+    "ncm": "85129000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "873",
+    "descricao": "CABECOTE DE CORTE TRIMCUT C 32 2",
+    "ncm": "84679900",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "875",
+    "descricao": "OLEO MOTOR 05W30 SINTETICO MOBIL SUPER 3000 FORMUL",
+    "ncm": "27101932",
+    "unidade": "LT"
+  },
+  {
+    "codigo_interno": "876",
+    "descricao": "LIMPA CONTATO ELETRICO INFLAMAVEL SUN 300ML",
+    "ncm": "29012900",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "878",
+    "descricao": "JOGO PARAFUSO CABECOTE FIORINO 03/ 1.3 8V FIRE PAL",
+    "ncm": "73181500",
+    "unidade": "JG"
+  },
+  {
+    "codigo_interno": "879",
+    "descricao": "JOGO JUNTA MOTOR PALIO 11/ 1.0 8V EVO SIENA 14/ 1.",
+    "ncm": "84849000",
+    "unidade": "JG"
+  },
+  {
+    "codigo_interno": "881",
+    "descricao": "COLA ELIMINA JUNTAS PRETA - LOCTITE 85G - SILICONE",
+    "ncm": "32141010",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "882",
+    "descricao": "ADITIVO RADIADOR PARAFLU ROSA PRONTO PARA USO ( OR",
+    "ncm": "38249941",
+    "unidade": "LT"
+  },
+  {
+    "codigo_interno": "883",
+    "descricao": "TM 05 F.OLEO",
+    "ncm": "84212300",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "884",
+    "descricao": "ARL 4152 F. AR",
+    "ncm": "84219999",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "885",
+    "descricao": "=F1 MASTER SINTETICO 5W30 SP LT",
+    "ncm": "27101932",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "896",
+    "descricao": "PORCA SEXT M20X2,5MM",
+    "ncm": "73181600",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "897",
+    "descricao": "PONTA LONGA ECOPLAN",
+    "ncm": "84314929",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "898",
+    "descricao": "FILTRO HIDRAULICO DONALDSON",
+    "ncm": "84212990",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "902",
+    "descricao": "COPO PARA GARRAFAO TERMICO INVICTA DE 3 E 5 LITROS",
+    "ncm": "96170020",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "903",
+    "descricao": "PISO TATIL PVC 25X25 DIRECIONAL-AZUL-COLA",
+    "ncm": "40082100",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "904",
+    "descricao": "COLA CONTATO GALAO 3.6",
+    "ncm": "40082100",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "906",
+    "descricao": "ALLEM C C MA M6 X 20",
+    "ncm": "73181500",
+    "unidade": "CENTO"
+  },
+  {
+    "codigo_interno": "907",
+    "descricao": "ALLEM C C MA M6 X 16",
+    "ncm": "73181500",
+    "unidade": "CENTO"
+  },
+  {
+    "codigo_interno": "908",
+    "descricao": "8.8 MA RI M06 X 16",
+    "ncm": "73181500",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "909",
+    "descricao": "8.8 MA RI M08 X 16",
+    "ncm": "73181500",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "911",
+    "descricao": "ARRUELA 125 CENTO M 06",
+    "ncm": "73182200",
+    "unidade": "CENTO"
+  },
+  {
+    "codigo_interno": "912",
+    "descricao": "8.8 MA RI M08 X 50",
+    "ncm": "73181500",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "913",
+    "descricao": "8.8 MA RI M12 X 50",
+    "ncm": "73181500",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "914",
+    "descricao": "8.8 MA RI M08 X 25",
+    "ncm": "73181500",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "916",
+    "descricao": "PARLOCK ZINC. MA M12",
+    "ncm": "73181600",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "917",
+    "descricao": "ARRUELA ZINC. CENTO 5 16",
+    "ncm": "73182200",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "918",
+    "descricao": "ARRUELA ZINC. CENTO 1 2",
+    "ncm": "73182200",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "919",
+    "descricao": "A.A. PAN PHILLIPS 4.8X 25",
+    "ncm": "73181400",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "920",
+    "descricao": "A.A. PAN PHILLIPS 5.5X 22",
+    "ncm": "73181400",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "921",
+    "descricao": "ELETRODO 46 2,50 X 350MM LT",
+    "ncm": "83111000",
+    "unidade": "KG"
+  },
+  {
+    "codigo_interno": "922",
+    "descricao": "TRAVA PARAFUSOS BMT 115 AZUL 50G",
+    "ncm": "35061090",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "924",
+    "descricao": "BROCA ACO RAPIDO 1 16",
+    "ncm": "82075011",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "925",
+    "descricao": "BROCA ACO RAPIDO 5 64",
+    "ncm": "82075011",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "926",
+    "descricao": "BROCA ACO RAPIDO 3 32",
+    "ncm": "82075011",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "928",
+    "descricao": "BROCA ACO RAPIDO 11 64",
+    "ncm": "82075011",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "929",
+    "descricao": "BROCA ACO RAPIDO 21 64",
+    "ncm": "82075011",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "930",
+    "descricao": "BROCA ACO RAPIDO 23 64",
+    "ncm": "82075011",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "931",
+    "descricao": "ELETRODO 46 3,25 X 350MM LT",
+    "ncm": "83111000",
+    "unidade": "KG"
+  },
+  {
+    "codigo_interno": "932",
+    "descricao": "CHAVE COMBINADA 16 MM",
+    "ncm": "82041100",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "933",
+    "descricao": "CHAVE COMBINADA 17 MM",
+    "ncm": "82041100",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "934",
+    "descricao": "CHAVE COMBINADA 22 MM",
+    "ncm": "82041100",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "935",
+    "descricao": "CHAVE COMBINADA 24 MM",
+    "ncm": "82041100",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "938",
+    "descricao": "ALLEM C C MA M10 X 30",
+    "ncm": "73181500",
+    "unidade": "CENTO"
+  },
+  {
+    "codigo_interno": "939",
+    "descricao": "AL.CH.INOX M08 X 20",
+    "ncm": "73181500",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "942",
+    "descricao": "ARRUELA DE PRESSAO M 10",
+    "ncm": "73182100",
+    "unidade": "CENTO"
+  },
+  {
+    "codigo_interno": "943",
+    "descricao": "8.8 MA RP M08 X 70",
+    "ncm": "73181500",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "944",
+    "descricao": "8.8 MA RP M10 X 70",
+    "ncm": "73181500",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "945",
+    "descricao": "PORCA ZINC. MA M10",
+    "ncm": "73181600",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "947",
+    "descricao": "CHAVE PHILLIPS GP 5 16 X 6",
+    "ncm": "82054000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "948",
+    "descricao": "CHAVE PHILLIPS GP 1 4 X 8",
+    "ncm": "82054000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "949",
+    "descricao": "MARTELO UNHA 23",
+    "ncm": "82052000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "950",
+    "descricao": "CHAVE PHILLIPS GP 1 4 X 5",
+    "ncm": "82054000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "951",
+    "descricao": "CHAVE DE FENDA GENERAL PRO 1 4 X 4",
+    "ncm": "82054000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "952",
+    "descricao": "CHAVE DE FENDA GENERAL PRO 1 8 X 5",
+    "ncm": "82054000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "953",
+    "descricao": "ALICATE PRESSAO MORDENTE EM V",
+    "ncm": "82032010",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "954",
+    "descricao": "FITA ISOLANTE CLASSIC 19MMX10M",
+    "ncm": "39191020",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "955",
+    "descricao": "ALICATE UNIVERSAL 8 ISALADOS NBR",
+    "ncm": "82032010",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "958",
+    "descricao": "RESISTENCIA VENTILADOR FIORINO 13/ GRAND SIENA 13/",
+    "ncm": "85334019",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "959",
+    "descricao": "PIVO DOBLO 01/22 ( EXCETO ADVENTURE ) FIORINO 14/2",
+    "ncm": "87088000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "960",
+    "descricao": "MANGUEIRA 13 MM MOLA ASPIRAL BRANCA (13MM X 15MM)",
+    "ncm": "39173229",
+    "unidade": "MT"
+  },
+  {
+    "codigo_interno": "961",
+    "descricao": "KIT BATENTE AMORTECEDOR TRASEIRO MOBI 16/ ( BATENT",
+    "ncm": "87088000",
+    "unidade": "KI"
+  },
+  {
+    "codigo_interno": "962",
+    "descricao": "KIT BATENTE AMORTECEDOR DIANTEIRO ARGO 17/ CRONOS",
+    "ncm": "87088000",
+    "unidade": "KT"
+  },
+  {
+    "codigo_interno": "963",
+    "descricao": "COXIM MOTOR UNO 10/ MOBI 16/ ARGO 16/ CRONOS16/ ST",
+    "ncm": "87089990",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "964",
+    "descricao": "BIELETA BARRA ESTABILIZADORA DIANTEIRA FIORINO 14/",
+    "ncm": "87088000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "968",
+    "descricao": "CAIXA MASSA 40L PVC ZUMPL",
+    "ncm": "39259090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "970",
+    "descricao": "FITA DUPLA FACE 3M VHB TRANSP INT 12X20M",
+    "ncm": "35061090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "972",
+    "descricao": "CABO DE ENXADA 1,2M ENCERADO CUNHA",
+    "ncm": "44170090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "975",
+    "descricao": "PONTEIRO SDS PLUS 14 X 250MM MTX",
+    "ncm": "82079000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "976",
+    "descricao": "TALHADEIRA SDS PLUS 14 X 20 X 250MM MTX",
+    "ncm": "82079000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "978",
+    "descricao": "TIRANTE COMPLETO",
+    "ncm": "84314929",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "979",
+    "descricao": "RESPIRO HIDRAULICO (TGL)",
+    "ncm": "84314929",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "980",
+    "descricao": "PORCA DUPLA",
+    "ncm": "73181600",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "982",
+    "descricao": "PRISIONEIRO",
+    "ncm": "73181500",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "983",
+    "descricao": "ARRUELA",
+    "ncm": "73182200",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "984",
+    "descricao": "PNEU 3.50 X 8 - 4L",
+    "ncm": "40118090",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "985",
+    "descricao": "DISCO CORTE 9\" X 1 8\" X 7 8\" AR312",
+    "ncm": "68042211",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "987",
+    "descricao": "BALIZADOR RODOVIA TIPO T 1.10 M LAR",
+    "ncm": "39269090",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "988",
+    "descricao": "DISCO CORTE 14\" X 4.0 X 1\" BNA RAIL",
+    "ncm": "68042211",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "989",
+    "descricao": "CAMISA SOCIAL C BORDADO",
+    "ncm": "61051000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "990",
+    "descricao": "CALCA DE BRIM COM REFORCO GRANDE E FAIXA REFLETIVA TAM GG",
+    "ncm": "62046300",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "995",
+    "descricao": "MENTOS KISS XTREME FROZEN 35GR",
+    "ncm": "21069060",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1000",
+    "descricao": "CAMISETA M LONGA C FAIXA REFLETIVA TAM G",
+    "ncm": "62179000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1001",
+    "descricao": "MACACAO M LONGA C FAIXA REFLETIVA TAM G",
+    "ncm": "62059090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1003",
+    "descricao": "REGULADOR E KIT MOLA SAPARA RODA TRAS L D",
+    "ncm": "87089200",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1004",
+    "descricao": "CAMPANA RODA TRASEIRA",
+    "ncm": "87089200",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1005",
+    "descricao": "FLUIDO DE FREIO",
+    "ncm": "38190000",
+    "unidade": "LT"
+  },
+  {
+    "codigo_interno": "1007",
+    "descricao": "SUCO NATURAL",
+    "ncm": "20099000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1009",
+    "descricao": "GI 04/7 F. COMB",
+    "ncm": "84212300",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1011",
+    "descricao": "ACP 906 F.AR COND.",
+    "ncm": "84213990",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1018",
+    "descricao": "BUCHA RECARTILHADA",
+    "ncm": "84314929",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1019",
+    "descricao": "ARRUELA DE ENCOSTO",
+    "ncm": "73182200",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1020",
+    "descricao": "CALCO 0.50MM",
+    "ncm": "73182900",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1021",
+    "descricao": "ARRUELA ENCOSTO 406B 3MM",
+    "ncm": "73182200",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1022",
+    "descricao": "CALCO 521/621/W130",
+    "ncm": "73182900",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1023",
+    "descricao": "BUCHA CACAMBA",
+    "ncm": "84314929",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1024",
+    "descricao": "PINO",
+    "ncm": "84314929",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1026",
+    "descricao": "REPARO DO CILINDRO ESTABILIZADOR B90B",
+    "ncm": "40169300",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1031",
+    "descricao": "CABECOTE DOS FILTROS MOTOR",
+    "ncm": "84219910",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1032",
+    "descricao": "ADITIVOS ADITIVO RADIADOR ANTICORROSIVO ROSA 1 L",
+    "ncm": "38249941",
+    "unidade": "LT"
+  },
+  {
+    "codigo_interno": "1033",
+    "descricao": "TAMPA RESERVATORIO ARLA",
+    "ncm": "87082999",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1037",
+    "descricao": "IPIRANGA FLUIDO DOT 4 500ML",
+    "ncm": "38190000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1040",
+    "descricao": "MANN FILTRO DE OLEO W6MULTI20",
+    "ncm": "84212300",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1057",
+    "descricao": "MENTOS KISS MINT 35GR",
+    "ncm": "21069060",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1060",
+    "descricao": "MANOPLA MAQUINA - PEQUENA PAR",
+    "ncm": "87149990",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1061",
+    "descricao": "MANOPLA MAQUINA - GARNDE PAR",
+    "ncm": "87149990",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1062",
+    "descricao": "FILTRO DE AR EXTERNO DONALDSON",
+    "ncm": "84219999",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1065",
+    "descricao": "FILTRO DE AR INTERNO DONALDSON",
+    "ncm": "84219999",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1066",
+    "descricao": "IMANTADO NATURAL 0,8MM DE ESPESSURA COM ADESIVO BRILHO COM IMAGEM DIGITAL.",
+    "ncm": "39199090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1069",
+    "descricao": "LUB DE TRANSMISSAO OU DIFERENCIAL IPIRANGA ULTRAGEAR GL5 85W140 - 20LT",
+    "ncm": "27101932",
+    "unidade": "BD"
+  },
+  {
+    "codigo_interno": "1074",
+    "descricao": "TECFIL FILTRO DE OLEO PL153",
+    "ncm": "84219999",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1075",
+    "descricao": "IPIRANGA MOTO PERFORMANCE 10W30 SL",
+    "ncm": "27101932",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1086",
+    "descricao": "PROTETOR FACIAL AJUSTE SIMPLES INCOLOR CA 15019 PLASTCOR",
+    "ncm": "39269090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1087",
+    "descricao": "MASCARA SOLDA INTECH ESCUR REGUL SMC4",
+    "ncm": "65061090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1091",
+    "descricao": "BUCHA CIL.BASC.CACAMBA FB-80.2/100.2",
+    "ncm": "84314929",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1092",
+    "descricao": "REPARO DO COMANDO",
+    "ncm": "40169300",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1093",
+    "descricao": "GRAXEIRA RETA 320D2",
+    "ncm": "73182900",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1098",
+    "descricao": "BUCHA DE ACO",
+    "ncm": "84314929",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1099",
+    "descricao": "RETENTOR DO EIXO DIANTEIRO",
+    "ncm": "40169300",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1102",
+    "descricao": "ANEL ORING NITRILICO",
+    "ncm": "40169300",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1103",
+    "descricao": "RETENTOR IMPORTADO WORLD GASKET",
+    "ncm": "40169300",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1104",
+    "descricao": "RETENTOR IMPORTADO",
+    "ncm": "40169300",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1105",
+    "descricao": "RETENTOR DA FLANGE RODA DIANTEIRA",
+    "ncm": "40169300",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1106",
+    "descricao": "FERRO DE PUA 3/4 - X 8",
+    "ncm": "82075090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1111",
+    "descricao": "HASTE LEVANTE BRACO DIANTEIRO FB-80.2",
+    "ncm": "84314929",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1112",
+    "descricao": "COROA ANELAR EIXO DIANT.2/.Z60 55MM (TGL)",
+    "ncm": "84314929",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1114",
+    "descricao": "CALCO DE ACO DO BRACO DA RETRO FB-80",
+    "ncm": "73182900",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1115",
+    "descricao": "CALCO 3,00MM DE AFINACAO DO BRACO 580N",
+    "ncm": "73182900",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1116",
+    "descricao": "CALCO",
+    "ncm": "73182900",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1117",
+    "descricao": "ROLAMENTO #",
+    "ncm": "84825090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1119",
+    "descricao": "THREE BOND 12B-20 SILICONE PRETO 50GR",
+    "ncm": "32141010",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1120",
+    "descricao": "ROLAMENTO 6306 ZZ NSK",
+    "ncm": "84821010",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1121",
+    "descricao": "ROLAMENTO 6206 ZZ NSK",
+    "ncm": "84821010",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1122",
+    "descricao": "PILHA RAYOVAC AAA",
+    "ncm": "84821010",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1133",
+    "descricao": "AROMATIZANTE CENTRALSUL HOT ROD POWER 400ML",
+    "ncm": "33029019",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1141",
+    "descricao": "CAIXA ORGANIZADORA CALCA MEDICAMENTOS GRANDE 142 NITRONPLAST PT 1 UN",
+    "ncm": "39249000",
+    "unidade": "PT"
+  },
+  {
+    "codigo_interno": "1142",
+    "descricao": "EXTENSAO ELETRICA 3 TOM. 10A C3M 2PINOS PT 180200237 FORCE-LINE BT 1 UN",
+    "ncm": "85444200",
+    "unidade": "BT"
+  },
+  {
+    "codigo_interno": "1143",
+    "descricao": "CARREGADOR DE TOMADA C1 SAIDA USB BIVOLT PRETO WC1APT ELG CX 1 UN",
+    "ncm": "85044021",
+    "unidade": "CX"
+  },
+  {
+    "codigo_interno": "1144",
+    "descricao": "CABO USB-A PARA USB-C 1M BRANCO APP-TECH PT 1 UN",
+    "ncm": "85444200",
+    "unidade": "PT"
+  },
+  {
+    "codigo_interno": "1145",
+    "descricao": "QUADRO BRANCO 60X40 MOLDURA ALUMINIO AL-4060 EASY OFFICE PT 1 UN",
+    "ncm": "96100000",
+    "unidade": "PT"
+  },
+  {
+    "codigo_interno": "1146",
+    "descricao": "PINCEL PQUADRO BRANCO 2,0MM PRETO WBM-7 M024PR PILOT BT 1 UN",
+    "ncm": "96082000",
+    "unidade": "BT"
+  },
+  {
+    "codigo_interno": "1147",
+    "descricao": "FITA ADESIVA PP 45MMX100M TRANSPARENTE HOT MELT STICK TAPE PT 4 UN",
+    "ncm": "39191010",
+    "unidade": "PT"
+  },
+  {
+    "codigo_interno": "1148",
+    "descricao": "TESOURA ESSENTIALS 17CM PRETA 468010 MAPED BT 1 UN",
+    "ncm": "82130000",
+    "unidade": "BT"
+  },
+  {
+    "codigo_interno": "1149",
+    "descricao": "TESOURA DOMESTICA 20CM SORTIDO 25950148 TRAMONTINA BT 1 UN",
+    "ncm": "82130000",
+    "unidade": "BT"
+  },
+  {
+    "codigo_interno": "1150",
+    "descricao": "FITA ADESIVA PP 45MMX100M TRANSPARENTE STICK TAPE PT 4 UN",
+    "ncm": "39191010",
+    "unidade": "PT"
+  },
+  {
+    "codigo_interno": "1151",
+    "descricao": "MOUSE SEM FIO 1600DPI PRETO MW7123 ERGO CX 1 UN",
+    "ncm": "84716053",
+    "unidade": "CX"
+  },
+  {
+    "codigo_interno": "1152",
+    "descricao": "FITA ADESIVA DUPLA FACE FIXA FORTE 9,5MMX20M SCOTCH 3M BT 1 UN",
+    "ncm": "35061090",
+    "unidade": "BT"
+  },
+  {
+    "codigo_interno": "1153",
+    "descricao": "FITA ADESIVA DUPLA FACE FIXA FORTE 19MMX20M VHB H000231787 3M PT 1 UN",
+    "ncm": "35061090",
+    "unidade": "PT"
+  },
+  {
+    "codigo_interno": "1154",
+    "descricao": "PRANCHETA POLIESTIRENO A4 PRETA 10260037 MAXCRIL CX 1 UN",
+    "ncm": "39269090",
+    "unidade": "CX"
+  },
+  {
+    "codigo_interno": "1156",
+    "descricao": "PILHA ALCALINA PEQUENA AA 1.5V 80673782 DURACELL BT 16 UN",
+    "ncm": "85061019",
+    "unidade": "BT"
+  },
+  {
+    "codigo_interno": "1157",
+    "descricao": "AGENDA DIARIA DOBRAVEL CIMA BRF RS 2026 2633590 SPIRAL BRF EX PT 1 UN",
+    "ncm": "48201000",
+    "unidade": "PT"
+  },
+  {
+    "codigo_interno": "1158",
+    "descricao": "CORRETIVO LIQUIDO 18ML FASHION CLUB SM107070 FABER-CASTELL BT 1 UN",
+    "ncm": "38249929",
+    "unidade": "BT"
+  },
+  {
+    "codigo_interno": "1159",
+    "descricao": "CORRETIVO EM FITA 5MMX6M FOLHA OVAL BT 1 UN",
+    "ncm": "38249929",
+    "unidade": "BT"
+  },
+  {
+    "codigo_interno": "1160",
+    "descricao": "LENCO UMEDECIDO ANTISSEPTICO FREE WIPES FREECO PT 1 UN",
+    "ncm": "34011190",
+    "unidade": "PT"
+  },
+  {
+    "codigo_interno": "1161",
+    "descricao": "BLOCO AUTOADESIVO POST-IT 38X50 SORTIDOC50FLS 3M BT 4 UN",
+    "ncm": "48201000",
+    "unidade": "BT"
+  },
+  {
+    "codigo_interno": "1165",
+    "descricao": "CRUZETA CARDAN",
+    "ncm": "87085099",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1167",
+    "descricao": "ETILOMETRO MOD BFD 60 DIGITAL PORTATIL N S: 24012601496808 OS: 291582",
+    "ncm": "90278999",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1168",
+    "descricao": "VOLANTE BI MASSA EMBREAGEM MOTOR CITROEN JUMPY 17/",
+    "ncm": "84835090",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1169",
+    "descricao": "OLEO MOTOR 00W30 SINTETICO MOPAR MAXPRO SAE ACEA C",
+    "ncm": "27101932",
+    "unidade": "LT"
+  },
+  {
+    "codigo_interno": "1170",
+    "descricao": "OLEO CAMBIO 75W80 PETRONAS TUTELA CAR ZC 75 TRANSM",
+    "ncm": "27101932",
+    "unidade": "LT"
+  },
+  {
+    "codigo_interno": "1171",
+    "descricao": "KIT EMBREAGEM CITROEN JUMPY 17/ 1.5 16V 1.6 8V SCU",
+    "ncm": "87089300",
+    "unidade": "KT"
+  },
+  {
+    "codigo_interno": "1172",
+    "descricao": "FILTRO OLEO CITROEN JUMPY 22/ 1.5 DIESEL PEUGEOT E",
+    "ncm": "84219999",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1176",
+    "descricao": "CALCA CINZA C REFORCO GRANDE E FAIXA REFLETIVA - TAM EXG",
+    "ncm": "62046300",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1177",
+    "descricao": "CAMISETA M LONGA MARINHO C FAIXA REFLETIVA TAM M",
+    "ncm": "62179000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1178",
+    "descricao": "CAMISETA M LONGA MARINHO C FAIXA REFLETIVA TAM G",
+    "ncm": "62179000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1179",
+    "descricao": "CAMISETA M LONGA MARINHO C FAIXA REFLETIVA TAM GG",
+    "ncm": "62179000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1180",
+    "descricao": "MOTO G15 4G 256GB GR",
+    "ncm": "85171300",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1185",
+    "descricao": "BOTINA NOBUCK VELCRO MARROM 40 4031BVNN4600LL CA 25684 BRACOL",
+    "ncm": "64039190",
+    "unidade": "PAR"
+  },
+  {
+    "codigo_interno": "1187",
+    "descricao": "TINTA SPRAY ALUMINIO 400ML CHEMICOLOR",
+    "ncm": "32082011",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1188",
+    "descricao": "CARRINHO GIRICA MAO 180L",
+    "ncm": "87168000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1190",
+    "descricao": "PA QUADRADA C CABO 45CM TRAMONTINA",
+    "ncm": "82011000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1191",
+    "descricao": "TESOURA VERGALHAO 24 MTX",
+    "ncm": "82033000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1192",
+    "descricao": "MARTELO CARPINTEIRO CB FIBRA 29MM MTX",
+    "ncm": "82052000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1193",
+    "descricao": "TRENA 5/25MM C TRAVA + IMA EDA",
+    "ncm": "90178010",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1196",
+    "descricao": "CARRINHO MAO PNEU/CAMARA 65L TRAMONTINA",
+    "ncm": "87168000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1197",
+    "descricao": "SISTEMA ELEVATORIO",
+    "ncm": "90179090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1198",
+    "descricao": "BOTAO",
+    "ncm": "90179090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1199",
+    "descricao": "JANELA",
+    "ncm": "90179090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1200",
+    "descricao": "NIVEL P/ RCFF E RCA (EX N00235)",
+    "ncm": "90153000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1201",
+    "descricao": "ANILHA RCG-140-5",
+    "ncm": "73182200",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1202",
+    "descricao": "PARAFUSO",
+    "ncm": "73181500",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1203",
+    "descricao": "PARAFUSO 4 X 25",
+    "ncm": "73181500",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1204",
+    "descricao": "BATENTE DE REGUA EX NO2585",
+    "ncm": "90179090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1208",
+    "descricao": "PARAFUSO CS M2X5 EX CO1702",
+    "ncm": "73181500",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1209",
+    "descricao": "REGUA BITOLA RCFF1000",
+    "ncm": "90178090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1212",
+    "descricao": "ALLEM C C MA M16 X 40",
+    "ncm": "73181500",
+    "unidade": "CENTO"
+  },
+  {
+    "codigo_interno": "1213",
+    "descricao": "PORCA ZINC. MA M16",
+    "ncm": "73181600",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "1214",
+    "descricao": "PARLOCK ZINC. UNF 9 16",
+    "ncm": "73181600",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "1215",
+    "descricao": "ARRUELA ZINC. CENTO 5 8",
+    "ncm": "73182200",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "1216",
+    "descricao": "SILICONE ACETICO ALTA TEMP VERMELHO 300G",
+    "ncm": "39100090",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1217",
+    "descricao": "PARLOCK ZINC. UNC 1 2",
+    "ncm": "73181600",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "1218",
+    "descricao": "UNC RP ZC 1 2 X 5",
+    "ncm": "73181500",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "1220",
+    "descricao": "R M ZIN. PAN PH 3 16 X 1.1 4",
+    "ncm": "73181500",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "1221",
+    "descricao": "PORCA BORBOLETA UNC 3 16",
+    "ncm": "73181600",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "1222",
+    "descricao": "R M ZIN. PAN PH 3 16 X 2",
+    "ncm": "73181500",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "1223",
+    "descricao": "PREGO DE ACO 18 X 24 C C",
+    "ncm": "73170090",
+    "unidade": "SACO"
+  },
+  {
+    "codigo_interno": "1224",
+    "descricao": "REBITES A-419 5 32",
+    "ncm": "83082000",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "1225",
+    "descricao": "REBITES A-616 1 4",
+    "ncm": "83082000",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "1229",
+    "descricao": "TICO TICO 50MM BU218",
+    "ncm": "82029990",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1230",
+    "descricao": "PAR DRYWALL CPA # 6X25",
+    "ncm": "73181500",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "1231",
+    "descricao": "PAR DRYWALL CPA # 6X35",
+    "ncm": "73181500",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "1232",
+    "descricao": "DOBR.LEVE GALV 3",
+    "ncm": "83021000",
+    "unidade": "CART"
+  },
+  {
+    "codigo_interno": "1233",
+    "descricao": "TRINCO FIO REDONDO LINHA LEVE EM 75M 3 G",
+    "ncm": "83014000",
+    "unidade": "CART"
+  },
+  {
+    "codigo_interno": "1234",
+    "descricao": "PONTEIRA MAKITA PH2 X 50MM",
+    "ncm": "82079000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1236",
+    "descricao": "PAR DRYWALL CPA # 6X50",
+    "ncm": "73181500",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "1237",
+    "descricao": "PONTEIRA MAKITA PH2 X 110MM",
+    "ncm": "82079000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1239",
+    "descricao": "NIVEL DE ALUMINIO MAGNETICO 14 \"",
+    "ncm": "90318099",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1240",
+    "descricao": "UNC RI ZC 3 8 X 2.1 2",
+    "ncm": "73181500",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "1241",
+    "descricao": "PARLOCK ZINC. UNC 3 8",
+    "ncm": "73181600",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "1242",
+    "descricao": "ARRUELA PRESSAO INOX 304 3 8",
+    "ncm": "73182100",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "1243",
+    "descricao": "AL.CC INOX M8 X 25",
+    "ncm": "73181500",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "1244",
+    "descricao": "A.A. CH PHILLIPS 3.9X 16",
+    "ncm": "73181500",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "1245",
+    "descricao": "ABR ZINCADA RSFM 9MM 8X13",
+    "ncm": "73269090",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1246",
+    "descricao": "ABR ZINCADA RSFM 9MM 13X16",
+    "ncm": "73269090",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1247",
+    "descricao": "CHAVE PHILLIPS GP 1 4 X 6",
+    "ncm": "82054000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1248",
+    "descricao": "CHAVE PHILLIPS GP 3 16 X 6",
+    "ncm": "82054000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1249",
+    "descricao": "CHAVE COMBINADA 10 MM",
+    "ncm": "82041100",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1250",
+    "descricao": "CHAVE COMBINADA 13 MM",
+    "ncm": "82041100",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1251",
+    "descricao": "CHAVE COMBINADA 18 MM",
+    "ncm": "82041100",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1252",
+    "descricao": "CHAVE COMBINADA 28",
+    "ncm": "82041100",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1255",
+    "descricao": "PNEU RADIAL 225/75R16C 118/116 R TL VANCONTACT ULTRA",
+    "ncm": "40119090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1256",
+    "descricao": "PNEU RADIAL 275/80R22.5 149/146 M BOR/ROD TL M+S A.R70D",
+    "ncm": "40112090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1257",
+    "descricao": "ROLAMENTO 6804 2RS HCH",
+    "ncm": "84821010",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1258",
+    "descricao": "ROLAMENTO 51103 GBR",
+    "ncm": "84821090",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1262",
+    "descricao": "IPIRANGA BRUTUS ALTA PERFORMANCE 15W40 C",
+    "ncm": "27101932",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1272",
+    "descricao": "G052824Q2-OLEO MOTOR 15W40 CK4 20L BLUE 8600 VW NOVO DELIVERY 2018/...",
+    "ncm": "27101932",
+    "unidade": "BD"
+  },
+  {
+    "codigo_interno": "1273",
+    "descricao": "23C115403-FILTRO DE OLEO",
+    "ncm": "84212300",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1274",
+    "descricao": "23C103035-BUJAO DO CARTER VW IVECO",
+    "ncm": "73181900",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1275",
+    "descricao": "TAMPA TANQUE DE ARLA",
+    "ncm": "87082999",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1277",
+    "descricao": "MANGUEIRA RETORNO BICOS OM447/OM449",
+    "ncm": "59090000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1279",
+    "descricao": "SMARTPHONE MOTO G06",
+    "ncm": "85171300",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1280",
+    "descricao": "PICARETA PONTA PA",
+    "ncm": "73029000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1281",
+    "descricao": "PICARETA TRAMONTINA ALVIAO C/ CABO 77303/543",
+    "ncm": "82013000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1282",
+    "descricao": "PEL 119 F.LUBRIF.",
+    "ncm": "84219999",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1284",
+    "descricao": "ARL 4157/ JFA 998 F. AR",
+    "ncm": "84219999",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1285",
+    "descricao": "ACP 907 F. AR COND.",
+    "ncm": "84213990",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1286",
+    "descricao": "=PARAFLU LONG LIFE P.USO ROSA 3004 1LT",
+    "ncm": "38249941",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1288",
+    "descricao": "REVESTIMENTO PORTA",
+    "ncm": "87089990",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1289",
+    "descricao": "PROT. PLANA CORR. PES 2 COST 90MM X 2.20 MT",
+    "ncm": "63079090",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1290",
+    "descricao": "VIDRO TRASEIRO INFERIOR L",
+    "ncm": "70071100",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1295",
+    "descricao": "OCULOS PROT KALIPSO PANDA INCOLOR",
+    "ncm": "90049020",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1299",
+    "descricao": "CAPACETE C CARNEIRA TEXTIL JUG TEXTIL V-GARD CINZA CA498 MSA",
+    "ncm": "65061090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1300",
+    "descricao": "MASCARA PFF2 C/ VALVULA CA 36857 MFQ",
+    "ncm": "63079010",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1308",
+    "descricao": "BOTINA AMARRAR 37 MET C/ BICO COMP 4031BMMS1662LL CA 48582 BRACOL",
+    "ncm": "64039190",
+    "unidade": "PAR"
+  },
+  {
+    "codigo_interno": "1322",
+    "descricao": "BOTA PVC C/L BICO COMP N43 C.A 46877 CALFOR",
+    "ncm": "64019200",
+    "unidade": "PR"
+  },
+  {
+    "codigo_interno": "1323",
+    "descricao": "BOTA PVC C/L BICO COMP N44 C.A 46877 CALFOR",
+    "ncm": "64019200",
+    "unidade": "PR"
+  },
+  {
+    "codigo_interno": "1330",
+    "descricao": "ABRAC NYLON PTA 3,6X200 100P BRASFORT",
+    "ncm": "39269090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1340",
+    "descricao": "PREGO GERDAU CC 18 X 27",
+    "ncm": "73170090",
+    "unidade": "KG"
+  },
+  {
+    "codigo_interno": "1342",
+    "descricao": "COLHER PEDREIRO RETO 08 PACETTA",
+    "ncm": "82055900",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1343",
+    "descricao": "REMOVEDOR TINTAS 5L PINTOFF",
+    "ncm": "38140090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1345",
+    "descricao": "PARAFLU LONG LIFE ROSA CONC 3001 12X1",
+    "ncm": "38249941",
+    "unidade": "CX"
+  },
+  {
+    "codigo_interno": "1346",
+    "descricao": "IPIRANGA ULTRAGEAR MB 80W GL4 BD 20LTS",
+    "ncm": "27101932",
+    "unidade": "BD"
+  },
+  {
+    "codigo_interno": "1348",
+    "descricao": "=IPIRANGA MOTO 4 TEMPOS 20W50 SL LT",
+    "ncm": "27101932",
+    "unidade": "LT"
+  },
+  {
+    "codigo_interno": "1349",
+    "descricao": "ESPELHO RETROVISOR",
+    "ncm": "70091000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1362",
+    "descricao": "PIVO INFERIOR FORJADO",
+    "ncm": "84314929",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1363",
+    "descricao": "ROLAMENTO # CAPA E CONE",
+    "ncm": "84825090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1364",
+    "descricao": "RETENTOR 416D",
+    "ncm": "40169300",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1365",
+    "descricao": "PINO DE ACO DO BRACO FB-80.2/100.2/580L",
+    "ncm": "84314929",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1367",
+    "descricao": "FILTRO DE AR INTERNO",
+    "ncm": "84213100",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1368",
+    "descricao": "CABO DO ACELERADOR PEDAL INFFINITY",
+    "ncm": "87089990",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1371",
+    "descricao": "FILTRO LUBRIFICANTE DONALDSON",
+    "ncm": "84212300",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1374",
+    "descricao": "FILTRO COMBUSTIVEL DONALDSON COLHEDORA (4MICRONS)",
+    "ncm": "84212300",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1375",
+    "descricao": "RETENTOR DIANTEIRO IMPORTADO BLUMAQ",
+    "ncm": "40169300",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1376",
+    "descricao": "LUB DE MOTOR DIESEL PESADO IPIRANGA BRUTUS PERFORMANCE 15W40 CI4 - 20LT",
+    "ncm": "27101932",
+    "unidade": "BD"
+  },
+  {
+    "codigo_interno": "1378",
+    "descricao": "SUPORTE ESTRIBO LD",
+    "ncm": "87089990",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1379",
+    "descricao": "SUPORTE ESTRIBO LE",
+    "ncm": "87082999",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1380",
+    "descricao": "PARALAMA ESTRIBO",
+    "ncm": "87082991",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1382",
+    "descricao": "ESTRIBO PISANTE",
+    "ncm": "87089990",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1384",
+    "descricao": "SEXT INOX 304 M 06 X 16",
+    "ncm": "73181500",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "1385",
+    "descricao": "SEXT INOX M 06 X 12",
+    "ncm": "73181500",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "1386",
+    "descricao": "SEXT INOX M 06 X 10",
+    "ncm": "73181500",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "1387",
+    "descricao": "ARRUELA LISA INOX 304 1/4",
+    "ncm": "73182200",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "1388",
+    "descricao": "ARRUELA PRESSAO INOX 304 M 06",
+    "ncm": "73182100",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "1389",
+    "descricao": "K246 LIXA FERRO 60",
+    "ncm": "68051000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1390",
+    "descricao": "K246 LIXA FERRO 120",
+    "ncm": "68051000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1391",
+    "descricao": "RM INOX CH 5/16 X 3",
+    "ncm": "73181500",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "1392",
+    "descricao": "PORCA INOX 5/16",
+    "ncm": "73181600",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "1393",
+    "descricao": "A.A CHATA INOX 304 4,2 X 19",
+    "ncm": "73181400",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "1394",
+    "descricao": "ALL.CHATA MA M8 X 35",
+    "ncm": "73181500",
+    "unidade": "CENTO"
+  },
+  {
+    "codigo_interno": "1396",
+    "descricao": "UNC RI ZC 1/4 X 1.1/4",
+    "ncm": "73181500",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "1397",
+    "descricao": "UNC RI ZC 1/4 X 1.1/2",
+    "ncm": "73181500",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "1398",
+    "descricao": "PARLOCK ZINC. UNC 1/4",
+    "ncm": "73181600",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "1399",
+    "descricao": "REBITES A-610 1/4",
+    "ncm": "39174090",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "1402",
+    "descricao": "REFRIGERANTE LATA",
+    "ncm": "22021000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1403",
+    "descricao": "SUPORTES P SMARTPHONES DE METAL PRETO PH21A ERGO CX 1 UN",
+    "ncm": "85366990",
+    "unidade": "CX"
+  },
+  {
+    "codigo_interno": "1404",
+    "descricao": "PORTA LAPIS ACO GATA LILI 10321004 GEGUTON PT 1 UN",
+    "ncm": "83040000",
+    "unidade": "PT"
+  },
+  {
+    "codigo_interno": "1409",
+    "descricao": "LENCO UMEDECIDO TOILET FREEWIPES C4 FREEW21 FREECO PT 4 UN",
+    "ncm": "34011190",
+    "unidade": "PT"
+  },
+  {
+    "codigo_interno": "1410",
+    "descricao": "REFRIGERANTE COCA-COLA LATA 220ML COCA COLA UN 1 UN",
+    "ncm": "22021000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1413",
+    "descricao": "LUB DE TRANSMISSAO OU DIFERENCIAL IPIRANGA ULTRAGEAR GL4 80W - 20LT",
+    "ncm": "27101932",
+    "unidade": "BD"
+  },
+  {
+    "codigo_interno": "1414",
+    "descricao": "LUB DE TRANSMISSAO OU DIFERENCIAL TEXACO UNIVERSAL EP 80W GL4 - 20LT",
+    "ncm": "27101932",
+    "unidade": "BD"
+  },
+  {
+    "codigo_interno": "1416",
+    "descricao": "CALCA COM REFORCO GRANDE E FAIXA REFLETIVA",
+    "ncm": "62046300",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1420",
+    "descricao": "CAMISETA MANGA LONGA COM FAIXA REFLETIVA",
+    "ncm": "62179000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1429",
+    "descricao": "PALHETA AEROFIT AF23",
+    "ncm": "85129000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1430",
+    "descricao": "PALHETA AEROFIT AF15",
+    "ncm": "85129000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1438",
+    "descricao": "GRAXA ROLAMENTO AZUL 500G MP-2 LITIO",
+    "ncm": "27101932",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1439",
+    "descricao": "MULTIMETRO DIGITAL ET-1000 DIGITO GRANDE",
+    "ncm": "90303100",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1440",
+    "descricao": "PNEU 12.5/80-18 138A8 12L R4 HGA02 SPMTL",
+    "ncm": "40117090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1441",
+    "descricao": "PNEU 19.5L-24 151A8 12L R4 MPT642J GRPTL",
+    "ncm": "40117090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1442",
+    "descricao": "PNEU 12-16.5 145A2 12L I3 MPT920J GRPTL",
+    "ncm": "40117090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1443",
+    "descricao": "MOLA DE TENAZ",
+    "ncm": "73201000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1444",
+    "descricao": "PSC 411 F.COMB.",
+    "ncm": "84212990",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1449",
+    "descricao": "FILTRO ARLA",
+    "ncm": "84212300",
+    "unidade": "KT"
+  },
+  {
+    "codigo_interno": "1450",
+    "descricao": "BATERIA F110EG/F110E",
+    "ncm": "85071090",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1451",
+    "descricao": "CESTO LIXO 100 L RED TAMPA AZ",
+    "ncm": "39249000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1457",
+    "descricao": "FILTRO COMBUSTIVEL DONALDSON (15 MICRONS)",
+    "ncm": "84212300",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1458",
+    "descricao": "FILTRO OLEO LUBRIFICANTE DONALDSON (40 MICRONS)",
+    "ncm": "84212300",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1459",
+    "descricao": "REPARO DO CILINDRO PROFUNDIDADE #",
+    "ncm": "40169300",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1460",
+    "descricao": "REPARO DO CIL. DO BRACO",
+    "ncm": "40169300",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1461",
+    "descricao": "FAIXA REFLETIVA LATERAL ESQUERDA",
+    "ncm": "39199090",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1462",
+    "descricao": "FAIXA REFLETIVA LATERAL DIREITA",
+    "ncm": "39199090",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1463",
+    "descricao": "FAIXA REFLETIVA PARACHOQUE",
+    "ncm": "39199090",
+    "unidade": "KT"
+  },
+  {
+    "codigo_interno": "1464",
+    "descricao": "CALCA NYLON - MODELO SEGURANCA - (AZUL MARINHO) - M",
+    "ncm": "62104000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1465",
+    "descricao": "CALCA NYLON - MODELO SEGURANCA - (AZUL MARINHO) - G",
+    "ncm": "62104000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1470",
+    "descricao": "COXIM DO MOTOR",
+    "ncm": "40169300",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1472",
+    "descricao": "FILTRO PARKER 10MICRONS",
+    "ncm": "84212990",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1473",
+    "descricao": "RETENTOR 32.00 X 50.00 X 8.00 R-02/BRG NBR",
+    "ncm": "40169300",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1474",
+    "descricao": "RETENTOR 22.00 X 40.00 X 7.00 R-05 NBR",
+    "ncm": "40169300",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1477",
+    "descricao": "=IPIRANGA MOTO 4 TEMPOS PERF. 10W30 LT",
+    "ncm": "27101932",
+    "unidade": "LT"
+  },
+  {
+    "codigo_interno": "1480",
+    "descricao": "BOTINA ELASTICO 44 C/ BICO COMP BIDENSIDADE 4045BELS1600LL CA 42165 BRACOL",
+    "ncm": "64039190",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1482",
+    "descricao": "CHAVE ESTRELA DE BATER 1.1/8\" 44633/004 TRAMONTINA",
+    "ncm": "82041100",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1484",
+    "descricao": "TALHADEIRA SPARTA 34X12 CPROTETOR",
+    "ncm": "82055900",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1485",
+    "descricao": "CAVADEIRA 2 CABOS 1,10M 559524 TRAMONTINA",
+    "ncm": "82019000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1489",
+    "descricao": "CABO DE ENXADA 1,45M EUCALIP S/CUNHA",
+    "ncm": "44170090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1495",
+    "descricao": "BARRA DE DIRECAO L.E COMPLETA 310K/310J",
+    "ncm": "84314929",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1496",
+    "descricao": "BARRA DE DIRECAO L.D COMPLETA 310K/310J",
+    "ncm": "84314929",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1497",
+    "descricao": "ARTICULACAO DO TERMINAL DIRECAO",
+    "ncm": "84314929",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1500",
+    "descricao": "PSL 545-B F.LUBRIF.",
+    "ncm": "84212300",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1501",
+    "descricao": "GI 50/7 F. COMB.",
+    "ncm": "84212300",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1502",
+    "descricao": "FAP 3599/ JFA BR 194 F. AR",
+    "ncm": "84219999",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1503",
+    "descricao": "ACP 303 F. AR COND.",
+    "ncm": "84213990",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1504",
+    "descricao": "=F1 MASTER SINTETICO 5W40 SN 508 LT",
+    "ncm": "27101932",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1505",
+    "descricao": "GARFO 10 DENTES",
+    "ncm": "82013000",
+    "unidade": "M3"
+  },
+  {
+    "codigo_interno": "1506",
+    "descricao": "MARRETA CHAPOLIM",
+    "ncm": "82052000",
+    "unidade": "M3"
+  },
+  {
+    "codigo_interno": "1507",
+    "descricao": "UNIDADES DE PONTA FINCANTE PARA TENAZ",
+    "ncm": "82032090",
+    "unidade": "M3"
+  },
+  {
+    "codigo_interno": "1526",
+    "descricao": "CARCACA DO MOTOR IMPORTADA",
+    "ncm": "40169300",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1527",
+    "descricao": "SOLENOIDE BASE REDONDA",
+    "ncm": "84818092",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1531",
+    "descricao": "PARAF CHIP CH 3.5 X 35",
+    "ncm": "73181200",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "1532",
+    "descricao": "PARAF CHIP CH 5 X 45",
+    "ncm": "73181200",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "1533",
+    "descricao": "TICO TICO 75MM BU310DT",
+    "ncm": "82029990",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1535",
+    "descricao": "CHAVE PHILLIPS GP 1/4 X 6",
+    "ncm": "82054000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1536",
+    "descricao": "CHAVE PHILLIPS GP 3/16 X 3",
+    "ncm": "82054000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1537",
+    "descricao": "CHAVE PHILLIPS COTOCO GP 1/4 X 1-1/2",
+    "ncm": "82054000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1538",
+    "descricao": "CHAVE DE FENDA COTOCO GP 3/16 X 1-1/2",
+    "ncm": "82054000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1539",
+    "descricao": "T402 LIXA D AGUA 1200",
+    "ncm": "68052000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1540",
+    "descricao": "K246 LIXA FERRO 36",
+    "ncm": "68051000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1542",
+    "descricao": "K246 LIXA FERRO 220",
+    "ncm": "68051000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1543",
+    "descricao": "K246 LIXA FERRO 320",
+    "ncm": "68051000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1544",
+    "descricao": "TINTA AEROSSOL PRETO FOSCO 350ML",
+    "ncm": "32082019",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1545",
+    "descricao": "SEXT INOX 304 M 08 X 35",
+    "ncm": "73181500",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "1546",
+    "descricao": "ARR. ABA LARGA INOX 304 M 08",
+    "ncm": "73182200",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "1547",
+    "descricao": "PORCA PARLOCK INOX 304 M 08",
+    "ncm": "73181600",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "1549",
+    "descricao": "ALL.CHATA MA M6 X 16",
+    "ncm": "73181500",
+    "unidade": "CENTO"
+  },
+  {
+    "codigo_interno": "1550",
+    "descricao": "8.8 MA RI M06 X 12",
+    "ncm": "73181500",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "1552",
+    "descricao": "UNC RI ZC 3/8 X 1.1/2",
+    "ncm": "73181500",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "1553",
+    "descricao": "UNC RI ZC 3/8 X 2.1/2",
+    "ncm": "73181500",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "1554",
+    "descricao": "PARLOCK ZINC. UNC 3/8",
+    "ncm": "73181600",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "1555",
+    "descricao": "ARRUELA PRESSAO INOX 304 3/8",
+    "ncm": "73182100",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "1556",
+    "descricao": "ARRUELA ZINC. CENTO 3/8",
+    "ncm": "73182200",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "1557",
+    "descricao": "8.8 MA RI M10 X 50",
+    "ncm": "73181500",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "1558",
+    "descricao": "PARLOCK ZINC. MA M10",
+    "ncm": "73181600",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "1559",
+    "descricao": "ARRUELA 125 CENTO M 10",
+    "ncm": "73182200",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "1561",
+    "descricao": "ELETRODO INOX 316 3,25MM",
+    "ncm": "83111000",
+    "unidade": "KG"
+  },
+  {
+    "codigo_interno": "1562",
+    "descricao": "ESTILETE STAND 18MM",
+    "ncm": "82119390",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1563",
+    "descricao": "ALL.CHATA MA M6 X 25",
+    "ncm": "73181500",
+    "unidade": "CENTO"
+  },
+  {
+    "codigo_interno": "1564",
+    "descricao": "ALL.CHATA MA M6 X 30",
+    "ncm": "73181500",
+    "unidade": "CENTO"
+  },
+  {
+    "codigo_interno": "1565",
+    "descricao": "CHAVE ALLEN MIL. 4",
+    "ncm": "82055900",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1566",
+    "descricao": "CHAVE EM T",
+    "ncm": "73029000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1567",
+    "descricao": "TENAZ DE TRILHO",
+    "ncm": "82032090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1568",
+    "descricao": "CHAVE JUNTA",
+    "ncm": "82041100",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1569",
+    "descricao": "CHAVE DE CONTRA TRILHO",
+    "ncm": "73029000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1570",
+    "descricao": "CAIXA DE DISCO 10 UNIDS",
+    "ncm": "73029000",
+    "unidade": "CX"
+  },
+  {
+    "codigo_interno": "1571",
+    "descricao": "TENAZ DE TRILHO PARA MAQUINA",
+    "ncm": "82032090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1572",
+    "descricao": "TONER COMP. HP 105A/W1105A (COM CHIP)(M107/M135) 1K",
+    "ncm": "84439933",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1573",
+    "descricao": "EXTINTOR PO ABC 06 KG- 4A 40BC",
+    "ncm": "84241000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1586",
+    "descricao": "ZARCAO LARANJA 3,6L HYDRONORTH",
+    "ncm": "32089010",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1587",
+    "descricao": "ALICATE UNIVERSAL NIQUELADO 8\" 200MM 169069 MTX",
+    "ncm": "82032010",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1588",
+    "descricao": "ALICATE BICO MEIA CANA RETO 6\" MTX",
+    "ncm": "82032010",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1589",
+    "descricao": "TORQUES ARMADOR 12\" 5KM EDA",
+    "ncm": "82032090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1591",
+    "descricao": "CHAVE PHILLIPS PH1 3/16 X 4\" CRV MTX",
+    "ncm": "82054000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1592",
+    "descricao": "ALICATE PRESSAO PERKON RETO 10\" 1004",
+    "ncm": "82032010",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1593",
+    "descricao": "CHAVE INGLESA STARFER 08\"",
+    "ncm": "82041200",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1594",
+    "descricao": "CHAVE INGLESA 15\" STARFER",
+    "ncm": "82041200",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1595",
+    "descricao": "CHAVE GRIFO 12\" 1XQ EXCELLENT",
+    "ncm": "82041200",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1600",
+    "descricao": "DIVERSOS",
+    "ncm": "21069090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1601",
+    "descricao": "REPARO DO CILINDRO DO GIRO S/TRAVA 580L/M/N",
+    "ncm": "40169300",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1603",
+    "descricao": "TM 02 F. OLEO",
+    "ncm": "84212300",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1605",
+    "descricao": "=F1 MASTER SINTETICO 5W40 SN LT",
+    "ncm": "27101932",
+    "unidade": "LT"
+  },
+  {
+    "codigo_interno": "1608",
+    "descricao": "LUB DE MOTOR DIESEL PESADO TEXACO URSA PREMIUM TDS 15W40 CI4 - 20LT",
+    "ncm": "27101932",
+    "unidade": "BD"
+  },
+  {
+    "codigo_interno": "1611",
+    "descricao": "EXTINTOR AUTOMOTIVO P.ABC 1KG 3&QUOT; UNIVERSAL- 1A 5BC",
+    "ncm": "84241000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1613",
+    "descricao": "SUPORTE VEICULAR PARA EXTINTOR UNIVERSAL 1KG - 3&#39;&#39;",
+    "ncm": "72141090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1616",
+    "descricao": "KIT EMBREAGEM",
+    "ncm": "87089200",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1617",
+    "descricao": "CABO EMBREAGEM",
+    "ncm": "87089300",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1618",
+    "descricao": "OLEO 80",
+    "ncm": "87089200",
+    "unidade": "JG"
+  },
+  {
+    "codigo_interno": "1619",
+    "descricao": "ABRACADEIRA",
+    "ncm": "87089200",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1620",
+    "descricao": "CORREIA DENTADA",
+    "ncm": "40101200",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1621",
+    "descricao": "ESTICADOR CORREIA DENTADA",
+    "ncm": "87089200",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1622",
+    "descricao": "CORREIA POLIVE",
+    "ncm": "87089200",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1623",
+    "descricao": "JUNTA TAMPA",
+    "ncm": "87088000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1624",
+    "descricao": "JOGO CABO DE VELA",
+    "ncm": "85111000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1625",
+    "descricao": "JOGO VELA",
+    "ncm": "85111000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1626",
+    "descricao": "JOGO DISCO",
+    "ncm": "85052010",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1629",
+    "descricao": "CAPA CORREIA DENTADA",
+    "ncm": "40101200",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1630",
+    "descricao": "TENDA SANITARIA 1,20 X 1,20 MTS",
+    "ncm": "63061200",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1631",
+    "descricao": "CAIXA ORGANIZADORA MINI 1.5L TRANSPARENTE OR80200 ORDENE PT 1 UN",
+    "ncm": "39249000",
+    "unidade": "PT"
+  },
+  {
+    "codigo_interno": "1634",
+    "descricao": "TESOURA DOMESTICA 14CM HOBBY 1645N MUNDIAL BT 1 UN",
+    "ncm": "82130000",
+    "unidade": "BT"
+  },
+  {
+    "codigo_interno": "1635",
+    "descricao": "APAGADOR QUADRO BRANCO MAGNETICO . OVAL BT 1 UN",
+    "ncm": "96039000",
+    "unidade": "BT"
+  },
+  {
+    "codigo_interno": "1636",
+    "descricao": "CANETA HIDROGRAFICA PRETA 1,0MM OFFICE PEN 3126 PILOT BT 1 UN",
+    "ncm": "96082000",
+    "unidade": "BT"
+  },
+  {
+    "codigo_interno": "1637",
+    "descricao": "CANETA ESFEROGRAFICA GEL 0,7MM ESCREVE E APAGA AZUL . OVAL UN 1 UN",
+    "ncm": "96081000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1638",
+    "descricao": "CANETA ESFEROGRAFICA 1.0MM CRISTAL AZUL 835205 BIC CX 50 UN",
+    "ncm": "96081000",
+    "unidade": "CX"
+  },
+  {
+    "codigo_interno": "1639",
+    "descricao": "REGUA EM POLIESTIRENO 30 CM ROSA PASTEL DELLO PT 1 UN",
+    "ncm": "39261000",
+    "unidade": "PT"
+  },
+  {
+    "codigo_interno": "1640",
+    "descricao": "REGUA EM POLIESTIRENO 30 CM LILAS PASTEL DELLO PT 1 UN",
+    "ncm": "39261000",
+    "unidade": "PT"
+  },
+  {
+    "codigo_interno": "1641",
+    "descricao": "REGUA EM POLIESTIRENO 30 CM FULLCOLOR AZUL 3115.C.009 DELLO PT 1 UN",
+    "ncm": "39261000",
+    "unidade": "PT"
+  },
+  {
+    "codigo_interno": "1642",
+    "descricao": "PASTA SANFONADA PLASTICA A4 31 DIV. FUME . SPIRAL PT 1 UN",
+    "ncm": "39261000",
+    "unidade": "PT"
+  },
+  {
+    "codigo_interno": "1643",
+    "descricao": "PASTA CELAST.POLIP. 12 OFICIO - 25MM TRANSP. A025 PLASCONY PT 1 UN",
+    "ncm": "42021210",
+    "unidade": "PT"
+  },
+  {
+    "codigo_interno": "1644",
+    "descricao": "PLACA PSINALIZ. TOILLETE UNISEX PAL-01159 PLASCONY PT 1 UN",
+    "ncm": "35069190",
+    "unidade": "PT"
+  },
+  {
+    "codigo_interno": "1645",
+    "descricao": "CLIPS NR.20 GALVANIZADO (LATA C500G) SPIRAL PT 1 UN",
+    "ncm": "83059000",
+    "unidade": "PT"
+  },
+  {
+    "codigo_interno": "1646",
+    "descricao": "PRANCHETA MDF A4 OFFICE BRANCA 9035 STALO PT 1 UN",
+    "ncm": "44219900",
+    "unidade": "PT"
+  },
+  {
+    "codigo_interno": "1647",
+    "descricao": "PASTA CATALOGO C50 ENV. OFICIO 0,06 PEBD CVISOR 104 PLASTPARK PT 1 UN",
+    "ncm": "42021210",
+    "unidade": "PT"
+  },
+  {
+    "codigo_interno": "1648",
+    "descricao": "PASTA CELAST.POLIP. A4 PRETO A02RCPT PLASCONY PT 1 UN",
+    "ncm": "42021210",
+    "unidade": "PT"
+  },
+  {
+    "codigo_interno": "1649",
+    "descricao": "REGISTRADOR AZ CROTULO A4 LL BRIEF CASE AZUL SPIRAL BRF PT 1 UN",
+    "ncm": "48203000",
+    "unidade": "PT"
+  },
+  {
+    "codigo_interno": "1652",
+    "descricao": "PLASTICO PARA PLASTIFICACAO 79X108X0,05 IDENTIDADE SPIRAL PT 100 UN",
+    "ncm": "39219090",
+    "unidade": "PT"
+  },
+  {
+    "codigo_interno": "1653",
+    "descricao": "CAFE SOLUVEL LIOFILIZADO 100G 12032016 TRES CORACOES PT 1 UN",
+    "ncm": "21011110",
+    "unidade": "PT"
+  },
+  {
+    "codigo_interno": "1660",
+    "descricao": "ALICATE BICO MEIA CANA 6.1/2\" (R28502165)",
+    "ncm": "82032010",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1661",
+    "descricao": "ALICATE UNIVERSAL 8\" (R28301200)",
+    "ncm": "82032010",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1662",
+    "descricao": "TORQUES ARMADOR 14\"",
+    "ncm": "82032090",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1663",
+    "descricao": "CADEADO 40 MM",
+    "ncm": "83011000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1664",
+    "descricao": "SOQUETE EST MM 46 ENC 3/4\" D32",
+    "ncm": "82042000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1665",
+    "descricao": "CHAVE FENDA 7.9MM 5/16X 8\" (150)",
+    "ncm": "82054000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1666",
+    "descricao": "CHAVE BATER FIXA \" 46.3 MM 1.13/16 (133)",
+    "ncm": "82041100",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1667",
+    "descricao": "CHAVE BATER FIXA MM 41 MM (133)",
+    "ncm": "82041100",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1668",
+    "descricao": "CHAVE BATER FIXA MM 46 MM (133)",
+    "ncm": "82041100",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1669",
+    "descricao": "CAIXA FERRAMENTAS 5 GAVETAS 50X20X21 (07)",
+    "ncm": "73269090",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1670",
+    "descricao": "CHAVE AJUSTAVEL 15\" (191G-375)",
+    "ncm": "82041200",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1671",
+    "descricao": "CAIXA FERRAMENTAS BAU 40X16X15 COM ESTOJO (02)",
+    "ncm": "73269090",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1672",
+    "descricao": "CHAVE PHILLIPS 6.3MM 1/4X 8\" (160)",
+    "ncm": "82054000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1673",
+    "descricao": "MARTELO UNHA 27MM POLIDO CABO FIBRA",
+    "ncm": "82052000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1674",
+    "descricao": "TV TCL QLED S5K 43 FULL HD",
+    "ncm": "85287200",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1678",
+    "descricao": "GALAO OLEO MOTOR",
+    "ncm": "27101932",
+    "unidade": "GL"
+  },
+  {
+    "codigo_interno": "1682",
+    "descricao": "FILTRO RESPIRO",
+    "ncm": "84219999",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1688",
+    "descricao": "FITA DUPLA FACE 3M VHB TRANSP INT 19X20M",
+    "ncm": "35061090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1689",
+    "descricao": "PA ANTI-FAISCANTE CABO 1M PLASTCOR",
+    "ncm": "44170090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1690",
+    "descricao": "SUPER GALVITE SHERWIN W.3,6 L BCA.",
+    "ncm": "32081010",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1695",
+    "descricao": "CINTA SLING BRANCA 3,0TX3,0M",
+    "ncm": "56075090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1696",
+    "descricao": "OLEO MOTOR",
+    "ncm": "27101932",
+    "unidade": "LT"
+  },
+  {
+    "codigo_interno": "1697",
+    "descricao": "FILTRO OLEO",
+    "ncm": "84212300",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1700",
+    "descricao": "FILTRO AR CONDICIONADO",
+    "ncm": "84213100",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1703",
+    "descricao": "OLEO CAMBIO",
+    "ncm": "27101932",
+    "unidade": "LT"
+  },
+  {
+    "codigo_interno": "1704",
+    "descricao": "TUBO MOTOR C FLEXIVEL",
+    "ncm": "87089200",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1705",
+    "descricao": "SUP SOLDA",
+    "ncm": "87089200",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1706",
+    "descricao": "ROLAMENTO CORREIA POLIVE",
+    "ncm": "87089200",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1708",
+    "descricao": "WOE 702 F. OLEO",
+    "ncm": "84219999",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1709",
+    "descricao": "FCD 0728 F. COMB.",
+    "ncm": "84219999",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1710",
+    "descricao": "FAP 4064 F. AR",
+    "ncm": "84219999",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1711",
+    "descricao": "=F1 MASTER SINTETICO 0W30 C2 SP LT",
+    "ncm": "27101932",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1715",
+    "descricao": "AKX 1452-2 F. AR COND.",
+    "ncm": "84213990",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1719",
+    "descricao": "TONER COMP.(INT.) HP 105A/W1105A (COM CHIP)(M107/M135) 1K",
+    "ncm": "84439933",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1720",
+    "descricao": "SUPORTE DE BROCA DE 1",
+    "ncm": "82075011",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1722",
+    "descricao": "SMARTPHONE SAMSUNG A07 2 256GB VERD",
+    "ncm": "85171300",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1723",
+    "descricao": "SMARTPHONE SAMSUNG A07 2 256GB PRET",
+    "ncm": "85171300",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1728",
+    "descricao": "S450 PALHETA DIANTEIRA SLIM BLADE AUDI A4 08/ A5 COUPE 07/12 A6 11/ Q5 08/13 CITROEN JUMPY 17 RENAUL",
+    "ncm": "85129000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1729",
+    "descricao": "S465 PALHETA DIANTEIRA SLIM BLADE AUDI A3 13/ CITROEN C3 12/ C4 CACTUS 18/ C5 04/07 JUMPY 17/ DUCATO",
+    "ncm": "85129000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1730",
+    "descricao": "BALANCA C PIVO",
+    "ncm": "87089200",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1731",
+    "descricao": "BIELETA",
+    "ncm": "84842000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1732",
+    "descricao": "BUCHA BARRA ESTABILIZADORA",
+    "ncm": "72159090",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1733",
+    "descricao": "AMORTECEDOR TRASEIRO",
+    "ncm": "87088000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1734",
+    "descricao": "CALCO MOLA TRASEIRA",
+    "ncm": "73202010",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1735",
+    "descricao": "KIT AMORTECEDOR DIANTEIRO",
+    "ncm": "87088000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1736",
+    "descricao": "KIT AMORTECEDOR TRASEIRO",
+    "ncm": "87088000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1737",
+    "descricao": "ROLAMENTO NK 45/20 IKO",
+    "ncm": "84824000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1738",
+    "descricao": "ROLAMENTO 6203 ZZ GBR",
+    "ncm": "84821010",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1739",
+    "descricao": "ROLAMENTO 30207 STB",
+    "ncm": "84822010",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1740",
+    "descricao": "RETENTOR 01604 BR SABO",
+    "ncm": "40169300",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1741",
+    "descricao": "RETENTOR 00761 BR SABO",
+    "ncm": "40169300",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1742",
+    "descricao": "PORCA KM 7",
+    "ncm": "73181600",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1743",
+    "descricao": "ARRUELA MB 7",
+    "ncm": "73182100",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1744",
+    "descricao": "BALIZADOR RODOVIA TIPO T 1.14 M LAR",
+    "ncm": "39269090",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1746",
+    "descricao": "ARL 6071 F.AR",
+    "ncm": "84219999",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1749",
+    "descricao": "8.8 MA RI M10 X 45",
+    "ncm": "73181500",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "1752",
+    "descricao": "REBITES A-510 3/16",
+    "ncm": "83082000",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "1753",
+    "descricao": "BROCA ACO RAPIDO 3/16",
+    "ncm": "82075011",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1754",
+    "descricao": "A.A. CHATA PH INOX 4.2 X 19",
+    "ncm": "73181500",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "1755",
+    "descricao": "REBITES A-619 1/4",
+    "ncm": "83082000",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "1757",
+    "descricao": "JG CHAVE ALLEN 1.3 A 10.0MM 13PC NOLL",
+    "ncm": "82055900",
+    "unidade": "JG"
+  },
+  {
+    "codigo_interno": "1759",
+    "descricao": "TRENA PROFESSIONAL 8M/26FT",
+    "ncm": "90178010",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1760",
+    "descricao": "TRENA PROFESSIONAL 5M/16FT",
+    "ncm": "90178010",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1761",
+    "descricao": "RETIFICADEIRA 6MM 220V DEWALT DWE4887-B2",
+    "ncm": "84672999",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1762",
+    "descricao": "PONTAS MONTADAS TIPO A 6.4MM A11-D",
+    "ncm": "68042219",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1763",
+    "descricao": "8.8 MA RI M06 X 20",
+    "ncm": "73181500",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "1764",
+    "descricao": "ALLEM C/C MA M6 X 20",
+    "ncm": "73181500",
+    "unidade": "CENTO"
+  },
+  {
+    "codigo_interno": "1766",
+    "descricao": "MACHOS M 06-1.00 MA ACO RAP",
+    "ncm": "82074010",
+    "unidade": "JG"
+  },
+  {
+    "codigo_interno": "1767",
+    "descricao": "TRINCO FIO REDONDO LINHA LEVE EM 100M 4",
+    "ncm": "83014000",
+    "unidade": "CART"
+  },
+  {
+    "codigo_interno": "1769",
+    "descricao": "DESENGRIPANTE ANTICORROSIVO MP1 321ML",
+    "ncm": "38249941",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1772",
+    "descricao": "DISCO DESBASTE 115 BDA 600 CLASSIC",
+    "ncm": "68042211",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1773",
+    "descricao": "ADESIVO INST 793 20G BICO ANTIENTUPIMENT",
+    "ncm": "35061010",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1778",
+    "descricao": "CHAVE DE FENDA GENERAL PRO 3/16 X 6",
+    "ncm": "82054000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1780",
+    "descricao": "FILTRO EXTERNO DONALDSON",
+    "ncm": "84219999",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1781",
+    "descricao": "FILTRO DE AR DONALDSON",
+    "ncm": "84213100",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1783",
+    "descricao": "FILTRO COMBUSTIVEL SEPARADOR",
+    "ncm": "84212990",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1793",
+    "descricao": "TERMINAL BATERIA",
+    "ncm": "85365090",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1796",
+    "descricao": "ELEMENTO FILTRANTE PARKER S/DRENO",
+    "ncm": "84219999",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1797",
+    "descricao": "REPARO DO CIL. DA CACAMBA TRASEIRA 310K",
+    "ncm": "40169300",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1798",
+    "descricao": "REPARO",
+    "ncm": "40169300",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1799",
+    "descricao": "AC. EL.UC HELIAR H95MD 95AH 18M",
+    "ncm": "85071090",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1800",
+    "descricao": "=SOLUVEL 1LT",
+    "ncm": "27101932",
+    "unidade": "FR"
+  },
+  {
+    "codigo_interno": "1802",
+    "descricao": "ADESIVO PARA JUNTA",
+    "ncm": "35069190",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1805",
+    "descricao": "REPARO IMPORTADO WORLD GASKET",
+    "ncm": "40169300",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1806",
+    "descricao": "REPARO CILINDRO DO BRACO IMPORTADO WORLD GASKET",
+    "ncm": "40169300",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1808",
+    "descricao": "CAPACETE C CARNEIRA TEXTIL JUG TEXTIL V-GARD BRANCO CA498 MSA",
+    "ncm": "65061090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1812",
+    "descricao": "FITA ISOLANTE 10X19MM AZUL BRASFORT",
+    "ncm": "39191020",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1815",
+    "descricao": "TRINCHA 319 4\" ATLAS",
+    "ncm": "96034090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1816",
+    "descricao": "TRINCHA 319 2\" ATLAS",
+    "ncm": "96034090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1817",
+    "descricao": "TRENA EDA EMB 7,5M/25MM C TR STAND 0BD",
+    "ncm": "90178010",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1821",
+    "descricao": "DISCO DESBASTE BDA600 4.1/2\" NORTON",
+    "ncm": "68042211",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1830",
+    "descricao": "ARLA 30 BIOARLA",
+    "ncm": "31021010",
+    "unidade": "LT"
+  },
+  {
+    "codigo_interno": "1833",
+    "descricao": "SHELL HELIX HX7 SEMISSINTETICO FLEX 10W40 1L",
+    "ncm": "27101932",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1836",
+    "descricao": "FILTRO WEGA FAP4041",
+    "ncm": "84219999",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1837",
+    "descricao": "FILTRO WEGA AKX2161",
+    "ncm": "84213990",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1840",
+    "descricao": "FILTRO MANN W6880",
+    "ncm": "84212300",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1853",
+    "descricao": "UNC RI ZC 5/8 X 2.1/2",
+    "ncm": "73181500",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "1854",
+    "descricao": "ARRUELA ZINC. CENTO 5/8",
+    "ncm": "73182200",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "1855",
+    "descricao": "PORCA ZINC. UNC 5/8",
+    "ncm": "73181600",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "1856",
+    "descricao": "REBITADOR HR-702",
+    "ncm": "82055900",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1862",
+    "descricao": "FERRO DE PUA 11/16 - X 8",
+    "ncm": "82075090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1863",
+    "descricao": "FERRO DE PUA DE 5/8 - X 8",
+    "ncm": "82075090",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1864",
+    "descricao": "PASTILHA KC5010 - CAIXA",
+    "ncm": "82090011",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1865",
+    "descricao": "CALCA DE BRIM CINZA COM REFORCO GRANDE E FAIXA REFLETIVA",
+    "ncm": "62046300",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1869",
+    "descricao": "CAMISETA DE MALHA MANGA LONGA COM FAIXA REFLETIVA",
+    "ncm": "62179000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1873",
+    "descricao": "JUNTA CABECOTE",
+    "ncm": "84841000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1875",
+    "descricao": "JUNTA COLETOR",
+    "ncm": "84841000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1876",
+    "descricao": "MANGUEIRA COTOVELO RESPIRO OLEO TAMPA VALVULA 914C ELETRONICO",
+    "ncm": "40093100",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1877",
+    "descricao": "DIAFRAGMA TAMPA RADIADOR OLEO",
+    "ncm": "40169300",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1879",
+    "descricao": "PARAFUSO COLETOR",
+    "ncm": "73181500",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1880",
+    "descricao": "JUNTA CARCACA",
+    "ncm": "84841000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1881",
+    "descricao": "CANO AGUA DO MOTOR",
+    "ncm": "87089990",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1888",
+    "descricao": "CORREIA",
+    "ncm": "40103100",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1889",
+    "descricao": "ESTICADOR CORREIA MOTOR",
+    "ncm": "84835090",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1890",
+    "descricao": "SERRA COPO FURADEIRA DE TRILHOS",
+    "ncm": "82029990",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1894",
+    "descricao": "MANGUEIRA FILTRO AR",
+    "ncm": "87089990",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1895",
+    "descricao": "ALAVANCA PANDROL",
+    "ncm": "82055900",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1900",
+    "descricao": "FITA ISOLANTE 19MMX20M PRETA VONDER",
+    "ncm": "39191020",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1908",
+    "descricao": "LUVA PU TATIL 10(EG) PRETA CA 15272 KALIPSO",
+    "ncm": "61161000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1909",
+    "descricao": "LUVA HANDEX PVC 36 10(EG) VERDE CA 49465",
+    "ncm": "39262000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1927",
+    "descricao": "FITA ZEBRADA AMARELO/PRETO 200 MT VINILSEG",
+    "ncm": "39201010",
+    "unidade": "RL"
+  },
+  {
+    "codigo_interno": "1933",
+    "descricao": "FITA ISOLANTE 19MMX10M VERMELHA VONDER",
+    "ncm": "39191020",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1934",
+    "descricao": "FITA ISOLANTE 19MMX10M VERDE VONDER",
+    "ncm": "39191020",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1935",
+    "descricao": "FITA ISOLANTE 19MMX10M AZUL VONDER",
+    "ncm": "39191020",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1936",
+    "descricao": "FITA ISOLANTE 19MMX10M AMARELA VONDER",
+    "ncm": "39191020",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1940",
+    "descricao": "ROLAMENTO 6306 2RS SKF",
+    "ncm": "84821010",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1941",
+    "descricao": "ROLAMENTO 6205 ZZ NSK",
+    "ncm": "84821010",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1942",
+    "descricao": "ROLAMENTO 30207 SKF",
+    "ncm": "84822010",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1943",
+    "descricao": "GARFO 8 DENTES",
+    "ncm": "82019000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1944",
+    "descricao": "TENAZ DORMENTE",
+    "ncm": "44069200",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1945",
+    "descricao": "PICARETA DE SOCA",
+    "ncm": "72166990",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1946",
+    "descricao": "PICARETA ALVIAO ACO MADEIRA 900MM",
+    "ncm": "40103500",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1948",
+    "descricao": "ALAVANCA LISA",
+    "ncm": "82014000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1949",
+    "descricao": "TROLLEY COMPLETO PARA BITOLA LARGA",
+    "ncm": "73029000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "1956",
+    "descricao": "SUPORTE EXTINTOR",
+    "ncm": "73269090",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1957",
+    "descricao": "EXTINTOR S/SUPORTE 2KG NOVO PO ABC55",
+    "ncm": "84241000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1966",
+    "descricao": "LIMPA CONTATO 300ML",
+    "ncm": "38249941",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1967",
+    "descricao": "GRAXAZUL FAG 500GR",
+    "ncm": "27101932",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1968",
+    "descricao": "ALLEM C/C MA M8 X 90",
+    "ncm": "73181500",
+    "unidade": "CENTO"
+  },
+  {
+    "codigo_interno": "1970",
+    "descricao": "ARRUELA DE PRESSAO M 08",
+    "ncm": "73182100",
+    "unidade": "CENTO"
+  },
+  {
+    "codigo_interno": "1972",
+    "descricao": "CHAVE COMBINADA 15MM",
+    "ncm": "82041100",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1974",
+    "descricao": "CHAVE COMBINADA 19 MM",
+    "ncm": "82041100",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1977",
+    "descricao": "ALICATE DE PRESSAO 7",
+    "ncm": "82032010",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1978",
+    "descricao": "CHAVE DE FENDA PRO COMFORT 3/16 X 4",
+    "ncm": "82054000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1979",
+    "descricao": "CHAVE PHILLIPS GP 3/16 X 5",
+    "ncm": "82054000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1980",
+    "descricao": "CART PORCA P/ESMER 4,5 E 7",
+    "ncm": "84679900",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1982",
+    "descricao": "PO SEX FL C/NYLON M6-1.00MA ZB",
+    "ncm": "73181600",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "1984",
+    "descricao": "PORCA ZINC. UNC 3/8",
+    "ncm": "73181600",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "1985",
+    "descricao": "ARRUELA DE PRESSAO 3/8",
+    "ncm": "73182100",
+    "unidade": "CENTO"
+  },
+  {
+    "codigo_interno": "1986",
+    "descricao": "G.5 UNC RI 3/8 X 1.1/2",
+    "ncm": "73181500",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "1988",
+    "descricao": "ALLEM C/C MA M6 X 16",
+    "ncm": "73181500",
+    "unidade": "CENTO"
+  },
+  {
+    "codigo_interno": "1989",
+    "descricao": "ALLEM C/C MA M10 X 40",
+    "ncm": "73181500",
+    "unidade": "CENTO"
+  },
+  {
+    "codigo_interno": "1990",
+    "descricao": "ALLEM C/C MA M6 X 30",
+    "ncm": "73181500",
+    "unidade": "CENTO"
+  },
+  {
+    "codigo_interno": "1997",
+    "descricao": "SOQUETE ENCAIXE 3/4 - 3/4",
+    "ncm": "82042000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "1998",
+    "descricao": "PORCA INOX 304 5/16",
+    "ncm": "73181600",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "1999",
+    "descricao": "SEXT INOX 5/16 X 6",
+    "ncm": "73181500",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "2000",
+    "descricao": "ARR. FUNILEIRO INOX 3/8",
+    "ncm": "73182200",
+    "unidade": "CT"
+  },
+  {
+    "codigo_interno": "2002",
+    "descricao": "00000000019521 PERNEIRA SINTETICO 3 TALAS C/VELCRO E PRESILHA",
+    "ncm": "64069090",
+    "unidade": "PR"
+  },
+  {
+    "codigo_interno": "2003",
+    "descricao": "AGUA SANITARIA FACILITA 1L AUDAX",
+    "ncm": "28289011",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "2004",
+    "descricao": "ALCOOL LIQUIDO 70 1L ECOSHOW",
+    "ncm": "38089429",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "2005",
+    "descricao": "COPO BIODEGRADAVEL 180ML C/ 2500UN COPOMAIS",
+    "ncm": "39241000",
+    "unidade": "CX"
+  },
+  {
+    "codigo_interno": "2006",
+    "descricao": "DESINFETANTE LAVANDA 5L SANTOP",
+    "ncm": "38089429",
+    "unidade": "GL"
+  },
+  {
+    "codigo_interno": "2007",
+    "descricao": "DETERGENTE LIQ NEUTRO 500ML MINUANO",
+    "ncm": "34025000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "2008",
+    "descricao": "ESPONJA DUPLA FACE SCOTCH BRITE 3M C/10UN",
+    "ncm": "68053090",
+    "unidade": "PCT"
+  },
+  {
+    "codigo_interno": "2009",
+    "descricao": "LIMPADOR VEJA MULTIUSO TRADICIONAL GOLD 500ML",
+    "ncm": "34025000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "2010",
+    "descricao": "PANO ALVEJADO 45X65 BRANCO CAEBITEX ETIQUETA VM/RX",
+    "ncm": "63071000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "2011",
+    "descricao": "PAPEL HIGIENICO 30M F.D 100% CEL C/4RL QUALITE",
+    "ncm": "48181000",
+    "unidade": "PCT"
+  },
+  {
+    "codigo_interno": "2012",
+    "descricao": "PAPEL HIGIENICO FS 100%CEL 8RL INSTITUCIONAL FLORA",
+    "ncm": "48181000",
+    "unidade": "PCT"
+  },
+  {
+    "codigo_interno": "2013",
+    "descricao": "PAPEL TOALHA BOBINA 6RL 100%CEL VIRGEM FLORA",
+    "ncm": "48182000",
+    "unidade": "FD"
+  },
+  {
+    "codigo_interno": "2014",
+    "descricao": "PAPEL TOALHA INTERFOLHA 100% CEL 20X21 DUBBON",
+    "ncm": "48182000",
+    "unidade": "PCT"
+  },
+  {
+    "codigo_interno": "2015",
+    "descricao": "SABAO LIQUIDO COCO 5L SANAPY",
+    "ncm": "34025000",
+    "unidade": "GL"
+  },
+  {
+    "codigo_interno": "2016",
+    "descricao": "SACO DE LIXO 20L PRETO P4 38X45 C/100UN MELEVE",
+    "ncm": "39232190",
+    "unidade": "FD"
+  },
+  {
+    "codigo_interno": "2017",
+    "descricao": "VASSOURA BETTANIN NOVICA ORIGINAL SUPREPRO",
+    "ncm": "96039000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "2018",
+    "descricao": "VASSOURA GARI VARRE TUDO 40CM DA CASA CABO 1,50MT",
+    "ncm": "96039000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "2019",
+    "descricao": "PORCA DE COMPRESSAO LATAO",
+    "ncm": "74122000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "2020",
+    "descricao": "ANILHA DE COMPRESSAO",
+    "ncm": "40092190",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "2025",
+    "descricao": "MANGUEIRA DE MEDIA PRESSAO",
+    "ncm": "40093100",
+    "unidade": "MT"
+  },
+  {
+    "codigo_interno": "2026",
+    "descricao": "ABRACADEIRA ROSCA SEM FIM INOX",
+    "ncm": "73269090",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "2027",
+    "descricao": "PINO P/ENGATE RAPIDO 1/4 ROSCA FEMEA NPT LATAO",
+    "ncm": "74122000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "2028",
+    "descricao": "MANGUEIRA ESPIRALADA AZUL 8X6 C/TERMINAIS",
+    "ncm": "39173100",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "2029",
+    "descricao": "OLEO DESENGRIPANTE LUB 300ML",
+    "ncm": "38249941",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "2036",
+    "descricao": "MOUSE PAD C APOIO DE PUNHO EM GEL 24,8X22,6CM PRETO APP-TECH PT 1 UN",
+    "ncm": "40161090",
+    "unidade": "PT"
+  },
+  {
+    "codigo_interno": "2039",
+    "descricao": "MOUSE PAD EM PVC18X22CM HARRY POTTER CHARMS SPIRAL PT 1 UN",
+    "ncm": "39261000",
+    "unidade": "PT"
+  },
+  {
+    "codigo_interno": "2041",
+    "descricao": "PAPEL SULFITE BRANCO A4 75G 210MMX297MM CHAMEX PT 500 FL",
+    "ncm": "48025610",
+    "unidade": "PT"
+  },
+  {
+    "codigo_interno": "2043",
+    "descricao": "DOCE DE BANANA BANANINHA COM ACUCAR 36G 011 PARAIBUNA PT 1 UN",
+    "ncm": "20079923",
+    "unidade": "PT"
+  },
+  {
+    "codigo_interno": "2045",
+    "descricao": "UNIDADES",
+    "ncm": "85364100",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "2046",
+    "descricao": "BOMBA DE TRANSFERENCIA DE COMBUSTIVEL",
+    "ncm": "84133010",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "2047",
+    "descricao": "VALVULA DE RETENCAO",
+    "ncm": "84813000",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "2048",
+    "descricao": "SENSOR MAP",
+    "ncm": "90262090",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "2049",
+    "descricao": "CORDA 12 MM BOMBEIRO NYLON POLIAMIDA 50M",
+    "ncm": "56075090",
+    "unidade": "RL"
+  },
+  {
+    "codigo_interno": "2055",
+    "descricao": "EXTINTOR PO ABC 04 KG- 2A 20BC",
+    "ncm": "84241000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "2057",
+    "descricao": "ODORIZADOR 432ML LAVANDA BOM AR AIR WICK",
+    "ncm": "33074900",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "2058",
+    "descricao": "VASSOURA PIACAVA COM CAPA PLASTICA DA CASA",
+    "ncm": "96031000",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "2059",
+    "descricao": "ODORIZADOR 432ML CHERINHO TALCO BOM AR AIR WICK",
+    "ncm": "33074900",
+    "unidade": "UN"
+  },
+  {
+    "codigo_interno": "2060",
+    "descricao": "KIT C/2UN BALDE METALICO ORIGINAL VONDER MULTI",
+    "ncm": "73269090",
+    "unidade": "KIT"
+  },
+  {
+    "codigo_interno": "2065",
+    "descricao": "BOMBA DE COMBUSTIVEL (GENUINO FPT)",
+    "ncm": "84136011",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "2066",
+    "descricao": "ANEL ORING VITON",
+    "ncm": "40169300",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "2070",
+    "descricao": "CORREIA INFFINITY",
+    "ncm": "40103900",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "2071",
+    "descricao": "BOMBA DAGUA",
+    "ncm": "84136011",
+    "unidade": "PC"
+  },
+  {
+    "codigo_interno": "2072",
+    "descricao": "ESTICADOR DE CORREIA POLIA ACO",
+    "ncm": "84314929",
+    "unidade": "PC"
+  }
+]
