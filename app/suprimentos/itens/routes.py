@@ -7,7 +7,6 @@ from app.services.logs_service import registrar_log
 from app.services.suprimentos_service import (
     TIPOS_ITEM,
     alterar_status,
-    buscar_categorias_ativas,
     buscar_centros_custo_ativos,
     buscar_itens,
     buscar_por_id,
@@ -19,7 +18,6 @@ from app.suprimentos.itens import suprimentos_itens_bp
 
 def opcoes_formulario():
     return {
-        "categorias": buscar_categorias_ativas(),
         "unidades": buscar_unidades_ativas(),
         "centros": buscar_centros_custo_ativos(),
         "tipos_item": sorted(TIPOS_ITEM),
@@ -34,12 +32,11 @@ def listar():
         "suprimentos/itens/listar.html",
         itens=buscar_itens(
             request.args.get("descricao"),
-            request.args.get("categoria_id", type=int),
+            None,
             request.args.get("tipo"),
             request.args.get("estocavel"),
             request.args.get("status"),
         ),
-        categorias=buscar_categorias_ativas(),
         tipos_item=sorted(TIPOS_ITEM),
         filtros=request.args,
     )
