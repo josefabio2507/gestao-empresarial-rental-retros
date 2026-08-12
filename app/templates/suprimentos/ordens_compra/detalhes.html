@@ -219,6 +219,14 @@
     </div>
 
     <div class="page-actions">
+        {% if pode_editar_ordem and ordem.status != "Cancelada" %}
+            <form class="inline-form" method="POST" action="{{ url_for('suprimentos_ordens_compra.enviar_whatsapp_fornecedor', ordem_id=ordem.id) }}" target="_blank">
+                <button class="btn btn-whatsapp" type="submit">Enviar WhatsApp ao fornecedor</button>
+            </form>
+            <form class="inline-form" method="POST" action="{{ url_for('suprimentos_ordens_compra.enviar_email_fornecedor', ordem_id=ordem.id) }}" target="_blank">
+                <button class="btn btn-primary" type="submit">Enviar e-mail ao fornecedor</button>
+            </form>
+        {% endif %}
         {% if ordem.pode_receber %}
             <a class="btn btn-primary" href="{{ url_for('suprimentos_ordens_compra.receber', ordem_id=ordem.id) }}">Registrar recebimento</a>
         {% endif %}
