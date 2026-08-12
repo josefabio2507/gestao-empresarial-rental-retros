@@ -22,8 +22,10 @@ from app.services.suprimentos_service import (
     buscar_ordens_compra,
     buscar_por_id,
     cancelar_ordem_compra,
+    enviar_email_ordem_compra_fornecedor,
     formatar_decimal_brasil,
     formatar_moeda_brl,
+    gerar_link_whatsapp_ordem_compra_fornecedor,
     gerar_ordens_compra_cotacao,
     preparar_financeiro_ordem_compra,
     provisionar_financeiro_ordem_compra,
@@ -70,6 +72,12 @@ def listar():
         filtros=request.args,
         formatar_moeda_brl=formatar_moeda_brl,
         valor_total_propostas_selecionadas=valor_total_propostas_selecionadas,
+        pode_editar_ordem=usuario_tem_permissao(
+            current_user,
+            "suprimentos",
+            "ordens_compra",
+            "editar",
+        ),
     )
 
 
@@ -133,6 +141,61 @@ def detalhes(ordem_id):
             "editar",
         ),
     )
+
+
+@suprimentos_ordens_compra_bp.route("/<int:ordem_id>/fornecedor/whatsapp", methods=["POST"])
+@login_required
+@module_permission_required("suprimentos", "ordens_compra", "editar")
+def enviar_whatsapp_fornecedor(ordem_id):
+    ordem = buscar_por_id(SuprimentosOrdemCompra, ordem_id)
+
+    if not ordem:
+        flash("Ordem de compra nao encontrada.", "warning")
+        return redirect(url_for("suprimentos_ordens_compra.listar"))
+
+    sucesso, mensagem, link = gerar_link_whatsapp_ordem_compra_fornecedor(ordem)
+
+    if sucesso:
+        registrar_log(
+            "suprimentos_oc_whatsapp_fornecedor",
+            f"WhatsApp da ordem de compra gerado. Ordem ID: {ordem.id}. Fornecedor ID: {ordem.fornecedor_id}.",
+        )
+        flash(mensagem, "success")
+        return redirect(link)
+
+    flash(mensagem, "danger")
+    return redirect(url_for("suprimentos_ordens_compra.detalhes", ordem_id=ordem.id))
+
+
+@suprimentos_ordens_compra_bp.route("/<int:ordem_id>/fornecedor/email", methods=["POST"])
+@login_required
+@module_permission_required("suprimentos", "ordens_compra", "editar")
+def enviar_email_fornecedor(ordem_id):
+    ordem = buscar_por_id(SuprimentosOrdemCompra, ordem_id)
+
+    if not ordem:
+        flash("Ordem de compra nao encontrada.", "warning")
+        return redirect(url_for("suprimentos_ordens_compra.listar"))
+
+    sucesso, mensagem, link_email = enviar_email_ordem_compra_fornecedor(ordem)
+
+    if sucesso:
+        registrar_log(
+            "suprimentos_oc_email_fornecedor",
+            f"E-mail da ordem de compra enviado/gerado. Ordem ID: {ordem.id}. Fornecedor ID: {ordem.fornecedor_id}.",
+        )
+        if link_email:
+            return render_template(
+                "suprimentos/ordens_compra/abrir_email.html",
+                ordem=ordem,
+                mensagem=mensagem,
+                link_email=link_email,
+            )
+        flash(mensagem, "success")
+    else:
+        flash(mensagem, "danger")
+
+    return redirect(url_for("suprimentos_ordens_compra.detalhes", ordem_id=ordem.id))
 
 
 @suprimentos_ordens_compra_bp.route("/<int:ordem_id>/evidencias")

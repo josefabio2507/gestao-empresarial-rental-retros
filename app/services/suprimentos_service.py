@@ -2225,6 +2225,133 @@ def enviar_email_solicitacao_cotacao_fornecedor(cotacao, fornecedor):
     return True, f"{erro_outlook} Use a abertura manual do e-mail.", link_mailto
 
 
+def gerar_mensagem_ordem_compra_fornecedor(ordem):
+    fornecedor = ordem.fornecedor if ordem else None
+    requisicao = ordem.requisicao if ordem else None
+    cotacao = ordem.cotacao if ordem else None
+    linhas = [
+        "*Rental Retros - Ordem de Compra*",
+        "",
+        f"Ordem de compra: {ordem.numero}",
+        f"Cotacao: {cotacao.numero if cotacao else '-'}",
+        f"Requisicao: {requisicao.numero if requisicao else '-'}",
+        f"Fornecedor: {fornecedor.razao_social if fornecedor else ordem.fornecedor_razao_social_snapshot}",
+        f"CNPJ/CPF: {ordem.fornecedor_cnpj_cpf_snapshot or '-'}",
+        f"Condicao de pagamento: {ordem.condicao_pagamento_snapshot or '-'}",
+        f"Previsao de vencimento: {ordem.previsao_vencimento.strftime('%d/%m/%Y') if ordem.previsao_vencimento else '-'}",
+        f"Total da OC: {formatar_moeda_brl(ordem.valor_total)}",
+        "",
+        "*Itens:*",
+    ]
+
+    for item in ordem.itens:
+        linhas.append(
+            f"- {item.item_descricao_snapshot} | Qtd: "
+            f"{formatar_decimal_brasil(item.quantidade)} {item.unidade_medida_snapshot} | "
+            f"Unit.: {formatar_moeda_brl(item.preco_unitario)} | "
+            f"Total: {formatar_moeda_brl(item.valor_total)}"
+        )
+        if item.prazo_entrega_dias is not None:
+            linhas.append(f"  Prazo: {item.prazo_entrega_dias} dias")
+        if item.observacoes:
+            linhas.append(f"  Observacoes: {item.observacoes}")
+
+    if ordem.observacoes:
+        linhas.extend(["", f"Observacoes da OC: {ordem.observacoes}"])
+
+    linhas.extend(
+        [
+            "",
+            "Por favor, confirme o recebimento desta Ordem de Compra.",
+            "",
+            "Rental Retros",
+        ]
+    )
+    return "\n".join(linhas)
+
+
+def gerar_link_whatsapp_ordem_compra_fornecedor(ordem):
+    if not ordem:
+        return False, "Ordem de compra nao encontrada.", None
+
+    if ordem.status == STATUS_ORDEM_COMPRA_CANCELADA:
+        return False, "Ordem de compra cancelada nao pode ser enviada.", None
+
+    fornecedor = ordem.fornecedor
+    if not fornecedor:
+        return False, "Fornecedor da ordem de compra nao encontrado.", None
+
+    telefone = normalizar_telefone_brasil(fornecedor.telefone)
+    if not telefone:
+        return False, "Fornecedor sem telefone cadastrado.", None
+
+    if not telefone_brasil_valido(telefone):
+        return False, "Telefone do fornecedor invalido.", None
+
+    mensagem = gerar_mensagem_ordem_compra_fornecedor(ordem)
+    return True, "Link do WhatsApp gerado com sucesso.", f"https://wa.me/{telefone}?text={quote(mensagem)}"
+
+
+def gerar_assunto_email_ordem_compra_fornecedor(ordem):
+    return f"Ordem de Compra {ordem.numero} - Rental Retros"
+
+
+def gerar_corpo_email_ordem_compra_fornecedor(ordem):
+    return gerar_mensagem_ordem_compra_fornecedor(ordem).replace("*", "")
+
+
+def gerar_link_mailto_ordem_compra_fornecedor(ordem):
+    fornecedor = ordem.fornecedor if ordem else None
+    if not fornecedor or not fornecedor.email:
+        return False, "Fornecedor sem e-mail cadastrado.", None
+
+    if not email_valido(fornecedor.email):
+        return False, "E-mail do fornecedor invalido.", None
+
+    assunto = gerar_assunto_email_ordem_compra_fornecedor(ordem)
+    corpo = gerar_corpo_email_ordem_compra_fornecedor(ordem)
+    return True, "Link de e-mail gerado com sucesso.", (
+        f"mailto:{fornecedor.email}?subject={quote(assunto)}&body={quote(corpo)}"
+    )
+
+
+def enviar_email_ordem_compra_fornecedor(ordem):
+    if not ordem:
+        return False, "Ordem de compra nao encontrada.", None
+
+    if ordem.status == STATUS_ORDEM_COMPRA_CANCELADA:
+        return False, "Ordem de compra cancelada nao pode ser enviada.", None
+
+    fornecedor = ordem.fornecedor
+    if not fornecedor:
+        return False, "Fornecedor da ordem de compra nao encontrado.", None
+
+    if not fornecedor.email:
+        return False, "Fornecedor sem e-mail cadastrado.", None
+
+    if not email_valido(fornecedor.email):
+        return False, "E-mail do fornecedor invalido.", None
+
+    assunto = gerar_assunto_email_ordem_compra_fornecedor(ordem)
+    corpo = gerar_corpo_email_ordem_compra_fornecedor(ordem)
+
+    if smtp_configurado():
+        sucesso, erro = enviar_email(fornecedor.email, assunto, corpo)
+        if sucesso:
+            return True, "E-mail enviado automaticamente ao fornecedor.", None
+        return False, erro or "Falha ao enviar e-mail.", None
+
+    sucesso_outlook, erro_outlook = enviar_email_outlook_classic(fornecedor.email, assunto, corpo)
+    if sucesso_outlook:
+        return True, "E-mail criado e enviado automaticamente pelo Outlook Classic.", None
+
+    sucesso, mensagem, link_mailto = gerar_link_mailto_ordem_compra_fornecedor(ordem)
+    if not sucesso:
+        return False, mensagem, None
+
+    return True, f"{erro_outlook} Use a abertura manual do e-mail.", link_mailto
+
+
 def valor_total_propostas_selecionadas(cotacao):
     return sum(
         (Decimal(proposta.valor_total) for proposta in cotacao.propostas if proposta.selecionada),
