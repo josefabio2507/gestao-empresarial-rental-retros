@@ -129,6 +129,14 @@
                         <td>{{ formatar_moeda_brl(ordem.valor_total) }}</td>
                         <td class="col-acoes">
                             <a class="btn btn-secondary" href="{{ url_for('suprimentos_ordens_compra.detalhes', ordem_id=ordem.id) }}">Ver</a>
+                            {% if pode_editar_ordem and ordem.status != "Cancelada" %}
+                                <form class="inline-form" method="POST" action="{{ url_for('suprimentos_ordens_compra.enviar_whatsapp_fornecedor', ordem_id=ordem.id) }}" target="_blank">
+                                    <button class="btn btn-whatsapp" type="submit">WhatsApp</button>
+                                </form>
+                                <form class="inline-form" method="POST" action="{{ url_for('suprimentos_ordens_compra.enviar_email_fornecedor', ordem_id=ordem.id) }}" target="_blank">
+                                    <button class="btn btn-primary" type="submit">E-mail</button>
+                                </form>
+                            {% endif %}
                             <a class="btn btn-secondary" href="{{ url_for('suprimentos_ordens_compra.evidencias_ordem', ordem_id=ordem.id) }}">Evidencias</a>
                         </td>
                     </tr>
