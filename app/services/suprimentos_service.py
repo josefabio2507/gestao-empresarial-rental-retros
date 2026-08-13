@@ -871,28 +871,38 @@ def codigo_item_ja_existe(codigo, item_id_ignorado=None):
 
 def gerar_proximo_codigo_item(item_id_ignorado=None):
     maior_numero = 0
-    maior_tamanho = 4
+    maior_tamanho = 6
 
-    query = SuprimentosItem.query.with_entities(SuprimentosItem.codigo_interno)
+    query = SuprimentosItem.query.with_entities(SuprimentosItem.id, SuprimentosItem.codigo_interno)
     if item_id_ignorado is not None:
         query = query.filter(SuprimentosItem.id != item_id_ignorado)
 
-    for (codigo,) in query:
-        grupos_numericos = re.findall(r"\d+", codigo or "")
-        if not grupos_numericos:
+    maior_id = 0
+    for item_id, codigo in query:
+        maior_id = max(maior_id, item_id or 0)
+        codigo = texto(codigo)
+
+        if not re.fullmatch(r"\d{1,12}", codigo):
             continue
 
-        grupo = grupos_numericos[-1]
-        numero = int(grupo)
+        numero = int(codigo)
         if numero > maior_numero:
             maior_numero = numero
-            maior_tamanho = max(4, len(grupo))
+            maior_tamanho = max(6, len(codigo))
+
+    if maior_numero == 0:
+        maior_numero = maior_id
 
     while True:
         proximo_codigo = str(maior_numero + 1).zfill(maior_tamanho)
+        if len(proximo_codigo) > 60:
+            proximo_codigo = str(maior_id + 1)
+
         if not codigo_item_ja_existe(proximo_codigo, item_id_ignorado):
             return proximo_codigo
+
         maior_numero += 1
+        maior_id += 1
 
 
 def salvar_item(form_data, item=None):
