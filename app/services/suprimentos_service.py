@@ -869,8 +869,33 @@ def codigo_item_ja_existe(codigo, item_id_ignorado=None):
     return query.first() is not None
 
 
+def gerar_proximo_codigo_item(item_id_ignorado=None):
+    maior_numero = 0
+    maior_tamanho = 4
+
+    query = SuprimentosItem.query.with_entities(SuprimentosItem.codigo_interno)
+    if item_id_ignorado is not None:
+        query = query.filter(SuprimentosItem.id != item_id_ignorado)
+
+    for (codigo,) in query:
+        grupos_numericos = re.findall(r"\d+", codigo or "")
+        if not grupos_numericos:
+            continue
+
+        grupo = grupos_numericos[-1]
+        numero = int(grupo)
+        if numero > maior_numero:
+            maior_numero = numero
+            maior_tamanho = max(4, len(grupo))
+
+    while True:
+        proximo_codigo = str(maior_numero + 1).zfill(maior_tamanho)
+        if not codigo_item_ja_existe(proximo_codigo, item_id_ignorado):
+            return proximo_codigo
+        maior_numero += 1
+
+
 def salvar_item(form_data, item=None):
-    codigo = texto(form_data.get("codigo_interno")).upper() or None
     descricao = texto_maiusculo(form_data.get("descricao"))
     tipo = texto(form_data.get("tipo"))
     unidade_medida_id = inteiro_ou_none(form_data.get("unidade_medida_id"))
@@ -886,9 +911,6 @@ def salvar_item(form_data, item=None):
     if tipo not in TIPOS_ITEM:
         return False, "Tipo do item e invalido.", item
 
-    if codigo_item_ja_existe(codigo, getattr(item, "id", None)):
-        return False, "Ja existe item cadastrado com este codigo interno.", item
-
     if estoque_minimo is not None and estoque_minimo < 0:
         return False, "Estoque minimo nao pode ser negativo.", item
 
@@ -896,7 +918,9 @@ def salvar_item(form_data, item=None):
         item = SuprimentosItem(ativo=True)
         db.session.add(item)
 
-    item.codigo_interno = codigo
+    if not item.codigo_interno:
+        item.codigo_interno = gerar_proximo_codigo_item(getattr(item, "id", None))
+
     item.descricao = descricao
     item.categoria_id = None
     item.unidade_medida_id = unidade_medida_id
@@ -1038,8 +1062,8 @@ def salvar_requisicao_compra(form_data, usuario, requisicao=None):
         if not equipe or not equipe.ativo:
             return False, "Equipe nao encontrada ou inativa.", requisicao
 
-    if requisicao and not requisicao.pode_editar:
-        return False, "Somente requisicoes em rascunho podem ser editadas.", requisicao
+    if requisicao and not requisicao_compra_pode_editar(requisicao):
+        return False, "Somente requisicoes sem cotacao vinculada podem ser editadas.", requisicao
 
     if requisicao is None:
         requisicao = SuprimentosRequisicaoCompra(
@@ -1059,9 +1083,28 @@ def salvar_requisicao_compra(form_data, usuario, requisicao=None):
     return True, "Requisicao salva com sucesso.", requisicao
 
 
+def requisicao_tem_cotacao_vinculada(requisicao):
+    if not requisicao or not requisicao.id:
+        return False
+
+    return (
+        db.session.query(SuprimentosCotacao.id)
+        .filter(
+            SuprimentosCotacao.requisicao_id == requisicao.id,
+            SuprimentosCotacao.status != STATUS_COTACAO_CANCELADA,
+        )
+        .first()
+        is not None
+    )
+
+
+def requisicao_compra_pode_editar(requisicao):
+    return bool(requisicao and requisicao.pode_editar and not requisicao_tem_cotacao_vinculada(requisicao))
+
+
 def adicionar_item_requisicao(form_data, requisicao):
-    if not requisicao.pode_editar:
-        return False, "Somente requisicoes em rascunho podem receber itens.", None
+    if not requisicao_compra_pode_editar(requisicao):
+        return False, "Somente requisicoes sem cotacao vinculada podem receber itens.", None
 
     item_id = inteiro_ou_none(form_data.get("item_id"))
     quantidade = decimal_ou_none(form_data.get("quantidade"))
@@ -1102,8 +1145,8 @@ def adicionar_item_requisicao(form_data, requisicao):
 
 
 def remover_item_requisicao(requisicao, requisicao_item):
-    if not requisicao.pode_editar:
-        return False, "Somente requisicoes em rascunho podem ter itens removidos."
+    if not requisicao_compra_pode_editar(requisicao):
+        return False, "Somente requisicoes sem cotacao vinculada podem ter itens removidos."
 
     if requisicao_item.requisicao_id != requisicao.id:
         return False, "Item nao pertence a requisicao."
@@ -1114,8 +1157,8 @@ def remover_item_requisicao(requisicao, requisicao_item):
 
 
 def enviar_requisicao_compra(requisicao):
-    if not requisicao.pode_editar:
-        return False, "Somente requisicoes em rascunho podem ser enviadas."
+    if not requisicao_compra_pode_editar(requisicao):
+        return False, "Somente requisicoes sem cotacao vinculada podem ser enviadas para analise."
 
     if not requisicao.itens:
         return False, "Adicione ao menos um item antes de enviar."
