@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Seguranca do Trabalho</span>
+            <h1>Nova Entrega de EPI/Uniforme</h1>
+            <p>Registre a entrega ao colaborador e gere a baixa automatica no estoque.</p>
+        </div>
+        <a class="btn btn-secondary" href="{{ url_for('seguranca_trabalho.epis') }}">Voltar</a>
+    </div>
+
+    <form class="form-card" method="POST">
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="colaborador_busca">Colaborador</label>
+                <input id="colaborador_busca" list="colaboradores_lista" data-datalist-target="colaborador_id" required autocomplete="off">
+                <input type="hidden" id="colaborador_id" name="colaborador_id">
+                <datalist id="colaboradores_lista">
+                    {% for colaborador in colaboradores %}
+                        <option value="{{ colaborador.matricula }} - {{ colaborador.nome }}" data-value="{{ colaborador.id }}"></option>
+                    {% endfor %}
+                </datalist>
+            </div>
+            <div class="form-group">
+                <label for="item_busca">Item do estoque</label>
+                <input id="item_busca" list="itens_lista" data-datalist-target="item_id" required autocomplete="off">
+                <input type="hidden" id="item_id" name="item_id">
+                <datalist id="itens_lista">
+                    {% for item in itens %}
+                        <option
+                            value="{{ item.codigo_interno or '-' }} - {{ item.descricao }} | Saldo: {{ formatar_decimal_brasil(item.saldo_estoque) }} {{ item.unidade_medida.sigla }}"
+                            data-value="{{ item.id }}"
+                        ></option>
+                    {% endfor %}
+                </datalist>
+            </div>
+            <div class="form-group">
+                <label for="tipo_material">Tipo de material</label>
+                <select id="tipo_material" name="tipo_material" required>
+                    <option value="">Selecione</option>
+                    {% for tipo in tipos_material %}
+                        <option value="{{ tipo }}">{{ tipo }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="quantidade">Quantidade</label>
+                <input id="quantidade" name="quantidade" required inputmode="decimal">
+            </div>
+            <div class="form-group">
+                <label for="data_entrega">Data da entrega</label>
+                <input id="data_entrega" name="data_entrega" type="date" required value="{{ hoje }}">
+            </div>
+            <div class="form-group">
+                <label for="motivo_entrega">Motivo</label>
+                <select id="motivo_entrega" name="motivo_entrega" required>
+                    <option value="">Selecione</option>
+                    {% for motivo in motivos_entrega %}
+                        <option value="{{ motivo }}">{{ motivo }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="ca_numero">CA do EPI</label>
+                <input id="ca_numero" name="ca_numero" maxlength="80" data-uppercase>
+            </div>
+            <div class="form-group">
+                <label for="tamanho">Tamanho</label>
+                <input id="tamanho" name="tamanho" maxlength="40" data-uppercase>
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="observacoes">Observacoes</label>
+            <textarea id="observacoes" name="observacoes" data-uppercase></textarea>
+        </div>
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Registrar entrega</button>
+            <a class="btn btn-secondary" href="{{ url_for('seguranca_trabalho.epis') }}">Cancelar</a>
+        </div>
+    </form>
+</section>
+{% endblock %}

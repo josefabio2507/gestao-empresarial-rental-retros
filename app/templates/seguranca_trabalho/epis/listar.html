@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Seguranca do Trabalho</span>
+            <h1>EPIs e Uniformes</h1>
+            <p>Entregas registradas com baixa automatica no estoque de Suprimentos.</p>
+        </div>
+        <div class="page-actions">
+            <a class="btn btn-primary" href="{{ url_for('seguranca_trabalho.nova_entrega_epi') }}">Nova entrega</a>
+            <a class="btn btn-secondary" href="{{ url_for('seguranca_trabalho.index') }}">Voltar</a>
+        </div>
+    </div>
+
+    <form class="filter-card" method="GET">
+        <div class="form-group">
+            <label for="colaborador_busca">Colaborador</label>
+            <input id="colaborador_busca" list="colaboradores_lista" data-datalist-target="colaborador_id" autocomplete="off" value="">
+            <input type="hidden" id="colaborador_id" name="colaborador_id" value="{{ filtros.get('colaborador_id', '') }}">
+            <datalist id="colaboradores_lista">
+                {% for colaborador in colaboradores %}
+                    <option value="{{ colaborador.matricula }} - {{ colaborador.nome }}" data-value="{{ colaborador.id }}"></option>
+                {% endfor %}
+            </datalist>
+        </div>
+        <div class="form-group">
+            <label for="item_busca">Item</label>
+            <input id="item_busca" list="itens_lista" data-datalist-target="item_id" autocomplete="off" value="">
+            <input type="hidden" id="item_id" name="item_id" value="{{ filtros.get('item_id', '') }}">
+            <datalist id="itens_lista">
+                {% for item in itens %}
+                    <option value="{{ item.codigo_interno or '-' }} - {{ item.descricao }}" data-value="{{ item.id }}"></option>
+                {% endfor %}
+            </datalist>
+        </div>
+        <div class="form-group">
+            <label for="tipo_material">Tipo</label>
+            <select id="tipo_material" name="tipo_material">
+                <option value="">Todos</option>
+                {% for tipo in tipos_material %}
+                    <option value="{{ tipo }}" {{ "selected" if filtros.get('tipo_material') == tipo else "" }}>{{ tipo }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Pesquisar</button>
+            <a class="btn btn-secondary" href="{{ url_for('seguranca_trabalho.epis') }}">Limpar</a>
+        </div>
+    </form>
+
+    <div class="table-card table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Data</th>
+                    <th>Colaborador</th>
+                    <th>Item</th>
+                    <th>Tipo</th>
+                    <th>Qtd.</th>
+                    <th>Motivo</th>
+                    <th>Documento</th>
+                    <th>Entregue por</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for entrega in entregas %}
+                    <tr>
+                        <td>{{ entrega.data_entrega.strftime("%d/%m/%Y") }}</td>
+                        <td>{{ entrega.colaborador.matricula }} - {{ entrega.colaborador.nome }}</td>
+                        <td>{{ entrega.item.codigo_interno or "-" }} - {{ entrega.item.descricao }}</td>
+                        <td><span class="badge badge-secondary">{{ entrega.tipo_material }}</span></td>
+                        <td>{{ formatar_decimal_brasil(entrega.quantidade) }} {{ entrega.item.unidade_medida.sigla }}</td>
+                        <td>{{ entrega.motivo_entrega }}</td>
+                        <td>{{ entrega.movimentacao_estoque.documento_numero if entrega.movimentacao_estoque else "-" }}</td>
+                        <td>{{ entrega.entregue_por.nome if entrega.entregue_por else "-" }}</td>
+                    </tr>
+                {% else %}
+                    <tr><td class="empty-state" colspan="8">Nenhuma entrega registrada.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

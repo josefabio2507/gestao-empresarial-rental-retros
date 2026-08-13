@@ -22,6 +22,7 @@ from app.services.suprimentos_service import (
     enviar_requisicao_compra,
     enviar_email_requisicao_compra,
     gerar_link_whatsapp_requisicao_compra,
+    requisicao_compra_pode_editar,
     remover_item_requisicao,
     salvar_requisicao_compra,
 )
@@ -56,6 +57,7 @@ def listar():
         ),
         status_requisicoes=STATUS_REQUISICOES,
         filtros=request.args,
+        requisicao_compra_pode_editar=requisicao_compra_pode_editar,
     )
 
 
@@ -94,6 +96,7 @@ def detalhes(requisicao_id):
     return render_template(
         "suprimentos/requisicoes/detalhes.html",
         requisicao=requisicao,
+        pode_editar_requisicao=requisicao_compra_pode_editar(requisicao),
         **opcoes_formulario(),
     )
 
@@ -107,6 +110,10 @@ def editar(requisicao_id):
     if not requisicao:
         flash("Requisicao nao encontrada.", "warning")
         return redirect(url_for("suprimentos_requisicoes.listar"))
+
+    if not requisicao_compra_pode_editar(requisicao):
+        flash("Requisicao com cotacao vinculada, aprovada ou cancelada nao pode ser editada.", "warning")
+        return redirect(url_for("suprimentos_requisicoes.detalhes", requisicao_id=requisicao.id))
 
     if request.method == "POST":
         sucesso, mensagem, requisicao = salvar_requisicao_compra(request.form, current_user, requisicao)
@@ -195,16 +202,14 @@ def enviar_email(requisicao_id):
         flash("Requisicao nao encontrada.", "warning")
         return redirect(url_for("suprimentos_requisicoes.listar"))
 
-    if requisicao.pode_editar:
+    if requisicao_compra_pode_editar(requisicao):
         sucesso, mensagem = enviar_requisicao_compra(requisicao)
         if not sucesso:
             flash(mensagem, "danger")
             return redirect(url_for("suprimentos_requisicoes.detalhes", requisicao_id=requisicao.id))
         registrar_log("suprimentos_requisicao_enviada", f"Requisicao enviada por e-mail. ID: {requisicao.id}.")
-    elif requisicao.status == STATUS_REQUISICAO_ENVIADA:
-        mensagem = "Requisicao ja enviada para analise."
     else:
-        flash("Somente requisicoes em rascunho ou enviadas para analise podem ser enviadas por e-mail.", "danger")
+        flash("Somente requisicoes sem cotacao vinculada podem ser enviadas por e-mail.", "danger")
         return redirect(url_for("suprimentos_requisicoes.detalhes", requisicao_id=requisicao.id))
 
     sucesso_email, mensagem_email, link_email = enviar_email_requisicao_compra(requisicao)

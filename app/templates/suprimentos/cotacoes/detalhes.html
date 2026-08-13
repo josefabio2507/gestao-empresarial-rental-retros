@@ -66,24 +66,26 @@
             <h2>Registrar proposta</h2>
             <div class="form-grid">
                 <div class="form-group">
-                    <label for="requisicao_item_id">Item da requisicao</label>
-                    <select id="requisicao_item_id" name="requisicao_item_id" required>
-                        <option value="">Selecione</option>
+                    <label for="requisicao_item_busca">Item da requisicao</label>
+                    <input id="requisicao_item_busca" list="itens_requisicao_lista" data-datalist-target="requisicao_item_id" required autocomplete="off">
+                    <input type="hidden" id="requisicao_item_id" name="requisicao_item_id">
+                    <datalist id="itens_requisicao_lista">
                         {% for item in cotacao.requisicao.itens %}
-                            <option value="{{ item.id }}">{{ item.item_descricao_snapshot }} - {{ item.quantidade }} {{ item.unidade_medida_snapshot }}</option>
+                            <option value="{{ item.item_codigo_snapshot or '-' }} - {{ item.item_descricao_snapshot }} - {{ item.quantidade }} {{ item.unidade_medida_snapshot }}" data-value="{{ item.id }}"></option>
                         {% endfor %}
-                    </select>
+                    </datalist>
                 </div>
                 <div class="form-group">
-                    <label for="fornecedor_id">Fornecedor</label>
-                    <select id="fornecedor_id" name="fornecedor_id" required>
-                        <option value="">Selecione</option>
+                    <label for="fornecedor_busca">Fornecedor</label>
+                    <input id="fornecedor_busca" list="fornecedores_proposta_lista" data-datalist-target="fornecedor_id" required autocomplete="off">
+                    <input type="hidden" id="fornecedor_id" name="fornecedor_id">
+                    <datalist id="fornecedores_proposta_lista">
                         {% for item in cotacao.requisicao.itens %}
                             {% for fornecedor in fornecedores_por_item[item.id] %}
-                                <option value="{{ fornecedor.id }}" data-item-id="{{ item.id }}">{{ item.item_descricao_snapshot }} - {{ fornecedor.razao_social }}</option>
+                                <option value="{{ item.item_descricao_snapshot }} - {{ fornecedor.razao_social }}" data-value="{{ fornecedor.id }}" data-item-id="{{ item.id }}"></option>
                             {% endfor %}
                         {% endfor %}
-                    </select>
+                    </datalist>
                 </div>
                 <div class="form-group">
                     <label for="preco_unitario">Preco unitario</label>
