@@ -12,6 +12,7 @@ from app.services.suprimentos_service import (
     buscar_itens,
     buscar_por_id,
     buscar_unidades_ativas,
+    gerar_proximo_codigo_item,
     salvar_item,
 )
 from app.suprimentos.itens import suprimentos_itens_bp
@@ -23,6 +24,7 @@ def opcoes_formulario():
         "unidades": buscar_unidades_ativas(),
         "centros": buscar_centros_custo_ativos(),
         "tipos_item": sorted(TIPOS_ITEM),
+        "proximo_codigo_item": gerar_proximo_codigo_item(),
     }
 
 
@@ -82,7 +84,9 @@ def editar(item_id):
 
         flash(mensagem, "danger")
 
-    return render_template("suprimentos/itens/form.html", item=item, modo="editar", **opcoes_formulario())
+    opcoes = opcoes_formulario()
+    opcoes["proximo_codigo_item"] = gerar_proximo_codigo_item(item.id)
+    return render_template("suprimentos/itens/form.html", item=item, modo="editar", **opcoes)
 
 
 @suprimentos_itens_bp.route("/<int:item_id>/status", methods=["POST"])

@@ -13,12 +13,20 @@
     <form class="form-card" method="POST">
         <div class="form-grid">
             <div class="form-group">
-                <label for="codigo_interno">Codigo interno</label>
-                <input id="codigo_interno" name="codigo_interno" value="{{ item.codigo_interno if item else '' }}" maxlength="60" data-uppercase>
-            </div>
-            <div class="form-group">
                 <label for="descricao">Descricao</label>
                 <input id="descricao" name="descricao" value="{{ item.descricao if item else '' }}" required maxlength="220" data-uppercase>
+            </div>
+            <div class="form-group">
+                <label for="codigo_interno">Codigo interno</label>
+                <input
+                    id="codigo_interno"
+                    name="codigo_interno"
+                    value="{{ item.codigo_interno if item and item.codigo_interno else '' }}"
+                    placeholder="Gerado automaticamente"
+                    maxlength="60"
+                    readonly
+                    data-auto-code-preview="{{ proximo_codigo_item }}"
+                >
             </div>
             <div class="form-group">
                 <label for="unidade_medida_id">Unidade</label>

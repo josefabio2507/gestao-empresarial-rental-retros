@@ -54,7 +54,7 @@
                         <td class="col-acoes">
                             <div class="acoes-botoes">
                                 <a class="btn btn-secondary" href="{{ url_for('suprimentos_requisicoes.detalhes', requisicao_id=requisicao.id) }}">Ver</a>
-                                {% if requisicao.pode_editar %}
+                                {% if requisicao_compra_pode_editar(requisicao) %}
                                     <a class="btn btn-primary" href="{{ url_for('suprimentos_requisicoes.editar', requisicao_id=requisicao.id) }}">Editar</a>
                                 {% endif %}
                             </div>
