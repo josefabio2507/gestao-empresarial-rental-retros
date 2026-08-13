@@ -1158,7 +1158,7 @@ class SuprimentosRequisicaoCompra(db.Model):
 
     @property
     def pode_editar(self):
-        return self.status == "Rascunho"
+        return self.status in ["Rascunho", "Enviada para Analise"]
 
     def __repr__(self):
         return f"<SuprimentosRequisicaoCompra {self.numero}>"
@@ -2012,4 +2012,68 @@ class SuprimentosMovimentacaoEstoque(db.Model):
     def __repr__(self):
         return f"<SuprimentosMovimentacaoEstoque {self.tipo} item={self.item_id}>"
 
+
+class SegurancaTrabalhoEntregaEpi(db.Model):
+    __tablename__ = "seguranca_trabalho_entregas_epi"
+
+    id = db.Column(db.Integer, primary_key=True)
+    colaborador_id = db.Column(
+        db.Integer,
+        db.ForeignKey("colaboradores.id"),
+        nullable=False,
+        index=True,
+    )
+    item_id = db.Column(
+        db.Integer,
+        db.ForeignKey("suprimentos_itens.id"),
+        nullable=False,
+        index=True,
+    )
+    movimentacao_estoque_id = db.Column(
+        db.Integer,
+        db.ForeignKey("suprimentos_movimentacoes_estoque.id"),
+        nullable=True,
+        unique=True,
+        index=True,
+    )
+    entregue_por_usuario_id = db.Column(
+        db.Integer,
+        db.ForeignKey("usuarios.id"),
+        nullable=False,
+        index=True,
+    )
+    tipo_material = db.Column(db.String(20), nullable=False)
+    quantidade = db.Column(db.Numeric(12, 3), nullable=False)
+    data_entrega = db.Column(db.Date, nullable=False, index=True)
+    ca_numero = db.Column(db.String(80), nullable=True)
+    tamanho = db.Column(db.String(40), nullable=True)
+    motivo_entrega = db.Column(db.String(160), nullable=False)
+    observacoes = db.Column(db.Text, nullable=True)
+
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    atualizado_em = db.Column(
+        db.DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False
+    )
+
+    colaborador = db.relationship("Colaborador")
+    item = db.relationship("SuprimentosItem")
+    movimentacao_estoque = db.relationship("SuprimentosMovimentacaoEstoque")
+    entregue_por = db.relationship("Usuario")
+
+    __table_args__ = (
+        db.CheckConstraint(
+            "tipo_material in ('EPI', 'Uniforme')",
+            name="ck_seguranca_entregas_epi_tipo_material",
+        ),
+        db.CheckConstraint(
+            "quantidade > 0",
+            name="ck_seguranca_entregas_epi_quantidade",
+        ),
+    )
+
+    def __repr__(self):
+        return f"<SegurancaTrabalhoEntregaEpi colaborador={self.colaborador_id} item={self.item_id}>"
 
