@@ -19,6 +19,7 @@ from app.services.suprimentos_service import (
     buscar_por_id,
     buscar_requisicoes_compra,
     cancelar_requisicao_compra,
+    editar_item_requisicao,
     enviar_requisicao_compra,
     enviar_email_requisicao_compra,
     gerar_link_whatsapp_requisicao_compra,
@@ -88,14 +89,24 @@ def nova():
 @module_permission_required("suprimentos", "requisicoes_compra", "visualizar")
 def detalhes(requisicao_id):
     requisicao = buscar_por_id(SuprimentosRequisicaoCompra, requisicao_id)
+    item_em_edicao = None
 
     if not requisicao:
         flash("Requisicao nao encontrada.", "warning")
         return redirect(url_for("suprimentos_requisicoes.listar"))
 
+    if requisicao_compra_pode_editar(requisicao):
+        item_em_edicao_id = request.args.get("editar_item_id", type=int)
+        if item_em_edicao_id:
+            item_em_edicao = buscar_por_id(SuprimentosRequisicaoCompraItem, item_em_edicao_id)
+            if not item_em_edicao or item_em_edicao.requisicao_id != requisicao.id:
+                flash("Item da requisicao nao encontrado.", "warning")
+                item_em_edicao = None
+
     return render_template(
         "suprimentos/requisicoes/detalhes.html",
         requisicao=requisicao,
+        item_em_edicao=item_em_edicao,
         pode_editar_requisicao=requisicao_compra_pode_editar(requisicao),
         **opcoes_formulario(),
     )
@@ -147,6 +158,25 @@ def adicionar_item(requisicao_id):
 
     if sucesso:
         registrar_log("suprimentos_requisicao_item_adicionado", f"Item adicionado. ID: {requisicao_item.id}.")
+
+    flash(mensagem, "success" if sucesso else "danger")
+    return redirect(url_for("suprimentos_requisicoes.detalhes", requisicao_id=requisicao.id))
+
+
+@suprimentos_requisicoes_bp.route("/<int:requisicao_id>/itens/<int:item_requisicao_id>/editar", methods=["POST"])
+@login_required
+@module_permission_required("suprimentos", "requisicoes_compra", "editar")
+def editar_item(requisicao_id, item_requisicao_id):
+    requisicao = buscar_por_id(SuprimentosRequisicaoCompra, requisicao_id)
+    requisicao_item = buscar_por_id(SuprimentosRequisicaoCompraItem, item_requisicao_id)
+
+    if not requisicao or not requisicao_item:
+        flash("Item da requisicao nao encontrado.", "warning")
+        return redirect(url_for("suprimentos_requisicoes.listar"))
+
+    sucesso, mensagem = editar_item_requisicao(request.form, requisicao, requisicao_item)
+    if sucesso:
+        registrar_log("suprimentos_requisicao_item_atualizado", f"Item atualizado. ID: {requisicao_item.id}.")
 
     flash(mensagem, "success" if sucesso else "danger")
     return redirect(url_for("suprimentos_requisicoes.detalhes", requisicao_id=requisicao.id))

@@ -1196,6 +1196,48 @@ def adicionar_item_requisicao(form_data, requisicao):
     return True, "Item adicionado com sucesso.", requisicao_item
 
 
+def editar_item_requisicao(form_data, requisicao, requisicao_item):
+    if not requisicao_compra_pode_editar(requisicao):
+        return False, "Somente requisicoes sem cotacao vinculada podem ter itens editados."
+
+    if not requisicao_item or requisicao_item.requisicao_id != requisicao.id:
+        return False, "Item nao pertence a requisicao."
+
+    item_id = inteiro_ou_none(form_data.get("item_id"))
+    quantidade = decimal_ou_none(form_data.get("quantidade"))
+    observacoes = texto_maiusculo(form_data.get("observacoes")) or None
+
+    if not item_id:
+        return False, "Item e obrigatorio."
+
+    item = buscar_por_id(SuprimentosItem, item_id)
+
+    if not item or not item.ativo:
+        return False, "Item nao encontrado ou inativo."
+
+    if quantidade is None or quantidade <= 0:
+        return False, "Quantidade deve ser maior que zero."
+
+    existente = SuprimentosRequisicaoCompraItem.query.filter(
+        SuprimentosRequisicaoCompraItem.requisicao_id == requisicao.id,
+        SuprimentosRequisicaoCompraItem.item_id == item.id,
+        SuprimentosRequisicaoCompraItem.id != requisicao_item.id,
+    ).first()
+
+    if existente:
+        return False, "Este item ja foi adicionado a requisicao."
+
+    requisicao_item.item_id = item.id
+    requisicao_item.item_codigo_snapshot = item.codigo_interno
+    requisicao_item.item_descricao_snapshot = item.descricao
+    requisicao_item.unidade_medida_snapshot = item.unidade_medida.sigla
+    requisicao_item.quantidade = quantidade
+    requisicao_item.observacoes = observacoes
+    db.session.commit()
+
+    return True, "Item atualizado com sucesso."
+
+
 def remover_item_requisicao(requisicao, requisicao_item):
     if not requisicao_compra_pode_editar(requisicao):
         return False, "Somente requisicoes sem cotacao vinculada podem ter itens removidos."
