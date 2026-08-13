@@ -905,6 +905,46 @@ def gerar_proximo_codigo_item(item_id_ignorado=None):
         maior_id += 1
 
 
+def categoria_padrao_item_id():
+    categoria = (
+        SuprimentosCategoriaItem.query
+        .filter(func.lower(SuprimentosCategoriaItem.slug) == "sem_categoria")
+        .first()
+    )
+
+    if categoria:
+        return categoria.id
+
+    categoria = (
+        SuprimentosCategoriaItem.query
+        .filter(func.upper(func.trim(SuprimentosCategoriaItem.nome)) == "SEM CATEGORIA")
+        .first()
+    )
+
+    if categoria:
+        return categoria.id
+
+    categoria = (
+        SuprimentosCategoriaItem.query
+        .filter(SuprimentosCategoriaItem.ativo.is_(True))
+        .order_by(SuprimentosCategoriaItem.id.asc())
+        .first()
+    )
+
+    if categoria:
+        return categoria.id
+
+    categoria = SuprimentosCategoriaItem(
+        nome="SEM CATEGORIA",
+        slug="sem_categoria",
+        descricao="Categoria interna usada quando o cadastro de item nao exige categoria.",
+        ativo=True,
+    )
+    db.session.add(categoria)
+    db.session.flush()
+    return categoria.id
+
+
 def salvar_item(form_data, item=None):
     descricao = texto_maiusculo(form_data.get("descricao"))
     tipo = texto(form_data.get("tipo"))
@@ -924,15 +964,17 @@ def salvar_item(form_data, item=None):
     if estoque_minimo is not None and estoque_minimo < 0:
         return False, "Estoque minimo nao pode ser negativo.", item
 
-    if item is None:
-        item = SuprimentosItem(ativo=True)
-        db.session.add(item)
+    codigo_interno = item.codigo_interno if item and item.codigo_interno else gerar_proximo_codigo_item(getattr(item, "id", None))
+    categoria_id = categoria_padrao_item_id()
 
-    if not item.codigo_interno:
-        item.codigo_interno = gerar_proximo_codigo_item(getattr(item, "id", None))
+    if item is None:
+        item = SuprimentosItem(ativo=True, codigo_interno=codigo_interno)
+        db.session.add(item)
+    else:
+        item.codigo_interno = codigo_interno
 
     item.descricao = descricao
-    item.categoria_id = None
+    item.categoria_id = categoria_id
     item.unidade_medida_id = unidade_medida_id
     item.centro_custo_padrao_id = centro_custo_padrao_id
     item.tipo = tipo
