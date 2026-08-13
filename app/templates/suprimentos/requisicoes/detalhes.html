@@ -30,13 +30,13 @@
     </div>
 
     {% if pode_editar_requisicao %}
-        <form class="form-card" method="POST" action="{{ url_for('suprimentos_requisicoes.adicionar_item', requisicao_id=requisicao.id) }}">
-            <h2>Adicionar item</h2>
+        <form class="form-card" method="POST" action="{{ url_for('suprimentos_requisicoes.editar_item', requisicao_id=requisicao.id, item_requisicao_id=item_em_edicao.id) if item_em_edicao else url_for('suprimentos_requisicoes.adicionar_item', requisicao_id=requisicao.id) }}">
+            <h2>{{ "Editar item" if item_em_edicao else "Adicionar item" }}</h2>
             <div class="form-grid">
                 <div class="form-group">
                     <label for="item_busca">Item</label>
-                    <input id="item_busca" list="itens_disponiveis_lista" data-datalist-target="item_id" required autocomplete="off">
-                    <input type="hidden" id="item_id" name="item_id">
+                    <input id="item_busca" list="itens_disponiveis_lista" data-datalist-target="item_id" required autocomplete="off" value="{{ (item_em_edicao.item_codigo_snapshot or '-') ~ ' - ' ~ item_em_edicao.item_descricao_snapshot ~ ' (' ~ item_em_edicao.unidade_medida_snapshot ~ ')' if item_em_edicao else '' }}">
+                    <input type="hidden" id="item_id" name="item_id" value="{{ item_em_edicao.item_id if item_em_edicao else '' }}">
                     <datalist id="itens_disponiveis_lista">
                         {% for item in itens_disponiveis %}
                             <option value="{{ item.codigo_interno or '-' }} - {{ item.descricao }} ({{ item.unidade_medida.sigla }})" data-value="{{ item.id }}"></option>
@@ -45,15 +45,18 @@
                 </div>
                 <div class="form-group">
                     <label for="quantidade">Quantidade</label>
-                    <input id="quantidade" name="quantidade" required>
+                    <input id="quantidade" name="quantidade" required value="{{ item_em_edicao.quantidade if item_em_edicao else '' }}">
                 </div>
             </div>
             <div class="form-group">
                 <label for="observacoes_item">Observacoes do item</label>
-                <textarea id="observacoes_item" name="observacoes" data-uppercase></textarea>
+                <textarea id="observacoes_item" name="observacoes" data-uppercase>{{ item_em_edicao.observacoes or "" if item_em_edicao else "" }}</textarea>
             </div>
             <div class="form-actions">
-                <button class="btn btn-primary" type="submit">Adicionar item</button>
+                <button class="btn btn-primary" type="submit">{{ "Salvar alteracao" if item_em_edicao else "Adicionar item" }}</button>
+                {% if item_em_edicao %}
+                    <a class="btn btn-secondary" href="{{ url_for('suprimentos_requisicoes.detalhes', requisicao_id=requisicao.id) }}">Cancelar edicao</a>
+                {% endif %}
             </div>
         </form>
     {% endif %}
@@ -80,6 +83,7 @@
                         <td>{{ item.observacoes or "-" }}</td>
                         {% if pode_editar_requisicao %}
                             <td class="col-acoes">
+                                <a class="btn btn-primary" href="{{ url_for('suprimentos_requisicoes.detalhes', requisicao_id=requisicao.id, editar_item_id=item.id) }}">Editar</a>
                                 <form class="inline-form" method="POST" action="{{ url_for('suprimentos_requisicoes.remover_item', requisicao_id=requisicao.id, item_requisicao_id=item.id) }}">
                                     <button class="btn btn-warning" type="submit">Remover</button>
                                 </form>
