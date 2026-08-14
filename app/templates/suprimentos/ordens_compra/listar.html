@@ -61,6 +61,10 @@
             </select>
         </div>
         <div class="form-group">
+            <label for="sub_centro_custo">Sub centro de custo</label>
+            <input id="sub_centro_custo" name="sub_centro_custo" value="{{ filtros.get('sub_centro_custo', '') }}" data-uppercase>
+        </div>
+        <div class="form-group">
             <label for="palavra_chave_requisicao">Palavra chave</label>
             <input id="palavra_chave_requisicao" name="palavra_chave_requisicao" value="{{ filtros.get('palavra_chave_requisicao', '') }}" data-uppercase>
         </div>
