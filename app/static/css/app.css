@@ -733,6 +733,28 @@ textarea {
     min-width: 980px;
 }
 
+.ordens-compra-listbox {
+    max-height: 760px;
+    overflow: auto;
+}
+
+.ordens-compra-listbox .table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: #eef2f7;
+}
+
+.ordens-compra-table {
+    min-width: 1900px;
+}
+
+.ordens-compra-table .col-texto-longo {
+    min-width: 260px;
+    max-width: 360px;
+    white-space: normal;
+}
+
 .sync-inline-form {
     display: flex;
     align-items: center;

@@ -49,6 +49,21 @@
                 {% endfor %}
             </select>
         </div>
+        <div class="form-group">
+            <label for="centro_custo_id">Centro de custo</label>
+            <select id="centro_custo_id" name="centro_custo_id">
+                <option value="">Todos</option>
+                {% for centro in centros_custo %}
+                    <option value="{{ centro.id }}" {{ "selected" if filtros.get('centro_custo_id')|string == centro.id|string else "" }}>
+                        {{ centro.nome }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="palavra_chave_requisicao">Palavra chave</label>
+            <input id="palavra_chave_requisicao" name="palavra_chave_requisicao" value="{{ filtros.get('palavra_chave_requisicao', '') }}" data-uppercase>
+        </div>
         <div class="form-actions">
             <button class="btn btn-primary" type="submit">Pesquisar</button>
             <a class="btn btn-secondary" href="{{ url_for('suprimentos_ordens_compra.listar') }}">Limpar</a>
@@ -102,12 +117,18 @@
                 <p>OCs ja criadas a partir das cotacoes aprovadas.</p>
             </div>
         </div>
-        <table class="table">
+        <div class="ordens-compra-listbox">
+        <table class="table ordens-compra-table">
             <thead>
                 <tr>
                     <th>Numero</th>
+                    <th>Criada em</th>
                     <th>Fornecedor</th>
                     <th>Cotacao</th>
+                    <th>Centro de custo</th>
+                    <th>Sub centro de custo</th>
+                    <th>Justificativa</th>
+                    <th>Observacoes da requisicao</th>
                     <th>Status</th>
                     <th>Status financeiro</th>
                     <th>Vencimento</th>
@@ -120,8 +141,26 @@
                 {% for ordem in ordens %}
                     <tr>
                         <td>{{ ordem.numero }}</td>
+                        <td>{{ ordem.criado_em.strftime("%d/%m/%Y %H:%M") if ordem.criado_em else "-" }}</td>
                         <td>{{ ordem.fornecedor_razao_social_snapshot }}</td>
                         <td>{{ ordem.cotacao.numero }}</td>
+                        <td>{{ ordem.requisicao.centro_custo.nome if ordem.requisicao and ordem.requisicao.centro_custo else "-" }}</td>
+                        <td>
+                            {% if ordem.requisicao %}
+                                {% set subcentros = [] %}
+                                {% if ordem.requisicao.equipe %}
+                                    {% set _ = subcentros.append("Equipe: " ~ ordem.requisicao.equipe.nome) %}
+                                {% endif %}
+                                {% if ordem.requisicao.veiculo_placa %}
+                                    {% set _ = subcentros.append("Placa: " ~ ordem.requisicao.veiculo_placa) %}
+                                {% endif %}
+                                {{ subcentros|join(" / ") if subcentros else "-" }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td class="col-texto-longo">{{ ordem.requisicao.justificativa if ordem.requisicao else "-" }}</td>
+                        <td class="col-texto-longo">{{ ordem.requisicao.observacoes if ordem.requisicao and ordem.requisicao.observacoes else "-" }}</td>
                         <td><span class="badge badge-success">{{ ordem.status }}</span></td>
                         <td><span class="badge badge-secondary">{{ ordem.status_financeiro }}</span></td>
                         <td>{{ ordem.previsao_vencimento.strftime("%d/%m/%Y") if ordem.previsao_vencimento else "-" }}</td>
@@ -141,10 +180,11 @@
                         </td>
                     </tr>
                 {% else %}
-                    <tr><td class="empty-state" colspan="9">Nenhuma ordem de compra encontrada.</td></tr>
+                    <tr><td class="empty-state" colspan="14">Nenhuma ordem de compra encontrada.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
+        </div>
     </div>
 </section>
 {% endblock %}

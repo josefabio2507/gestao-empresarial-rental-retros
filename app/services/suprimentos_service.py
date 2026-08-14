@@ -13,7 +13,7 @@ from urllib.request import Request, urlopen
 from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.orm import joinedload
 
 from app.extensions import db
@@ -1359,10 +1359,27 @@ def gerar_numero_recebimento_compra():
     return f"{prefixo}{sequencial:04d}"
 
 
-def buscar_ordens_compra(numero=None, status=None, fornecedor_id=None, status_financeiro=None):
-    query = SuprimentosOrdemCompra.query
+def buscar_ordens_compra(
+    numero=None,
+    status=None,
+    fornecedor_id=None,
+    status_financeiro=None,
+    centro_custo_id=None,
+    palavra_chave_requisicao=None,
+):
+    query = (
+        SuprimentosOrdemCompra.query
+        .join(SuprimentosRequisicaoCompra, SuprimentosOrdemCompra.requisicao_id == SuprimentosRequisicaoCompra.id)
+        .options(
+            joinedload(SuprimentosOrdemCompra.cotacao),
+            joinedload(SuprimentosOrdemCompra.requisicao).joinedload(SuprimentosRequisicaoCompra.centro_custo),
+            joinedload(SuprimentosOrdemCompra.requisicao).joinedload(SuprimentosRequisicaoCompra.equipe),
+        )
+    )
     numero = texto(numero).upper()
     fornecedor_id = inteiro_ou_none(fornecedor_id)
+    centro_custo_id = inteiro_ou_none(centro_custo_id)
+    palavra_chave_requisicao = texto(palavra_chave_requisicao).upper()
 
     if numero:
         query = query.filter(SuprimentosOrdemCompra.numero.ilike(f"%{numero}%"))
@@ -1375,6 +1392,18 @@ def buscar_ordens_compra(numero=None, status=None, fornecedor_id=None, status_fi
 
     if status_financeiro:
         query = query.filter(SuprimentosOrdemCompra.status_financeiro == status_financeiro)
+
+    if centro_custo_id:
+        query = query.filter(SuprimentosRequisicaoCompra.centro_custo_id == centro_custo_id)
+
+    if palavra_chave_requisicao:
+        busca = f"%{palavra_chave_requisicao}%"
+        query = query.filter(
+            or_(
+                func.upper(SuprimentosRequisicaoCompra.justificativa).ilike(busca),
+                func.upper(SuprimentosRequisicaoCompra.observacoes).ilike(busca),
+            )
+        )
 
     return query.order_by(SuprimentosOrdemCompra.criado_em.desc()).all()
 
