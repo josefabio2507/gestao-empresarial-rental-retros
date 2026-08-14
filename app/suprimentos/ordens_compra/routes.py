@@ -8,6 +8,7 @@ from app.models import SuprimentosCotacao, SuprimentosOrdemCompra, SuprimentosOr
 from app.services.logs_service import registrar_log
 from app.services.permissoes_service import usuario_tem_permissao
 from app.services.suprimentos_service import (
+    CLASSE_CENTRO_CUSTO,
     STATUS_ORDEM_COMPRA_CANCELADA,
     STATUS_ORDEM_COMPRA_GERADA,
     STATUS_ORDEM_COMPRA_PARCIAL,
@@ -28,6 +29,8 @@ from app.services.suprimentos_service import (
     formatar_moeda_brl,
     gerar_link_whatsapp_ordem_compra_fornecedor,
     gerar_ordens_compra_cotacao,
+    nome_subcentro_equipe_requisicao,
+    nome_subcentro_veiculo_requisicao,
     preparar_financeiro_ordem_compra,
     provisionar_financeiro_ordem_compra,
     registrar_recebimento_ordem_compra,
@@ -71,11 +74,13 @@ def listar():
         ),
         cotacoes_aprovadas_sem_oc=buscar_cotacoes_aprovadas_sem_ordem_compra(request.args.get("numero")),
         fornecedores=buscar_fornecedores_ativos(),
-        centros_custo=buscar_centros_custo_ativos(),
+        centros_custo=buscar_centros_custo_ativos(CLASSE_CENTRO_CUSTO),
         status_ordens=STATUS_ORDENS_COMPRA,
         status_financeiros=STATUS_FINANCEIROS_OC,
         filtros=request.args,
         formatar_moeda_brl=formatar_moeda_brl,
+        nome_subcentro_equipe_requisicao=nome_subcentro_equipe_requisicao,
+        nome_subcentro_veiculo_requisicao=nome_subcentro_veiculo_requisicao,
         valor_total_propostas_selecionadas=valor_total_propostas_selecionadas,
         pode_editar_ordem=usuario_tem_permissao(
             current_user,

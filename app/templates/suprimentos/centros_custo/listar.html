@@ -24,6 +24,15 @@
                 <option value="inativos" {{ "selected" if filtros.get('status') == "inativos" else "" }}>Inativos</option>
             </select>
         </div>
+        <div class="form-group">
+            <label for="classe">Classe</label>
+            <select id="classe" name="classe">
+                <option value="">Todas</option>
+                {% for classe in classes_centro_custo %}
+                    <option value="{{ classe }}" {{ "selected" if filtros.get('classe') == classe else "" }}>{{ classe }}</option>
+                {% endfor %}
+            </select>
+        </div>
         <div class="form-actions">
             <button class="btn btn-primary" type="submit">Pesquisar</button>
             <a class="btn btn-secondary" href="{{ url_for('suprimentos_centros_custo.listar') }}">Limpar</a>
@@ -32,12 +41,13 @@
 
     <div class="table-card table-responsive">
         <table class="table">
-            <thead><tr><th>Codigo</th><th>Nome</th><th>Status</th><th>Acoes</th></tr></thead>
+            <thead><tr><th>Codigo</th><th>Nome</th><th>Classe</th><th>Status</th><th>Acoes</th></tr></thead>
             <tbody>
                 {% for centro in centros %}
                     <tr>
                         <td>{{ centro.codigo or "-" }}</td>
                         <td>{{ centro.nome }}</td>
+                        <td>{{ centro.classe }}</td>
                         <td><span class="badge {{ 'badge-success' if centro.ativo else 'badge-danger' }}">{{ "Ativo" if centro.ativo else "Inativo" }}</span></td>
                         <td class="col-acoes">
                             <div class="acoes-botoes">
@@ -49,7 +59,7 @@
                         </td>
                     </tr>
                 {% else %}
-                    <tr><td class="empty-state" colspan="4">Nenhum centro de custo encontrado.</td></tr>
+                    <tr><td class="empty-state" colspan="5">Nenhum centro de custo encontrado.</td></tr>
                 {% endfor %}
             </tbody>
         </table>

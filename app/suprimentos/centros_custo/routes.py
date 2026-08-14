@@ -5,6 +5,7 @@ from app.decorators import module_permission_required
 from app.models import CentroCusto
 from app.services.logs_service import registrar_log
 from app.services.suprimentos_service import (
+    CLASSES_CENTRO_CUSTO,
     alterar_status,
     buscar_centros_custo,
     buscar_por_id,
@@ -19,7 +20,12 @@ from app.suprimentos.centros_custo import suprimentos_centros_custo_bp
 def listar():
     return render_template(
         "suprimentos/centros_custo/listar.html",
-        centros=buscar_centros_custo(request.args.get("nome"), request.args.get("status")),
+        centros=buscar_centros_custo(
+            request.args.get("nome"),
+            request.args.get("status"),
+            request.args.get("classe"),
+        ),
+        classes_centro_custo=CLASSES_CENTRO_CUSTO,
         filtros=request.args,
     )
 
@@ -38,7 +44,12 @@ def novo():
 
         flash(mensagem, "danger")
 
-    return render_template("suprimentos/centros_custo/form.html", centro=None, modo="novo")
+    return render_template(
+        "suprimentos/centros_custo/form.html",
+        centro=None,
+        modo="novo",
+        classes_centro_custo=CLASSES_CENTRO_CUSTO,
+    )
 
 
 @suprimentos_centros_custo_bp.route("/<int:centro_id>/editar", methods=["GET", "POST"])
@@ -61,7 +72,12 @@ def editar(centro_id):
 
         flash(mensagem, "danger")
 
-    return render_template("suprimentos/centros_custo/form.html", centro=centro, modo="editar")
+    return render_template(
+        "suprimentos/centros_custo/form.html",
+        centro=centro,
+        modo="editar",
+        classes_centro_custo=CLASSES_CENTRO_CUSTO,
+    )
 
 
 @suprimentos_centros_custo_bp.route("/<int:centro_id>/status", methods=["POST"])

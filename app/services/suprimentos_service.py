@@ -94,6 +94,14 @@ STATUS_ORDEM_COMPRA_GERADA = "Gerada"
 STATUS_ORDEM_COMPRA_PARCIAL = "Parcialmente Recebida"
 STATUS_ORDEM_COMPRA_RECEBIDA = "Recebida"
 STATUS_ORDEM_COMPRA_CANCELADA = "Cancelada"
+CLASSE_CENTRO_CUSTO = "CENTRO DE CUSTO"
+CLASSE_CENTRO_CUSTO_EQUIPES = "CENTRO DE CUSTO EQUIPES"
+CLASSE_CENTRO_EPG_VEICULOS = "CENTRO DE EPG VEÍCULOS"
+CLASSES_CENTRO_CUSTO = [
+    CLASSE_CENTRO_CUSTO,
+    CLASSE_CENTRO_CUSTO_EQUIPES,
+    CLASSE_CENTRO_EPG_VEICULOS,
+]
 STATUS_FINANCEIRO_PENDENTE = "Pendente de Financeiro"
 STATUS_FINANCEIRO_PREPARADO = "Preparado para Financeiro"
 STATUS_FINANCEIRO_PROVISIONADO = "Provisionado"
@@ -768,9 +776,10 @@ def salvar_unidade(form_data, unidade=None):
     return True, "Unidade de medida salva com sucesso.", unidade
 
 
-def buscar_centros_custo(nome=None, status=None):
+def buscar_centros_custo(nome=None, status=None, classe=None):
     query = CentroCusto.query
     nome = texto(nome)
+    classe = texto(classe).upper()
 
     if nome:
         query = query.filter(
@@ -778,12 +787,21 @@ def buscar_centros_custo(nome=None, status=None):
             | CentroCusto.codigo.ilike(f"%{nome}%")
         )
 
+    if classe:
+        query = query.filter(CentroCusto.classe == classe)
+
     query = filtrar_status(query, CentroCusto, status)
     return query.order_by(CentroCusto.nome.asc()).all()
 
 
-def buscar_centros_custo_ativos():
-    return CentroCusto.query.filter_by(ativo=True).order_by(CentroCusto.nome.asc()).all()
+def buscar_centros_custo_ativos(classe=None):
+    query = CentroCusto.query.filter_by(ativo=True)
+    classe = texto(classe).upper()
+
+    if classe:
+        query = query.filter(CentroCusto.classe == classe)
+
+    return query.order_by(CentroCusto.nome.asc()).all()
 
 
 def buscar_equipes_ativas():
@@ -807,9 +825,13 @@ def codigo_centro_custo_ja_existe(codigo, centro_id_ignorado=None):
 def salvar_centro_custo(form_data, centro=None):
     nome = texto_maiusculo(form_data.get("nome"))
     codigo = texto(form_data.get("codigo")).upper() or None
+    classe = texto(form_data.get("classe")).upper() or CLASSE_CENTRO_CUSTO
 
     if not nome:
         return False, "Nome do centro de custo e obrigatorio.", centro
+
+    if classe not in CLASSES_CENTRO_CUSTO:
+        return False, "Classe de centro de custo invalida.", centro
 
     if codigo_centro_custo_ja_existe(codigo, getattr(centro, "id", None)):
         return False, "Ja existe centro de custo cadastrado com este codigo.", centro
@@ -820,9 +842,27 @@ def salvar_centro_custo(form_data, centro=None):
 
     centro.codigo = codigo
     centro.nome = nome
+    centro.classe = classe
     centro.descricao = texto_maiusculo(form_data.get("descricao")) or None
     db.session.commit()
     return True, "Centro de custo salvo com sucesso.", centro
+
+
+def buscar_centro_custo_ativo_por_classe(centro_id, classe):
+    centro_id = inteiro_ou_none(centro_id)
+
+    if not centro_id:
+        return None
+
+    return (
+        CentroCusto.query
+        .filter(
+            CentroCusto.id == centro_id,
+            CentroCusto.ativo.is_(True),
+            CentroCusto.classe == classe,
+        )
+        .first()
+    )
 
 
 def buscar_itens(descricao=None, categoria_id=None, tipo=None, estocavel=None, status=None):
@@ -1104,16 +1144,32 @@ def salvar_requisicao_compra(form_data, usuario, requisicao=None):
     justificativa = texto_maiusculo(form_data.get("justificativa"))
     observacoes = texto_maiusculo(form_data.get("observacoes")) or None
     centro_custo_id = inteiro_ou_none(form_data.get("centro_custo_id"))
-    equipe_id = inteiro_ou_none(form_data.get("equipe_id"))
-    veiculo_placa = texto_maiusculo(form_data.get("veiculo_placa")) or None
+    sub_centro_custo_equipe_id = inteiro_ou_none(form_data.get("sub_centro_custo_equipe_id"))
+    sub_centro_custo_veiculo_id = inteiro_ou_none(form_data.get("sub_centro_custo_veiculo_id"))
 
     if not justificativa:
         return False, "Justificativa e obrigatoria.", requisicao
 
-    if equipe_id:
-        equipe = buscar_por_id(Equipe, equipe_id)
-        if not equipe or not equipe.ativo:
-            return False, "Equipe nao encontrada ou inativa.", requisicao
+    if centro_custo_id and not buscar_centro_custo_ativo_por_classe(centro_custo_id, CLASSE_CENTRO_CUSTO):
+        return False, "Centro de custo nao encontrado, inativo ou fora da classe permitida.", requisicao
+
+    if (
+        sub_centro_custo_equipe_id
+        and not buscar_centro_custo_ativo_por_classe(
+            sub_centro_custo_equipe_id,
+            CLASSE_CENTRO_CUSTO_EQUIPES,
+        )
+    ):
+        return False, "Sub centro de custo - Equipe nao encontrado, inativo ou fora da classe permitida.", requisicao
+
+    if (
+        sub_centro_custo_veiculo_id
+        and not buscar_centro_custo_ativo_por_classe(
+            sub_centro_custo_veiculo_id,
+            CLASSE_CENTRO_EPG_VEICULOS,
+        )
+    ):
+        return False, "Sub centro de custo - Placa do veiculo nao encontrado, inativo ou fora da classe permitida.", requisicao
 
     if requisicao and not requisicao_compra_pode_editar(requisicao):
         return False, "Somente requisicoes sem cotacao vinculada podem ser editadas.", requisicao
@@ -1127,13 +1183,39 @@ def salvar_requisicao_compra(form_data, usuario, requisicao=None):
         db.session.add(requisicao)
 
     requisicao.centro_custo_id = centro_custo_id
-    requisicao.equipe_id = equipe_id
-    requisicao.veiculo_placa = veiculo_placa
+    requisicao.sub_centro_custo_equipe_id = sub_centro_custo_equipe_id
+    requisicao.sub_centro_custo_veiculo_id = sub_centro_custo_veiculo_id
     requisicao.justificativa = justificativa
     requisicao.observacoes = observacoes
     db.session.commit()
 
     return True, "Requisicao salva com sucesso.", requisicao
+
+
+def nome_subcentro_equipe_requisicao(requisicao):
+    if not requisicao:
+        return "-"
+
+    if getattr(requisicao, "sub_centro_custo_equipe", None):
+        return requisicao.sub_centro_custo_equipe.nome
+
+    if getattr(requisicao, "equipe", None):
+        return requisicao.equipe.nome
+
+    return "-"
+
+
+def nome_subcentro_veiculo_requisicao(requisicao):
+    if not requisicao:
+        return "-"
+
+    if getattr(requisicao, "sub_centro_custo_veiculo", None):
+        return requisicao.sub_centro_custo_veiculo.nome
+
+    if getattr(requisicao, "veiculo_placa", None):
+        return requisicao.veiculo_placa
+
+    return "-"
 
 
 def requisicao_tem_cotacao_vinculada(requisicao):
@@ -1406,6 +1488,12 @@ def buscar_ordens_compra(
             or_(
                 func.upper(Equipe.nome).ilike(busca_subcentro),
                 func.upper(SuprimentosRequisicaoCompra.veiculo_placa).ilike(busca_subcentro),
+                SuprimentosRequisicaoCompra.sub_centro_custo_equipe.has(
+                    func.upper(CentroCusto.nome).ilike(busca_subcentro)
+                ),
+                SuprimentosRequisicaoCompra.sub_centro_custo_veiculo.has(
+                    func.upper(CentroCusto.nome).ilike(busca_subcentro)
+                ),
             )
         )
 
@@ -2296,8 +2384,8 @@ def gerar_mensagem_solicitacao_cotacao_fornecedor(cotacao, fornecedor):
         f"Requisicao: {requisicao.numero if requisicao else '-'}",
         f"Fornecedor: {fornecedor.razao_social}",
         f"Centro de custo: {requisicao.centro_custo.nome if requisicao and requisicao.centro_custo else '-'}",
-        f"Equipe: {requisicao.equipe.nome if requisicao and requisicao.equipe else '-'}",
-        f"Placa do veiculo: {requisicao.veiculo_placa if requisicao and requisicao.veiculo_placa else '-'}",
+        f"Equipe: {nome_subcentro_equipe_requisicao(requisicao)}",
+        f"Placa do veiculo: {nome_subcentro_veiculo_requisicao(requisicao)}",
         f"Justificativa: {requisicao.justificativa if requisicao else '-'}",
         "",
         "*Itens para cotar:*",
@@ -2671,8 +2759,8 @@ def gerar_mensagem_whatsapp_aprovacao_cotacao(cotacao):
         f"Requisicao: {cotacao.requisicao.numero if cotacao.requisicao else '-'}",
         f"Valor total: {formatar_moeda_brl(valor_total_propostas_selecionadas(cotacao))}",
         f"Centro de custo: {cotacao.requisicao.centro_custo.nome if cotacao.requisicao and cotacao.requisicao.centro_custo else '-'}",
-        f"Equipe: {cotacao.requisicao.equipe.nome if cotacao.requisicao and cotacao.requisicao.equipe else '-'}",
-        f"Placa do veiculo: {cotacao.requisicao.veiculo_placa if cotacao.requisicao and cotacao.requisicao.veiculo_placa else '-'}",
+        f"Equipe: {nome_subcentro_equipe_requisicao(cotacao.requisicao if cotacao else None)}",
+        f"Placa do veiculo: {nome_subcentro_veiculo_requisicao(cotacao.requisicao if cotacao else None)}",
         f"Solicitante: {cotacao.requisicao.solicitante.nome if cotacao.requisicao and cotacao.requisicao.solicitante else '-'}",
         f"Aprovador: {cotacao.aprovador.nome if cotacao.aprovador else '-'}",
         "",
