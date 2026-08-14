@@ -993,6 +993,7 @@ class CentroCusto(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     codigo = db.Column(db.String(40), unique=True, nullable=True, index=True)
     nome = db.Column(db.String(120), nullable=False)
+    classe = db.Column(db.String(40), default="CENTRO DE CUSTO", nullable=False, index=True)
     descricao = db.Column(db.Text, nullable=True)
     ativo = db.Column(db.Boolean, default=True, nullable=False, index=True)
 
@@ -1170,6 +1171,18 @@ class SuprimentosRequisicaoCompra(db.Model):
         nullable=True,
         index=True,
     )
+    sub_centro_custo_equipe_id = db.Column(
+        db.Integer,
+        db.ForeignKey("centros_custo.id"),
+        nullable=True,
+        index=True,
+    )
+    sub_centro_custo_veiculo_id = db.Column(
+        db.Integer,
+        db.ForeignKey("centros_custo.id"),
+        nullable=True,
+        index=True,
+    )
     equipe_id = db.Column(
         db.Integer,
         db.ForeignKey("equipes.id"),
@@ -1193,7 +1206,9 @@ class SuprimentosRequisicaoCompra(db.Model):
     )
 
     solicitante = db.relationship("Usuario")
-    centro_custo = db.relationship("CentroCusto")
+    centro_custo = db.relationship("CentroCusto", foreign_keys=[centro_custo_id])
+    sub_centro_custo_equipe = db.relationship("CentroCusto", foreign_keys=[sub_centro_custo_equipe_id])
+    sub_centro_custo_veiculo = db.relationship("CentroCusto", foreign_keys=[sub_centro_custo_veiculo_id])
     equipe = db.relationship("Equipe")
     itens = db.relationship(
         "SuprimentosRequisicaoCompraItem",

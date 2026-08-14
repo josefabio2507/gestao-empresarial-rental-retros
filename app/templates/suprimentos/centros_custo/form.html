@@ -19,6 +19,14 @@
             <input id="nome" name="nome" value="{{ centro.nome if centro else '' }}" required maxlength="120" data-uppercase>
         </div>
         <div class="form-group">
+            <label for="classe">Classe</label>
+            <select id="classe" name="classe" required>
+                {% for classe in classes_centro_custo %}
+                    <option value="{{ classe }}" {{ "selected" if (centro and centro.classe == classe) or (not centro and loop.first) else "" }}>{{ classe }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
             <label for="descricao">Descricao</label>
             <textarea id="descricao" name="descricao" data-uppercase>{{ centro.descricao if centro else '' }}</textarea>
         </div>

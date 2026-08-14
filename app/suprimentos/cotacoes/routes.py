@@ -28,6 +28,8 @@ from app.services.suprimentos_service import (
     gerar_link_whatsapp_aprovacao_cotacao,
     gerar_link_whatsapp_solicitacao_cotacao_fornecedor,
     montar_mapa_comparativo_cotacao,
+    nome_subcentro_equipe_requisicao,
+    nome_subcentro_veiculo_requisicao,
     reprovar_cotacao,
     reprovar_cotacao_por_link_publico,
     requisicoes_disponiveis_para_cotacao,
@@ -191,6 +193,8 @@ def aprovacao_publica(token):
             mapa=None,
             formatar_moeda_brl=formatar_moeda_brl,
             formatar_decimal_brasil=formatar_decimal_brasil,
+            nome_subcentro_equipe_requisicao=nome_subcentro_equipe_requisicao,
+            nome_subcentro_veiculo_requisicao=nome_subcentro_veiculo_requisicao,
             valor_total_selecionado=None,
         )
 
@@ -222,6 +226,8 @@ def aprovacao_publica(token):
             mapa=montar_mapa_comparativo_cotacao(cotacao),
             formatar_moeda_brl=formatar_moeda_brl,
             formatar_decimal_brasil=formatar_decimal_brasil,
+            nome_subcentro_equipe_requisicao=nome_subcentro_equipe_requisicao,
+            nome_subcentro_veiculo_requisicao=nome_subcentro_veiculo_requisicao,
             valor_total_selecionado=valor_total_propostas_selecionadas(cotacao),
             decisao_concluida=sucesso,
         )
@@ -234,6 +240,8 @@ def aprovacao_publica(token):
         mapa=montar_mapa_comparativo_cotacao(cotacao),
         formatar_moeda_brl=formatar_moeda_brl,
         formatar_decimal_brasil=formatar_decimal_brasil,
+        nome_subcentro_equipe_requisicao=nome_subcentro_equipe_requisicao,
+        nome_subcentro_veiculo_requisicao=nome_subcentro_veiculo_requisicao,
         valor_total_selecionado=valor_total_propostas_selecionadas(cotacao),
         decisao_concluida=False,
     )

@@ -151,14 +151,7 @@
                         <td>{{ ordem.requisicao.centro_custo.nome if ordem.requisicao and ordem.requisicao.centro_custo else "-" }}</td>
                         <td>
                             {% if ordem.requisicao %}
-                                {% set subcentros = [] %}
-                                {% if ordem.requisicao.equipe %}
-                                    {% set _ = subcentros.append("Equipe: " ~ ordem.requisicao.equipe.nome) %}
-                                {% endif %}
-                                {% if ordem.requisicao.veiculo_placa %}
-                                    {% set _ = subcentros.append("Placa: " ~ ordem.requisicao.veiculo_placa) %}
-                                {% endif %}
-                                {{ subcentros|join(" / ") if subcentros else "-" }}
+                                Equipe: {{ nome_subcentro_equipe_requisicao(ordem.requisicao) }} / Placa: {{ nome_subcentro_veiculo_requisicao(ordem.requisicao) }}
                             {% else %}
                                 -
                             {% endif %}

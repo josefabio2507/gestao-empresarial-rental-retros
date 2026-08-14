@@ -103,6 +103,8 @@ def _garantir_modulo_operacao(conn):
         sa.column("icone", sa.String),
         sa.column("ativo", sa.Boolean),
         sa.column("ordem", sa.Integer),
+        sa.column("criado_em", sa.DateTime),
+        sa.column("atualizado_em", sa.DateTime),
     )
 
     departamento = conn.execute(
@@ -131,6 +133,8 @@ def _garantir_modulo_operacao(conn):
             icone=None,
             ativo=True,
             ordem=7,
+            criado_em=sa.func.now(),
+            atualizado_em=sa.func.now(),
         )
     )
 
