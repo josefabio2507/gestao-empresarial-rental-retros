@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Operação · Gestão de Veículos e EPGs</span>
+            <h1>{{ "Novo Veículo/Equipamento" if modo == "novo" else "Editar Veículo/Equipamento" }}</h1>
+            <p>O centro de custo é calculado automaticamente pelo sistema.</p>
+        </div>
+    </div>
+
+    <form class="form-card" method="POST">
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="identificacao">Identificação</label>
+                <input id="identificacao" name="identificacao" value="{{ veiculo.identificacao if veiculo else '' }}" required maxlength="120" data-uppercase>
+            </div>
+            <div class="form-group">
+                <label for="placa">Placa</label>
+                <input id="placa" name="placa" value="{{ veiculo.placa if veiculo and veiculo.placa else '' }}" maxlength="20" data-uppercase>
+            </div>
+            <div class="form-group">
+                <label for="descricao">Descrição</label>
+                <input id="descricao" name="descricao" value="{{ veiculo.descricao if veiculo else '' }}" required maxlength="220" data-uppercase>
+            </div>
+            <div class="form-group">
+                <label for="chassi">Chassi</label>
+                <input id="chassi" name="chassi" value="{{ veiculo.chassi if veiculo and veiculo.chassi else '' }}" maxlength="80" data-uppercase>
+            </div>
+            <div class="form-group">
+                <label for="renavam">Renavam</label>
+                <input id="renavam" name="renavam" value="{{ veiculo.renavam if veiculo and veiculo.renavam else '' }}" maxlength="40" data-uppercase>
+            </div>
+            <div class="form-group">
+                <label for="situacao_aquisicao">Situação de Aquisição</label>
+                <select id="situacao_aquisicao" name="situacao_aquisicao" required>
+                    <option value="">Selecione</option>
+                    {% for situacao in situacoes %}
+                        <option value="{{ situacao }}" {{ "selected" if veiculo and veiculo.situacao_aquisicao == situacao else "" }}>{{ situacao }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="tipo">Tipo</label>
+                <select id="tipo" name="tipo" required>
+                    <option value="">Selecione</option>
+                    {% for tipo in tipos %}
+                        <option value="{{ tipo }}" {{ "selected" if veiculo and veiculo.tipo == tipo else "" }}>{{ tipo }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="centro_custo">Centro de Custo</label>
+                <input id="centro_custo" value="{{ veiculo.centro_custo if veiculo else 'Gerado ao salvar' }}" readonly>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="observacoes">Observações</label>
+            <textarea id="observacoes" name="observacoes" data-uppercase>{{ veiculo.observacoes if veiculo and veiculo.observacoes else '' }}</textarea>
+        </div>
+
+        <div class="form-group">
+            <label>
+                <input type="checkbox" name="ativo" value="1" {{ "checked" if not veiculo or veiculo.ativo else "" }}>
+                Ativo
+            </label>
+        </div>
+
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Salvar</button>
+            <a class="btn btn-secondary" href="{{ url_for('operacao.listar_veiculos_equipamentos') }}">Cancelar</a>
+        </div>
+    </form>
+</section>
+{% endblock %}

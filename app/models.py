@@ -178,6 +178,58 @@ class Modulo(db.Model):
         return f"<Modulo {self.departamento.slug if self.departamento else ''}/{self.slug}>"
 
 
+class OperacaoVeiculoEquipamento(db.Model):
+    __tablename__ = "operacao_veiculos_equipamentos"
+
+    id = db.Column(db.Integer, primary_key=True)
+    identificacao = db.Column(db.String(120), nullable=False, index=True)
+    placa = db.Column(db.String(20), nullable=True, index=True)
+    descricao = db.Column(db.String(220), nullable=False)
+    chassi = db.Column(db.String(80), nullable=True, unique=True, index=True)
+    renavam = db.Column(db.String(40), nullable=True)
+    centro_custo = db.Column(db.String(360), nullable=False, index=True)
+    situacao_aquisicao = db.Column(db.String(30), nullable=False)
+    tipo = db.Column(db.String(40), nullable=False)
+    ativo = db.Column(db.Boolean, default=True, nullable=False, index=True)
+    observacoes = db.Column(db.Text, nullable=True)
+
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
+    atualizado_em = db.Column(
+        db.DateTime,
+        default=agora_brasil,
+        onupdate=agora_brasil,
+        nullable=False
+    )
+
+    __table_args__ = (
+        db.UniqueConstraint(
+            "identificacao",
+            name="uq_operacao_veiculos_equipamentos_identificacao",
+        ),
+        db.CheckConstraint(
+            "situacao_aquisicao in ('Quitado', 'Financiado')",
+            name="ck_operacao_veiculos_situacao_aquisicao",
+        ),
+        db.CheckConstraint(
+            "tipo in ('Veículo leve', 'Caminhão', 'Máquina', 'Equipamento', 'EPG', 'Outro')",
+            name="ck_operacao_veiculos_tipo",
+        ),
+    )
+
+    @staticmethod
+    def calcular_centro_custo(identificacao, descricao):
+        return f"{(identificacao or '').strip()}-{(descricao or '').strip()}"
+
+    def recalcular_centro_custo(self):
+        self.centro_custo = self.calcular_centro_custo(
+            self.identificacao,
+            self.descricao,
+        )
+
+    def __repr__(self):
+        return f"<OperacaoVeiculoEquipamento {self.identificacao}>"
+
+
 class PermissaoUsuarioModulo(db.Model):
     __tablename__ = "permissoes_usuario_modulo"
 

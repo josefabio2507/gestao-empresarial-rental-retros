@@ -61,6 +61,7 @@ DEPARTAMENTOS_BASE = [
             ("Checklists", "checklists", "Inspeções e rotinas"),
             ("Apontamentos", "apontamentos", "Horas e produção"),
             ("Indicadores", "indicadores", "Desempenho operacional"),
+            ("Gestão de Veículos e EPGs", "gestao_veiculos_epgs", "Cadastro e consulta de veículos, máquinas e equipamentos operacionais"),
         ],
     },
     {

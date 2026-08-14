@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Operação · Gestão de Veículos e EPGs</span>
+            <h1>Veículos e Equipamentos</h1>
+            <p>Cadastro operacional de veículos, máquinas, equipamentos e EPGs.</p>
+        </div>
+        <a class="btn btn-primary" href="{{ url_for('operacao.novo_veiculo_equipamento') }}">+ Novo Cadastro</a>
+    </div>
+
+    <form class="filter-card" method="GET">
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="identificacao">Identificação</label>
+                <input id="identificacao" name="identificacao" value="{{ filtros.get('identificacao', '') }}" data-uppercase>
+            </div>
+            <div class="form-group">
+                <label for="placa">Placa</label>
+                <input id="placa" name="placa" value="{{ filtros.get('placa', '') }}" data-uppercase>
+            </div>
+            <div class="form-group">
+                <label for="descricao">Descrição</label>
+                <input id="descricao" name="descricao" value="{{ filtros.get('descricao', '') }}" data-uppercase>
+            </div>
+            <div class="form-group">
+                <label for="chassi">Chassi</label>
+                <input id="chassi" name="chassi" value="{{ filtros.get('chassi', '') }}" data-uppercase>
+            </div>
+            <div class="form-group">
+                <label for="centro_custo">Centro de Custo</label>
+                <input id="centro_custo" name="centro_custo" value="{{ filtros.get('centro_custo', '') }}" data-uppercase>
+            </div>
+            <div class="form-group">
+                <label for="situacao_aquisicao">Situação</label>
+                <select id="situacao_aquisicao" name="situacao_aquisicao">
+                    <option value="">Todas</option>
+                    {% for situacao in situacoes %}
+                        <option value="{{ situacao }}" {{ "selected" if filtros.get('situacao_aquisicao') == situacao else "" }}>{{ situacao }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="tipo">Tipo</label>
+                <select id="tipo" name="tipo">
+                    <option value="">Todos</option>
+                    {% for tipo in tipos %}
+                        <option value="{{ tipo }}" {{ "selected" if filtros.get('tipo') == tipo else "" }}>{{ tipo }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="status">Status</label>
+                <select id="status" name="status">
+                    <option value="">Todos</option>
+                    <option value="ativos" {{ "selected" if filtros.get('status') == "ativos" else "" }}>Ativos</option>
+                    <option value="inativos" {{ "selected" if filtros.get('status') == "inativos" else "" }}>Inativos</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Pesquisar</button>
+            <a class="btn btn-secondary" href="{{ url_for('operacao.listar_veiculos_equipamentos') }}">Limpar</a>
+        </div>
+    </form>
+
+    <div class="table-card table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Identificação</th>
+                    <th>Placa</th>
+                    <th>Descrição</th>
+                    <th>Chassi</th>
+                    <th>Renavam</th>
+                    <th>Centro de Custo</th>
+                    <th>Situação</th>
+                    <th>Tipo</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if not filtro_aplicado %}
+                    <tr>
+                        <td class="empty-state" colspan="10">Informe um filtro para consultar veículos e equipamentos.</td>
+                    </tr>
+                {% else %}
+                    {% for veiculo in veiculos %}
+                        <tr>
+                            <td>{{ veiculo.identificacao }}</td>
+                            <td>{{ veiculo.placa or "-" }}</td>
+                            <td>{{ veiculo.descricao }}</td>
+                            <td>{{ veiculo.chassi or "-" }}</td>
+                            <td>{{ veiculo.renavam or "-" }}</td>
+                            <td>{{ veiculo.centro_custo }}</td>
+                            <td>{{ veiculo.situacao_aquisicao }}</td>
+                            <td>{{ veiculo.tipo }}</td>
+                            <td>
+                                <span class="badge {{ 'badge-success' if veiculo.ativo else 'badge-danger' }}">
+                                    {{ "Ativo" if veiculo.ativo else "Inativo" }}
+                                </span>
+                            </td>
+                            <td class="col-acoes">
+                                <div class="acoes-botoes">
+                                    <a class="btn btn-secondary" href="{{ url_for('operacao.visualizar_veiculo_equipamento', veiculo_id=veiculo.id) }}">Ver</a>
+                                    <a class="btn btn-primary" href="{{ url_for('operacao.editar_veiculo_equipamento', veiculo_id=veiculo.id) }}">Editar</a>
+                                    <form class="inline-form" method="POST" action="{{ url_for('operacao.status_veiculo_equipamento', veiculo_id=veiculo.id) }}">
+                                        <button class="btn btn-warning" type="submit">{{ "Inativar" if veiculo.ativo else "Reativar" }}</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td class="empty-state" colspan="10">Nenhum veículo ou equipamento encontrado.</td>
+                        </tr>
+                    {% endfor %}
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="page-actions">
+        <a class="btn btn-secondary" href="{{ url_for('departamentos.detalhe_departamento', slug_departamento='operacao') }}">Voltar</a>
+    </div>
+</section>
+{% endblock %}
