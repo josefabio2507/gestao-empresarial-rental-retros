@@ -8,13 +8,15 @@ from app.models import (
 )
 from app.services.logs_service import registrar_log
 from app.services.suprimentos_service import (
+    CLASSE_CENTRO_CUSTO,
+    CLASSE_CENTRO_CUSTO_EQUIPES,
+    CLASSE_CENTRO_EPG_VEICULOS,
     STATUS_REQUISICAO_APROVADA,
     STATUS_REQUISICAO_CANCELADA,
     STATUS_REQUISICAO_ENVIADA,
     STATUS_REQUISICAO_RASCUNHO,
     adicionar_item_requisicao,
     buscar_centros_custo_ativos,
-    buscar_equipes_ativas,
     buscar_itens_ativos,
     buscar_por_id,
     buscar_requisicoes_compra,
@@ -23,6 +25,8 @@ from app.services.suprimentos_service import (
     enviar_requisicao_compra,
     enviar_email_requisicao_compra,
     gerar_link_whatsapp_requisicao_compra,
+    nome_subcentro_equipe_requisicao,
+    nome_subcentro_veiculo_requisicao,
     requisicao_compra_pode_editar,
     remover_item_requisicao,
     salvar_requisicao_compra,
@@ -40,8 +44,9 @@ STATUS_REQUISICOES = [
 
 def opcoes_formulario():
     return {
-        "centros": buscar_centros_custo_ativos(),
-        "equipes": buscar_equipes_ativas(),
+        "centros": buscar_centros_custo_ativos(CLASSE_CENTRO_CUSTO),
+        "subcentros_equipe": buscar_centros_custo_ativos(CLASSE_CENTRO_CUSTO_EQUIPES),
+        "subcentros_veiculo": buscar_centros_custo_ativos(CLASSE_CENTRO_EPG_VEICULOS),
         "itens_disponiveis": buscar_itens_ativos(),
     }
 
@@ -107,6 +112,8 @@ def detalhes(requisicao_id):
         "suprimentos/requisicoes/detalhes.html",
         requisicao=requisicao,
         item_em_edicao=item_em_edicao,
+        nome_subcentro_equipe_requisicao=nome_subcentro_equipe_requisicao,
+        nome_subcentro_veiculo_requisicao=nome_subcentro_veiculo_requisicao,
         pode_editar_requisicao=requisicao_compra_pode_editar(requisicao),
         **opcoes_formulario(),
     )
