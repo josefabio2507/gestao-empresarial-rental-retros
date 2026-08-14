@@ -1464,8 +1464,7 @@ def buscar_ordens_compra(
     fornecedor_id=None,
     status_financeiro=None,
     centro_custo_id=None,
-    sub_centro_custo=None,
-    palavra_chave_requisicao=None,
+    sub_centro_custo_veiculo_id=None,
 ):
     query = (
         SuprimentosOrdemCompra.query
@@ -1475,13 +1474,14 @@ def buscar_ordens_compra(
             joinedload(SuprimentosOrdemCompra.cotacao),
             joinedload(SuprimentosOrdemCompra.requisicao).joinedload(SuprimentosRequisicaoCompra.centro_custo),
             joinedload(SuprimentosOrdemCompra.requisicao).joinedload(SuprimentosRequisicaoCompra.equipe),
+            joinedload(SuprimentosOrdemCompra.requisicao).joinedload(SuprimentosRequisicaoCompra.sub_centro_custo_equipe),
+            joinedload(SuprimentosOrdemCompra.requisicao).joinedload(SuprimentosRequisicaoCompra.sub_centro_custo_veiculo),
         )
     )
     numero = texto(numero).upper()
     fornecedor_id = inteiro_ou_none(fornecedor_id)
     centro_custo_id = inteiro_ou_none(centro_custo_id)
-    sub_centro_custo = texto(sub_centro_custo).upper()
-    palavra_chave_requisicao = texto(palavra_chave_requisicao).upper()
+    sub_centro_custo_veiculo_id = inteiro_ou_none(sub_centro_custo_veiculo_id)
 
     if numero:
         query = query.filter(SuprimentosOrdemCompra.numero.ilike(f"%{numero}%"))
@@ -1498,29 +1498,8 @@ def buscar_ordens_compra(
     if centro_custo_id:
         query = query.filter(SuprimentosRequisicaoCompra.centro_custo_id == centro_custo_id)
 
-    if sub_centro_custo:
-        busca_subcentro = f"%{sub_centro_custo}%"
-        query = query.filter(
-            or_(
-                func.upper(Equipe.nome).ilike(busca_subcentro),
-                func.upper(SuprimentosRequisicaoCompra.veiculo_placa).ilike(busca_subcentro),
-                SuprimentosRequisicaoCompra.sub_centro_custo_equipe.has(
-                    func.upper(CentroCusto.nome).ilike(busca_subcentro)
-                ),
-                SuprimentosRequisicaoCompra.sub_centro_custo_veiculo.has(
-                    func.upper(CentroCusto.nome).ilike(busca_subcentro)
-                ),
-            )
-        )
-
-    if palavra_chave_requisicao:
-        busca = f"%{palavra_chave_requisicao}%"
-        query = query.filter(
-            or_(
-                func.upper(SuprimentosRequisicaoCompra.justificativa).ilike(busca),
-                func.upper(SuprimentosRequisicaoCompra.observacoes).ilike(busca),
-            )
-        )
+    if sub_centro_custo_veiculo_id:
+        query = query.filter(SuprimentosRequisicaoCompra.sub_centro_custo_veiculo_id == sub_centro_custo_veiculo_id)
 
     return query.order_by(SuprimentosOrdemCompra.criado_em.desc()).all()
 
