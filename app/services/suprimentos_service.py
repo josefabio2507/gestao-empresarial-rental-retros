@@ -18,6 +18,7 @@ from sqlalchemy.orm import joinedload
 
 from app.extensions import db
 from app.services.email_service import enviar_email, smtp_configurado
+from app.utils.datas import agora_brasil
 from app.models import (
     CentroCusto,
     Departamento,
@@ -321,7 +322,7 @@ def _sequencia_item_ordem_compra(ordem_compra, ordem_compra_item):
 def _nome_arquivo_evidencia_oc(ordem_compra, ordem_compra_item, numero_foto):
     sequencia = _sequencia_item_ordem_compra(ordem_compra, ordem_compra_item)
     numero_oc = re.sub(r"[^A-Za-z0-9_-]+", "-", ordem_compra.numero or str(ordem_compra.id))
-    timestamp = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
+    timestamp = agora_brasil().strftime("%Y%m%d-%H%M%S")
     return f"OC-{numero_oc}_ITEM-{sequencia:03d}_FOTO-{numero_foto}_{timestamp}.jpg"
 
 
@@ -1063,7 +1064,7 @@ def salvar_vinculo_fornecedor_item(form_data, vinculo=None):
 
 
 def gerar_numero_requisicao():
-    ano = datetime.utcnow().year
+    ano = agora_brasil().year
     prefixo = f"RC-{ano}-"
     ultima = (
         SuprimentosRequisicaoCompra.query
@@ -1258,7 +1259,7 @@ def enviar_requisicao_compra(requisicao):
         return False, "Adicione ao menos um item antes de enviar."
 
     requisicao.status = STATUS_REQUISICAO_ENVIADA
-    requisicao.enviada_em = datetime.utcnow()
+    requisicao.enviada_em = agora_brasil()
     db.session.commit()
     return True, "Requisicao enviada para analise."
 
@@ -1268,7 +1269,7 @@ def cancelar_requisicao_compra(requisicao, motivo=None):
         return False, "Requisicao ja esta cancelada."
 
     requisicao.status = STATUS_REQUISICAO_CANCELADA
-    requisicao.cancelada_em = datetime.utcnow()
+    requisicao.cancelada_em = agora_brasil()
     requisicao.motivo_cancelamento = texto_maiusculo(motivo) or None
     db.session.commit()
     return True, "Requisicao cancelada com sucesso."
@@ -1292,12 +1293,12 @@ def sincronizar_status_requisicao_por_cotacao(cotacao):
 
     if cotacao.status in STATUS_COTACAO_REQUISICAO_CANCELADA:
         cotacao.requisicao.status = STATUS_REQUISICAO_CANCELADA
-        cotacao.requisicao.cancelada_em = datetime.utcnow()
+        cotacao.requisicao.cancelada_em = agora_brasil()
         cotacao.requisicao.motivo_cancelamento = f"COTACAO {cotacao.status.upper()}"
 
 
 def gerar_numero_cotacao():
-    ano = datetime.utcnow().year
+    ano = agora_brasil().year
     prefixo = f"COT-{ano}-"
     ultima = (
         SuprimentosCotacao.query
@@ -1318,7 +1319,7 @@ def gerar_numero_cotacao():
 
 
 def gerar_numero_ordem_compra():
-    ano = datetime.utcnow().year
+    ano = agora_brasil().year
     prefixo = f"OC-{ano}-"
     ultima = (
         SuprimentosOrdemCompra.query
@@ -1339,7 +1340,7 @@ def gerar_numero_ordem_compra():
 
 
 def gerar_numero_recebimento_compra():
-    ano = datetime.utcnow().year
+    ano = agora_brasil().year
     prefixo = f"REC-{ano}-"
     ultimo = (
         SuprimentosRecebimentoCompra.query
@@ -1503,7 +1504,7 @@ def preparar_financeiro_ordem_compra(ordem, form_data):
     ordem.quantidade_parcelas = quantidade_parcelas
     ordem.observacoes_financeiras = observacoes
     ordem.status_financeiro = STATUS_FINANCEIRO_PREPARADO
-    ordem.preparado_financeiro_em = datetime.utcnow()
+    ordem.preparado_financeiro_em = agora_brasil()
     criar_parcelas_financeiras_ordem(ordem, previsao_vencimento, quantidade_parcelas, observacoes)
     db.session.commit()
     return True, "Dados financeiros preparados com sucesso."
@@ -1517,7 +1518,7 @@ def provisionar_financeiro_ordem_compra(ordem):
         return False, "Prepare as parcelas financeiras antes de provisionar."
 
     ordem.status_financeiro = STATUS_FINANCEIRO_PROVISIONADO
-    ordem.provisionado_financeiro_em = datetime.utcnow()
+    ordem.provisionado_financeiro_em = agora_brasil()
     db.session.commit()
     return True, "Ordem de compra provisionada para o futuro Financeiro."
 
@@ -2606,7 +2607,7 @@ def gerar_token_aprovacao_publica_cotacao(cotacao):
     ) or 7
 
     cotacao.aprovacao_publica_token_hash = _hash_token_aprovacao_publica(token)
-    cotacao.aprovacao_publica_expira_em = datetime.utcnow() + timedelta(days=validade_dias)
+    cotacao.aprovacao_publica_expira_em = agora_brasil() + timedelta(days=validade_dias)
     cotacao.aprovacao_publica_usado_em = None
     db.session.commit()
 
@@ -2628,7 +2629,7 @@ def buscar_cotacao_por_token_aprovacao_publica(token):
     if cotacao.aprovacao_publica_usado_em:
         return None, "Este link de aprovacao ja foi utilizado."
 
-    if cotacao.aprovacao_publica_expira_em and cotacao.aprovacao_publica_expira_em < datetime.utcnow():
+    if cotacao.aprovacao_publica_expira_em and cotacao.aprovacao_publica_expira_em < agora_brasil():
         return None, "Este link de aprovacao expirou. Solicite um novo envio pelo WhatsApp."
 
     if cotacao.status != STATUS_COTACAO_EM_APROVACAO:
@@ -2892,7 +2893,7 @@ def selecionar_proposta_vencedora(form_data, cotacao, usuario):
     proposta.selecionada = True
     proposta.justificativa_selecao = justificativa
     proposta.selecionada_por_usuario_id = usuario.id
-    proposta.selecionada_em = datetime.utcnow()
+    proposta.selecionada_em = agora_brasil()
 
     if cotacao.status == STATUS_COTACAO_REPROVADA:
         cotacao.status = STATUS_COTACAO_ABERTA
@@ -2929,7 +2930,7 @@ def enviar_cotacao_para_aprovacao(cotacao, usuario):
         return False, "Nao existe aprovador configurado para este valor de proposta."
 
     cotacao.status = STATUS_COTACAO_EM_APROVACAO
-    cotacao.enviada_aprovacao_em = datetime.utcnow()
+    cotacao.enviada_aprovacao_em = agora_brasil()
     cotacao.aprovada_em = None
     cotacao.aprovada_por_usuario_id = None
     cotacao.aprovador_usuario_id = alcada.usuario_aprovador_id
@@ -2954,7 +2955,7 @@ def aprovar_cotacao(cotacao, usuario, form_data=None):
         return False, "Somente o aprovador definido pela alcada pode aprovar esta cotacao."
 
     cotacao.status = STATUS_COTACAO_APROVADA
-    cotacao.aprovada_em = datetime.utcnow()
+    cotacao.aprovada_em = agora_brasil()
     cotacao.aprovada_por_usuario_id = usuario.id
     cotacao.reprovada_em = None
     cotacao.reprovada_por_usuario_id = None
@@ -2978,7 +2979,7 @@ def reprovar_cotacao(cotacao, usuario, form_data=None):
         return False, "Informe a justificativa da reprovacao."
 
     cotacao.status = STATUS_COTACAO_REPROVADA
-    cotacao.reprovada_em = datetime.utcnow()
+    cotacao.reprovada_em = agora_brasil()
     cotacao.reprovada_por_usuario_id = usuario.id
     cotacao.aprovada_em = None
     cotacao.aprovada_por_usuario_id = None
@@ -2994,12 +2995,12 @@ def aprovar_cotacao_por_link_publico(cotacao, form_data=None):
         return False, "Somente cotacoes em aprovacao podem ser aprovadas."
 
     cotacao.status = STATUS_COTACAO_APROVADA
-    cotacao.aprovada_em = datetime.utcnow()
+    cotacao.aprovada_em = agora_brasil()
     cotacao.aprovada_por_usuario_id = cotacao.aprovador_usuario_id
     cotacao.reprovada_em = None
     cotacao.reprovada_por_usuario_id = None
     cotacao.observacoes_aprovacao = texto_maiusculo((form_data or {}).get("observacoes_aprovacao"))
-    cotacao.aprovacao_publica_usado_em = datetime.utcnow()
+    cotacao.aprovacao_publica_usado_em = agora_brasil()
     cotacao.aprovacao_publica_token_hash = None
     cotacao.aprovacao_publica_expira_em = None
     sincronizar_status_requisicao_por_cotacao(cotacao)
@@ -3018,12 +3019,12 @@ def reprovar_cotacao_por_link_publico(cotacao, form_data=None):
         return False, "Informe a justificativa da reprovacao."
 
     cotacao.status = STATUS_COTACAO_REPROVADA
-    cotacao.reprovada_em = datetime.utcnow()
+    cotacao.reprovada_em = agora_brasil()
     cotacao.reprovada_por_usuario_id = cotacao.aprovador_usuario_id
     cotacao.aprovada_em = None
     cotacao.aprovada_por_usuario_id = None
     cotacao.observacoes_aprovacao = justificativa
-    cotacao.aprovacao_publica_usado_em = datetime.utcnow()
+    cotacao.aprovacao_publica_usado_em = agora_brasil()
     cotacao.aprovacao_publica_token_hash = None
     cotacao.aprovacao_publica_expira_em = None
     sincronizar_status_requisicao_por_cotacao(cotacao)
@@ -3103,7 +3104,7 @@ def gerar_ordens_compra_cotacao(cotacao, usuario, form_data=None):
             quantidade_parcelas=quantidade_parcelas,
             observacoes_financeiras=observacoes_financeiras,
             observacoes=observacoes,
-            gerada_em=datetime.utcnow(),
+            gerada_em=agora_brasil(),
         )
         db.session.add(ordem)
         db.session.flush()
@@ -3128,7 +3129,7 @@ def gerar_ordens_compra_cotacao(cotacao, usuario, form_data=None):
 
         if previsao_vencimento:
             ordem.status_financeiro = STATUS_FINANCEIRO_PREPARADO
-            ordem.preparado_financeiro_em = datetime.utcnow()
+            ordem.preparado_financeiro_em = agora_brasil()
             criar_parcelas_financeiras_ordem(
                 ordem,
                 previsao_vencimento,
@@ -3210,7 +3211,7 @@ def registrar_recebimento_ordem_compra(form_data, ordem_compra, usuario):
         numero_documento=numero_documento,
         data_documento=data_documento,
         observacoes=observacoes,
-        recebido_em=datetime.utcnow(),
+        recebido_em=agora_brasil(),
     )
     db.session.add(recebimento)
     db.session.flush()
@@ -3275,7 +3276,7 @@ def registrar_entrada_estoque_recebimento_item(recebimento_item):
         valor_unitario=valor_unitario,
         valor_total_snapshot=valor_total,
         observacoes=recebimento_item.observacoes,
-        movimentado_em=recebimento.recebido_em if recebimento else datetime.utcnow(),
+        movimentado_em=recebimento.recebido_em if recebimento else agora_brasil(),
     )
     db.session.add(movimentacao)
     return movimentacao
@@ -3290,7 +3291,7 @@ def cancelar_ordem_compra(ordem_compra, motivo=None):
 
     ordem_compra.status = STATUS_ORDEM_COMPRA_CANCELADA
     ordem_compra.status_financeiro = STATUS_FINANCEIRO_CANCELADO
-    ordem_compra.cancelada_em = datetime.utcnow()
+    ordem_compra.cancelada_em = agora_brasil()
     ordem_compra.motivo_cancelamento = texto_maiusculo(motivo) or None
     for parcela in ordem_compra.parcelas_financeiras:
         parcela.status = "Cancelada"
@@ -3306,7 +3307,7 @@ def encerrar_cotacao(cotacao):
         return False, "Registre ao menos uma proposta antes de encerrar."
 
     cotacao.status = STATUS_COTACAO_ENCERRADA
-    cotacao.encerrada_em = datetime.utcnow()
+    cotacao.encerrada_em = agora_brasil()
     sincronizar_status_requisicao_por_cotacao(cotacao)
     db.session.commit()
     return True, "Cotacao encerrada com sucesso."
@@ -3317,7 +3318,7 @@ def cancelar_cotacao(cotacao):
         return False, "Cotacao ja esta cancelada."
 
     cotacao.status = STATUS_COTACAO_CANCELADA
-    cotacao.encerrada_em = datetime.utcnow()
+    cotacao.encerrada_em = agora_brasil()
     sincronizar_status_requisicao_por_cotacao(cotacao)
     db.session.commit()
     return True, "Cotacao cancelada com sucesso."
