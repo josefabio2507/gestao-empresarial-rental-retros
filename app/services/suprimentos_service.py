@@ -1464,6 +1464,7 @@ def buscar_ordens_compra(
     fornecedor_id=None,
     status_financeiro=None,
     centro_custo_id=None,
+    sub_centro_custo_equipe_id=None,
     sub_centro_custo_veiculo_id=None,
 ):
     query = (
@@ -1481,6 +1482,7 @@ def buscar_ordens_compra(
     numero = texto(numero).upper()
     fornecedor_id = inteiro_ou_none(fornecedor_id)
     centro_custo_id = inteiro_ou_none(centro_custo_id)
+    sub_centro_custo_equipe_id = inteiro_ou_none(sub_centro_custo_equipe_id)
     sub_centro_custo_veiculo_id = inteiro_ou_none(sub_centro_custo_veiculo_id)
 
     if numero:
@@ -1497,6 +1499,9 @@ def buscar_ordens_compra(
 
     if centro_custo_id:
         query = query.filter(SuprimentosRequisicaoCompra.centro_custo_id == centro_custo_id)
+
+    if sub_centro_custo_equipe_id:
+        query = query.filter(SuprimentosRequisicaoCompra.sub_centro_custo_equipe_id == sub_centro_custo_equipe_id)
 
     if sub_centro_custo_veiculo_id:
         query = query.filter(SuprimentosRequisicaoCompra.sub_centro_custo_veiculo_id == sub_centro_custo_veiculo_id)
