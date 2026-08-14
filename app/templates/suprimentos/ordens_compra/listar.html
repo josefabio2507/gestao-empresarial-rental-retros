@@ -71,6 +71,22 @@
             </datalist>
         </div>
         <div class="form-group">
+            <label for="sub_centro_custo_equipe_busca">Sub centro de custo - Equipes</label>
+            <input
+                id="sub_centro_custo_equipe_busca"
+                list="subcentros_equipe_opcoes"
+                value="{{ subcentro_equipe_filtro.nome if subcentro_equipe_filtro else '' }}"
+                data-datalist-target="sub_centro_custo_equipe_id"
+                autocomplete="off"
+            >
+            <input type="hidden" id="sub_centro_custo_equipe_id" name="sub_centro_custo_equipe_id" value="{{ subcentro_equipe_filtro.id if subcentro_equipe_filtro else '' }}">
+            <datalist id="subcentros_equipe_opcoes">
+                {% for centro in subcentros_equipe %}
+                    <option value="{{ centro.nome }}" data-value="{{ centro.id }}"></option>
+                {% endfor %}
+            </datalist>
+        </div>
+        <div class="form-group">
             <label for="sub_centro_custo_veiculo_busca">Sub centro de custo - Placa do veiculo</label>
             <input
                 id="sub_centro_custo_veiculo_busca"
