@@ -21,15 +21,20 @@
             <input id="numero" name="numero" value="{{ filtros.get('numero', '') }}" data-uppercase>
         </div>
         <div class="form-group">
-            <label for="fornecedor_id">Fornecedor</label>
-            <select id="fornecedor_id" name="fornecedor_id">
-                <option value="">Todos</option>
+            <label for="fornecedor_busca">Fornecedor</label>
+            <input
+                id="fornecedor_busca"
+                list="fornecedores_opcoes"
+                value="{{ fornecedor_filtro.razao_social if fornecedor_filtro else '' }}"
+                data-datalist-target="fornecedor_id"
+                autocomplete="off"
+            >
+            <input type="hidden" id="fornecedor_id" name="fornecedor_id" value="{{ fornecedor_filtro.id if fornecedor_filtro else '' }}">
+            <datalist id="fornecedores_opcoes">
                 {% for fornecedor in fornecedores %}
-                    <option value="{{ fornecedor.id }}" {{ "selected" if filtros.get('fornecedor_id')|string == fornecedor.id|string else "" }}>
-                        {{ fornecedor.razao_social }}
-                    </option>
+                    <option value="{{ fornecedor.razao_social }}" data-value="{{ fornecedor.id }}"></option>
                 {% endfor %}
-            </select>
+            </datalist>
         </div>
         <div class="form-group">
             <label for="status">Status</label>
@@ -50,23 +55,36 @@
             </select>
         </div>
         <div class="form-group">
-            <label for="centro_custo_id">Centro de custo</label>
-            <select id="centro_custo_id" name="centro_custo_id">
-                <option value="">Todos</option>
+            <label for="centro_custo_busca">Centro de custo</label>
+            <input
+                id="centro_custo_busca"
+                list="centros_custo_opcoes"
+                value="{{ centro_custo_filtro.nome if centro_custo_filtro else '' }}"
+                data-datalist-target="centro_custo_id"
+                autocomplete="off"
+            >
+            <input type="hidden" id="centro_custo_id" name="centro_custo_id" value="{{ centro_custo_filtro.id if centro_custo_filtro else '' }}">
+            <datalist id="centros_custo_opcoes">
                 {% for centro in centros_custo %}
-                    <option value="{{ centro.id }}" {{ "selected" if filtros.get('centro_custo_id')|string == centro.id|string else "" }}>
-                        {{ centro.nome }}
-                    </option>
+                    <option value="{{ centro.nome }}" data-value="{{ centro.id }}"></option>
                 {% endfor %}
-            </select>
+            </datalist>
         </div>
         <div class="form-group">
-            <label for="sub_centro_custo">Sub centro de custo</label>
-            <input id="sub_centro_custo" name="sub_centro_custo" value="{{ filtros.get('sub_centro_custo', '') }}" data-uppercase>
-        </div>
-        <div class="form-group">
-            <label for="palavra_chave_requisicao">Palavra chave</label>
-            <input id="palavra_chave_requisicao" name="palavra_chave_requisicao" value="{{ filtros.get('palavra_chave_requisicao', '') }}" data-uppercase>
+            <label for="sub_centro_custo_veiculo_busca">Sub centro de custo - Placa do veiculo</label>
+            <input
+                id="sub_centro_custo_veiculo_busca"
+                list="subcentros_veiculo_opcoes"
+                value="{{ subcentro_veiculo_filtro.nome if subcentro_veiculo_filtro else '' }}"
+                data-datalist-target="sub_centro_custo_veiculo_id"
+                autocomplete="off"
+            >
+            <input type="hidden" id="sub_centro_custo_veiculo_id" name="sub_centro_custo_veiculo_id" value="{{ subcentro_veiculo_filtro.id if subcentro_veiculo_filtro else '' }}">
+            <datalist id="subcentros_veiculo_opcoes">
+                {% for centro in subcentros_veiculo %}
+                    <option value="{{ centro.nome }}" data-value="{{ centro.id }}"></option>
+                {% endfor %}
+            </datalist>
         </div>
         <div class="form-actions">
             <button class="btn btn-primary" type="submit">Pesquisar</button>
@@ -130,9 +148,8 @@
                     <th>Fornecedor</th>
                     <th>Cotacao</th>
                     <th>Centro de custo</th>
-                    <th>Sub centro de custo</th>
+                    <th>Sub Centros de Custo / Placa do Veiculo</th>
                     <th>Justificativa</th>
-                    <th>Observacoes da requisicao</th>
                     <th>Status</th>
                     <th>Status financeiro</th>
                     <th>Vencimento</th>
@@ -151,13 +168,12 @@
                         <td>{{ ordem.requisicao.centro_custo.nome if ordem.requisicao and ordem.requisicao.centro_custo else "-" }}</td>
                         <td>
                             {% if ordem.requisicao %}
-                                Equipe: {{ nome_subcentro_equipe_requisicao(ordem.requisicao) }} / Placa: {{ nome_subcentro_veiculo_requisicao(ordem.requisicao) }}
+                                Equipe: {{ nome_subcentro_equipe_requisicao(ordem.requisicao) }} / Placa do veiculo: {{ nome_subcentro_veiculo_requisicao(ordem.requisicao) }}
                             {% else %}
                                 -
                             {% endif %}
                         </td>
                         <td class="col-texto-longo">{{ ordem.requisicao.justificativa if ordem.requisicao else "-" }}</td>
-                        <td class="col-texto-longo">{{ ordem.requisicao.observacoes if ordem.requisicao and ordem.requisicao.observacoes else "-" }}</td>
                         <td><span class="badge badge-success">{{ ordem.status }}</span></td>
                         <td><span class="badge badge-secondary">{{ ordem.status_financeiro }}</span></td>
                         <td>{{ ordem.previsao_vencimento.strftime("%d/%m/%Y") if ordem.previsao_vencimento else "-" }}</td>
@@ -177,7 +193,7 @@
                         </td>
                     </tr>
                 {% else %}
-                    <tr><td class="empty-state" colspan="14">Nenhuma ordem de compra encontrada.</td></tr>
+                    <tr><td class="empty-state" colspan="13">Nenhuma ordem de compra encontrada.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
