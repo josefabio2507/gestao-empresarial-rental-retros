@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Operação · Veículos e Equipamentos</span>
+            <h1>{{ registro.identificacao }}</h1>
+            <p>{{ registro.descricao }}</p>
+        </div>
+        <a class="btn btn-primary" href="{{ url_for('veiculos_equipamentos.editar', registro_id=registro.id) }}">Editar</a>
+    </div>
+
+    <div class="details-card">
+        <h2>Dados do registro</h2>
+        <p><strong>Identificação:</strong> {{ registro.identificacao }}</p>
+        <p><strong>Placa:</strong> {{ registro.placa or "-" }}</p>
+        <p><strong>Descrição:</strong> {{ registro.descricao }}</p>
+        <p><strong>Chassi:</strong> {{ registro.chassi or "-" }}</p>
+        <p><strong>Renavam:</strong> {{ registro.renavam or "-" }}</p>
+        <p><strong>Centro de Custo:</strong> {{ registro.centro_custo }}</p>
+        <p><strong>Situação de aquisição:</strong> {{ registro.situacao_aquisicao }}</p>
+        <p><strong>Tipo:</strong> {{ registro.tipo }}</p>
+        <p><strong>Status:</strong> {{ "Ativo" if registro.ativo else "Inativo" }}</p>
+        <p><strong>Observações:</strong> {{ registro.observacoes or "-" }}</p>
+    </div>
+
+    <div class="page-actions">
+        <a class="btn btn-secondary" href="{{ url_for('veiculos_equipamentos.listar') }}">Voltar</a>
+    </div>
+</section>
+{% endblock %}

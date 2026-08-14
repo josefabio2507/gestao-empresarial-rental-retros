@@ -961,6 +961,47 @@ class CentroCusto(db.Model):
         return f"<CentroCusto {self.codigo or ''} {self.nome}>"
 
 
+class OperacaoVeiculoEquipamento(db.Model):
+    __tablename__ = "operacao_veiculos_equipamentos"
+
+    id = db.Column(db.Integer, primary_key=True)
+    identificacao = db.Column(db.String(80), nullable=False, unique=True, index=True)
+    placa = db.Column(db.String(20), nullable=True, index=True)
+    descricao = db.Column(db.String(180), nullable=False)
+    chassi = db.Column(db.String(80), nullable=True, unique=True, index=True)
+    renavam = db.Column(db.String(40), nullable=True)
+    centro_custo = db.Column(db.String(260), nullable=False, index=True)
+    situacao_aquisicao = db.Column(db.String(30), nullable=False, index=True)
+    tipo = db.Column(db.String(40), nullable=False, index=True)
+    ativo = db.Column(db.Boolean, default=True, nullable=False, index=True)
+    observacoes = db.Column(db.Text, nullable=True)
+
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
+    atualizado_em = db.Column(
+        db.DateTime,
+        default=agora_brasil,
+        onupdate=agora_brasil,
+        nullable=False
+    )
+
+    __table_args__ = (
+        db.CheckConstraint(
+            "situacao_aquisicao in ('Quitado', 'Financiado')",
+            name="ck_operacao_veiculos_situacao_aquisicao",
+        ),
+        db.CheckConstraint(
+            "tipo in ('Veiculo leve', 'Caminhao', 'Maquina', 'Equipamento', 'EPG', 'Outro')",
+            name="ck_operacao_veiculos_tipo",
+        ),
+    )
+
+    def recalcular_centro_custo(self):
+        self.centro_custo = f"{self.identificacao}-{self.descricao}"
+
+    def __repr__(self):
+        return f"<OperacaoVeiculoEquipamento {self.identificacao}>"
+
+
 class SuprimentosItem(db.Model):
     __tablename__ = "suprimentos_itens"
 

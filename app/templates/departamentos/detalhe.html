@@ -126,6 +126,15 @@
                         <span class="module-status">Acessar modulo</span>
                     </a>
 
+                {% elif departamento.slug == "operacao" and modulo_slug == "gestao_veiculos_epgs" %}
+                    <a class="module-card module-card-link" href="{{ url_for('veiculos_equipamentos.index') }}">
+                        <span class="module-card-icon">V</span>
+                        <h2>{{ modulo.nome }}</h2>
+                        <p>{{ modulo.descricao or "Cadastro e consulta de veículos, máquinas e equipamentos operacionais." }}</p>
+                        <span class="badge badge-success">Liberado</span>
+                        <span class="module-status">Acessar modulo</span>
+                    </a>
+
                 {% elif departamento.slug == "suprimentos" %}
                     {% if modulo_slug == "fornecedores" %}
                         {% set destino_suprimentos = url_for('suprimentos_fornecedores.listar') %}

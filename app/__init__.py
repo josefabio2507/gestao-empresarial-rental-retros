@@ -53,6 +53,7 @@ def create_app():
     from app.suprimentos.alcadas_aprovacao.routes import suprimentos_alcadas_aprovacao_bp
     from app.suprimentos.compradores.routes import suprimentos_compradores_bp
     from app.operacao.routes import operacao_bp
+    from app.operacao.veiculos_equipamentos.routes import veiculos_equipamentos_bp
     from app.seguranca_trabalho.routes import seguranca_trabalho_bp
     from app.admin import admin_bp
     from app.admin.cargos import cargos_bp
@@ -85,6 +86,7 @@ def create_app():
     app.register_blueprint(suprimentos_alcadas_aprovacao_bp, url_prefix="/suprimentos/alcadas-aprovacao")
     app.register_blueprint(suprimentos_compradores_bp, url_prefix="/suprimentos/compradores")
     app.register_blueprint(operacao_bp, url_prefix="/operacao")
+    app.register_blueprint(veiculos_equipamentos_bp, url_prefix="/operacao/gestao-veiculos-epgs")
     app.register_blueprint(seguranca_trabalho_bp, url_prefix="/seguranca-trabalho")
     app.register_blueprint(admin_bp, url_prefix="/admin")
     app.register_blueprint(cargos_bp, url_prefix="/admin/cargos")

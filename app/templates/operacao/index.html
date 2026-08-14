@@ -2,7 +2,29 @@
 
 {% block content %}
 <section class="page">
-    <h1>Operação</h1>
-    <p>Módulo Operação em construção.</p>
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Departamento</span>
+            <h1>Operação</h1>
+            <p>Execução, equipes, produtividade operacional e controle da frota.</p>
+        </div>
+    </div>
+
+    <div class="modules-grid">
+        {% if pode_acessar_gestao_veiculos %}
+            <a class="module-card module-card-link" href="{{ url_for('veiculos_equipamentos.index') }}">
+                <span class="module-card-icon">V</span>
+                <h2>Gestão de Veículos e EPGs</h2>
+                <p>Cadastro e consulta de veículos, máquinas e equipamentos operacionais.</p>
+                <span class="badge badge-success">Liberado</span>
+                <span class="module-status">Acessar módulo</span>
+            </a>
+        {% else %}
+            <div class="details-card">
+                <h2>Nenhum submódulo liberado</h2>
+                <p>Você não possui submódulos liberados em Operação.</p>
+            </div>
+        {% endif %}
+    </div>
 </section>
 {% endblock %}

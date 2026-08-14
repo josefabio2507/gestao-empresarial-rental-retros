@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Operação · Veículos e Equipamentos</span>
+            <h1>{{ "Novo Registro" if modo == "novo" else "Editar Registro" }}</h1>
+            <p>O centro de custo é calculado automaticamente pela identificação e descrição.</p>
+        </div>
+    </div>
+
+    <form class="form-card" method="POST">
+        <div class="form-group">
+            <label for="identificacao">Identificação</label>
+            <input id="identificacao" name="identificacao" value="{{ registro.identificacao if registro else '' }}" maxlength="80" required data-uppercase>
+        </div>
+        <div class="form-group">
+            <label for="placa">Placa</label>
+            <input id="placa" name="placa" value="{{ registro.placa if registro else '' }}" maxlength="20" data-uppercase>
+        </div>
+        <div class="form-group">
+            <label for="descricao">Descrição</label>
+            <input id="descricao" name="descricao" value="{{ registro.descricao if registro else '' }}" maxlength="180" required data-uppercase>
+        </div>
+        <div class="form-group">
+            <label for="chassi">Chassi</label>
+            <input id="chassi" name="chassi" value="{{ registro.chassi if registro else '' }}" maxlength="80" data-uppercase>
+        </div>
+        <div class="form-group">
+            <label for="renavam">Renavam</label>
+            <input id="renavam" name="renavam" value="{{ registro.renavam if registro else '' }}" maxlength="40" data-uppercase>
+        </div>
+        <div class="form-group">
+            <label>Centro de Custo</label>
+            <input value="{{ registro.centro_custo if registro else centro_custo_previsto }}" readonly>
+        </div>
+        <div class="form-group">
+            <label for="situacao_aquisicao">Situação de aquisição</label>
+            <select id="situacao_aquisicao" name="situacao_aquisicao" required>
+                {% for situacao in situacoes %}
+                    <option value="{{ situacao }}" {{ "selected" if registro and registro.situacao_aquisicao == situacao else "" }}>{{ situacao }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="tipo">Tipo</label>
+            <select id="tipo" name="tipo" required>
+                {% for tipo in tipos %}
+                    <option value="{{ tipo }}" {{ "selected" if registro and registro.tipo == tipo else "" }}>{{ tipo }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% if registro %}
+            <label class="checkbox-line">
+                <input type="checkbox" name="ativo" {{ "checked" if registro.ativo else "" }}>
+                Ativo
+            </label>
+        {% endif %}
+        <div class="form-group">
+            <label for="observacoes">Observações</label>
+            <textarea id="observacoes" name="observacoes" data-uppercase>{{ registro.observacoes if registro else '' }}</textarea>
+        </div>
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Salvar</button>
+            <a class="btn btn-secondary" href="{{ url_for('veiculos_equipamentos.listar') }}">Cancelar</a>
+        </div>
+    </form>
+</section>
+{% endblock %}

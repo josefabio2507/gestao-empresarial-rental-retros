@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Operação · Gestão de Veículos e EPGs</span>
+            <h1>Veículos e Equipamentos</h1>
+            <p>Consulte a frota operacional e mantenha o centro de custo calculado pelo sistema.</p>
+        </div>
+        <a class="btn btn-primary" href="{{ url_for('veiculos_equipamentos.novo') }}">+ Novo Registro</a>
+    </div>
+
+    <form class="filter-card" method="GET">
+        <div class="form-group">
+            <label for="termo">Identificação, placa, descrição, chassi ou centro de custo</label>
+            <input id="termo" name="termo" value="{{ filtros.get('termo', '') }}" data-uppercase>
+        </div>
+        <div class="form-group">
+            <label for="situacao_aquisicao">Situação</label>
+            <select id="situacao_aquisicao" name="situacao_aquisicao">
+                <option value="">Todas</option>
+                {% for situacao in situacoes %}
+                    <option value="{{ situacao }}" {{ "selected" if filtros.get('situacao_aquisicao') == situacao else "" }}>{{ situacao }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="tipo">Tipo</label>
+            <select id="tipo" name="tipo">
+                <option value="">Todos</option>
+                {% for tipo in tipos %}
+                    <option value="{{ tipo }}" {{ "selected" if filtros.get('tipo') == tipo else "" }}>{{ tipo }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="status">Status</label>
+            <select id="status" name="status">
+                <option value="">Todos</option>
+                <option value="ativos" {{ "selected" if filtros.get('status') == "ativos" else "" }}>Ativos</option>
+                <option value="inativos" {{ "selected" if filtros.get('status') == "inativos" else "" }}>Inativos</option>
+            </select>
+        </div>
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Pesquisar</button>
+            <a class="btn btn-secondary" href="{{ url_for('veiculos_equipamentos.listar') }}">Limpar</a>
+        </div>
+    </form>
+
+    <div class="table-card table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Identificação</th>
+                    <th>Placa</th>
+                    <th>Descrição</th>
+                    <th>Chassi</th>
+                    <th>Renavam</th>
+                    <th>Centro de Custo</th>
+                    <th>Situação</th>
+                    <th>Tipo</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for registro in registros %}
+                    <tr>
+                        <td>{{ registro.identificacao }}</td>
+                        <td>{{ registro.placa or "-" }}</td>
+                        <td>{{ registro.descricao }}</td>
+                        <td>{{ registro.chassi or "-" }}</td>
+                        <td>{{ registro.renavam or "-" }}</td>
+                        <td>{{ registro.centro_custo }}</td>
+                        <td>{{ registro.situacao_aquisicao }}</td>
+                        <td>{{ registro.tipo }}</td>
+                        <td><span class="badge {{ 'badge-success' if registro.ativo else 'badge-danger' }}">{{ "Ativo" if registro.ativo else "Inativo" }}</span></td>
+                        <td class="col-acoes">
+                            <div class="acoes-botoes">
+                                <a class="btn btn-secondary" href="{{ url_for('veiculos_equipamentos.detalhes', registro_id=registro.id) }}">Ver</a>
+                                <a class="btn btn-primary" href="{{ url_for('veiculos_equipamentos.editar', registro_id=registro.id) }}">Editar</a>
+                                <form class="inline-form" method="POST" action="{{ url_for('veiculos_equipamentos.status', registro_id=registro.id) }}">
+                                    <button class="btn btn-warning" type="submit">{{ "Inativar" if registro.ativo else "Reativar" }}</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr><td class="empty-state" colspan="10">Nenhum veículo ou equipamento encontrado.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="page-actions"><a class="btn btn-secondary" href="{{ url_for('veiculos_equipamentos.index') }}">Voltar</a></div>
+</section>
+{% endblock %}

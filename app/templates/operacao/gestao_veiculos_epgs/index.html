@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Operação</span>
+            <h1>Gestão de Veículos e EPGs</h1>
+            <p>Cadastro e consulta de veículos, máquinas e equipamentos operacionais.</p>
+        </div>
+        <a class="btn btn-secondary" href="{{ url_for('operacao.index') }}">Voltar</a>
+    </div>
+
+    <div class="modules-grid">
+        <a class="module-card module-card-link" href="{{ url_for('veiculos_equipamentos.listar') }}">
+            <span class="module-card-icon">V</span>
+            <h2>Veículos e Equipamentos</h2>
+            <p>Cadastro, consulta, edição e controle de status da frota operacional.</p>
+            <span class="badge badge-success">Liberado</span>
+            <span class="module-status">Acessar cadastro</span>
+        </a>
+    </div>
+</section>
+{% endblock %}
