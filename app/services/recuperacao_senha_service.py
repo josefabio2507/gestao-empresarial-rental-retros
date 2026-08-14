@@ -1,11 +1,12 @@
 import hashlib
 import secrets
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from flask import current_app
 
 from app.extensions import db
 from app.models import TokenRecuperacaoSenha, Usuario
+from app.utils.datas import agora_brasil
 
 
 def gerar_hash_token(token):
@@ -13,7 +14,7 @@ def gerar_hash_token(token):
 
 
 def invalidar_tokens_usuario(usuario):
-    agora = datetime.utcnow()
+    agora = agora_brasil()
 
     tokens_ativos = TokenRecuperacaoSenha.query.filter(
         TokenRecuperacaoSenha.usuario_id == usuario.id,
@@ -35,7 +36,7 @@ def gerar_token_recuperacao(usuario, ip=None, user_agent=None):
     registro = TokenRecuperacaoSenha(
         usuario_id=usuario.id,
         token_hash=token_hash,
-        expira_em=datetime.utcnow() + timedelta(minutes=minutos_expiracao),
+        expira_em=agora_brasil() + timedelta(minutes=minutos_expiracao),
         ip_solicitacao=ip,
         user_agent=user_agent,
     )
@@ -79,7 +80,7 @@ def redefinir_senha_por_token(token, nova_senha):
     if not usuario or not usuario.ativo:
         return False, "Token inválido ou expirado.", None
 
-    agora = datetime.utcnow()
+    agora = agora_brasil()
     usuario.definir_senha(nova_senha)
     usuario.precisa_trocar_senha = False
     registro.usado_em = agora
