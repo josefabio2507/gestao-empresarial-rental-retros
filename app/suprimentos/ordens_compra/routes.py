@@ -9,6 +9,7 @@ from app.services.logs_service import registrar_log
 from app.services.permissoes_service import usuario_tem_permissao
 from app.services.suprimentos_service import (
     CLASSE_CENTRO_CUSTO,
+    CLASSE_CENTRO_CUSTO_EQUIPES,
     CLASSE_CENTRO_EPG_VEICULOS,
     STATUS_ORDEM_COMPRA_CANCELADA,
     STATUS_ORDEM_COMPRA_GERADA,
@@ -64,6 +65,7 @@ STATUS_FINANCEIROS_OC = [
 def listar():
     fornecedor_id = request.args.get("fornecedor_id", type=int)
     centro_custo_id = request.args.get("centro_custo_id", type=int)
+    sub_centro_custo_equipe_id = request.args.get("sub_centro_custo_equipe_id", type=int)
     sub_centro_custo_veiculo_id = request.args.get("sub_centro_custo_veiculo_id", type=int)
 
     return render_template(
@@ -74,14 +76,17 @@ def listar():
             fornecedor_id,
             request.args.get("status_financeiro"),
             centro_custo_id,
+            sub_centro_custo_equipe_id,
             sub_centro_custo_veiculo_id,
         ),
         cotacoes_aprovadas_sem_oc=buscar_cotacoes_aprovadas_sem_ordem_compra(request.args.get("numero")),
         fornecedores=buscar_fornecedores_ativos(),
         centros_custo=buscar_centros_custo_ativos(CLASSE_CENTRO_CUSTO),
+        subcentros_equipe=buscar_centros_custo_ativos(CLASSE_CENTRO_CUSTO_EQUIPES),
         subcentros_veiculo=buscar_centros_custo_ativos(CLASSE_CENTRO_EPG_VEICULOS),
         fornecedor_filtro=buscar_por_id(SuprimentosFornecedor, fornecedor_id) if fornecedor_id else None,
         centro_custo_filtro=buscar_por_id(CentroCusto, centro_custo_id) if centro_custo_id else None,
+        subcentro_equipe_filtro=buscar_por_id(CentroCusto, sub_centro_custo_equipe_id) if sub_centro_custo_equipe_id else None,
         subcentro_veiculo_filtro=buscar_por_id(CentroCusto, sub_centro_custo_veiculo_id) if sub_centro_custo_veiculo_id else None,
         status_ordens=STATUS_ORDENS_COMPRA,
         status_financeiros=STATUS_FINANCEIROS_OC,
