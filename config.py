@@ -32,6 +32,10 @@ class Config:
         "AUTO_SEED_SUPRIMENTOS_ITENS_NAO_ESTOCAVEIS_ON_START",
         "true" if SQLALCHEMY_DATABASE_URI.startswith("postgresql://") else "false",
     ).lower() == "true"
+    AUTO_SEED_OPERACAO_VEICULOS_ON_START = os.getenv(
+        "AUTO_SEED_OPERACAO_VEICULOS_ON_START",
+        "true" if SQLALCHEMY_DATABASE_URI.startswith("postgresql://") else "false",
+    ).lower() == "true"
 
     MAIL_SERVER = os.getenv("MAIL_SERVER")
     MAIL_PORT = int(os.getenv("MAIL_PORT", "587"))
