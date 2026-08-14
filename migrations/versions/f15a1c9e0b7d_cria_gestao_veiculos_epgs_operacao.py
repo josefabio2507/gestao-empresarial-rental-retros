@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 revision = "f15a1c9e0b7d"
-down_revision = "e9c4b2a7d6f1"
+down_revision = "b2e6f8a9c4d1"
 branch_labels = None
 depends_on = None
 
@@ -52,7 +52,7 @@ def _table_names(inspector):
 
 def _criar_tabela(inspector):
     if TABELA in _table_names(inspector):
-        return
+        return False
 
     op.create_table(
         TABELA,
@@ -86,6 +86,7 @@ def _criar_tabela(inspector):
     op.create_index("ix_operacao_veiculos_chassi", TABELA, ["chassi"])
     op.create_index("ix_operacao_veiculos_centro_custo", TABELA, ["centro_custo"])
     op.create_index("ix_operacao_veiculos_ativo", TABELA, ["ativo"])
+    return True
 
 
 def _garantir_modulo_operacao(conn):
@@ -185,9 +186,10 @@ def upgrade():
     bind = op.get_bind()
     inspector = sa.inspect(bind)
 
-    _criar_tabela(inspector)
+    tabela_criada = _criar_tabela(inspector)
     _garantir_modulo_operacao(bind)
-    _carga_inicial(bind)
+    if tabela_criada:
+        _carga_inicial(bind)
 
 
 def downgrade():
