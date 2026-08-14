@@ -1,4 +1,4 @@
-from datetime import datetime
+from app.utils.datas import agora_brasil
 
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -15,11 +15,11 @@ class NivelAcesso(db.Model):
     descricao = db.Column(db.Text, nullable=True)
     ativo = db.Column(db.Boolean, default=True, nullable=False)
 
-    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
     atualizado_em = db.Column(
         db.DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=agora_brasil,
+        onupdate=agora_brasil,
         nullable=False
     )
 
@@ -52,11 +52,11 @@ class Usuario(UserMixin, db.Model):
     ativo = db.Column(db.Boolean, default=True, nullable=False)
     precisa_trocar_senha = db.Column(db.Boolean, default=True, nullable=False)
 
-    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
     atualizado_em = db.Column(
         db.DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=agora_brasil,
+        onupdate=agora_brasil,
         nullable=False
     )
 
@@ -115,11 +115,11 @@ class Departamento(db.Model):
     ativo = db.Column(db.Boolean, default=True, nullable=False)
     ordem = db.Column(db.Integer, default=0, nullable=False)
 
-    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
     atualizado_em = db.Column(
         db.DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=agora_brasil,
+        onupdate=agora_brasil,
         nullable=False
     )
 
@@ -151,11 +151,11 @@ class Modulo(db.Model):
     ativo = db.Column(db.Boolean, default=True, nullable=False)
     ordem = db.Column(db.Integer, default=0, nullable=False)
 
-    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
     atualizado_em = db.Column(
         db.DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=agora_brasil,
+        onupdate=agora_brasil,
         nullable=False
     )
 
@@ -204,11 +204,11 @@ class PermissaoUsuarioModulo(db.Model):
 
     ativo = db.Column(db.Boolean, default=True, nullable=False)
 
-    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
     atualizado_em = db.Column(
         db.DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=agora_brasil,
+        onupdate=agora_brasil,
         nullable=False
     )
 
@@ -254,7 +254,7 @@ class LogAcesso(db.Model):
     ip = db.Column(db.String(80), nullable=True)
     user_agent = db.Column(db.Text, nullable=True)
 
-    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
 
     usuario = db.relationship("Usuario", back_populates="logs")
 
@@ -277,7 +277,7 @@ class TokenRecuperacaoSenha(db.Model):
     token_hash = db.Column(db.String(64), unique=True, nullable=False, index=True)
     expira_em = db.Column(db.DateTime, nullable=False, index=True)
     usado_em = db.Column(db.DateTime, nullable=True)
-    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
     ip_solicitacao = db.Column(db.String(80), nullable=True)
     user_agent = db.Column(db.Text, nullable=True)
 
@@ -289,7 +289,7 @@ class TokenRecuperacaoSenha(db.Model):
 
     @property
     def expirou(self):
-        return datetime.utcnow() > self.expira_em
+        return agora_brasil() > self.expira_em
 
     def __repr__(self):
         return f"<TokenRecuperacaoSenha usuario={self.usuario_id}>"
@@ -302,11 +302,11 @@ class Equipe(db.Model):
     slug = db.Column(db.String(120), unique=True, nullable=False)
     ativo = db.Column(db.Boolean, default=True, nullable=False)
 
-    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
     atualizado_em = db.Column(
         db.DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=agora_brasil,
+        onupdate=agora_brasil,
         nullable=False
     )
 
@@ -326,11 +326,11 @@ class Cargo(db.Model):
     nome = db.Column(db.String(120), nullable=False)
     ativo = db.Column(db.Boolean, default=True, nullable=False)
 
-    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
     atualizado_em = db.Column(
         db.DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=agora_brasil,
+        onupdate=agora_brasil,
         nullable=False
     )
 
@@ -363,11 +363,11 @@ class Colaborador(db.Model):
 
     ativo = db.Column(db.Boolean, default=True, nullable=False)
 
-    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
     atualizado_em = db.Column(
         db.DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=agora_brasil,
+        onupdate=agora_brasil,
         nullable=False
     )
 
@@ -406,11 +406,11 @@ class LinhaOnibus(db.Model):
     valor_tarifa_dia = db.Column(db.Numeric(10, 2), nullable=False)
     ativo = db.Column(db.Boolean, default=True, nullable=False)
 
-    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
     atualizado_em = db.Column(
         db.DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=agora_brasil,
+        onupdate=agora_brasil,
         nullable=False
     )
 
@@ -454,11 +454,11 @@ class ValeTransporteColaboradorLinha(db.Model):
     )
     ativo = db.Column(db.Boolean, default=True, nullable=False)
 
-    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
     atualizado_em = db.Column(
         db.DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=agora_brasil,
+        onupdate=agora_brasil,
         nullable=False
     )
 
@@ -522,11 +522,11 @@ class ValeTransportePedido(db.Model):
         index=True
     )
 
-    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
     atualizado_em = db.Column(
         db.DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=agora_brasil,
+        onupdate=agora_brasil,
         nullable=False
     )
 
@@ -597,11 +597,11 @@ class ValeTransportePedidoItem(db.Model):
     observacao = db.Column(db.Text, nullable=True)
     ativo = db.Column(db.Boolean, default=True, nullable=False, index=True)
 
-    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
     atualizado_em = db.Column(
         db.DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=agora_brasil,
+        onupdate=agora_brasil,
         nullable=False
     )
 
@@ -671,11 +671,11 @@ class HoleriteColaborador(db.Model):
     google_drive_url = db.Column(db.Text, nullable=True)
     ativo = db.Column(db.Boolean, default=True, nullable=False, index=True)
 
-    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
     atualizado_em = db.Column(
         db.DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=agora_brasil,
+        onupdate=agora_brasil,
         nullable=False
     )
 
@@ -707,11 +707,11 @@ class Restaurante(db.Model):
     telefone = db.Column(db.String(20), nullable=True)
     ativo = db.Column(db.Boolean, default=True, nullable=False)
 
-    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
     atualizado_em = db.Column(
         db.DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=agora_brasil,
+        onupdate=agora_brasil,
         nullable=False
     )
 
@@ -741,11 +741,11 @@ class ItemCardapio(db.Model):
     dia_semana = db.Column(db.String(30), default="Todos os Dias", nullable=False)
     ativo = db.Column(db.Boolean, default=True, nullable=False)
 
-    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
     atualizado_em = db.Column(
         db.DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=agora_brasil,
+        onupdate=agora_brasil,
         nullable=False
     )
 
@@ -788,11 +788,11 @@ class PedidoRefeicao(db.Model):
     enviado_whatsapp = db.Column(db.Boolean, default=False, nullable=False)
     quantidade_envios = db.Column(db.Integer, default=0, nullable=False)
 
-    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
     atualizado_em = db.Column(
         db.DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=agora_brasil,
+        onupdate=agora_brasil,
         nullable=False
     )
 
@@ -830,11 +830,11 @@ class ConsumoRefeicao(db.Model):
     valor_total = db.Column(db.Numeric(10, 2), nullable=False)
     observacao = db.Column(db.Text, nullable=True)
 
-    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
     atualizado_em = db.Column(
         db.DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=agora_brasil,
+        onupdate=agora_brasil,
         nullable=False
     )
 
@@ -864,11 +864,11 @@ class SuprimentosFornecedor(db.Model):
     observacoes = db.Column(db.Text, nullable=True)
     ativo = db.Column(db.Boolean, default=True, nullable=False, index=True)
 
-    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
     atualizado_em = db.Column(
         db.DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=agora_brasil,
+        onupdate=agora_brasil,
         nullable=False
     )
 
@@ -898,11 +898,11 @@ class SuprimentosCategoriaItem(db.Model):
     descricao = db.Column(db.Text, nullable=True)
     ativo = db.Column(db.Boolean, default=True, nullable=False, index=True)
 
-    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
     atualizado_em = db.Column(
         db.DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=agora_brasil,
+        onupdate=agora_brasil,
         nullable=False
     )
 
@@ -921,11 +921,11 @@ class SuprimentosUnidadeMedida(db.Model):
     descricao = db.Column(db.Text, nullable=True)
     ativo = db.Column(db.Boolean, default=True, nullable=False, index=True)
 
-    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
     atualizado_em = db.Column(
         db.DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=agora_brasil,
+        onupdate=agora_brasil,
         nullable=False
     )
 
@@ -944,11 +944,11 @@ class CentroCusto(db.Model):
     descricao = db.Column(db.Text, nullable=True)
     ativo = db.Column(db.Boolean, default=True, nullable=False, index=True)
 
-    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
     atualizado_em = db.Column(
         db.DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=agora_brasil,
+        onupdate=agora_brasil,
         nullable=False
     )
 
@@ -992,11 +992,11 @@ class SuprimentosItem(db.Model):
     observacoes = db.Column(db.Text, nullable=True)
     ativo = db.Column(db.Boolean, default=True, nullable=False, index=True)
 
-    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
     atualizado_em = db.Column(
         db.DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=agora_brasil,
+        onupdate=agora_brasil,
         nullable=False
     )
 
@@ -1067,11 +1067,11 @@ class SuprimentosFornecedorItem(db.Model):
     fornecedor_preferencial = db.Column(db.Boolean, default=False, nullable=False)
     ativo = db.Column(db.Boolean, default=True, nullable=False, index=True)
 
-    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
     atualizado_em = db.Column(
         db.DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=agora_brasil,
+        onupdate=agora_brasil,
         nullable=False
     )
 
@@ -1132,11 +1132,11 @@ class SuprimentosRequisicaoCompra(db.Model):
     cancelada_em = db.Column(db.DateTime, nullable=True)
     motivo_cancelamento = db.Column(db.Text, nullable=True)
 
-    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
     atualizado_em = db.Column(
         db.DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=agora_brasil,
+        onupdate=agora_brasil,
         nullable=False
     )
 
@@ -1186,11 +1186,11 @@ class SuprimentosRequisicaoCompraItem(db.Model):
     quantidade = db.Column(db.Numeric(12, 3), nullable=False)
     observacoes = db.Column(db.Text, nullable=True)
 
-    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
     atualizado_em = db.Column(
         db.DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=agora_brasil,
+        onupdate=agora_brasil,
         nullable=False
     )
 
@@ -1235,7 +1235,7 @@ class SuprimentosCotacao(db.Model):
     )
     status = db.Column(db.String(30), default="Aberta", nullable=False, index=True)
     observacoes = db.Column(db.Text, nullable=True)
-    aberta_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    aberta_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
     encerrada_em = db.Column(db.DateTime, nullable=True)
     enviada_aprovacao_em = db.Column(db.DateTime, nullable=True)
     aprovada_em = db.Column(db.DateTime, nullable=True)
@@ -1269,11 +1269,11 @@ class SuprimentosCotacao(db.Model):
     aprovacao_publica_expira_em = db.Column(db.DateTime, nullable=True, index=True)
     aprovacao_publica_usado_em = db.Column(db.DateTime, nullable=True)
 
-    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
     atualizado_em = db.Column(
         db.DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=agora_brasil,
+        onupdate=agora_brasil,
         nullable=False
     )
 
@@ -1332,11 +1332,11 @@ class SuprimentosAlcadaAprovacao(db.Model):
     observacoes = db.Column(db.Text, nullable=True)
     ativo = db.Column(db.Boolean, default=True, nullable=False, index=True)
 
-    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
     atualizado_em = db.Column(
         db.DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=agora_brasil,
+        onupdate=agora_brasil,
         nullable=False
     )
 
@@ -1381,11 +1381,11 @@ class SuprimentosComprador(db.Model):
     observacoes = db.Column(db.Text, nullable=True)
     ativo = db.Column(db.Boolean, default=True, nullable=False, index=True)
 
-    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
     atualizado_em = db.Column(
         db.DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=agora_brasil,
+        onupdate=agora_brasil,
         nullable=False
     )
 
@@ -1443,11 +1443,11 @@ class SuprimentosCotacaoProposta(db.Model):
     selecionada_em = db.Column(db.DateTime, nullable=True)
     ativo = db.Column(db.Boolean, default=True, nullable=False, index=True)
 
-    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
     atualizado_em = db.Column(
         db.DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=agora_brasil,
+        onupdate=agora_brasil,
         nullable=False
     )
 
@@ -1525,15 +1525,15 @@ class SuprimentosOrdemCompra(db.Model):
     preparado_financeiro_em = db.Column(db.DateTime, nullable=True)
     provisionado_financeiro_em = db.Column(db.DateTime, nullable=True)
     observacoes = db.Column(db.Text, nullable=True)
-    gerada_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    gerada_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
     cancelada_em = db.Column(db.DateTime, nullable=True)
     motivo_cancelamento = db.Column(db.Text, nullable=True)
 
-    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
     atualizado_em = db.Column(
         db.DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=agora_brasil,
+        onupdate=agora_brasil,
         nullable=False
     )
 
@@ -1615,11 +1615,11 @@ class SuprimentosOrdemCompraParcela(db.Model):
     status = db.Column(db.String(30), default="Prevista", nullable=False, index=True)
     observacoes = db.Column(db.Text, nullable=True)
 
-    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
     atualizado_em = db.Column(
         db.DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=agora_brasil,
+        onupdate=agora_brasil,
         nullable=False
     )
 
@@ -1685,11 +1685,11 @@ class SuprimentosOrdemCompraItem(db.Model):
     prazo_entrega_dias = db.Column(db.Integer, nullable=True)
     observacoes = db.Column(db.Text, nullable=True)
 
-    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
     atualizado_em = db.Column(
         db.DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=agora_brasil,
+        onupdate=agora_brasil,
         nullable=False
     )
 
@@ -1791,11 +1791,11 @@ class SuprimentosOrdemCompraItemEvidencia(db.Model):
     foto_2_link = db.Column(db.String(500), nullable=True)
     status = db.Column(db.String(30), default="Evidenciado", nullable=False, index=True)
 
-    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
     atualizado_em = db.Column(
         db.DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=agora_brasil,
+        onupdate=agora_brasil,
         nullable=False
     )
 
@@ -1840,15 +1840,15 @@ class SuprimentosRecebimentoCompra(db.Model):
     numero_documento = db.Column(db.String(80), nullable=False)
     data_documento = db.Column(db.Date, nullable=True)
     observacoes = db.Column(db.Text, nullable=True)
-    recebido_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    recebido_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
     cancelado_em = db.Column(db.DateTime, nullable=True)
     motivo_cancelamento = db.Column(db.Text, nullable=True)
 
-    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
     atualizado_em = db.Column(
         db.DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=agora_brasil,
+        onupdate=agora_brasil,
         nullable=False
     )
 
@@ -1903,11 +1903,11 @@ class SuprimentosRecebimentoCompraItem(db.Model):
     quantidade_recebida = db.Column(db.Numeric(12, 3), nullable=False)
     observacoes = db.Column(db.Text, nullable=True)
 
-    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
     atualizado_em = db.Column(
         db.DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=agora_brasil,
+        onupdate=agora_brasil,
         nullable=False
     )
 
@@ -1975,13 +1975,13 @@ class SuprimentosMovimentacaoEstoque(db.Model):
     valor_unitario = db.Column(db.Numeric(12, 2), nullable=True)
     valor_total_snapshot = db.Column(db.Numeric(12, 2), nullable=True)
     observacoes = db.Column(db.Text, nullable=True)
-    movimentado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    movimentado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
 
-    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
     atualizado_em = db.Column(
         db.DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=agora_brasil,
+        onupdate=agora_brasil,
         nullable=False
     )
 
@@ -2050,11 +2050,11 @@ class SegurancaTrabalhoEntregaEpi(db.Model):
     motivo_entrega = db.Column(db.String(160), nullable=False)
     observacoes = db.Column(db.Text, nullable=True)
 
-    criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
     atualizado_em = db.Column(
         db.DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=agora_brasil,
+        onupdate=agora_brasil,
         nullable=False
     )
 
@@ -2076,4 +2076,3 @@ class SegurancaTrabalhoEntregaEpi(db.Model):
 
     def __repr__(self):
         return f"<SegurancaTrabalhoEntregaEpi colaborador={self.colaborador_id} item={self.item_id}>"
-
