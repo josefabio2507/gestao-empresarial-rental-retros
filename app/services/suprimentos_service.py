@@ -992,6 +992,8 @@ def salvar_item(form_data, item=None):
     unidade_medida_id = inteiro_ou_none(form_data.get("unidade_medida_id"))
     centro_custo_padrao_id = inteiro_ou_none(form_data.get("centro_custo_padrao_id"))
     estoque_minimo = decimal_ou_none(form_data.get("estoque_minimo"))
+    ncm = texto_maiusculo(form_data.get("ncm")) or None
+    observacoes = texto_maiusculo(form_data.get("observacoes")) or None
 
     if not descricao:
         return False, "Descricao do item e obrigatoria.", item
@@ -1020,10 +1022,24 @@ def salvar_item(form_data, item=None):
     item.centro_custo_padrao_id = centro_custo_padrao_id
     item.tipo = tipo
     item.item_estocavel = False if tipo == "servico" else bool_form(form_data.get("item_estocavel"))
-    item.ncm = texto_maiusculo(form_data.get("ncm")) or None
+    item.ncm = ncm
     item.estoque_minimo = estoque_minimo
-    item.observacoes = texto_maiusculo(form_data.get("observacoes")) or None
+    item.observacoes = observacoes
+    db.session.flush()
     db.session.commit()
+    db.session.refresh(item)
+
+    if (
+        item.descricao != descricao
+        or item.unidade_medida_id != unidade_medida_id
+        or item.centro_custo_padrao_id != centro_custo_padrao_id
+        or item.tipo != tipo
+        or item.ncm != ncm
+        or item.observacoes != observacoes
+    ):
+        db.session.rollback()
+        return False, "Nao foi possivel confirmar a atualizacao do item. Tente salvar novamente.", item
+
     return True, "Item salvo com sucesso.", item
 
 

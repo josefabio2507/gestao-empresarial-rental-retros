@@ -10,7 +10,11 @@
         </div>
     </div>
 
-    <form class="form-card" method="POST">
+    <form
+        class="form-card"
+        method="POST"
+        action="{{ url_for('suprimentos_itens.novo') if modo == 'novo' else url_for('suprimentos_itens.editar', item_id=item.id) }}"
+    >
         <div class="form-grid">
             <div class="form-group">
                 <label for="descricao">Descricao</label>
