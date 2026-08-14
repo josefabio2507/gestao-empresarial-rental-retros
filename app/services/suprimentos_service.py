@@ -1366,11 +1366,13 @@ def buscar_ordens_compra(
     fornecedor_id=None,
     status_financeiro=None,
     centro_custo_id=None,
+    sub_centro_custo=None,
     palavra_chave_requisicao=None,
 ):
     query = (
         SuprimentosOrdemCompra.query
         .join(SuprimentosRequisicaoCompra, SuprimentosOrdemCompra.requisicao_id == SuprimentosRequisicaoCompra.id)
+        .outerjoin(Equipe, SuprimentosRequisicaoCompra.equipe_id == Equipe.id)
         .options(
             joinedload(SuprimentosOrdemCompra.cotacao),
             joinedload(SuprimentosOrdemCompra.requisicao).joinedload(SuprimentosRequisicaoCompra.centro_custo),
@@ -1380,6 +1382,7 @@ def buscar_ordens_compra(
     numero = texto(numero).upper()
     fornecedor_id = inteiro_ou_none(fornecedor_id)
     centro_custo_id = inteiro_ou_none(centro_custo_id)
+    sub_centro_custo = texto(sub_centro_custo).upper()
     palavra_chave_requisicao = texto(palavra_chave_requisicao).upper()
 
     if numero:
@@ -1396,6 +1399,15 @@ def buscar_ordens_compra(
 
     if centro_custo_id:
         query = query.filter(SuprimentosRequisicaoCompra.centro_custo_id == centro_custo_id)
+
+    if sub_centro_custo:
+        busca_subcentro = f"%{sub_centro_custo}%"
+        query = query.filter(
+            or_(
+                func.upper(Equipe.nome).ilike(busca_subcentro),
+                func.upper(SuprimentosRequisicaoCompra.veiculo_placa).ilike(busca_subcentro),
+            )
+        )
 
     if palavra_chave_requisicao:
         busca = f"%{palavra_chave_requisicao}%"

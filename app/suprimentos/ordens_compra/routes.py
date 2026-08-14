@@ -66,6 +66,7 @@ def listar():
             request.args.get("fornecedor_id"),
             request.args.get("status_financeiro"),
             request.args.get("centro_custo_id"),
+            request.args.get("sub_centro_custo"),
             request.args.get("palavra_chave_requisicao"),
         ),
         cotacoes_aprovadas_sem_oc=buscar_cotacoes_aprovadas_sem_ordem_compra(request.args.get("numero")),
