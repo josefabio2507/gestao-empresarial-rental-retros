@@ -30,7 +30,7 @@ class Config:
     ).lower() == "true"
     AUTO_SEED_SUPRIMENTOS_ITENS_NAO_ESTOCAVEIS_ON_START = os.getenv(
         "AUTO_SEED_SUPRIMENTOS_ITENS_NAO_ESTOCAVEIS_ON_START",
-        "true" if SQLALCHEMY_DATABASE_URI.startswith("postgresql://") else "false",
+        "false",
     ).lower() == "true"
     AUTO_SEED_OPERACAO_VEICULOS_ON_START = os.getenv(
         "AUTO_SEED_OPERACAO_VEICULOS_ON_START",

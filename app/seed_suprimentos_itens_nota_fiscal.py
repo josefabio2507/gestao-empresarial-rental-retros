@@ -98,7 +98,7 @@ def executar_seed():
     itens_por_codigo, itens_por_descricao = indexar_itens_existentes()
 
     criados = 0
-    atualizados = 0
+    preservados_existentes = 0
     ignorados_sem_dados = 0
     ignorados_descricao_existente = 0
     ignorados_conflito_descricao = 0
@@ -130,23 +130,21 @@ def executar_seed():
             ignorados_descricao_existente += 1
             continue
 
-        unidade = obter_unidade(registro.get("unidade"), unidades_cache)
-
         if item_por_codigo:
-            item = item_por_codigo
-            atualizados += 1
-        else:
-            item = SuprimentosItem(codigo_interno=codigo, ativo=True)
-            db.session.add(item)
-            itens_por_codigo[codigo] = item
-            itens_por_descricao[descricao] = item
-            criados += 1
+            preservados_existentes += 1
+            continue
 
+        unidade = obter_unidade(registro.get("unidade"), unidades_cache)
+        item = SuprimentosItem(codigo_interno=codigo, ativo=True)
+        db.session.add(item)
+        itens_por_codigo[codigo] = item
+        itens_por_descricao[descricao] = item
+        criados += 1
         item.descricao = descricao
         item.categoria_id = categoria.id
         item.unidade_medida_id = unidade.id
         item.tipo = TIPO_PADRAO
-        item.item_estocavel = True
+        item.item_estocavel = False
         item.ncm = ncm
         item.ativo = True
 
@@ -154,7 +152,7 @@ def executar_seed():
 
     print("Itens lidos no arquivo:", len(dados))
     print("Itens criados:", criados)
-    print("Itens atualizados por codigo interno:", atualizados)
+    print("Itens existentes preservados por codigo interno:", preservados_existentes)
     print("Itens ignorados por dados obrigatorios ausentes:", ignorados_sem_dados)
     print("Itens ignorados por descricao duplicada/existente:", ignorados_descricao_existente)
     print("Itens ignorados por conflito entre codigo e descricao:", ignorados_conflito_descricao)
