@@ -31,9 +31,18 @@
         </div>
     </form>
 
-    <div class="table-card table-responsive">
-        <table class="table">
-            <thead><tr><th>Codigo</th><th>Descricao</th><th>Unidade</th><th>Tipo</th><th>Status</th><th>Acoes</th></tr></thead>
+    <div class="table-card table-responsive itens-listbox" role="region" aria-label="Relacao de itens de suprimentos" tabindex="0">
+        <table class="table itens-table">
+            <thead>
+                <tr>
+                    <th>Codigo</th>
+                    <th>Descricao</th>
+                    <th>Unidade</th>
+                    <th>Tipo</th>
+                    <th>Status</th>
+                    <th>Acoes</th>
+                </tr>
+            </thead>
             <tbody>
                 {% for item in itens %}
                     <tr>
