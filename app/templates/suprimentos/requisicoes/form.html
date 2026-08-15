@@ -14,7 +14,7 @@
         <div class="form-grid">
             <div class="form-group">
                 <label for="centro_custo_busca">Centro de custo</label>
-                <input id="centro_custo_busca" list="centros_custo_lista" data-datalist-target="centro_custo_id" autocomplete="off" value="{{ (requisicao.centro_custo.codigo or '-') ~ ' - ' ~ requisicao.centro_custo.nome if requisicao and requisicao.centro_custo else '' }}">
+                <input id="centro_custo_busca" name="centro_custo_busca" list="centros_custo_lista" data-datalist-target="centro_custo_id" autocomplete="off" value="{{ (requisicao.centro_custo.codigo or '-') ~ ' - ' ~ requisicao.centro_custo.nome if requisicao and requisicao.centro_custo else '' }}">
                 <input type="hidden" id="centro_custo_id" name="centro_custo_id" value="{{ requisicao.centro_custo_id if requisicao and requisicao.centro_custo_id else '' }}">
                 <datalist id="centros_custo_lista">
                     {% for centro in centros %}
@@ -24,7 +24,7 @@
             </div>
             <div class="form-group">
                 <label for="sub_centro_custo_equipe_busca">Sub centro de custo - Equipe</label>
-                <input id="sub_centro_custo_equipe_busca" list="subcentros_equipe_lista" data-datalist-target="sub_centro_custo_equipe_id" autocomplete="off" value="{{ (requisicao.sub_centro_custo_equipe.codigo or '-') ~ ' - ' ~ requisicao.sub_centro_custo_equipe.nome if requisicao and requisicao.sub_centro_custo_equipe else '' }}">
+                <input id="sub_centro_custo_equipe_busca" name="sub_centro_custo_equipe_busca" list="subcentros_equipe_lista" data-datalist-target="sub_centro_custo_equipe_id" autocomplete="off" value="{{ (requisicao.sub_centro_custo_equipe.codigo or '-') ~ ' - ' ~ requisicao.sub_centro_custo_equipe.nome if requisicao and requisicao.sub_centro_custo_equipe else '' }}">
                 <input type="hidden" id="sub_centro_custo_equipe_id" name="sub_centro_custo_equipe_id" value="{{ requisicao.sub_centro_custo_equipe_id if requisicao and requisicao.sub_centro_custo_equipe_id else '' }}">
                 <datalist id="subcentros_equipe_lista">
                     {% for centro in subcentros_equipe %}
@@ -35,7 +35,7 @@
         </div>
         <div class="form-group">
             <label for="sub_centro_custo_veiculo_busca">Sub centro de custo - Placa do veiculo</label>
-            <input id="sub_centro_custo_veiculo_busca" list="subcentros_veiculo_lista" data-datalist-target="sub_centro_custo_veiculo_id" autocomplete="off" value="{{ (requisicao.sub_centro_custo_veiculo.codigo or '-') ~ ' - ' ~ requisicao.sub_centro_custo_veiculo.nome if requisicao and requisicao.sub_centro_custo_veiculo else '' }}">
+            <input id="sub_centro_custo_veiculo_busca" name="sub_centro_custo_veiculo_busca" list="subcentros_veiculo_lista" data-datalist-target="sub_centro_custo_veiculo_id" autocomplete="off" value="{{ (requisicao.sub_centro_custo_veiculo.codigo or '-') ~ ' - ' ~ requisicao.sub_centro_custo_veiculo.nome if requisicao and requisicao.sub_centro_custo_veiculo else '' }}">
             <input type="hidden" id="sub_centro_custo_veiculo_id" name="sub_centro_custo_veiculo_id" value="{{ requisicao.sub_centro_custo_veiculo_id if requisicao and requisicao.sub_centro_custo_veiculo_id else '' }}">
             <datalist id="subcentros_veiculo_lista">
                 {% for centro in subcentros_veiculo %}
