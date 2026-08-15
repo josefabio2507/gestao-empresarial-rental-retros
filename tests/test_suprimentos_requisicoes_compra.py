@@ -213,6 +213,39 @@ class SuprimentosRequisicoesCompraTestCase(unittest.TestCase):
         self.assertEqual("Justificativa e obrigatoria.", mensagem)
         self.assertIsNone(requisicao)
 
+    def test_nao_aceita_texto_livre_nos_centros_de_custo_pesquisaveis(self):
+        cenarios = [
+            (
+                {
+                    "centro_custo_busca": "CENTRO DIGITADO FORA DA LISTA",
+                    "justificativa": "Comprar item",
+                },
+                "Selecione um centro de custo da lista.",
+            ),
+            (
+                {
+                    "sub_centro_custo_equipe_busca": "EQUIPE DIGITADA FORA DA LISTA",
+                    "justificativa": "Comprar item",
+                },
+                "Selecione um sub centro de custo - Equipe da lista.",
+            ),
+            (
+                {
+                    "sub_centro_custo_veiculo_busca": "PLACA DIGITADA FORA DA LISTA",
+                    "justificativa": "Comprar item",
+                },
+                "Selecione um sub centro de custo - Placa do veiculo da lista.",
+            ),
+        ]
+
+        for dados, mensagem_esperada in cenarios:
+            with self.subTest(mensagem=mensagem_esperada):
+                sucesso, mensagem, requisicao = salvar_requisicao_compra(dados, self.admin)
+
+                self.assertFalse(sucesso)
+                self.assertEqual(mensagem_esperada, mensagem)
+                self.assertIsNone(requisicao)
+
     def test_adiciona_item_com_snapshot_e_bloqueia_duplicado(self):
         _, _, requisicao = salvar_requisicao_compra(
             {"justificativa": "Comprar item"},

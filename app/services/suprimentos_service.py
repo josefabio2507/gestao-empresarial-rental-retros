@@ -1162,9 +1162,21 @@ def salvar_requisicao_compra(form_data, usuario, requisicao=None):
     centro_custo_id = inteiro_ou_none(form_data.get("centro_custo_id"))
     sub_centro_custo_equipe_id = inteiro_ou_none(form_data.get("sub_centro_custo_equipe_id"))
     sub_centro_custo_veiculo_id = inteiro_ou_none(form_data.get("sub_centro_custo_veiculo_id"))
+    centro_custo_busca = texto(form_data.get("centro_custo_busca"))
+    sub_centro_custo_equipe_busca = texto(form_data.get("sub_centro_custo_equipe_busca"))
+    sub_centro_custo_veiculo_busca = texto(form_data.get("sub_centro_custo_veiculo_busca"))
 
     if not justificativa:
         return False, "Justificativa e obrigatoria.", requisicao
+
+    if centro_custo_busca and not centro_custo_id:
+        return False, "Selecione um centro de custo da lista.", requisicao
+
+    if sub_centro_custo_equipe_busca and not sub_centro_custo_equipe_id:
+        return False, "Selecione um sub centro de custo - Equipe da lista.", requisicao
+
+    if sub_centro_custo_veiculo_busca and not sub_centro_custo_veiculo_id:
+        return False, "Selecione um sub centro de custo - Placa do veiculo da lista.", requisicao
 
     if centro_custo_id and not buscar_centro_custo_ativo_por_classe(centro_custo_id, CLASSE_CENTRO_CUSTO):
         return False, "Centro de custo nao encontrado, inativo ou fora da classe permitida.", requisicao
