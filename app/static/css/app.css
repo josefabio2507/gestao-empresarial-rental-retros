@@ -87,6 +87,28 @@
     height: var(--listbox-row-height);
 }
 
+.itens-listbox {
+    --listbox-header-height: 45px;
+    --listbox-row-height: 52px;
+    max-height: calc(var(--listbox-header-height) + (10 * var(--listbox-row-height)) + 48px);
+    overflow: auto;
+    scrollbar-gutter: stable both-edges;
+}
+
+.itens-listbox .table {
+    min-width: 860px;
+}
+
+.itens-listbox .table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
+
+.itens-listbox .table tbody tr {
+    height: var(--listbox-row-height);
+}
+
 .table {
     width: 100%;
     border-collapse: collapse;
