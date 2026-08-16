@@ -1,7 +1,7 @@
 """cria modulo fiscal documentos
 
 Revision ID: b6f2d9c1e4a8
-Revises: a2d4f6b8c9e1
+Revises: b6c8e1f4a9d2
 Create Date: 2026-08-15 20:45:00.000000
 """
 
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 revision = "b6f2d9c1e4a8"
-down_revision = "a2d4f6b8c9e1"
+down_revision = "b6c8e1f4a9d2"
 branch_labels = None
 depends_on = None
 
