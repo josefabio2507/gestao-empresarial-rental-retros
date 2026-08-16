@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Fiscal</span>
+            <h1>Documentos Fiscais</h1>
+            <p>Central de XMLs, DANFEs e vínculo com Ordens de Compra.</p>
+        </div>
+        <a class="btn btn-secondary" href="{{ url_for('departamentos.detalhe_departamento', slug_departamento='fiscal') }}">Voltar</a>
+    </div>
+
+    <form class="filter-card" method="GET">
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="numero">Número NF-e</label>
+                <input id="numero" name="numero" value="{{ filtros.get('numero', '') }}">
+            </div>
+            <div class="form-group">
+                <label for="fornecedor">Fornecedor/CNPJ</label>
+                <input id="fornecedor" name="fornecedor" value="{{ filtros.get('fornecedor', '') }}">
+            </div>
+            <div class="form-group">
+                <label for="status">Status</label>
+                <select id="status" name="status">
+                    <option value="">Todos</option>
+                    {% for status in ["Disponivel", "Vinculado", "Cancelado"] %}
+                        <option value="{{ status }}" {{ "selected" if filtros.get('status') == status else "" }}>{{ status }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Filtrar</button>
+            <a class="btn btn-secondary" href="{{ url_for('fiscal.documentos') }}">Limpar</a>
+            <a class="btn btn-secondary" href="{{ url_for('fiscal.certificado') }}">Certificado A1</a>
+        </div>
+    </form>
+
+    <form class="form-card" method="POST" action="{{ url_for('fiscal.importar_xml') }}" enctype="multipart/form-data">
+        <h2>Importar XML</h2>
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="xml">XML da NF-e</label>
+                <input id="xml" name="xml" type="file" accept=".xml,text/xml" required>
+            </div>
+            <div class="form-group">
+                <label for="nsu">NSU</label>
+                <input id="nsu" name="nsu" maxlength="20">
+            </div>
+        </div>
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Salvar XML e gerar DANFE</button>
+        </div>
+    </form>
+
+    <form class="form-card" method="POST" action="{{ url_for('fiscal.consultar_sefaz') }}">
+        <h2>Consulta NF-e por NSU</h2>
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="cnpj_empresa">CNPJ Rental Retros</label>
+                <input id="cnpj_empresa" name="cnpj_empresa" inputmode="numeric" maxlength="18" required>
+            </div>
+        </div>
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Consultar Sefaz</button>
+        </div>
+    </form>
+
+    <div class="table-card table-responsive">
+        <h2>XMLs e DANFEs</h2>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Número</th>
+                    <th>Emissão</th>
+                    <th>Fornecedor</th>
+                    <th>CNPJ</th>
+                    <th>Valor</th>
+                    <th>Status</th>
+                    <th>O.C.</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for documento in documentos %}
+                    <tr>
+                        <td>{{ documento.numero }}</td>
+                        <td>{{ documento.data_emissao.strftime("%d/%m/%Y") if documento.data_emissao else "-" }}</td>
+                        <td>{{ documento.emitente_nome }}</td>
+                        <td>{{ documento.emitente_cnpj }}</td>
+                        <td>R$ {{ documento.valor_total }}</td>
+                        <td><span class="badge {{ 'badge-success' if documento.status == 'Vinculado' else 'badge-secondary' }}">{{ documento.status }}</span></td>
+                        <td>{{ documento.ordem_compra.numero if documento.ordem_compra else "-" }}</td>
+                        <td class="col-acoes">
+                            <a class="btn btn-secondary" href="{{ url_for('fiscal.baixar_xml', documento_id=documento.id) }}">XML</a>
+                            {% if documento.danfe_path %}
+                                <a class="btn btn-secondary" href="{{ url_for('fiscal.baixar_danfe', documento_id=documento.id) }}">DANFE</a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr><td class="empty-state" colspan="8">Nenhum documento fiscal encontrado.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="table-card table-responsive">
+        <h2>Controle de NSU</h2>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>CNPJ</th>
+                    <th>Último NSU</th>
+                    <th>Máximo NSU</th>
+                    <th>Status</th>
+                    <th>Última consulta</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for controle in controles_nsu %}
+                    <tr>
+                        <td>{{ controle.cnpj_empresa }}</td>
+                        <td>{{ controle.ultimo_nsu }}</td>
+                        <td>{{ controle.max_nsu or "-" }}</td>
+                        <td>{{ controle.status }}</td>
+                        <td>{{ controle.consultado_em.strftime("%d/%m/%Y %H:%M") if controle.consultado_em else "-" }}</td>
+                    </tr>
+                {% else %}
+                    <tr><td class="empty-state" colspan="5">Nenhuma consulta registrada.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

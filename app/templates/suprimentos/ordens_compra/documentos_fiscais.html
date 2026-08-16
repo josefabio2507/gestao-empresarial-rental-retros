@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Suprimentos</span>
+            <h1>Vincular NF-e à {{ ordem.numero }}</h1>
+            <p>Documentos disponíveis na Central Fiscal para o CNPJ do fornecedor.</p>
+        </div>
+        <a class="btn btn-secondary" href="{{ url_for('suprimentos_ordens_compra.detalhes', ordem_id=ordem.id) }}">Voltar</a>
+    </div>
+
+    <div class="details-card">
+        <p><strong>Fornecedor:</strong> {{ ordem.fornecedor_razao_social_snapshot }}</p>
+        <p><strong>CNPJ/CPF:</strong> {{ ordem.fornecedor_cnpj_cpf_snapshot or "-" }}</p>
+        <p><strong>Status da O.C.:</strong> {{ ordem.status }}</p>
+    </div>
+
+    <div class="table-card table-responsive">
+        <h2>NF-e disponíveis</h2>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Número</th>
+                    <th>Emissão</th>
+                    <th>Fornecedor</th>
+                    <th>Valor</th>
+                    <th>Chave</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for documento in documentos %}
+                    <tr>
+                        <td>{{ documento.numero }}</td>
+                        <td>{{ documento.data_emissao.strftime("%d/%m/%Y") if documento.data_emissao else "-" }}</td>
+                        <td>{{ documento.emitente_nome }}</td>
+                        <td>R$ {{ documento.valor_total }}</td>
+                        <td>{{ documento.chave_acesso }}</td>
+                        <td class="col-acoes">
+                            <form class="inline-form" method="POST" action="{{ url_for('suprimentos_ordens_compra.vincular_documento_fiscal', ordem_id=ordem.id) }}">
+                                <input type="hidden" name="documento_id" value="{{ documento.id }}">
+                                <button class="btn btn-primary" type="submit">Vincular</button>
+                            </form>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr><td class="empty-state" colspan="6">Nenhuma NF-e disponível para este fornecedor.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

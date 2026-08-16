@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Fiscal</span>
+            <h1>Certificado e-CNPJ A1</h1>
+            <p>Cadastro protegido para futuras consultas automáticas de NF-e.</p>
+        </div>
+        <a class="btn btn-secondary" href="{{ url_for('fiscal.documentos') }}">Voltar</a>
+    </div>
+
+    <form class="form-card" method="POST" enctype="multipart/form-data">
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="cnpj_empresa">CNPJ da empresa</label>
+                <input id="cnpj_empresa" name="cnpj_empresa" inputmode="numeric" maxlength="18" required>
+            </div>
+            <div class="form-group">
+                <label for="razao_social">Razão social</label>
+                <input id="razao_social" name="razao_social" maxlength="180" required data-uppercase>
+            </div>
+            <div class="form-group">
+                <label for="certificado">Arquivo A1</label>
+                <input id="certificado" name="certificado" type="file" accept=".pfx,.p12" required>
+            </div>
+            <div class="form-group">
+                <label for="senha">Senha do certificado</label>
+                <input id="senha" name="senha" type="password" required autocomplete="new-password">
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="observacoes">Observações</label>
+            <textarea id="observacoes" name="observacoes" data-uppercase></textarea>
+        </div>
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Salvar certificado</button>
+        </div>
+    </form>
+
+    <div class="table-card table-responsive">
+        <h2>Certificados cadastrados</h2>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>CNPJ</th>
+                    <th>Razão social</th>
+                    <th>Arquivo</th>
+                    <th>Consulta Sefaz</th>
+                    <th>Status</th>
+                    <th>Cadastrado em</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for certificado in certificados %}
+                    <tr>
+                        <td>{{ certificado.cnpj_empresa }}</td>
+                        <td>{{ certificado.razao_social }}</td>
+                        <td>{{ certificado.nome_arquivo_original }}</td>
+                        <td>
+                            <span class="badge {{ 'badge-success' if certificado.senha_criptografada else 'badge-warning' }}">
+                                {{ "Pronto" if certificado.senha_criptografada else "Recadastrar" }}
+                            </span>
+                        </td>
+                        <td><span class="badge {{ 'badge-success' if certificado.ativo else 'badge-secondary' }}">{{ "Ativo" if certificado.ativo else "Inativo" }}</span></td>
+                        <td>{{ certificado.criado_em.strftime("%d/%m/%Y %H:%M") }}</td>
+                    </tr>
+                {% else %}
+                    <tr><td class="empty-state" colspan="6">Nenhum certificado cadastrado.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

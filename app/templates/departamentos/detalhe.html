@@ -135,6 +135,15 @@
                         <span class="module-status">Acessar módulo</span>
                     </a>
 
+                {% elif departamento.slug == "fiscal" and modulo_slug == "documentos_fiscais" %}
+                    <a class="module-card module-card-link" href="{{ url_for('fiscal.documentos') }}">
+                        <span class="module-card-icon">F</span>
+                        <h2>{{ modulo.nome }}</h2>
+                        <p>{{ modulo.descricao or "Central fiscal para XMLs, DANFEs e vínculo com O.C." }}</p>
+                        <span class="badge badge-success">Liberado</span>
+                        <span class="module-status">Acessar módulo</span>
+                    </a>
+
                 {% elif departamento.slug == "suprimentos" %}
                     {% if modulo_slug == "fornecedores" %}
                         {% set destino_suprimentos = url_for('suprimentos_fornecedores.listar') %}

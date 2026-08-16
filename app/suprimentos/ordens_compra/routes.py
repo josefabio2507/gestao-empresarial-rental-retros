@@ -6,6 +6,10 @@ from flask_login import current_user, login_required
 from app.decorators import module_permission_required
 from app.models import SuprimentosCotacao, SuprimentosOrdemCompra, SuprimentosOrdemCompraItem
 from app.services.logs_service import registrar_log
+from app.services.fiscal_service import (
+    buscar_documentos_para_ordem_compra,
+    vincular_documento_ordem_compra,
+)
 from app.services.permissoes_service import usuario_tem_permissao
 from app.services.suprimentos_service import (
     CLASSE_CENTRO_CUSTO,
@@ -150,7 +154,64 @@ def detalhes(ordem_id):
             "ordens_compra",
             "editar",
         ),
+        pode_visualizar_fiscal=usuario_tem_permissao(
+            current_user,
+            "fiscal",
+            "documentos_fiscais",
+            "visualizar",
+        ),
     )
+
+
+@suprimentos_ordens_compra_bp.route("/<int:ordem_id>/documentos-fiscais")
+@login_required
+@module_permission_required("suprimentos", "ordens_compra", "editar")
+def documentos_fiscais(ordem_id):
+    ordem = buscar_por_id(SuprimentosOrdemCompra, ordem_id)
+
+    if not ordem:
+        flash("Ordem de compra nao encontrada.", "warning")
+        return redirect(url_for("suprimentos_ordens_compra.listar"))
+
+    if not usuario_tem_permissao(current_user, "fiscal", "documentos_fiscais", "visualizar"):
+        flash("Voce nao tem permissao para visualizar documentos fiscais.", "danger")
+        return redirect(url_for("main.acesso_negado"))
+
+    return render_template(
+        "suprimentos/ordens_compra/documentos_fiscais.html",
+        ordem=ordem,
+        documentos=buscar_documentos_para_ordem_compra(ordem),
+    )
+
+
+@suprimentos_ordens_compra_bp.route("/<int:ordem_id>/documentos-fiscais/vincular", methods=["POST"])
+@login_required
+@module_permission_required("suprimentos", "ordens_compra", "editar")
+def vincular_documento_fiscal(ordem_id):
+    ordem = buscar_por_id(SuprimentosOrdemCompra, ordem_id)
+
+    if not ordem:
+        flash("Ordem de compra nao encontrada.", "warning")
+        return redirect(url_for("suprimentos_ordens_compra.listar"))
+
+    if not usuario_tem_permissao(current_user, "fiscal", "documentos_fiscais", "visualizar"):
+        flash("Voce nao tem permissao para visualizar documentos fiscais.", "danger")
+        return redirect(url_for("main.acesso_negado"))
+
+    sucesso, mensagem, documento = vincular_documento_ordem_compra(
+        request.form.get("documento_id"),
+        ordem,
+        current_user,
+    )
+
+    if sucesso and documento:
+        registrar_log(
+            "suprimentos_oc_documento_fiscal_vinculado",
+            f"Documento fiscal vinculado. Ordem ID: {ordem.id}. Documento ID: {documento.id}.",
+        )
+
+    flash(mensagem, "success" if sucesso else "danger")
+    return redirect(url_for("suprimentos_ordens_compra.detalhes", ordem_id=ordem.id))
 
 
 @suprimentos_ordens_compra_bp.route("/<int:ordem_id>/fornecedor/whatsapp", methods=["POST"])

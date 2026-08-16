@@ -1629,6 +1629,11 @@ class SuprimentosOrdemCompra(db.Model):
         cascade="all, delete-orphan",
         order_by="SuprimentosOrdemCompraParcela.numero_parcela",
     )
+    documentos_fiscais = db.relationship(
+        "FiscalDocumento",
+        back_populates="ordem_compra",
+        order_by="FiscalDocumento.data_emissao.desc()",
+    )
 
     __table_args__ = (
         db.UniqueConstraint(
@@ -1664,6 +1669,122 @@ class SuprimentosOrdemCompra(db.Model):
 
     def __repr__(self):
         return f"<SuprimentosOrdemCompra {self.numero}>"
+
+
+class FiscalCertificadoA1(db.Model):
+    __tablename__ = "fiscal_certificados_a1"
+
+    id = db.Column(db.Integer, primary_key=True)
+    cnpj_empresa = db.Column(db.String(14), nullable=False, index=True)
+    razao_social = db.Column(db.String(180), nullable=False)
+    nome_arquivo_original = db.Column(db.String(180), nullable=False)
+    arquivo_path = db.Column(db.String(500), nullable=False)
+    senha_hash = db.Column(db.String(255), nullable=False)
+    senha_criptografada = db.Column(db.Text, nullable=True)
+    validade = db.Column(db.Date, nullable=True, index=True)
+    ativo = db.Column(db.Boolean, default=True, nullable=False, index=True)
+    observacoes = db.Column(db.Text, nullable=True)
+    cadastrado_por_usuario_id = db.Column(
+        db.Integer,
+        db.ForeignKey("usuarios.id"),
+        nullable=False,
+        index=True,
+    )
+
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
+    atualizado_em = db.Column(
+        db.DateTime,
+        default=agora_brasil,
+        onupdate=agora_brasil,
+        nullable=False
+    )
+
+    cadastrado_por = db.relationship("Usuario")
+
+    def __repr__(self):
+        return f"<FiscalCertificadoA1 {self.cnpj_empresa}>"
+
+
+class FiscalControleNSU(db.Model):
+    __tablename__ = "fiscal_controles_nsu"
+
+    id = db.Column(db.Integer, primary_key=True)
+    cnpj_empresa = db.Column(db.String(14), unique=True, nullable=False, index=True)
+    ultimo_nsu = db.Column(db.String(20), default="0", nullable=False)
+    max_nsu = db.Column(db.String(20), nullable=True)
+    consultado_em = db.Column(db.DateTime, nullable=True)
+    status = db.Column(db.String(30), default="Pendente", nullable=False, index=True)
+    mensagem = db.Column(db.Text, nullable=True)
+
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
+    atualizado_em = db.Column(
+        db.DateTime,
+        default=agora_brasil,
+        onupdate=agora_brasil,
+        nullable=False
+    )
+
+    def __repr__(self):
+        return f"<FiscalControleNSU {self.cnpj_empresa} nsu={self.ultimo_nsu}>"
+
+
+class FiscalDocumento(db.Model):
+    __tablename__ = "fiscal_documentos"
+
+    id = db.Column(db.Integer, primary_key=True)
+    chave_acesso = db.Column(db.String(44), unique=True, nullable=False, index=True)
+    nsu = db.Column(db.String(20), nullable=True, index=True)
+    modelo = db.Column(db.String(10), default="55", nullable=False, index=True)
+    serie = db.Column(db.String(10), nullable=True)
+    numero = db.Column(db.String(20), nullable=False, index=True)
+    natureza_operacao = db.Column(db.String(180), nullable=True)
+    data_emissao = db.Column(db.DateTime, nullable=True, index=True)
+    emitente_nome = db.Column(db.String(180), nullable=False, index=True)
+    emitente_cnpj = db.Column(db.String(14), nullable=False, index=True)
+    destinatario_nome = db.Column(db.String(180), nullable=True)
+    destinatario_cnpj = db.Column(db.String(14), nullable=False, index=True)
+    valor_total = db.Column(db.Numeric(12, 2), default=0, nullable=False)
+    xml_path = db.Column(db.String(500), nullable=False)
+    danfe_path = db.Column(db.String(500), nullable=True)
+    status = db.Column(db.String(30), default="Disponivel", nullable=False, index=True)
+    ordem_compra_id = db.Column(
+        db.Integer,
+        db.ForeignKey("suprimentos_ordens_compra.id"),
+        nullable=True,
+        index=True,
+    )
+    vinculado_por_usuario_id = db.Column(
+        db.Integer,
+        db.ForeignKey("usuarios.id"),
+        nullable=True,
+        index=True,
+    )
+    vinculado_em = db.Column(db.DateTime, nullable=True)
+
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
+    atualizado_em = db.Column(
+        db.DateTime,
+        default=agora_brasil,
+        onupdate=agora_brasil,
+        nullable=False
+    )
+
+    ordem_compra = db.relationship("SuprimentosOrdemCompra", back_populates="documentos_fiscais")
+    vinculado_por = db.relationship("Usuario")
+
+    __table_args__ = (
+        db.CheckConstraint(
+            "status in ('Disponivel', 'Vinculado', 'Cancelado')",
+            name="ck_fiscal_documentos_status",
+        ),
+    )
+
+    @property
+    def vinculado(self):
+        return self.ordem_compra_id is not None
+
+    def __repr__(self):
+        return f"<FiscalDocumento {self.chave_acesso}>"
 
 
 class SuprimentosOrdemCompraParcela(db.Model):

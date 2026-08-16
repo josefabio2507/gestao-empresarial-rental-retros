@@ -41,6 +41,45 @@
         {% endif %}
     </div>
 
+    <div class="table-card table-responsive">
+        <h2>Documentos Fiscais</h2>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>NF-e</th>
+                    <th>Emissao</th>
+                    <th>Chave</th>
+                    <th>Valor</th>
+                    <th>Vinculado em</th>
+                    <th>Acoes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for documento in ordem.documentos_fiscais %}
+                    <tr>
+                        <td>{{ documento.numero }}</td>
+                        <td>{{ documento.data_emissao.strftime("%d/%m/%Y") if documento.data_emissao else "-" }}</td>
+                        <td>{{ documento.chave_acesso }}</td>
+                        <td>R$ {{ documento.valor_total }}</td>
+                        <td>{{ documento.vinculado_em.strftime("%d/%m/%Y %H:%M") if documento.vinculado_em else "-" }}</td>
+                        <td class="col-acoes">
+                            {% if pode_visualizar_fiscal %}
+                                <a class="btn btn-secondary" href="{{ url_for('fiscal.baixar_xml', documento_id=documento.id) }}">XML</a>
+                                {% if documento.danfe_path %}
+                                    <a class="btn btn-secondary" href="{{ url_for('fiscal.baixar_danfe', documento_id=documento.id) }}">DANFE</a>
+                                {% endif %}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr><td class="empty-state" colspan="6">Nenhum documento fiscal vinculado.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
     {% if ordem.status != "Cancelada" and ordem.status_financeiro != "Provisionado" %}
         <form class="form-card" method="POST" action="{{ url_for('suprimentos_ordens_compra.preparar_financeiro', ordem_id=ordem.id) }}">
             <h2>Preparar para o futuro Financeiro</h2>
@@ -229,6 +268,9 @@
         {% endif %}
         {% if ordem.pode_receber %}
             <a class="btn btn-primary" href="{{ url_for('suprimentos_ordens_compra.receber', ordem_id=ordem.id) }}">Registrar recebimento</a>
+        {% endif %}
+        {% if pode_editar_ordem and pode_visualizar_fiscal and ordem.status != "Cancelada" %}
+            <a class="btn btn-primary" href="{{ url_for('suprimentos_ordens_compra.documentos_fiscais', ordem_id=ordem.id) }}">Buscar XML da NF-e</a>
         {% endif %}
         {% if ordem.status_financeiro == "Preparado para Financeiro" %}
             <form class="inline-form" method="POST" action="{{ url_for('suprimentos_ordens_compra.provisionar_financeiro', ordem_id=ordem.id) }}">

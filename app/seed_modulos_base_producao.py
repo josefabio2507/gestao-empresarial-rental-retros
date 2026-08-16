@@ -96,6 +96,16 @@ DEPARTAMENTOS_BASE = [
             ("Documentação", "documentacao", "Laudos e certificados"),
         ],
     },
+    {
+        "nome": "Fiscal",
+        "slug": "fiscal",
+        "descricao": "Central de documentos fiscais, XMLs, DANFEs e integrações com compras.",
+        "icone": "documentos",
+        "ordem": 6,
+        "modulos": [
+            ("Documentos Fiscais", "documentos_fiscais", "Central fiscal para XMLs, DANFEs e vínculo com O.C."),
+        ],
+    },
 ]
 
 
