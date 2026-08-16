@@ -38,6 +38,7 @@ def create_app():
     from app.departamento_pessoal.documentos.routes import documentos_bp
     from app.departamento_pessoal.vale_transporte.routes import vale_transporte_bp
     from app.financeiro.routes import financeiro_bp
+    from app.fiscal.routes import fiscal_bp
     from app.suprimentos.routes import suprimentos_bp
     from app.suprimentos.fornecedores.routes import suprimentos_fornecedores_bp
     from app.suprimentos.categorias.routes import suprimentos_categorias_bp
@@ -71,6 +72,7 @@ def create_app():
     app.register_blueprint(documentos_bp, url_prefix="/departamento-pessoal/documentos")
     app.register_blueprint(vale_transporte_bp, url_prefix="/departamento-pessoal/vale-transporte")
     app.register_blueprint(financeiro_bp, url_prefix="/financeiro")
+    app.register_blueprint(fiscal_bp, url_prefix="/fiscal")
     app.register_blueprint(suprimentos_bp, url_prefix="/suprimentos")
     app.register_blueprint(suprimentos_fornecedores_bp, url_prefix="/suprimentos/fornecedores")
     app.register_blueprint(suprimentos_categorias_bp, url_prefix="/suprimentos/categorias")

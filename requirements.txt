@@ -12,3 +12,9 @@ reportlab
 google-api-python-client
 google-auth
 Pillow
+cryptography
+pynfe
+lxml
+signxml
+pyOpenSSL
+requests

@@ -60,3 +60,19 @@ class Config:
     ).strip()
     GOOGLE_SERVICE_ACCOUNT_JSON = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON", "").strip()
     GOOGLE_SERVICE_ACCOUNT_FILE = os.getenv("GOOGLE_SERVICE_ACCOUNT_FILE", "").strip()
+
+    FISCAL_XML_DIR = os.getenv(
+        "FISCAL_XML_DIR",
+        r"G:\Meu Drive\App Rental Retros\XMLs",
+    ).strip()
+    FISCAL_DANFE_DIR = os.getenv(
+        "FISCAL_DANFE_DIR",
+        r"G:\Meu Drive\App Rental Retros\DANFs",
+    ).strip()
+    FISCAL_CERTIFICADOS_DIR = os.getenv(
+        "FISCAL_CERTIFICADOS_DIR",
+        os.path.join("instance", "fiscal", "certificados"),
+    ).strip()
+    FISCAL_CERTIFICADO_CRYPTO_KEY = os.getenv("FISCAL_CERTIFICADO_CRYPTO_KEY", "").strip()
+    FISCAL_SEFAZ_UF = os.getenv("FISCAL_SEFAZ_UF", "SP").strip().lower()
+    FISCAL_SEFAZ_HOMOLOGACAO = os.getenv("FISCAL_SEFAZ_HOMOLOGACAO", "false").lower() == "true"
