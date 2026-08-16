@@ -274,6 +274,24 @@ class FiscalDocumentosTestCase(unittest.TestCase):
         self.assertTrue(check_password_hash(certificado.senha_hash, "segredo"))
         self.assertEqual(1, FiscalCertificadoA1.query.count())
 
+    def test_certificado_com_chave_criptografia_invalida_retorna_erro_amigavel(self):
+        self.app.config["FISCAL_CERTIFICADO_CRYPTO_KEY"] = "chave-invalida"
+
+        sucesso, mensagem, certificado = salvar_certificado_a1(
+            {
+                "cnpj_empresa": "44.555.666/0001-77",
+                "razao_social": "Rental Retros LTDA",
+                "senha": "segredo",
+            },
+            self._arquivo_certificado(),
+            self.admin,
+        )
+
+        self.assertFalse(sucesso)
+        self.assertIn("FISCAL_CERTIFICADO_CRYPTO_KEY invalida", mensagem)
+        self.assertIsNone(certificado)
+        self.assertEqual(0, FiscalCertificadoA1.query.count())
+
     def test_consulta_nsu_sem_certificado_orienta_cadastro(self):
         sucesso, mensagem, controle = consultar_documentos_sefaz("44.555.666/0001-77")
 

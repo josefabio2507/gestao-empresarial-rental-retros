@@ -36,9 +36,14 @@ def _diretorio_config(chave):
 
 
 def _fernet_certificado():
-    chave = current_app.config.get("FISCAL_CERTIFICADO_CRYPTO_KEY") or ""
+    chave = (current_app.config.get("FISCAL_CERTIFICADO_CRYPTO_KEY") or "").strip()
     if chave:
-        return Fernet(chave.encode())
+        try:
+            return Fernet(chave.encode())
+        except ValueError as exc:
+            raise FiscalIntegracaoErro(
+                "FISCAL_CERTIFICADO_CRYPTO_KEY invalida. Gere uma chave Fernet valida antes de cadastrar o certificado A1."
+            ) from exc
 
     import hashlib
 
@@ -303,6 +308,11 @@ def salvar_certificado_a1(form_data, arquivo, usuario):
     if extensao not in EXTENSOES_CERTIFICADO:
         return False, "Certificado A1 deve estar em arquivo .pfx ou .p12.", None
 
+    try:
+        senha_criptografada = criptografar_senha_certificado(senha)
+    except FiscalIntegracaoErro as exc:
+        return False, str(exc), None
+
     diretorio = _diretorio_config("FISCAL_CERTIFICADOS_DIR")
     nome_seguro = secure_filename(f"{cnpj}{extensao}")
     caminho = os.path.join(diretorio, nome_seguro)
@@ -316,7 +326,7 @@ def salvar_certificado_a1(form_data, arquivo, usuario):
         nome_arquivo_original=secure_filename(arquivo.filename),
         arquivo_path=caminho,
         senha_hash=generate_password_hash(senha),
-        senha_criptografada=criptografar_senha_certificado(senha),
+        senha_criptografada=senha_criptografada,
         cadastrado_por_usuario_id=usuario.id,
         observacoes=(form_data.get("observacoes") or "").strip().upper() or None,
     )
