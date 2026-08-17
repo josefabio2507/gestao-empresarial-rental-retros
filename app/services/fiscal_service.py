@@ -75,6 +75,7 @@ VERSAO_ENVIO_EVENTO = "1.00"
 NAMESPACE_NFE = "http://www.portalfiscal.inf.br/nfe"
 NAMESPACE_SOAP12 = "http://www.w3.org/2003/05/soap-envelope"
 NAMESPACE_RECEPCAO_EVENTO = "http://www.portalfiscal.inf.br/nfe/wsdl/NFeRecepcaoEvento4"
+SOAP_ACTION_RECEPCAO_EVENTO = f"{NAMESPACE_RECEPCAO_EVENTO}/nfeRecepcaoEventoNF"
 ENDPOINT_RECEPCAO_EVENTO_PRODUCAO = (
     "https://www.nfe.fazenda.gov.br/NFeRecepcaoEvento4/NFeRecepcaoEvento4.asmx"
 )
@@ -707,17 +708,29 @@ class SefazManifestacaoDestinatarioAdapter:
             resposta = requests.post(
                 endpoint,
                 data=envelope,
-                headers={"Content-Type": "application/soap+xml; charset=utf-8"},
+                headers={
+                    "Content-Type": f'application/soap+xml; charset=utf-8; action="{SOAP_ACTION_RECEPCAO_EVENTO}"',
+                },
                 cert=(cert_path, key_path),
                 timeout=60,
             )
+            texto_resposta = resposta.text or ""
             self._registrar_diagnostico(
                 "manifestacao_destinatario_fallback_resposta",
                 endpoint=endpoint,
                 http_status=resposta.status_code,
+                resposta=texto_resposta[:2000],
             )
-            resposta.raise_for_status()
-            return resposta.text
+            if resposta.status_code >= 400:
+                current_app.logger.error(
+                    "[fiscal_manifestacao] Sefaz retornou HTTP %s no fallback de manifestacao. Corpo: %s",
+                    resposta.status_code,
+                    texto_resposta[:4000],
+                )
+                raise FiscalIntegracaoErro(
+                    f"Sefaz retornou HTTP {resposta.status_code} ao receber o evento de manifestacao."
+                )
+            return texto_resposta
         finally:
             for caminho in (cert_path, key_path):
                 try:
