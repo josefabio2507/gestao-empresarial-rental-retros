@@ -1,4 +1,4 @@
-import os
+﻿import os
 import base64
 import gzip
 import tempfile
@@ -576,7 +576,10 @@ class FiscalDocumentosTestCase(unittest.TestCase):
                 )
 
         headers = post_mock.call_args.kwargs["headers"]
+        payload = post_mock.call_args.kwargs["data"]
         self.assertIn(SOAP_ACTION_RECEPCAO_EVENTO, headers["Content-Type"])
+        self.assertIn(b"nfeDadosMsg", payload)
+        self.assertNotIn(b"nfeRecepcaoEventoNF", payload)
         self.assertIn("Erro interno Sefaz", str(contexto.exception))
 
     def test_manifestacao_nao_exibe_erro_tecnico_da_pynfe_ao_usuario(self):
