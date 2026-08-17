@@ -4,6 +4,7 @@ import gzip
 import tempfile
 import unittest
 from io import BytesIO
+from unittest.mock import Mock, patch
 
 os.environ["DATABASE_URL"] = "sqlite:///:memory:"
 
@@ -28,6 +29,7 @@ from app.services.fiscal_service import (
     FiscalIntegracaoErro,
     MENSAGEM_MANIFESTACAO_FALHOU,
     SefazManifestacaoDestinatarioAdapter,
+    SOAP_ACTION_RECEPCAO_EVENTO,
     buscar_documentos_para_ordem_compra,
     consultar_documentos_sefaz,
     manifestar_documento_fiscal,
@@ -544,6 +546,37 @@ class FiscalDocumentosTestCase(unittest.TestCase):
 
         self.assertTrue(self.FakeManifestacaoAdapter.fallback_usado)
         self.assertIn("Evento registrado", resposta)
+
+    def test_fallback_manifestacao_envia_acao_soap_e_trata_http_500(self):
+        adapter = SefazManifestacaoDestinatarioAdapter(
+            comunicacao=object(),
+            certificado_path="certificado.pfx",
+            senha="segredo",
+            uf="sp",
+            homologacao=False,
+        )
+        resposta = Mock(status_code=500, text="<soap:Fault>Erro interno Sefaz</soap:Fault>")
+
+        with patch.object(
+            adapter,
+            "_montar_xml_evento_assinado",
+            return_value=b"<envEvento xmlns='http://www.portalfiscal.inf.br/nfe' />",
+        ), patch(
+            "app.services.fiscal_service._certificado_pem_do_a1",
+            return_value=(b"key", b"cert"),
+        ), patch(
+            "app.services.fiscal_service.requests.post",
+            return_value=resposta,
+        ) as post_mock:
+            with self.assertRaises(FiscalIntegracaoErro):
+                adapter._manifestar_via_fallback(
+                    "44555666000177",
+                    "35260811222333000181550010000001231000001234",
+                    "210210",
+                )
+
+        headers = post_mock.call_args.kwargs["headers"]
+        self.assertIn(SOAP_ACTION_RECEPCAO_EVENTO, headers["Content-Type"])
 
     def test_manifestacao_nao_exibe_erro_tecnico_da_pynfe_ao_usuario(self):
         sucesso, _, _ = salvar_certificado_a1(
