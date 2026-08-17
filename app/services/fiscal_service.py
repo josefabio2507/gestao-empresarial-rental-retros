@@ -715,20 +715,22 @@ class SefazManifestacaoDestinatarioAdapter:
                 timeout=60,
             )
             texto_resposta = resposta.text or ""
+            resumo_resposta = re.sub(r"\s+", " ", texto_resposta).strip()[:2000] or "sem corpo de resposta"
             self._registrar_diagnostico(
                 "manifestacao_destinatario_fallback_resposta",
                 endpoint=endpoint,
                 http_status=resposta.status_code,
-                resposta=texto_resposta[:2000],
+                resposta=resumo_resposta,
             )
             if resposta.status_code >= 400:
                 current_app.logger.error(
                     "[fiscal_manifestacao] Sefaz retornou HTTP %s no fallback de manifestacao. Corpo: %s",
                     resposta.status_code,
-                    texto_resposta[:4000],
+                    resumo_resposta,
                 )
                 raise FiscalIntegracaoErro(
-                    f"Sefaz retornou HTTP {resposta.status_code} ao receber o evento de manifestacao."
+                    f"Sefaz retornou HTTP {resposta.status_code} ao receber o evento de manifestacao. "
+                    f"Corpo da resposta: {resumo_resposta}"
                 )
             return texto_resposta
         finally:

@@ -568,7 +568,7 @@ class FiscalDocumentosTestCase(unittest.TestCase):
             "app.services.fiscal_service.requests.post",
             return_value=resposta,
         ) as post_mock:
-            with self.assertRaises(FiscalIntegracaoErro):
+            with self.assertRaises(FiscalIntegracaoErro) as contexto:
                 adapter._manifestar_via_fallback(
                     "44555666000177",
                     "35260811222333000181550010000001231000001234",
@@ -577,6 +577,7 @@ class FiscalDocumentosTestCase(unittest.TestCase):
 
         headers = post_mock.call_args.kwargs["headers"]
         self.assertIn(SOAP_ACTION_RECEPCAO_EVENTO, headers["Content-Type"])
+        self.assertIn("Erro interno Sefaz", str(contexto.exception))
 
     def test_manifestacao_nao_exibe_erro_tecnico_da_pynfe_ao_usuario(self):
         sucesso, _, _ = salvar_certificado_a1(
