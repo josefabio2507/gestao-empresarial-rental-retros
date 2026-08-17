@@ -17,6 +17,7 @@ from app.models import (
     FiscalCertificadoA1,
     FiscalControleNSU,
     FiscalDocumento,
+    FiscalManifestacaoNFe,
     Modulo,
     NivelAcesso,
     PermissaoUsuarioModulo,
@@ -26,8 +27,10 @@ from app.models import (
 from app.services.fiscal_service import (
     buscar_documentos_para_ordem_compra,
     consultar_documentos_sefaz,
+    manifestar_documento_fiscal,
     salvar_certificado_a1,
     salvar_xml_documento,
+    salvar_resumo_nfe_bytes,
     vincular_documento_ordem_compra,
 )
 
@@ -59,6 +62,22 @@ XML_NFE = b"""<?xml version="1.0" encoding="UTF-8"?>
     </infNFe>
   </NFe>
 </nfeProc>
+"""
+
+XML_RESUMO_NFE = b"""<?xml version="1.0" encoding="UTF-8"?>
+<resNFe xmlns="http://www.portalfiscal.inf.br/nfe" versao="1.01">
+  <chNFe>35260811222333000181550010000001231000001234</chNFe>
+  <CNPJ>11222333000181</CNPJ>
+  <xNome>Fornecedor Teste LTDA</xNome>
+  <IE>123456789</IE>
+  <dhEmi>2026-08-15T10:30:00-03:00</dhEmi>
+  <tpNF>1</tpNF>
+  <vNF>251.00</vNF>
+  <digVal>abc</digVal>
+  <dhRecbto>2026-08-15T22:30:00-03:00</dhRecbto>
+  <nProt>135260000000000</nProt>
+  <cSitNFe>1</cSitNFe>
+</resNFe>
 """
 
 
@@ -165,9 +184,38 @@ class FiscalDocumentosTestCase(unittest.TestCase):
 </retDistDFeInt>
 """
 
+    def _retorno_distribuicao_resumo(self):
+        doc_zip = base64.b64encode(gzip.compress(XML_RESUMO_NFE)).decode()
+        return f"""<?xml version="1.0" encoding="UTF-8"?>
+<retDistDFeInt xmlns="http://www.portalfiscal.inf.br/nfe" versao="1.01">
+  <cStat>138</cStat>
+  <xMotivo>Resumo localizado</xMotivo>
+  <ultNSU>101</ultNSU>
+  <maxNSU>101</maxNSU>
+  <loteDistDFeInt>
+    <docZip NSU="101" schema="resNFe_v1.01.xsd">{doc_zip}</docZip>
+  </loteDistDFeInt>
+</retDistDFeInt>
+"""
+
+    def _retorno_manifestacao(self):
+        return """<?xml version="1.0" encoding="UTF-8"?>
+<retEnvEvento xmlns="http://www.portalfiscal.inf.br/nfe" versao="1.00">
+  <retEvento>
+    <infEvento>
+      <cStat>135</cStat>
+      <xMotivo>Evento registrado e vinculado a NF-e</xMotivo>
+      <nProt>135260000000999</nProt>
+    </infEvento>
+  </retEvento>
+</retEnvEvento>
+"""
+
     class FakePyNFeClient:
         chamadas = []
         resposta = ""
+        resposta_manifestacao = ""
+        resposta_download = ""
 
         def __init__(self, certificado_path, senha, uf, homologacao):
             self.__class__.chamadas.append(
@@ -183,6 +231,23 @@ class FiscalDocumentosTestCase(unittest.TestCase):
             self.__class__.chamadas[-1]["cnpj"] = cnpj
             self.__class__.chamadas[-1]["ultimo_nsu"] = ultimo_nsu
             return self.__class__.resposta
+
+        def manifestar(self, cnpj, chave_acesso, evento_codigo, justificativa=None):
+            self.__class__.chamadas[-1]["manifestacao"] = {
+                "cnpj": cnpj,
+                "chave_acesso": chave_acesso,
+                "evento_codigo": evento_codigo,
+                "justificativa": justificativa,
+            }
+            return self.__class__.resposta_manifestacao
+
+        def baixar_xml_completo(self, cnpj, chave_acesso, ultimo_nsu):
+            self.__class__.chamadas[-1]["download"] = {
+                "cnpj": cnpj,
+                "chave_acesso": chave_acesso,
+                "ultimo_nsu": ultimo_nsu,
+            }
+            return self.__class__.resposta_download
 
     def _autenticar(self, usuario):
         with self.client.session_transaction() as sessao:
@@ -218,6 +283,19 @@ class FiscalDocumentosTestCase(unittest.TestCase):
         db.session.commit()
         return ordem
 
+    def _cadastrar_certificado_empresa(self):
+        sucesso, _, certificado = salvar_certificado_a1(
+            {
+                "cnpj_empresa": "44.555.666/0001-77",
+                "razao_social": "Rental Retros LTDA",
+                "senha": "segredo",
+            },
+            self._arquivo_certificado(),
+            self.admin,
+        )
+        self.assertTrue(sucesso)
+        return certificado
+
     def test_importa_xml_gera_danfe_e_metadados(self):
         sucesso, mensagem, documento = salvar_xml_documento(self._arquivo_xml(), self.admin, "100")
 
@@ -226,11 +304,14 @@ class FiscalDocumentosTestCase(unittest.TestCase):
         self.assertEqual("123", documento.numero)
         self.assertEqual("11222333000181", documento.emitente_cnpj)
         self.assertEqual("44555666000177", documento.destinatario_cnpj)
+        self.assertTrue(documento.tem_xml_completo)
+        self.assertEqual("XML baixado", documento.status)
         self.assertTrue(os.path.exists(documento.xml_path))
         self.assertTrue(os.path.exists(documento.danfe_path))
         self.assertEqual(1, FiscalDocumento.query.count())
 
     def test_vincula_documento_a_ordem_compra_por_cnpj_fornecedor(self):
+        self._cadastrar_certificado_empresa()
         _, _, documento = salvar_xml_documento(self._arquivo_xml(), self.admin, "100")
         ordem = self._criar_ordem_compra_minima()
 
@@ -242,9 +323,29 @@ class FiscalDocumentosTestCase(unittest.TestCase):
         self.assertTrue(sucesso)
         self.assertEqual("NF-e vinculada à O.C. e DANFE associado automaticamente.", mensagem)
         self.assertEqual(ordem.id, vinculado.ordem_compra_id)
-        self.assertEqual("Vinculado", vinculado.status)
+        self.assertEqual("Vinculado a OC", vinculado.status)
         self.assertIsNotNone(vinculado.vinculado_em)
         self.assertEqual([], buscar_documentos_para_ordem_compra(ordem))
+
+    def test_ordem_compra_ignora_resumo_sem_xml_completo(self):
+        self._cadastrar_certificado_empresa()
+        sucesso, _, documento = salvar_resumo_nfe_bytes(
+            XML_RESUMO_NFE,
+            nsu="101",
+            cnpj_destinatario="44555666000177",
+        )
+        ordem = self._criar_ordem_compra_minima()
+
+        self.assertTrue(sucesso)
+        self.assertFalse(documento.tem_xml_completo)
+        self.assertEqual("Aguardando manifestacao", documento.status)
+        self.assertEqual([], buscar_documentos_para_ordem_compra(ordem))
+
+        sucesso, mensagem, vinculado = vincular_documento_ordem_compra(documento.id, ordem, self.admin)
+
+        self.assertFalse(sucesso)
+        self.assertIn("ainda nao possui XML completo", mensagem)
+        self.assertIsNone(vinculado)
 
     def test_bloqueia_vinculo_com_cnpj_diferente(self):
         _, _, documento = salvar_xml_documento(self._arquivo_xml(), self.admin, "100")
@@ -334,6 +435,77 @@ class FiscalDocumentosTestCase(unittest.TestCase):
         self.assertFalse(chamada["homologacao"])
         self.assertEqual("44555666000177", chamada["cnpj"])
         self.assertEqual("0", chamada["ultimo_nsu"])
+
+    def test_consulta_nsu_salva_resumo_aguardando_manifestacao(self):
+        sucesso, _, certificado = salvar_certificado_a1(
+            {
+                "cnpj_empresa": "44.555.666/0001-77",
+                "razao_social": "Rental Retros LTDA",
+                "senha": "segredo",
+            },
+            self._arquivo_certificado(),
+            self.admin,
+        )
+        self.assertTrue(sucesso)
+        self.FakePyNFeClient.chamadas = []
+        self.FakePyNFeClient.resposta = self._retorno_distribuicao_resumo()
+
+        sucesso, mensagem, controle = consultar_documentos_sefaz(
+            "44.555.666/0001-77",
+            cliente_cls=self.FakePyNFeClient,
+        )
+
+        self.assertTrue(sucesso)
+        self.assertIn("Resumos localizados: 1", mensagem)
+        self.assertEqual("Consultado", controle.status)
+        documento = FiscalDocumento.query.one()
+        self.assertEqual("resNFe", documento.tipo_distribuicao)
+        self.assertFalse(documento.tem_xml_completo)
+        self.assertEqual("Aguardando manifestacao", documento.status)
+        self.assertEqual("Aguardando manifestacao", documento.manifestacao_status)
+        self.assertIsNone(documento.xml_path)
+        self.assertIsNone(documento.danfe_path)
+        self.assertEqual("44555666000177", documento.destinatario_cnpj)
+
+    def test_manifestacao_registra_protocolo_baixa_xml_completo_e_gera_danfe(self):
+        sucesso, _, _ = salvar_certificado_a1(
+            {
+                "cnpj_empresa": "44.555.666/0001-77",
+                "razao_social": "Rental Retros LTDA",
+                "senha": "segredo",
+            },
+            self._arquivo_certificado(),
+            self.admin,
+        )
+        self.assertTrue(sucesso)
+        _, _, documento = salvar_resumo_nfe_bytes(
+            XML_RESUMO_NFE,
+            nsu="101",
+            cnpj_destinatario="44555666000177",
+        )
+        self.FakePyNFeClient.chamadas = []
+        self.FakePyNFeClient.resposta_manifestacao = self._retorno_manifestacao()
+        self.FakePyNFeClient.resposta_download = self._retorno_distribuicao_dfe()
+
+        sucesso, mensagem, manifestado = manifestar_documento_fiscal(
+            documento.id,
+            "ciencia",
+            self.admin,
+            cliente_cls=self.FakePyNFeClient,
+        )
+
+        self.assertTrue(sucesso)
+        self.assertIn("Ciencia da Operacao registrada", mensagem)
+        self.assertTrue(manifestado.tem_xml_completo)
+        self.assertEqual("XML baixado", manifestado.status)
+        self.assertEqual("Ciencia registrada", manifestado.manifestacao_status)
+        self.assertEqual("135260000000999", manifestado.manifestacao_protocolo)
+        self.assertTrue(os.path.exists(manifestado.xml_path))
+        self.assertTrue(os.path.exists(manifestado.danfe_path))
+        self.assertEqual(1, FiscalManifestacaoNFe.query.count())
+        chamada = self.FakePyNFeClient.chamadas[0]
+        self.assertEqual("210210", chamada["manifestacao"]["evento_codigo"])
+        self.assertEqual(documento.chave_acesso, chamada["download"]["chave_acesso"])
 
     def test_rota_documentos_fiscais_exige_permissao(self):
         self._autenticar(self.usuario)

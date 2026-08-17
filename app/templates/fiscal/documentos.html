@@ -25,7 +25,7 @@
                 <label for="status">Status</label>
                 <select id="status" name="status">
                     <option value="">Todos</option>
-                    {% for status in ["Disponivel", "Vinculado", "Cancelado"] %}
+                    {% for status in status_documentos %}
                         <option value="{{ status }}" {{ "selected" if filtros.get('status') == status else "" }}>{{ status }}</option>
                     {% endfor %}
                 </select>
@@ -69,16 +69,19 @@
     </form>
 
     <div class="table-card table-responsive">
-        <h2>XMLs e DANFEs</h2>
+        <h2>Notas fiscais</h2>
         <table class="table">
             <thead>
                 <tr>
                     <th>Número</th>
+                    <th>Série</th>
+                    <th>Chave</th>
                     <th>Emissão</th>
                     <th>Fornecedor</th>
                     <th>CNPJ</th>
                     <th>Valor</th>
-                    <th>Status</th>
+                    <th>Manifestação</th>
+                    <th>XML</th>
                     <th>O.C.</th>
                     <th>Ações</th>
                 </tr>
@@ -87,21 +90,53 @@
                 {% for documento in documentos %}
                     <tr>
                         <td>{{ documento.numero }}</td>
+                        <td>{{ documento.serie or "-" }}</td>
+                        <td>{{ documento.chave_acesso }}</td>
                         <td>{{ documento.data_emissao.strftime("%d/%m/%Y") if documento.data_emissao else "-" }}</td>
                         <td>{{ documento.emitente_nome }}</td>
                         <td>{{ documento.emitente_cnpj }}</td>
                         <td>R$ {{ documento.valor_total }}</td>
-                        <td><span class="badge {{ 'badge-success' if documento.status == 'Vinculado' else 'badge-secondary' }}">{{ documento.status }}</span></td>
+                        <td>
+                            <span class="badge badge-secondary">{{ documento.manifestacao_status or documento.status }}</span>
+                            {% if documento.manifestacao_protocolo %}
+                                <br><small>Prot.: {{ documento.manifestacao_protocolo }}</small>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if documento.tem_xml_completo %}
+                                <span class="badge badge-success">XML baixado</span>
+                            {% else %}
+                                <span class="badge badge-warning">Aguardando XML completo</span>
+                            {% endif %}
+                        </td>
                         <td>{{ documento.ordem_compra.numero if documento.ordem_compra else "-" }}</td>
                         <td class="col-acoes">
-                            <a class="btn btn-secondary" href="{{ url_for('fiscal.baixar_xml', documento_id=documento.id) }}">XML</a>
+                            {% if not documento.tem_xml_completo %}
+                                {% for evento, dados in eventos_manifestacao.items() %}
+                                    <form class="inline-form" method="POST" action="{{ url_for('fiscal.manifestar', documento_id=documento.id) }}">
+                                        <input type="hidden" name="evento" value="{{ evento }}">
+                                        {% if evento == "nao_realizada" %}
+                                            <input name="justificativa" placeholder="Justificativa" required>
+                                        {% endif %}
+                                        <button class="btn btn-secondary" type="submit">{{ dados.label }}</button>
+                                    </form>
+                                {% endfor %}
+                                {% if documento.manifestacao_status %}
+                                    <form class="inline-form" method="POST" action="{{ url_for('fiscal.baixar_xml_completo', documento_id=documento.id) }}">
+                                        <button class="btn btn-primary" type="submit">Baixar XML completo</button>
+                                    </form>
+                                {% endif %}
+                            {% endif %}
+                            {% if documento.xml_path %}
+                                <a class="btn btn-secondary" href="{{ url_for('fiscal.baixar_xml', documento_id=documento.id) }}">XML</a>
+                            {% endif %}
                             {% if documento.danfe_path %}
                                 <a class="btn btn-secondary" href="{{ url_for('fiscal.baixar_danfe', documento_id=documento.id) }}">DANFE</a>
                             {% endif %}
                         </td>
                     </tr>
                 {% else %}
-                    <tr><td class="empty-state" colspan="8">Nenhum documento fiscal encontrado.</td></tr>
+                    <tr><td class="empty-state" colspan="11">Nenhum documento fiscal encontrado.</td></tr>
                 {% endfor %}
             </tbody>
         </table>

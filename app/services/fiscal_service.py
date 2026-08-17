@@ -14,11 +14,60 @@ from werkzeug.security import generate_password_hash
 from werkzeug.utils import secure_filename
 
 from app.extensions import db
-from app.models import FiscalCertificadoA1, FiscalControleNSU, FiscalDocumento
+from app.models import FiscalCertificadoA1, FiscalControleNSU, FiscalDocumento, FiscalManifestacaoNFe
 from app.utils.datas import agora_brasil
 
 
 EXTENSOES_CERTIFICADO = {".pfx", ".p12"}
+
+STATUS_RESUMO_LOCALIZADO = "Resumo localizado"
+STATUS_AGUARDANDO_MANIFESTACAO = "Aguardando manifestacao"
+STATUS_CIENCIA_REGISTRADA = "Ciencia registrada"
+STATUS_XML_BAIXADO = "XML baixado"
+STATUS_VINCULADO_OC = "Vinculado a OC"
+STATUS_CONFIRMADA = "Confirmada"
+STATUS_DESCONHECIDA = "Desconhecida"
+STATUS_OPERACAO_NAO_REALIZADA = "Operacao nao realizada"
+STATUS_CANCELADA = "Cancelada"
+
+TIPO_RESUMO_NFE = "resNFe"
+TIPO_XML_COMPLETO = "procNFe"
+TIPO_EVENTO = "evento"
+
+EVENTOS_MANIFESTACAO = {
+    "ciencia": {
+        "codigo": "210210",
+        "label": "Ciencia da Operacao",
+        "status": STATUS_CIENCIA_REGISTRADA,
+    },
+    "confirmacao": {
+        "codigo": "210200",
+        "label": "Confirmacao da Operacao",
+        "status": STATUS_CONFIRMADA,
+    },
+    "desconhecimento": {
+        "codigo": "210220",
+        "label": "Desconhecimento da Operacao",
+        "status": STATUS_DESCONHECIDA,
+    },
+    "nao_realizada": {
+        "codigo": "210240",
+        "label": "Operacao nao Realizada",
+        "status": STATUS_OPERACAO_NAO_REALIZADA,
+    },
+}
+
+STATUS_DOCUMENTOS_FISCAIS = [
+    STATUS_RESUMO_LOCALIZADO,
+    STATUS_AGUARDANDO_MANIFESTACAO,
+    STATUS_CIENCIA_REGISTRADA,
+    STATUS_XML_BAIXADO,
+    STATUS_VINCULADO_OC,
+    STATUS_CONFIRMADA,
+    STATUS_DESCONHECIDA,
+    STATUS_OPERACAO_NAO_REALIZADA,
+    STATUS_CANCELADA,
+]
 
 
 class FiscalIntegracaoErro(Exception):
@@ -133,6 +182,25 @@ def extrair_metadados_xml(xml_bytes):
     }
 
 
+def extrair_metadados_resumo_nfe(xml_bytes):
+    raiz = ElementTree.fromstring(xml_bytes)
+    chave = somente_digitos(_texto(raiz, "chNFe"))
+
+    return {
+        "chave_acesso": chave,
+        "modelo": chave[20:22] if len(chave) == 44 else "55",
+        "serie": str(int(chave[22:25])) if len(chave) == 44 else "",
+        "numero": str(int(chave[25:34])) if len(chave) == 44 else "",
+        "natureza_operacao": None,
+        "data_emissao": _parse_data(_texto(raiz, "dhEmi") or _texto(raiz, "dEmi")),
+        "emitente_nome": _texto(raiz, "xNome"),
+        "emitente_cnpj": somente_digitos(_texto(raiz, "CNPJ") or _texto(raiz, "CPF")),
+        "destinatario_nome": "",
+        "destinatario_cnpj": "",
+        "valor_total": _parse_decimal(_texto(raiz, "vNF")),
+    }
+
+
 def _validar_metadados(metadados):
     if len(metadados["chave_acesso"]) != 44:
         return False, "XML sem chave de acesso de NF-e válida."
@@ -142,6 +210,16 @@ def _validar_metadados(metadados):
         return False, "XML sem CNPJ do emitente."
     if not metadados["destinatario_cnpj"]:
         return False, "XML sem CNPJ do destinatário."
+    return True, ""
+
+
+def _validar_resumo(metadados):
+    if len(metadados["chave_acesso"]) != 44:
+        return False, "Resumo sem chave de acesso de NF-e valida."
+    if not metadados["numero"]:
+        return False, "Resumo sem numero de NF-e."
+    if not metadados["emitente_cnpj"]:
+        return False, "Resumo sem CNPJ/CPF do emitente."
     return True, ""
 
 
@@ -204,12 +282,28 @@ def salvar_xml_documento_bytes(xml_bytes, nsu=None):
         destino.write(xml_bytes)
 
     if existente:
+        for campo, valor in metadados.items():
+            setattr(existente, campo, valor)
         existente.xml_path = xml_path
+        existente.tipo_distribuicao = TIPO_XML_COMPLETO
+        existente.tem_xml_completo = True
+        existente.status = STATUS_XML_BAIXADO if not existente.ordem_compra_id else STATUS_VINCULADO_OC
+        existente.xml_completo_baixado_em = agora_brasil()
+        existente.ultima_consulta_em = agora_brasil()
         existente.danfe_path = gerar_danfe_pdf(existente)
         db.session.commit()
         return True, "XML já existia na Central Fiscal e foi atualizado.", existente
 
-    documento = FiscalDocumento(nsu=nsu, xml_path=xml_path, **metadados)
+    documento = FiscalDocumento(
+        nsu=nsu,
+        xml_path=xml_path,
+        tipo_distribuicao=TIPO_XML_COMPLETO,
+        tem_xml_completo=True,
+        status=STATUS_XML_BAIXADO,
+        xml_completo_baixado_em=agora_brasil(),
+        ultima_consulta_em=agora_brasil(),
+        **metadados,
+    )
     db.session.add(documento)
     db.session.flush()
     documento.danfe_path = gerar_danfe_pdf(documento)
@@ -217,11 +311,69 @@ def salvar_xml_documento_bytes(xml_bytes, nsu=None):
     return True, "XML armazenado e DANFE gerado com sucesso.", documento
 
 
+def salvar_resumo_nfe_bytes(xml_bytes, nsu=None, cnpj_destinatario=None):
+    if not xml_bytes:
+        return False, "Resumo de NF-e vazio.", None
+
+    try:
+        metadados = extrair_metadados_resumo_nfe(xml_bytes)
+    except ElementTree.ParseError:
+        return False, "Nao foi possivel ler o resumo da NF-e.", None
+
+    valido, mensagem = _validar_resumo(metadados)
+    if not valido:
+        return False, mensagem, None
+
+    if cnpj_destinatario:
+        metadados["destinatario_cnpj"] = somente_digitos(cnpj_destinatario)
+
+    documento = FiscalDocumento.query.filter_by(chave_acesso=metadados["chave_acesso"]).first()
+    if documento and documento.tem_xml_completo:
+        documento.ultima_consulta_em = agora_brasil()
+        db.session.commit()
+        return True, "Resumo ignorado porque o XML completo ja esta armazenado.", documento
+
+    if not documento:
+        documento = FiscalDocumento(
+            nsu=nsu,
+            xml_path=None,
+            danfe_path=None,
+            tipo_distribuicao=TIPO_RESUMO_NFE,
+            tem_xml_completo=False,
+            status=STATUS_AGUARDANDO_MANIFESTACAO,
+            manifestacao_status=STATUS_AGUARDANDO_MANIFESTACAO,
+            ultima_consulta_em=agora_brasil(),
+            **metadados,
+        )
+        db.session.add(documento)
+    else:
+        for campo, valor in metadados.items():
+            if valor not in (None, ""):
+                setattr(documento, campo, valor)
+        documento.nsu = nsu or documento.nsu
+        documento.tipo_distribuicao = TIPO_RESUMO_NFE
+        documento.tem_xml_completo = False
+        documento.status = documento.status or STATUS_AGUARDANDO_MANIFESTACAO
+        documento.manifestacao_status = documento.manifestacao_status or STATUS_AGUARDANDO_MANIFESTACAO
+        documento.ultima_consulta_em = agora_brasil()
+
+    db.session.commit()
+    return True, "Resumo da NF-e localizado e aguardando manifestacao.", documento
+
+
 def salvar_xml_documento(arquivo, usuario, nsu=None):
     if not arquivo:
         return False, "Envie um arquivo XML válido.", None
 
     return salvar_xml_documento_bytes(arquivo.read(), nsu=nsu)
+
+
+def rotulos_status_documento():
+    return STATUS_DOCUMENTOS_FISCAIS
+
+
+def eventos_manifestacao_disponiveis():
+    return EVENTOS_MANIFESTACAO
 
 
 def buscar_documentos_fiscais(filtros=None):
@@ -251,11 +403,22 @@ def buscar_documentos_para_ordem_compra(ordem):
     if not cnpj:
         return []
 
+    cnpjs_empresa = [
+        certificado.cnpj_empresa
+        for certificado in FiscalCertificadoA1.query.filter_by(ativo=True).all()
+    ]
+    if not cnpjs_empresa:
+        return []
+
     return (
         FiscalDocumento.query
         .filter(
             FiscalDocumento.emitente_cnpj == cnpj,
-            FiscalDocumento.status == "Disponivel",
+            FiscalDocumento.destinatario_cnpj.in_(cnpjs_empresa),
+            FiscalDocumento.tem_xml_completo.is_(True),
+            FiscalDocumento.xml_path.isnot(None),
+            FiscalDocumento.ordem_compra_id.is_(None),
+            FiscalDocumento.status.in_([STATUS_XML_BAIXADO, STATUS_CONFIRMADA]),
         )
         .order_by(FiscalDocumento.data_emissao.desc(), FiscalDocumento.id.desc())
         .all()
@@ -276,6 +439,8 @@ def vincular_documento_ordem_compra(documento_id, ordem, usuario):
         return False, "O.C. cancelada não pode receber vínculo fiscal.", None
     if documento.ordem_compra_id and documento.ordem_compra_id != ordem.id:
         return False, "Documento fiscal já vinculado a outra O.C.", None
+    if not documento.tem_xml_completo or not documento.xml_path:
+        return False, "A NF-e ainda nao possui XML completo disponivel para vinculo com O.C.", None
     if documento.emitente_cnpj != somente_digitos(ordem.fornecedor_cnpj_cpf_snapshot):
         return False, "O emitente da NF-e não corresponde ao fornecedor da O.C.", None
 
@@ -285,7 +450,7 @@ def vincular_documento_ordem_compra(documento_id, ordem, usuario):
     documento.ordem_compra_id = ordem.id
     documento.vinculado_por_usuario_id = usuario.id
     documento.vinculado_em = agora_brasil()
-    documento.status = "Vinculado"
+    documento.status = STATUS_VINCULADO_OC
     db.session.commit()
     return True, "NF-e vinculada à O.C. e DANFE associado automaticamente.", documento
 
@@ -354,6 +519,34 @@ class PyNFeDistribuicaoClient:
             resposta = self.comunicacao.consulta_notas_cnpj(cnpj=cnpj, nsu=nsu)
         return getattr(resposta, "text", resposta)
 
+    def manifestar(self, cnpj, chave_acesso, evento_codigo, justificativa=None):
+        for nome_metodo in [
+            "manifestar",
+            "manifestacao_destinatario",
+            "evento_manifestacao_destinatario",
+            "recepcao_evento_manifestacao_destinatario",
+        ]:
+            if hasattr(self.comunicacao, nome_metodo):
+                metodo = getattr(self.comunicacao, nome_metodo)
+                resposta = metodo(
+                    cnpj=cnpj,
+                    chave=chave_acesso,
+                    evento=evento_codigo,
+                    justificativa=justificativa,
+                )
+                return getattr(resposta, "text", resposta)
+
+        raise FiscalIntegracaoErro(
+            "A biblioteca PyNFe instalada nao expôs metodo de Manifestacao do Destinatario neste ambiente."
+        )
+
+    def baixar_xml_completo(self, cnpj, chave_acesso, ultimo_nsu):
+        if hasattr(self.comunicacao, "consulta_distribuicao_chave"):
+            resposta = self.comunicacao.consulta_distribuicao_chave(cnpj=cnpj, chave=chave_acesso)
+        else:
+            resposta = self.consultar(cnpj, ultimo_nsu)
+        return getattr(resposta, "text", resposta)
+
 
 def _texto_xml(raiz, nome):
     for item in raiz.iter():
@@ -365,7 +558,7 @@ def _texto_xml(raiz, nome):
 def _doczips(raiz):
     for item in raiz.iter():
         if item.tag.split("}")[-1] == "docZip" and item.text:
-            yield item.attrib.get("NSU"), item.text.strip()
+            yield item.attrib.get("NSU"), item.attrib.get("schema", ""), item.text.strip()
 
 
 def _xml_doczip(conteudo_base64):
@@ -373,7 +566,36 @@ def _xml_doczip(conteudo_base64):
     return gzip.decompress(compactado)
 
 
-def processar_resposta_distribuicao_dfe(xml_resposta):
+def _status_retorno_evento(xml_resposta):
+    if isinstance(xml_resposta, bytes):
+        xml_bytes = xml_resposta
+    else:
+        xml_bytes = str(xml_resposta).encode()
+
+    try:
+        raiz = ElementTree.fromstring(xml_bytes)
+    except ElementTree.ParseError:
+        return {
+            "status_retorno": "",
+            "motivo_retorno": "Retorno da Sefaz recebido sem XML legivel.",
+            "protocolo": "",
+            "xml_bytes": xml_bytes,
+        }
+
+    return {
+        "status_retorno": _texto_xml(raiz, "cStat"),
+        "motivo_retorno": _texto_xml(raiz, "xMotivo"),
+        "protocolo": _texto_xml(raiz, "nProt"),
+        "xml_bytes": xml_bytes,
+    }
+
+
+def _caminho_evento(chave_acesso, evento):
+    diretorio = _diretorio_config("FISCAL_XML_DIR")
+    return os.path.join(diretorio, f"{chave_acesso}-{evento}.xml")
+
+
+def processar_resposta_distribuicao_dfe(xml_resposta, cnpj_destinatario=None):
     if isinstance(xml_resposta, bytes):
         xml_bytes = xml_resposta
     else:
@@ -386,12 +608,30 @@ def processar_resposta_distribuicao_dfe(xml_resposta):
     max_nsu = _texto_xml(raiz, "maxNSU")
 
     importados = 0
+    resumos = 0
     ignorados = 0
 
-    for nsu, conteudo in _doczips(raiz):
+    for nsu, schema, conteudo in _doczips(raiz):
         try:
             xml_documento = _xml_doczip(conteudo)
         except (OSError, ValueError):
+            ignorados += 1
+            continue
+
+        schema = (schema or "").lower()
+        if "resnfe" in schema:
+            sucesso, _, _ = salvar_resumo_nfe_bytes(
+                xml_documento,
+                nsu=nsu,
+                cnpj_destinatario=cnpj_destinatario,
+            )
+            if sucesso:
+                resumos += 1
+            else:
+                ignorados += 1
+            continue
+
+        if "procnfe" not in schema and "nfe" not in schema:
             ignorados += 1
             continue
 
@@ -407,6 +647,7 @@ def processar_resposta_distribuicao_dfe(xml_resposta):
         "ultimo_nsu": ultimo_nsu,
         "max_nsu": max_nsu,
         "importados": importados,
+        "resumos": resumos,
         "ignorados": ignorados,
     }
 
@@ -455,7 +696,7 @@ def consultar_documentos_sefaz(cnpj_empresa, cliente_cls=None):
             current_app.config.get("FISCAL_SEFAZ_HOMOLOGACAO", False),
         )
         resposta = cliente.consultar(cnpj, controle.ultimo_nsu)
-        resultado = processar_resposta_distribuicao_dfe(resposta)
+        resultado = processar_resposta_distribuicao_dfe(resposta, cnpj_destinatario=cnpj)
     except FiscalIntegracaoErro as exc:
         controle.status = "Aguardando integração"
         controle.mensagem = str(exc)
@@ -479,15 +720,144 @@ def consultar_documentos_sefaz(cnpj_empresa, cliente_cls=None):
     elif resultado["cstat"] == "656":
         controle.status = "Uso indevido"
     else:
-        controle.status = "Consultado" if resultado["importados"] else "Aguardando análise"
+        controle.status = "Consultado" if (resultado["importados"] or resultado["resumos"]) else "Aguardando análise"
 
     controle.mensagem = (
         f"Sefaz: {resultado['motivo'] or 'retorno recebido'}. "
         f"XMLs importados: {resultado['importados']}. "
+        f"Resumos localizados: {resultado['resumos']}. "
         f"Documentos ignorados/resumidos: {resultado['ignorados']}."
     )
     db.session.commit()
     return True, controle.mensagem, controle
+
+
+def _cliente_fiscal_documento(documento, cliente_cls=None):
+    cnpj = somente_digitos(documento.destinatario_cnpj)
+    if len(cnpj) != 14:
+        return None, None, "Documento sem CNPJ destinatario valido."
+
+    certificado = certificado_ativo_empresa(cnpj)
+    if not certificado:
+        return None, None, "Cadastre um certificado A1 ativo para o CNPJ destinatario antes de manifestar."
+
+    uf = (current_app.config.get("FISCAL_SEFAZ_UF") or "").strip().lower()
+    if not uf:
+        return None, None, "Configure FISCAL_SEFAZ_UF para consultar a Sefaz com PyNFe."
+
+    senha = descriptografar_senha_certificado(certificado)
+    cliente = (cliente_cls or PyNFeDistribuicaoClient)(
+        certificado.arquivo_path,
+        senha,
+        uf,
+        current_app.config.get("FISCAL_SEFAZ_HOMOLOGACAO", False),
+    )
+    return cliente, cnpj, ""
+
+
+def manifestar_documento_fiscal(documento_id, evento, usuario, justificativa=None, cliente_cls=None):
+    documento = db.session.get(FiscalDocumento, documento_id)
+    if not documento:
+        return False, "Documento fiscal nao encontrado.", None
+    if documento.tem_xml_completo and evento == "ciencia":
+        return False, "Documento ja possui XML completo baixado.", documento
+
+    dados_evento = EVENTOS_MANIFESTACAO.get(evento)
+    if not dados_evento:
+        return False, "Evento de manifestacao invalido.", documento
+    if evento == "nao_realizada" and not (justificativa or "").strip():
+        return False, "Informe a justificativa para Operacao nao Realizada.", documento
+
+    try:
+        cliente, cnpj, mensagem = _cliente_fiscal_documento(documento, cliente_cls=cliente_cls)
+        if not cliente:
+            return False, mensagem, documento
+
+        resposta = cliente.manifestar(
+            cnpj,
+            documento.chave_acesso,
+            dados_evento["codigo"],
+            justificativa=(justificativa or "").strip() or None,
+        )
+        retorno = _status_retorno_evento(resposta)
+    except FiscalIntegracaoErro as exc:
+        return False, str(exc), documento
+    except Exception as exc:
+        return False, f"Falha ao manifestar NF-e na Sefaz: {exc}", documento
+
+    caminho_evento = _caminho_evento(documento.chave_acesso, evento)
+    with open(caminho_evento, "wb") as destino:
+        destino.write(retorno["xml_bytes"])
+
+    manifestacao = FiscalManifestacaoNFe(
+        documento_id=documento.id,
+        chave_acesso=documento.chave_acesso,
+        evento=evento,
+        status_retorno=retorno["status_retorno"],
+        motivo_retorno=retorno["motivo_retorno"],
+        protocolo=retorno["protocolo"],
+        xml_evento_path=caminho_evento,
+        usuario_id=usuario.id,
+    )
+    db.session.add(manifestacao)
+
+    documento.manifestacao_status = dados_evento["status"]
+    documento.manifestacao_evento = evento
+    documento.manifestacao_protocolo = retorno["protocolo"] or documento.manifestacao_protocolo
+    documento.manifestacao_em = agora_brasil()
+    documento.manifestado_por_usuario_id = usuario.id
+    documento.status = dados_evento["status"]
+    db.session.commit()
+
+    mensagem_final = f"{dados_evento['label']} registrada para a NF-e."
+    try:
+        controle = FiscalControleNSU.query.filter_by(cnpj_empresa=cnpj).first()
+        ultimo_nsu = controle.ultimo_nsu if controle else documento.nsu or "0"
+        resposta_xml = cliente.baixar_xml_completo(cnpj, documento.chave_acesso, ultimo_nsu)
+        processar_resposta_distribuicao_dfe(resposta_xml, cnpj_destinatario=cnpj)
+        db.session.refresh(documento)
+        if documento.tem_xml_completo and documento.xml_path:
+            mensagem_final += " XML completo baixado e DANFE gerado automaticamente."
+    except Exception:
+        mensagem_final += " O XML completo ainda nao foi disponibilizado pela Sefaz."
+
+    return True, mensagem_final, documento
+
+
+def baixar_xml_completo_documento(documento_id, usuario, cliente_cls=None):
+    documento = db.session.get(FiscalDocumento, documento_id)
+    if not documento:
+        return False, "Documento fiscal nao encontrado.", None
+    if documento.tem_xml_completo and documento.xml_path:
+        if not documento.danfe_path or not os.path.exists(documento.danfe_path):
+            documento.danfe_path = gerar_danfe_pdf(documento)
+            db.session.commit()
+        return True, "XML completo ja estava disponivel.", documento
+    if not documento.manifestacao_status:
+        return False, "Manifeste a NF-e antes de baixar o XML completo.", documento
+
+    try:
+        cliente, cnpj, mensagem = _cliente_fiscal_documento(documento, cliente_cls=cliente_cls)
+        if not cliente:
+            return False, mensagem, documento
+
+        controle = FiscalControleNSU.query.filter_by(cnpj_empresa=cnpj).first()
+        ultimo_nsu = controle.ultimo_nsu if controle else documento.nsu or "0"
+        resposta = cliente.baixar_xml_completo(cnpj, documento.chave_acesso, ultimo_nsu)
+        resultado = processar_resposta_distribuicao_dfe(resposta, cnpj_destinatario=cnpj)
+    except FiscalIntegracaoErro as exc:
+        return False, str(exc), documento
+    except Exception as exc:
+        return False, f"Falha ao baixar XML completo na Sefaz: {exc}", documento
+
+    db.session.refresh(documento)
+    if documento.tem_xml_completo and documento.xml_path:
+        return True, "XML completo baixado e DANFE gerado automaticamente.", documento
+
+    return False, (
+        "Manifestacao registrada, mas a Sefaz ainda nao retornou o XML completo. "
+        f"Resumos: {resultado['resumos']}. Ignorados: {resultado['ignorados']}."
+    ), documento
 
 
 def buscar_certificados():
