@@ -76,3 +76,7 @@ class Config:
     FISCAL_CERTIFICADO_CRYPTO_KEY = os.getenv("FISCAL_CERTIFICADO_CRYPTO_KEY", "").strip()
     FISCAL_SEFAZ_UF = os.getenv("FISCAL_SEFAZ_UF", "SP").strip().lower()
     FISCAL_SEFAZ_HOMOLOGACAO = os.getenv("FISCAL_SEFAZ_HOMOLOGACAO", "false").lower() == "true"
+    FISCAL_SEFAZ_RECEPCAO_EVENTO_URL = os.getenv(
+        "FISCAL_SEFAZ_RECEPCAO_EVENTO_URL",
+        "",
+    ).strip()
