@@ -1,4 +1,4 @@
-﻿import os
+import os
 import base64
 import gzip
 import tempfile
@@ -612,6 +612,7 @@ class FiscalDocumentosTestCase(unittest.TestCase):
         headers = post_mock.call_args.kwargs["headers"]
         payload = post_mock.call_args.kwargs["data"]
         self.assertIn(SOAP_ACTION_DISTRIBUICAO_DFE, headers["Content-Type"])
+        self.assertIn(b"nfeDistDFeInteresse", payload)
         self.assertIn(b"consChNFe", payload)
         self.assertIn(b"35260811222333000181550010000001231000001234", payload)
         self.assertIn("retDistDFeInt", retorno)
