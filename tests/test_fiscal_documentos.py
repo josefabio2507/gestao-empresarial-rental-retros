@@ -25,6 +25,9 @@ from app.models import (
     Usuario,
 )
 from app.services.fiscal_service import (
+    FiscalIntegracaoErro,
+    MENSAGEM_MANIFESTACAO_FALHOU,
+    SefazManifestacaoDestinatarioAdapter,
     buscar_documentos_para_ordem_compra,
     consultar_documentos_sefaz,
     manifestar_documento_fiscal,
@@ -248,6 +251,22 @@ class FiscalDocumentosTestCase(unittest.TestCase):
                 "ultimo_nsu": ultimo_nsu,
             }
             return self.__class__.resposta_download
+
+    class FakePyNFeClientManifestacaoErro:
+        def __init__(self, certificado_path, senha, uf, homologacao):
+            pass
+
+        def manifestar(self, cnpj, chave_acesso, evento_codigo, justificativa=None):
+            raise FiscalIntegracaoErro(
+                "A biblioteca PyNFe instalada nao expos metodo de Manifestacao do Destinatario neste ambiente."
+            )
+
+    class FakeManifestacaoAdapter(SefazManifestacaoDestinatarioAdapter):
+        fallback_usado = False
+
+        def _manifestar_via_fallback(self, cnpj, chave_acesso, evento_codigo, justificativa=None):
+            self.__class__.fallback_usado = True
+            return FiscalDocumentosTestCase._retorno_manifestacao(None)
 
     def _autenticar(self, usuario):
         with self.client.session_transaction() as sessao:
@@ -506,6 +525,54 @@ class FiscalDocumentosTestCase(unittest.TestCase):
         chamada = self.FakePyNFeClient.chamadas[0]
         self.assertEqual("210210", chamada["manifestacao"]["evento_codigo"])
         self.assertEqual(documento.chave_acesso, chamada["download"]["chave_acesso"])
+
+    def test_adaptador_manifestacao_usa_fallback_quando_pynfe_nao_tem_metodo(self):
+        self.FakeManifestacaoAdapter.fallback_usado = False
+        adapter = self.FakeManifestacaoAdapter(
+            comunicacao=object(),
+            certificado_path="certificado.pfx",
+            senha="segredo",
+            uf="sp",
+            homologacao=False,
+        )
+
+        resposta = adapter.manifestar(
+            "44555666000177",
+            "35260811222333000181550010000001231000001234",
+            "210210",
+        )
+
+        self.assertTrue(self.FakeManifestacaoAdapter.fallback_usado)
+        self.assertIn("Evento registrado", resposta)
+
+    def test_manifestacao_nao_exibe_erro_tecnico_da_pynfe_ao_usuario(self):
+        sucesso, _, _ = salvar_certificado_a1(
+            {
+                "cnpj_empresa": "44.555.666/0001-77",
+                "razao_social": "Rental Retros LTDA",
+                "senha": "segredo",
+            },
+            self._arquivo_certificado(),
+            self.admin,
+        )
+        self.assertTrue(sucesso)
+        _, _, documento = salvar_resumo_nfe_bytes(
+            XML_RESUMO_NFE,
+            nsu="101",
+            cnpj_destinatario="44555666000177",
+        )
+
+        sucesso, mensagem, _ = manifestar_documento_fiscal(
+            documento.id,
+            "ciencia",
+            self.admin,
+            cliente_cls=self.FakePyNFeClientManifestacaoErro,
+        )
+
+        self.assertFalse(sucesso)
+        self.assertEqual(MENSAGEM_MANIFESTACAO_FALHOU, mensagem)
+        self.assertNotIn("PyNFe instalada", mensagem)
+        self.assertEqual(0, FiscalManifestacaoNFe.query.count())
 
     def test_rota_documentos_fiscais_exige_permissao(self):
         self._autenticar(self.usuario)

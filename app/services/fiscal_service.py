@@ -2,14 +2,22 @@ import os
 import re
 import base64
 import gzip
+import tempfile
+import uuid
+from importlib import metadata
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from xml.etree import ElementTree
 
 from flask import current_app
 from cryptography.fernet import Fernet, InvalidToken
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.serialization import pkcs12
+from lxml import etree
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
+import requests
+from signxml import XMLSigner, methods
 from werkzeug.security import generate_password_hash
 from werkzeug.utils import secure_filename
 
@@ -38,24 +46,46 @@ EVENTOS_MANIFESTACAO = {
     "ciencia": {
         "codigo": "210210",
         "label": "Ciencia da Operacao",
+        "descricao_oficial": "Ciencia da Operacao",
         "status": STATUS_CIENCIA_REGISTRADA,
     },
     "confirmacao": {
         "codigo": "210200",
         "label": "Confirmacao da Operacao",
+        "descricao_oficial": "Confirmacao da Operacao",
         "status": STATUS_CONFIRMADA,
     },
     "desconhecimento": {
         "codigo": "210220",
         "label": "Desconhecimento da Operacao",
+        "descricao_oficial": "Desconhecimento da Operacao",
         "status": STATUS_DESCONHECIDA,
     },
     "nao_realizada": {
         "codigo": "210240",
         "label": "Operacao nao Realizada",
+        "descricao_oficial": "Operacao nao Realizada",
         "status": STATUS_OPERACAO_NAO_REALIZADA,
     },
 }
+
+CODIGO_ORGAO_MANIFESTACAO_DESTINATARIO = "91"
+VERSAO_EVENTO_MANIFESTACAO = "1.00"
+VERSAO_ENVIO_EVENTO = "1.00"
+NAMESPACE_NFE = "http://www.portalfiscal.inf.br/nfe"
+NAMESPACE_SOAP12 = "http://www.w3.org/2003/05/soap-envelope"
+NAMESPACE_RECEPCAO_EVENTO = "http://www.portalfiscal.inf.br/nfe/wsdl/NFeRecepcaoEvento4"
+ENDPOINT_RECEPCAO_EVENTO_PRODUCAO = (
+    "https://www.nfe.fazenda.gov.br/NFeRecepcaoEvento4/NFeRecepcaoEvento4.asmx"
+)
+ENDPOINT_RECEPCAO_EVENTO_HOMOLOGACAO = (
+    "https://hom.nfe.fazenda.gov.br/NFeRecepcaoEvento4/NFeRecepcaoEvento4.asmx"
+)
+MENSAGEM_MANIFESTACAO_FALHOU = (
+    "Não foi possível transmitir a manifestação à Sefaz. "
+    "O sistema registrou o diagnóstico técnico para análise. "
+    "Verifique o certificado, o ambiente configurado e tente novamente."
+)
 
 STATUS_DOCUMENTOS_FISCAIS = [
     STATUS_RESUMO_LOCALIZADO,
@@ -72,6 +102,11 @@ STATUS_DOCUMENTOS_FISCAIS = [
 
 class FiscalIntegracaoErro(Exception):
     pass
+
+
+class NFeXMLSigner(XMLSigner):
+    def check_deprecated_methods(self):
+        return
 
 
 def somente_digitos(valor):
@@ -500,6 +535,274 @@ def salvar_certificado_a1(form_data, arquivo, usuario):
     return True, "Certificado A1 cadastrado com segurança.", certificado
 
 
+def _versao_pynfe_instalada():
+    try:
+        return metadata.version("pynfe")
+    except metadata.PackageNotFoundError:
+        return "nao instalada"
+
+
+def _endpoint_recepcao_evento(homologacao):
+    configurado = (current_app.config.get("FISCAL_SEFAZ_RECEPCAO_EVENTO_URL") or "").strip()
+    if configurado:
+        return configurado
+    if homologacao:
+        return ENDPOINT_RECEPCAO_EVENTO_HOMOLOGACAO
+    return ENDPOINT_RECEPCAO_EVENTO_PRODUCAO
+
+
+def _dh_evento_sefaz():
+    return agora_brasil().astimezone().isoformat(timespec="seconds")
+
+
+def _certificado_pem_do_a1(certificado_path, senha):
+    with open(certificado_path, "rb") as origem:
+        conteudo = origem.read()
+
+    chave, certificado, adicionais = pkcs12.load_key_and_certificates(
+        conteudo,
+        senha.encode() if senha else None,
+    )
+    if not chave or not certificado:
+        raise FiscalIntegracaoErro("Certificado A1 sem chave privada ou certificado público válido.")
+
+    chave_pem = chave.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.TraditionalOpenSSL,
+        encryption_algorithm=serialization.NoEncryption(),
+    )
+    certificado_pem = certificado.public_bytes(serialization.Encoding.PEM)
+    if adicionais:
+        certificado_pem += b"".join(
+            item.public_bytes(serialization.Encoding.PEM) for item in adicionais
+        )
+    return chave_pem, certificado_pem
+
+
+class SefazManifestacaoDestinatarioAdapter:
+    metodos_pynfe_candidatos = (
+        "manifestar",
+        "manifestacao_destinatario",
+        "evento_manifestacao_destinatario",
+        "recepcao_evento_manifestacao_destinatario",
+    )
+
+    def __init__(self, comunicacao, certificado_path, senha, uf, homologacao):
+        self.comunicacao = comunicacao
+        self.certificado_path = certificado_path
+        self.senha = senha
+        self.uf = uf
+        self.homologacao = homologacao
+
+    def manifestar(self, cnpj, chave_acesso, evento_codigo, justificativa=None):
+        metodos_detectados = self.metodos_manifestacao_detectados()
+        self._registrar_diagnostico(
+            "diagnostico_manifestacao_destinatario",
+            cnpj=cnpj,
+            chave_acesso=chave_acesso,
+            evento_codigo=evento_codigo,
+            metodos_detectados=metodos_detectados,
+        )
+
+        resposta = self._manifestar_via_pynfe(
+            metodos_detectados,
+            cnpj,
+            chave_acesso,
+            evento_codigo,
+            justificativa=justificativa,
+        )
+        if resposta is not None:
+            return resposta
+
+        return self._manifestar_via_fallback(
+            cnpj,
+            chave_acesso,
+            evento_codigo,
+            justificativa=justificativa,
+        )
+
+    def metodos_manifestacao_detectados(self):
+        return [
+            nome
+            for nome in self.metodos_pynfe_candidatos
+            if hasattr(self.comunicacao, nome)
+        ]
+
+    def _manifestar_via_pynfe(self, metodos_detectados, cnpj, chave_acesso, evento_codigo, justificativa=None):
+        for nome_metodo in metodos_detectados:
+            metodo = getattr(self.comunicacao, nome_metodo)
+            tentativas = (
+                {
+                    "cnpj": cnpj,
+                    "chave": chave_acesso,
+                    "evento": evento_codigo,
+                    "justificativa": justificativa,
+                },
+                {
+                    "cnpj": cnpj,
+                    "chave_acesso": chave_acesso,
+                    "evento_codigo": evento_codigo,
+                    "justificativa": justificativa,
+                },
+                {
+                    "cnpj": cnpj,
+                    "chave": chave_acesso,
+                    "tp_evento": evento_codigo,
+                    "justificativa": justificativa,
+                },
+            )
+            for parametros in tentativas:
+                try:
+                    resposta = metodo(**parametros)
+                    self._registrar_diagnostico(
+                        "manifestacao_destinatario_pynfe_enviada",
+                        metodo=nome_metodo,
+                        parametros=list(parametros.keys()),
+                    )
+                    return getattr(resposta, "text", resposta)
+                except TypeError as exc:
+                    self._registrar_diagnostico(
+                        "manifestacao_destinatario_pynfe_assinatura_incompativel",
+                        metodo=nome_metodo,
+                        erro=str(exc),
+                    )
+                    continue
+
+        if not metodos_detectados:
+            self._registrar_diagnostico(
+                "manifestacao_destinatario_pynfe_sem_metodo_compativel",
+                detalhe="PyNFe sem metodo pronto para manifestacao neste ambiente.",
+            )
+        return None
+
+    def _manifestar_via_fallback(self, cnpj, chave_acesso, evento_codigo, justificativa=None):
+        endpoint = _endpoint_recepcao_evento(self.homologacao)
+        self._registrar_diagnostico(
+            "manifestacao_destinatario_fallback_iniciado",
+            endpoint=endpoint,
+            ambiente="homologacao" if self.homologacao else "producao",
+        )
+
+        xml_assinado = self._montar_xml_evento_assinado(
+            cnpj,
+            chave_acesso,
+            evento_codigo,
+            justificativa=justificativa,
+        )
+        envelope = self._envelope_soap(xml_assinado)
+        chave_pem, certificado_pem = _certificado_pem_do_a1(self.certificado_path, self.senha)
+
+        with tempfile.NamedTemporaryFile(suffix=".pem", delete=False) as cert_file, tempfile.NamedTemporaryFile(
+            suffix=".key",
+            delete=False,
+        ) as key_file:
+            cert_file.write(certificado_pem)
+            key_file.write(chave_pem)
+            cert_file.flush()
+            key_file.flush()
+            cert_path = cert_file.name
+            key_path = key_file.name
+
+        try:
+            resposta = requests.post(
+                endpoint,
+                data=envelope,
+                headers={"Content-Type": "application/soap+xml; charset=utf-8"},
+                cert=(cert_path, key_path),
+                timeout=60,
+            )
+            self._registrar_diagnostico(
+                "manifestacao_destinatario_fallback_resposta",
+                endpoint=endpoint,
+                http_status=resposta.status_code,
+            )
+            resposta.raise_for_status()
+            return resposta.text
+        finally:
+            for caminho in (cert_path, key_path):
+                try:
+                    os.remove(caminho)
+                except OSError:
+                    current_app.logger.warning("Nao foi possivel remover arquivo temporario fiscal: %s", caminho)
+
+    def _montar_xml_evento_assinado(self, cnpj, chave_acesso, evento_codigo, justificativa=None):
+        dados_evento = next(
+            (dados for dados in EVENTOS_MANIFESTACAO.values() if dados["codigo"] == evento_codigo),
+            None,
+        )
+        if not dados_evento:
+            raise FiscalIntegracaoErro("Evento de manifestacao invalido para envio a Sefaz.")
+
+        identificador = f"ID{evento_codigo}{chave_acesso}01"
+        nsmap = {None: NAMESPACE_NFE}
+        env_evento = etree.Element(
+            etree.QName(NAMESPACE_NFE, "envEvento"),
+            nsmap=nsmap,
+            versao=VERSAO_ENVIO_EVENTO,
+        )
+        etree.SubElement(env_evento, etree.QName(NAMESPACE_NFE, "idLote")).text = uuid.uuid4().hex[:15]
+        evento = etree.SubElement(
+            env_evento,
+            etree.QName(NAMESPACE_NFE, "evento"),
+            versao=VERSAO_EVENTO_MANIFESTACAO,
+        )
+        inf_evento = etree.SubElement(evento, etree.QName(NAMESPACE_NFE, "infEvento"), Id=identificador)
+        etree.SubElement(inf_evento, etree.QName(NAMESPACE_NFE, "cOrgao")).text = CODIGO_ORGAO_MANIFESTACAO_DESTINATARIO
+        etree.SubElement(inf_evento, etree.QName(NAMESPACE_NFE, "tpAmb")).text = "2" if self.homologacao else "1"
+        etree.SubElement(inf_evento, etree.QName(NAMESPACE_NFE, "CNPJ")).text = cnpj
+        etree.SubElement(inf_evento, etree.QName(NAMESPACE_NFE, "chNFe")).text = chave_acesso
+        etree.SubElement(inf_evento, etree.QName(NAMESPACE_NFE, "dhEvento")).text = _dh_evento_sefaz()
+        etree.SubElement(inf_evento, etree.QName(NAMESPACE_NFE, "tpEvento")).text = evento_codigo
+        etree.SubElement(inf_evento, etree.QName(NAMESPACE_NFE, "nSeqEvento")).text = "1"
+        etree.SubElement(inf_evento, etree.QName(NAMESPACE_NFE, "verEvento")).text = VERSAO_EVENTO_MANIFESTACAO
+        det_evento = etree.SubElement(
+            inf_evento,
+            etree.QName(NAMESPACE_NFE, "detEvento"),
+            versao=VERSAO_EVENTO_MANIFESTACAO,
+        )
+        etree.SubElement(det_evento, etree.QName(NAMESPACE_NFE, "descEvento")).text = dados_evento["descricao_oficial"]
+        if evento_codigo == EVENTOS_MANIFESTACAO["nao_realizada"]["codigo"]:
+            etree.SubElement(det_evento, etree.QName(NAMESPACE_NFE, "xJust")).text = justificativa
+
+        chave_pem, certificado_pem = _certificado_pem_do_a1(self.certificado_path, self.senha)
+        signer = NFeXMLSigner(
+            method=methods.enveloped,
+            signature_algorithm="rsa-sha1",
+            digest_algorithm="sha1",
+        )
+        evento_assinado = signer.sign(
+            evento,
+            key=chave_pem,
+            cert=certificado_pem,
+            reference_uri=f"#{identificador}",
+            always_add_key_value=False,
+        )
+        env_evento.remove(evento)
+        env_evento.append(evento_assinado)
+        return etree.tostring(env_evento, encoding="utf-8", xml_declaration=True)
+
+    def _envelope_soap(self, xml_evento):
+        envelope = etree.Element(etree.QName(NAMESPACE_SOAP12, "Envelope"), nsmap={"soap12": NAMESPACE_SOAP12})
+        body = etree.SubElement(envelope, etree.QName(NAMESPACE_SOAP12, "Body"))
+        metodo = etree.SubElement(
+            body,
+            etree.QName(NAMESPACE_RECEPCAO_EVENTO, "nfeRecepcaoEventoNF"),
+        )
+        dados = etree.SubElement(metodo, etree.QName(NAMESPACE_RECEPCAO_EVENTO, "nfeDadosMsg"))
+        dados.append(etree.fromstring(xml_evento))
+        return etree.tostring(envelope, encoding="utf-8", xml_declaration=True)
+
+    def _registrar_diagnostico(self, mensagem, **dados):
+        current_app.logger.info(
+            "[fiscal_manifestacao] %s | pynfe=%s uf=%s ambiente=%s dados=%s",
+            mensagem,
+            _versao_pynfe_instalada(),
+            self.uf,
+            "homologacao" if self.homologacao else "producao",
+            dados,
+        )
+
+
 class PyNFeDistribuicaoClient:
     def __init__(self, certificado_path, senha, uf, homologacao):
         try:
@@ -510,6 +813,13 @@ class PyNFeDistribuicaoClient:
             ) from exc
 
         self.comunicacao = ComunicacaoSefaz(uf, certificado_path, senha, homologacao)
+        self.adaptador_manifestacao = SefazManifestacaoDestinatarioAdapter(
+            self.comunicacao,
+            certificado_path,
+            senha,
+            uf,
+            homologacao,
+        )
 
     def consultar(self, cnpj, ultimo_nsu):
         nsu = int(ultimo_nsu or 0)
@@ -520,24 +830,11 @@ class PyNFeDistribuicaoClient:
         return getattr(resposta, "text", resposta)
 
     def manifestar(self, cnpj, chave_acesso, evento_codigo, justificativa=None):
-        for nome_metodo in [
-            "manifestar",
-            "manifestacao_destinatario",
-            "evento_manifestacao_destinatario",
-            "recepcao_evento_manifestacao_destinatario",
-        ]:
-            if hasattr(self.comunicacao, nome_metodo):
-                metodo = getattr(self.comunicacao, nome_metodo)
-                resposta = metodo(
-                    cnpj=cnpj,
-                    chave=chave_acesso,
-                    evento=evento_codigo,
-                    justificativa=justificativa,
-                )
-                return getattr(resposta, "text", resposta)
-
-        raise FiscalIntegracaoErro(
-            "A biblioteca PyNFe instalada nao expôs metodo de Manifestacao do Destinatario neste ambiente."
+        return self.adaptador_manifestacao.manifestar(
+            cnpj,
+            chave_acesso,
+            evento_codigo,
+            justificativa=justificativa,
         )
 
     def baixar_xml_completo(self, cnpj, chave_acesso, ultimo_nsu):
@@ -582,10 +879,12 @@ def _status_retorno_evento(xml_resposta):
             "xml_bytes": xml_bytes,
         }
 
+    inf_evento = _filho(raiz, "infEvento")
+    origem_status = inf_evento if inf_evento is not None else raiz
     return {
-        "status_retorno": _texto_xml(raiz, "cStat"),
-        "motivo_retorno": _texto_xml(raiz, "xMotivo"),
-        "protocolo": _texto_xml(raiz, "nProt"),
+        "status_retorno": _texto_xml(origem_status, "cStat"),
+        "motivo_retorno": _texto_xml(origem_status, "xMotivo"),
+        "protocolo": _texto_xml(origem_status, "nProt"),
         "xml_bytes": xml_bytes,
     }
 
@@ -781,9 +1080,19 @@ def manifestar_documento_fiscal(documento_id, evento, usuario, justificativa=Non
         )
         retorno = _status_retorno_evento(resposta)
     except FiscalIntegracaoErro as exc:
-        return False, str(exc), documento
+        current_app.logger.exception(
+            "[fiscal_manifestacao] Falha de integracao ao manifestar NF-e %s: %s",
+            documento.chave_acesso,
+            exc,
+        )
+        return False, MENSAGEM_MANIFESTACAO_FALHOU, documento
     except Exception as exc:
-        return False, f"Falha ao manifestar NF-e na Sefaz: {exc}", documento
+        current_app.logger.exception(
+            "[fiscal_manifestacao] Erro inesperado ao manifestar NF-e %s: %s",
+            documento.chave_acesso,
+            exc,
+        )
+        return False, MENSAGEM_MANIFESTACAO_FALHOU, documento
 
     caminho_evento = _caminho_evento(documento.chave_acesso, evento)
     with open(caminho_evento, "wb") as destino:
