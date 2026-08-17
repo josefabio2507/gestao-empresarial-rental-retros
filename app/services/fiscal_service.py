@@ -1,4 +1,4 @@
-﻿import os
+import os
 import re
 import base64
 import gzip
@@ -943,7 +943,8 @@ class PyNFeDistribuicaoClient:
 
         envelope = etree.Element(etree.QName(NAMESPACE_SOAP12, "Envelope"), nsmap={"soap12": NAMESPACE_SOAP12})
         body = etree.SubElement(envelope, etree.QName(NAMESPACE_SOAP12, "Body"))
-        dados = etree.SubElement(body, etree.QName(NAMESPACE_DISTRIBUICAO_DFE, "nfeDadosMsg"))
+        metodo = etree.SubElement(body, etree.QName(NAMESPACE_DISTRIBUICAO_DFE, "nfeDistDFeInteresse"))
+        dados = etree.SubElement(metodo, etree.QName(NAMESPACE_DISTRIBUICAO_DFE, "nfeDadosMsg"))
         dados.append(dist_dfe)
         return etree.tostring(envelope, encoding="utf-8", xml_declaration=True)
 
