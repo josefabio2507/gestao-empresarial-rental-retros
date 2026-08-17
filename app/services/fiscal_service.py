@@ -799,11 +799,7 @@ class SefazManifestacaoDestinatarioAdapter:
     def _envelope_soap(self, xml_evento):
         envelope = etree.Element(etree.QName(NAMESPACE_SOAP12, "Envelope"), nsmap={"soap12": NAMESPACE_SOAP12})
         body = etree.SubElement(envelope, etree.QName(NAMESPACE_SOAP12, "Body"))
-        metodo = etree.SubElement(
-            body,
-            etree.QName(NAMESPACE_RECEPCAO_EVENTO, "nfeRecepcaoEventoNF"),
-        )
-        dados = etree.SubElement(metodo, etree.QName(NAMESPACE_RECEPCAO_EVENTO, "nfeDadosMsg"))
+        dados = etree.SubElement(body, etree.QName(NAMESPACE_RECEPCAO_EVENTO, "nfeDadosMsg"))
         dados.append(etree.fromstring(xml_evento))
         return etree.tostring(envelope, encoding="utf-8", xml_declaration=True)
 
