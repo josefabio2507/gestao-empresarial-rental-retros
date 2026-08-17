@@ -28,7 +28,9 @@ from app.models import (
 from app.services.fiscal_service import (
     FiscalIntegracaoErro,
     MENSAGEM_MANIFESTACAO_FALHOU,
+    PyNFeDistribuicaoClient,
     SefazManifestacaoDestinatarioAdapter,
+    SOAP_ACTION_DISTRIBUICAO_DFE,
     SOAP_ACTION_RECEPCAO_EVENTO,
     buscar_documentos_para_ordem_compra,
     consultar_documentos_sefaz,
@@ -581,6 +583,38 @@ class FiscalDocumentosTestCase(unittest.TestCase):
         self.assertIn(b"nfeDadosMsg", payload)
         self.assertNotIn(b"nfeRecepcaoEventoNF", payload)
         self.assertIn("Erro interno Sefaz", str(contexto.exception))
+
+    def test_download_xml_completo_fallback_consulta_por_chave_nfe(self):
+        cliente = PyNFeDistribuicaoClient.__new__(PyNFeDistribuicaoClient)
+        cliente.comunicacao = object()
+        cliente.adaptador_manifestacao = SefazManifestacaoDestinatarioAdapter(
+            comunicacao=object(),
+            certificado_path="certificado.pfx",
+            senha="segredo",
+            uf="sp",
+            homologacao=False,
+        )
+        resposta = Mock(status_code=200, text="<retDistDFeInt><cStat>138</cStat></retDistDFeInt>")
+
+        with patch(
+            "app.services.fiscal_service._certificado_pem_do_a1",
+            return_value=(b"key", b"cert"),
+        ), patch(
+            "app.services.fiscal_service.requests.post",
+            return_value=resposta,
+        ) as post_mock:
+            retorno = cliente.baixar_xml_completo(
+                "44555666000177",
+                "35260811222333000181550010000001231000001234",
+                "999",
+            )
+
+        headers = post_mock.call_args.kwargs["headers"]
+        payload = post_mock.call_args.kwargs["data"]
+        self.assertIn(SOAP_ACTION_DISTRIBUICAO_DFE, headers["Content-Type"])
+        self.assertIn(b"consChNFe", payload)
+        self.assertIn(b"35260811222333000181550010000001231000001234", payload)
+        self.assertIn("retDistDFeInt", retorno)
 
     def test_manifestacao_nao_exibe_erro_tecnico_da_pynfe_ao_usuario(self):
         sucesso, _, _ = salvar_certificado_a1(

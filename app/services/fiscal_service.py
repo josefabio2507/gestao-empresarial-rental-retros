@@ -1,4 +1,4 @@
-import os
+﻿import os
 import re
 import base64
 import gzip
@@ -75,13 +75,28 @@ VERSAO_ENVIO_EVENTO = "1.00"
 NAMESPACE_NFE = "http://www.portalfiscal.inf.br/nfe"
 NAMESPACE_SOAP12 = "http://www.w3.org/2003/05/soap-envelope"
 NAMESPACE_RECEPCAO_EVENTO = "http://www.portalfiscal.inf.br/nfe/wsdl/NFeRecepcaoEvento4"
+NAMESPACE_DISTRIBUICAO_DFE = "http://www.portalfiscal.inf.br/nfe/wsdl/NFeDistribuicaoDFe"
 SOAP_ACTION_RECEPCAO_EVENTO = f"{NAMESPACE_RECEPCAO_EVENTO}/nfeRecepcaoEventoNF"
+SOAP_ACTION_DISTRIBUICAO_DFE = f"{NAMESPACE_DISTRIBUICAO_DFE}/nfeDistDFeInteresse"
 ENDPOINT_RECEPCAO_EVENTO_PRODUCAO = (
     "https://www.nfe.fazenda.gov.br/NFeRecepcaoEvento4/NFeRecepcaoEvento4.asmx"
 )
 ENDPOINT_RECEPCAO_EVENTO_HOMOLOGACAO = (
     "https://hom.nfe.fazenda.gov.br/NFeRecepcaoEvento4/NFeRecepcaoEvento4.asmx"
 )
+ENDPOINT_DISTRIBUICAO_DFE_PRODUCAO = (
+    "https://www1.nfe.fazenda.gov.br/NFeDistribuicaoDFe/NFeDistribuicaoDFe.asmx"
+)
+ENDPOINT_DISTRIBUICAO_DFE_HOMOLOGACAO = (
+    "https://hom1.nfe.fazenda.gov.br/NFeDistribuicaoDFe/NFeDistribuicaoDFe.asmx"
+)
+CODIGOS_UF_IBGE = {
+    "ro": "11", "ac": "12", "am": "13", "rr": "14", "pa": "15", "ap": "16", "to": "17",
+    "ma": "21", "pi": "22", "ce": "23", "rn": "24", "pb": "25", "pe": "26", "al": "27", "se": "28", "ba": "29",
+    "mg": "31", "es": "32", "rj": "33", "sp": "35",
+    "pr": "41", "sc": "42", "rs": "43",
+    "ms": "50", "mt": "51", "go": "52", "df": "53",
+}
 MENSAGEM_MANIFESTACAO_FALHOU = (
     "Não foi possível transmitir a manifestação à Sefaz. "
     "O sistema registrou o diagnóstico técnico para análise. "
@@ -552,6 +567,15 @@ def _endpoint_recepcao_evento(homologacao):
     return ENDPOINT_RECEPCAO_EVENTO_PRODUCAO
 
 
+def _endpoint_distribuicao_dfe(homologacao):
+    configurado = (current_app.config.get("FISCAL_SEFAZ_DISTRIBUICAO_DFE_URL") or "").strip()
+    if configurado:
+        return configurado
+    if homologacao:
+        return ENDPOINT_DISTRIBUICAO_DFE_HOMOLOGACAO
+    return ENDPOINT_DISTRIBUICAO_DFE_PRODUCAO
+
+
 def _dh_evento_sefaz():
     return agora_brasil().astimezone().isoformat(timespec="seconds")
 
@@ -851,10 +875,77 @@ class PyNFeDistribuicaoClient:
     def baixar_xml_completo(self, cnpj, chave_acesso, ultimo_nsu):
         if hasattr(self.comunicacao, "consulta_distribuicao_chave"):
             resposta = self.comunicacao.consulta_distribuicao_chave(cnpj=cnpj, chave=chave_acesso)
-        else:
-            resposta = self.consultar(cnpj, ultimo_nsu)
-        return getattr(resposta, "text", resposta)
+            return getattr(resposta, "text", resposta)
+        return self._consultar_distribuicao_chave_fallback(cnpj, chave_acesso)
 
+    def _consultar_distribuicao_chave_fallback(self, cnpj, chave_acesso):
+        endpoint = _endpoint_distribuicao_dfe(self.adaptador_manifestacao.homologacao)
+        envelope = self._envelope_distribuicao_chave(cnpj, chave_acesso)
+        chave_pem, certificado_pem = _certificado_pem_do_a1(
+            self.adaptador_manifestacao.certificado_path,
+            self.adaptador_manifestacao.senha,
+        )
+
+        with tempfile.NamedTemporaryFile(suffix=".pem", delete=False) as cert_file, tempfile.NamedTemporaryFile(
+            suffix=".key",
+            delete=False,
+        ) as key_file:
+            cert_file.write(certificado_pem)
+            key_file.write(chave_pem)
+            cert_file.flush()
+            key_file.flush()
+            cert_path = cert_file.name
+            key_path = key_file.name
+
+        try:
+            resposta = requests.post(
+                endpoint,
+                data=envelope,
+                headers={
+                    "Content-Type": f'application/soap+xml; charset=utf-8; action="{SOAP_ACTION_DISTRIBUICAO_DFE}"',
+                },
+                cert=(cert_path, key_path),
+                timeout=60,
+            )
+            texto_resposta = resposta.text or ""
+            resumo_resposta = re.sub(r"\s+", " ", texto_resposta).strip()[:2000] or "sem corpo de resposta"
+            current_app.logger.info(
+                "[fiscal_distribuicao] Consulta por chave retornou HTTP %s para NF-e %s. Corpo: %s",
+                resposta.status_code,
+                chave_acesso,
+                resumo_resposta,
+            )
+            if resposta.status_code >= 400:
+                raise FiscalIntegracaoErro(
+                    f"Sefaz retornou HTTP {resposta.status_code} ao consultar XML completo por chave. "
+                    f"Corpo da resposta: {resumo_resposta}"
+                )
+            return texto_resposta
+        finally:
+            for caminho in (cert_path, key_path):
+                try:
+                    os.remove(caminho)
+                except OSError:
+                    current_app.logger.warning("Nao foi possivel remover arquivo temporario fiscal: %s", caminho)
+
+    def _envelope_distribuicao_chave(self, cnpj, chave_acesso):
+        uf = (self.adaptador_manifestacao.uf or "").lower()
+        codigo_uf = CODIGOS_UF_IBGE.get(uf)
+        if not codigo_uf:
+            raise FiscalIntegracaoErro("UF configurada sem codigo IBGE para consulta Distribuicao DF-e.")
+
+        dist_dfe = etree.Element(etree.QName(NAMESPACE_NFE, "distDFeInt"), nsmap={None: NAMESPACE_NFE}, versao="1.01")
+        etree.SubElement(dist_dfe, etree.QName(NAMESPACE_NFE, "tpAmb")).text = "2" if self.adaptador_manifestacao.homologacao else "1"
+        etree.SubElement(dist_dfe, etree.QName(NAMESPACE_NFE, "cUFAutor")).text = codigo_uf
+        etree.SubElement(dist_dfe, etree.QName(NAMESPACE_NFE, "CNPJ")).text = cnpj
+        cons_chave = etree.SubElement(dist_dfe, etree.QName(NAMESPACE_NFE, "consChNFe"))
+        etree.SubElement(cons_chave, etree.QName(NAMESPACE_NFE, "chNFe")).text = chave_acesso
+
+        envelope = etree.Element(etree.QName(NAMESPACE_SOAP12, "Envelope"), nsmap={"soap12": NAMESPACE_SOAP12})
+        body = etree.SubElement(envelope, etree.QName(NAMESPACE_SOAP12, "Body"))
+        dados = etree.SubElement(body, etree.QName(NAMESPACE_DISTRIBUICAO_DFE, "nfeDadosMsg"))
+        dados.append(dist_dfe)
+        return etree.tostring(envelope, encoding="utf-8", xml_declaration=True)
 
 def _texto_xml(raiz, nome):
     for item in raiz.iter():
