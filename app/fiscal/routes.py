@@ -5,10 +5,14 @@ from app.decorators import module_permission_required
 from app.fiscal import fiscal_bp
 from app.models import FiscalDocumento
 from app.services.fiscal_service import (
+    baixar_xml_completo_documento,
     buscar_certificados,
     buscar_controles_nsu,
     buscar_documentos_fiscais,
     consultar_documentos_sefaz,
+    eventos_manifestacao_disponiveis,
+    manifestar_documento_fiscal,
+    rotulos_status_documento,
     salvar_certificado_a1,
     salvar_xml_documento,
 )
@@ -32,6 +36,8 @@ def documentos():
         filtros=request.args,
         certificados=buscar_certificados(),
         controles_nsu=buscar_controles_nsu(),
+        status_documentos=rotulos_status_documento(),
+        eventos_manifestacao=eventos_manifestacao_disponiveis(),
     )
 
 
@@ -84,11 +90,47 @@ def consultar_sefaz():
     return redirect(url_for("fiscal.documentos"))
 
 
+@fiscal_bp.route("/documentos/<int:documento_id>/manifestar", methods=["POST"])
+@login_required
+@module_permission_required("fiscal", "documentos_fiscais", "editar")
+def manifestar(documento_id):
+    sucesso, mensagem, documento = manifestar_documento_fiscal(
+        documento_id,
+        request.form.get("evento"),
+        current_user,
+        request.form.get("justificativa"),
+    )
+    if documento:
+        registrar_log(
+            "fiscal_manifestacao_destinatario",
+            f"Manifestacao registrada. Documento ID: {documento.id}. Evento: {request.form.get('evento')}.",
+        )
+    flash(mensagem, "success" if sucesso else "danger")
+    return redirect(url_for("fiscal.documentos"))
+
+
+@fiscal_bp.route("/documentos/<int:documento_id>/baixar-xml-completo", methods=["POST"])
+@login_required
+@module_permission_required("fiscal", "documentos_fiscais", "criar")
+def baixar_xml_completo(documento_id):
+    sucesso, mensagem, documento = baixar_xml_completo_documento(documento_id, current_user)
+    if documento:
+        registrar_log(
+            "fiscal_xml_completo_baixado",
+            f"Tentativa de download do XML completo. Documento ID: {documento.id}.",
+        )
+    flash(mensagem, "success" if sucesso else "danger")
+    return redirect(url_for("fiscal.documentos"))
+
+
 @fiscal_bp.route("/documentos/<int:documento_id>/xml")
 @login_required
 @module_permission_required("fiscal", "documentos_fiscais", "visualizar")
 def baixar_xml(documento_id):
     documento = FiscalDocumento.query.get_or_404(documento_id)
+    if not documento.xml_path:
+        flash("XML completo ainda nao esta disponivel para esta NF-e.", "warning")
+        return redirect(url_for("fiscal.documentos"))
     return send_file(documento.xml_path, as_attachment=True, download_name=f"{documento.chave_acesso}.xml")
 
 
@@ -97,4 +139,7 @@ def baixar_xml(documento_id):
 @module_permission_required("fiscal", "documentos_fiscais", "visualizar")
 def baixar_danfe(documento_id):
     documento = FiscalDocumento.query.get_or_404(documento_id)
+    if not documento.danfe_path:
+        flash("DANFE ainda nao foi gerado para esta NF-e.", "warning")
+        return redirect(url_for("fiscal.documentos"))
     return send_file(documento.danfe_path, as_attachment=True, download_name=f"{documento.chave_acesso}.pdf")

@@ -1744,9 +1744,23 @@ class FiscalDocumento(db.Model):
     destinatario_nome = db.Column(db.String(180), nullable=True)
     destinatario_cnpj = db.Column(db.String(14), nullable=False, index=True)
     valor_total = db.Column(db.Numeric(12, 2), default=0, nullable=False)
-    xml_path = db.Column(db.String(500), nullable=False)
+    xml_path = db.Column(db.String(500), nullable=True)
     danfe_path = db.Column(db.String(500), nullable=True)
-    status = db.Column(db.String(30), default="Disponivel", nullable=False, index=True)
+    tipo_distribuicao = db.Column(db.String(30), default="procNFe", nullable=False, index=True)
+    tem_xml_completo = db.Column(db.Boolean, default=True, nullable=False, index=True)
+    manifestacao_status = db.Column(db.String(40), nullable=True, index=True)
+    manifestacao_evento = db.Column(db.String(40), nullable=True)
+    manifestacao_protocolo = db.Column(db.String(80), nullable=True)
+    manifestacao_em = db.Column(db.DateTime, nullable=True)
+    manifestado_por_usuario_id = db.Column(
+        db.Integer,
+        db.ForeignKey("usuarios.id"),
+        nullable=True,
+        index=True,
+    )
+    xml_completo_baixado_em = db.Column(db.DateTime, nullable=True)
+    ultima_consulta_em = db.Column(db.DateTime, nullable=True)
+    status = db.Column(db.String(40), default="XML baixado", nullable=False, index=True)
     ordem_compra_id = db.Column(
         db.Integer,
         db.ForeignKey("suprimentos_ordens_compra.id"),
@@ -1770,11 +1784,18 @@ class FiscalDocumento(db.Model):
     )
 
     ordem_compra = db.relationship("SuprimentosOrdemCompra", back_populates="documentos_fiscais")
-    vinculado_por = db.relationship("Usuario")
+    vinculado_por = db.relationship("Usuario", foreign_keys=[vinculado_por_usuario_id])
+    manifestado_por = db.relationship("Usuario", foreign_keys=[manifestado_por_usuario_id])
+    manifestacoes = db.relationship(
+        "FiscalManifestacaoNFe",
+        back_populates="documento",
+        cascade="all, delete-orphan",
+        order_by="FiscalManifestacaoNFe.criado_em.desc()",
+    )
 
     __table_args__ = (
         db.CheckConstraint(
-            "status in ('Disponivel', 'Vinculado', 'Cancelado')",
+            "status in ('Resumo localizado', 'Aguardando manifestacao', 'Ciencia registrada', 'XML baixado', 'Vinculado a OC', 'Confirmada', 'Desconhecida', 'Operacao nao realizada', 'Cancelada')",
             name="ck_fiscal_documentos_status",
         ),
     )
@@ -1783,8 +1804,43 @@ class FiscalDocumento(db.Model):
     def vinculado(self):
         return self.ordem_compra_id is not None
 
+    @property
+    def xml_disponivel(self):
+        return bool(self.tem_xml_completo and self.xml_path)
+
     def __repr__(self):
         return f"<FiscalDocumento {self.chave_acesso}>"
+
+
+class FiscalManifestacaoNFe(db.Model):
+    __tablename__ = "fiscal_manifestacoes_nfe"
+
+    id = db.Column(db.Integer, primary_key=True)
+    documento_id = db.Column(
+        db.Integer,
+        db.ForeignKey("fiscal_documentos.id"),
+        nullable=False,
+        index=True,
+    )
+    chave_acesso = db.Column(db.String(44), nullable=False, index=True)
+    evento = db.Column(db.String(40), nullable=False, index=True)
+    status_retorno = db.Column(db.String(20), nullable=True)
+    motivo_retorno = db.Column(db.Text, nullable=True)
+    protocolo = db.Column(db.String(80), nullable=True)
+    xml_evento_path = db.Column(db.String(500), nullable=True)
+    usuario_id = db.Column(
+        db.Integer,
+        db.ForeignKey("usuarios.id"),
+        nullable=False,
+        index=True,
+    )
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
+
+    documento = db.relationship("FiscalDocumento", back_populates="manifestacoes")
+    usuario = db.relationship("Usuario")
+
+    def __repr__(self):
+        return f"<FiscalManifestacaoNFe {self.chave_acesso} {self.evento}>"
 
 
 class SuprimentosOrdemCompraParcela(db.Model):
