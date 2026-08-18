@@ -559,6 +559,12 @@ def _versao_pynfe_instalada():
         return "nao instalada"
 
 
+def _versao_signxml_instalada():
+    try:
+        return metadata.version("signxml")
+    except metadata.PackageNotFoundError:
+        return "nao instalada"
+
 def _endpoint_recepcao_evento(homologacao):
     configurado = (current_app.config.get("FISCAL_SEFAZ_RECEPCAO_EVENTO_URL") or "").strip()
     if configurado:
@@ -815,9 +821,22 @@ class SefazManifestacaoDestinatarioAdapter:
         # pelo schema da Sefaz, em vez de depender de uma busca como filha direta.
         if inf_evento_assinado is not inf_evento:
             evento.replace(inf_evento, inf_evento_assinado)
-        assinatura = inf_evento_assinado.find(".//{http://www.w3.org/2000/09/xmldsig#}Signature")
+        assinatura = (
+            inf_evento_assinado.find("{http://www.w3.org/2000/09/xmldsig#}Signature")
+            or inf_evento_assinado.find("Signature")
+        )
         if assinatura is None:
-            raise FiscalIntegracaoErro("Nao foi possivel assinar o evento de manifestacao.")
+            elementos = [etree.QName(elemento).localname for elemento in inf_evento_assinado.iter()]
+            self._registrar_diagnostico(
+                "manifestacao_assinatura_nao_localizada",
+                signxml=_versao_signxml_instalada(),
+                elemento_raiz=etree.QName(inf_evento_assinado).localname,
+                elementos=elementos,
+            )
+            raise FiscalIntegracaoErro(
+                "Nao foi possivel assinar o evento de manifestacao. "
+                f"SignXML {_versao_signxml_instalada()}; elementos retornados: {', '.join(elementos)}."
+            )
         return etree.tostring(env_evento, encoding="utf-8", xml_declaration=True)
 
     def _envelope_soap(self, xml_evento):
@@ -829,9 +848,10 @@ class SefazManifestacaoDestinatarioAdapter:
 
     def _registrar_diagnostico(self, mensagem, **dados):
         current_app.logger.info(
-            "[fiscal_manifestacao] %s | pynfe=%s uf=%s ambiente=%s dados=%s",
+            "[fiscal_manifestacao] %s | pynfe=%s signxml=%s uf=%s ambiente=%s dados=%s",
             mensagem,
             _versao_pynfe_instalada(),
+            _versao_signxml_instalada(),
             self.uf,
             "homologacao" if self.homologacao else "producao",
             dados,
