@@ -810,10 +810,14 @@ class SefazManifestacaoDestinatarioAdapter:
             reference_uri=f"#{identificador}",
             always_add_key_value=False,
         )
-        assinatura = inf_evento_assinado.find("{http://www.w3.org/2000/09/xmldsig#}Signature")
+        # Algumas versoes do SignXML devolvem uma copia do infEvento assinado.
+        # Usa esse elemento completo para manter a assinatura no lugar previsto
+        # pelo schema da Sefaz, em vez de depender de uma busca como filha direta.
+        if inf_evento_assinado is not inf_evento:
+            evento.replace(inf_evento, inf_evento_assinado)
+        assinatura = inf_evento_assinado.find(".//{http://www.w3.org/2000/09/xmldsig#}Signature")
         if assinatura is None:
             raise FiscalIntegracaoErro("Nao foi possivel assinar o evento de manifestacao.")
-        evento.append(assinatura)
         return etree.tostring(env_evento, encoding="utf-8", xml_declaration=True)
 
     def _envelope_soap(self, xml_evento):
