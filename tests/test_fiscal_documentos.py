@@ -7,6 +7,8 @@ from datetime import datetime, timedelta, timezone
 from io import BytesIO
 from unittest.mock import Mock, patch
 
+from lxml import etree
+
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
@@ -692,6 +694,10 @@ class FiscalDocumentosTestCase(unittest.TestCase):
 
         self.assertRegex(xml_assinado.decode("utf-8"), r"<idLote>\d{15}</idLote>")
         self.assertIn(b'<Signature xmlns="http://www.w3.org/2000/09/xmldsig#"', xml_assinado)
+        xml_raiz = etree.fromstring(xml_assinado)
+        inf_evento = xml_raiz.find("{http://www.portalfiscal.inf.br/nfe}evento/{http://www.portalfiscal.inf.br/nfe}infEvento")
+        self.assertIsNotNone(inf_evento)
+        self.assertIsNotNone(inf_evento.find("{http://www.w3.org/2000/09/xmldsig#}Signature"))
         self.assertNotIn(b"ds:", xml_assinado)
         self.assertIn(b"http://www.w3.org/TR/2001/REC-xml-c14n-20010315", xml_assinado)
         self.assertNotIn(b"http://www.w3.org/2006/12/xml-c14n11", xml_assinado)
