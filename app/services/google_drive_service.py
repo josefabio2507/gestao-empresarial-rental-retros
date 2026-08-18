@@ -19,6 +19,23 @@ class GoogleDriveConfiguracaoErro(Exception):
     pass
 
 
+def erro_cota_storage_service_account(exc):
+    mensagem = str(exc).lower()
+    return (
+        "storagequotaexceeded" in mensagem
+        or "service accounts do not have storage quota" in mensagem
+        or "service accounts don't have storage quota" in mensagem
+    )
+
+
+def mensagem_cota_storage_service_account():
+    return (
+        "O Google Drive recusou o upload porque a conta de servico nao possui cota de armazenamento. "
+        "Configure GOOGLE_DRIVE_EVIDENCIAS_OC_FOLDER_ID com uma pasta dentro de um Drive compartilhado "
+        "e adicione a conta de servico como membro desse Drive."
+    )
+
+
 def carregar_credenciais_service_account(scopes=None):
     try:
         from google.oauth2 import service_account
