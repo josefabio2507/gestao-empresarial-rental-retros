@@ -1,10 +1,17 @@
-import os
+﻿import os
 import base64
 import gzip
 import tempfile
 import unittest
+from datetime import datetime, timedelta, timezone
 from io import BytesIO
 from unittest.mock import Mock, patch
+
+from cryptography import x509
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives.serialization import pkcs12
+from cryptography.x509.oid import NameOID
 
 os.environ["DATABASE_URL"] = "sqlite:///:memory:"
 
@@ -625,6 +632,47 @@ class FiscalDocumentosTestCase(unittest.TestCase):
         self.assertNotIn(b"nfeRecepcaoEventoNF", payload)
         self.assertIn("Erro interno Sefaz", str(contexto.exception))
 
+    def test_xml_manifestacao_usa_assinatura_compativel_com_schema_nfe(self):
+        key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+        subject = issuer = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "Teste Rental Retros")])
+        certificado = (
+            x509.CertificateBuilder()
+            .subject_name(subject)
+            .issuer_name(issuer)
+            .public_key(key.public_key())
+            .serial_number(x509.random_serial_number())
+            .not_valid_before(datetime.now(timezone.utc) - timedelta(days=1))
+            .not_valid_after(datetime.now(timezone.utc) + timedelta(days=30))
+            .sign(key, hashes.SHA256())
+        )
+        conteudo_pfx = pkcs12.serialize_key_and_certificates(
+            name=b"teste",
+            key=key,
+            cert=certificado,
+            cas=None,
+            encryption_algorithm=serialization.BestAvailableEncryption(b"123456"),
+        )
+        certificado_path = os.path.join(self.tmp.name, "certificado-teste.pfx")
+        with open(certificado_path, "wb") as destino:
+            destino.write(conteudo_pfx)
+        adapter = SefazManifestacaoDestinatarioAdapter(
+            comunicacao=object(),
+            certificado_path=certificado_path,
+            senha="123456",
+            uf="sp",
+            homologacao=False,
+        )
+
+        xml_assinado = adapter._montar_xml_evento_assinado(
+            "44555666000177",
+            "35260811222333000181550010000001231000001234",
+            "210210",
+        )
+
+        self.assertIn(b'<Signature xmlns="http://www.w3.org/2000/09/xmldsig#"', xml_assinado)
+        self.assertNotIn(b"ds:", xml_assinado)
+        self.assertIn(b"http://www.w3.org/TR/2001/REC-xml-c14n-20010315", xml_assinado)
+        self.assertNotIn(b"http://www.w3.org/2006/12/xml-c14n11", xml_assinado)
     def test_download_xml_completo_fallback_consulta_por_chave_nfe(self):
         cliente = PyNFeDistribuicaoClient.__new__(PyNFeDistribuicaoClient)
         cliente.comunicacao = object()

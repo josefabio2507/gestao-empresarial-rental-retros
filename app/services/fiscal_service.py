@@ -809,6 +809,7 @@ class SefazManifestacaoDestinatarioAdapter:
             method=methods.enveloped,
             signature_algorithm="rsa-sha1",
             digest_algorithm="sha1",
+            c14n_algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315",
         )
         signer.namespaces = {None: "http://www.w3.org/2000/09/xmldsig#"}
         evento_assinado = signer.sign(
