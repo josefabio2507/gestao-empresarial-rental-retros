@@ -50,6 +50,8 @@ from app.services.google_drive_service import (
     GOOGLE_DRIVE_UPLOAD_SCOPES,
     GoogleDriveConfiguracaoErro,
     criar_google_drive_client,
+    erro_cota_storage_service_account,
+    mensagem_cota_storage_service_account,
     upload_arquivo_google_drive,
 )
 
@@ -431,8 +433,10 @@ def salvar_evidencia_item_ordem_compra(
                 }
         except GoogleDriveConfiguracaoErro as exc:
             return False, str(exc), evidencia
-        except Exception:
+        except Exception as exc:
             current_app.logger.exception("Falha ao enviar evidencia de OC para o Google Drive.")
+            if erro_cota_storage_service_account(exc):
+                return False, mensagem_cota_storage_service_account(), evidencia
             return False, "Nao foi possivel enviar a foto para o Google Drive.", evidencia
 
     if not evidencia:

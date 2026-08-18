@@ -64,11 +64,19 @@ class FakeDriveCreateRequest:
         return self.resposta
 
 
+class FakeDriveErroCotaRequest:
+    def execute(self):
+        raise RuntimeError("storageQuotaExceeded: Service Accounts do not have storage quota.")
+
+
 class FakeDriveFiles:
-    def __init__(self):
+    def __init__(self, falhar_cota=False):
         self.uploads = []
+        self.falhar_cota = falhar_cota
 
     def create(self, body, media_body, fields, supportsAllDrives):
+        if self.falhar_cota:
+            return FakeDriveErroCotaRequest()
         self.uploads.append(
             {
                 "body": body,
@@ -88,8 +96,8 @@ class FakeDriveFiles:
 
 
 class FakeDriveService:
-    def __init__(self):
-        self._files = FakeDriveFiles()
+    def __init__(self, falhar_cota=False):
+        self._files = FakeDriveFiles(falhar_cota=falhar_cota)
 
     def files(self):
         return self._files
@@ -764,6 +772,29 @@ class SuprimentosOrdensCompraTestCase(unittest.TestCase):
         self.assertEqual(1, len(drive.files().uploads))
         self.assertIn("OC-", evidencia.foto_1_nome_arquivo)
         self.assertTrue(evidencia.foto_1_nome_arquivo.endswith(".jpg"))
+
+    def test_exibe_mensagem_clara_quando_drive_recusa_cota_da_conta_servico(self):
+        ordem = self._criar_ordem_compra()
+        item = ordem.itens[0]
+        self.app.config["GOOGLE_DRIVE_EVIDENCIAS_OC_FOLDER_ID"] = "pasta-drive"
+
+        sucesso, mensagem, evidencia = salvar_evidencia_item_ordem_compra(
+            ordem,
+            item,
+            {
+                "data_evidencia": "2026-08-10",
+                "destino_real": "Aplicado na retro R01",
+            },
+            {"foto_1": self._arquivo_imagem()},
+            self.admin,
+            drive_service=FakeDriveService(falhar_cota=True),
+        )
+
+        self.assertFalse(sucesso)
+        self.assertIn("conta de servico nao possui cota", mensagem)
+        self.assertIn("Drive compartilhado", mensagem)
+        self.assertIsNone(evidencia)
+        self.assertEqual(0, SuprimentosOrdemCompraItemEvidencia.query.count())
 
     def test_nao_salva_evidencia_sem_foto_nova(self):
         ordem = self._criar_ordem_compra()
