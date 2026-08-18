@@ -821,10 +821,9 @@ class SefazManifestacaoDestinatarioAdapter:
         # pelo schema da Sefaz, em vez de depender de uma busca como filha direta.
         if inf_evento_assinado is not inf_evento:
             evento.replace(inf_evento, inf_evento_assinado)
-        assinatura = (
-            inf_evento_assinado.find("{http://www.w3.org/2000/09/xmldsig#}Signature")
-            or inf_evento_assinado.find("Signature")
-        )
+        assinatura = inf_evento_assinado.find("{http://www.w3.org/2000/09/xmldsig#}Signature")
+        if assinatura is None:
+            assinatura = inf_evento_assinado.find("Signature")
         if assinatura is None:
             elementos = [etree.QName(elemento).localname for elemento in inf_evento_assinado.iter()]
             self._registrar_diagnostico(
@@ -837,6 +836,9 @@ class SefazManifestacaoDestinatarioAdapter:
                 "Nao foi possivel assinar o evento de manifestacao. "
                 f"SignXML {_versao_signxml_instalada()}; elementos retornados: {', '.join(elementos)}."
             )
+        # O infEvento e a parte assinada; o schema exige Signature como irma dele em evento.
+        inf_evento_assinado.remove(assinatura)
+        evento.append(assinatura)
         return etree.tostring(env_evento, encoding="utf-8", xml_declaration=True)
 
     def _envelope_soap(self, xml_evento):
