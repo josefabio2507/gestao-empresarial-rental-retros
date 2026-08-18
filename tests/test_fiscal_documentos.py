@@ -669,10 +669,12 @@ class FiscalDocumentosTestCase(unittest.TestCase):
             "210210",
         )
 
+        self.assertRegex(xml_assinado.decode("utf-8"), r"<idLote>\d{15}</idLote>")
         self.assertIn(b'<Signature xmlns="http://www.w3.org/2000/09/xmldsig#"', xml_assinado)
         self.assertNotIn(b"ds:", xml_assinado)
         self.assertIn(b"http://www.w3.org/TR/2001/REC-xml-c14n-20010315", xml_assinado)
         self.assertNotIn(b"http://www.w3.org/2006/12/xml-c14n11", xml_assinado)
+
     def test_download_xml_completo_fallback_consulta_por_chave_nfe(self):
         cliente = PyNFeDistribuicaoClient.__new__(PyNFeDistribuicaoClient)
         cliente.comunicacao = object()

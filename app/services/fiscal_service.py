@@ -780,7 +780,7 @@ class SefazManifestacaoDestinatarioAdapter:
             nsmap=nsmap,
             versao=VERSAO_ENVIO_EVENTO,
         )
-        etree.SubElement(env_evento, etree.QName(NAMESPACE_NFE, "idLote")).text = uuid.uuid4().hex[:15]
+        etree.SubElement(env_evento, etree.QName(NAMESPACE_NFE, "idLote")).text = f"{uuid.uuid4().int % 10**15:015d}"
         evento = etree.SubElement(
             env_evento,
             etree.QName(NAMESPACE_NFE, "evento"),
