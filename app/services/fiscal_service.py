@@ -1,4 +1,4 @@
-import os
+﻿import os
 import re
 import base64
 import gzip
@@ -810,6 +810,7 @@ class SefazManifestacaoDestinatarioAdapter:
             signature_algorithm="rsa-sha1",
             digest_algorithm="sha1",
         )
+        signer.namespaces = {None: "http://www.w3.org/2000/09/xmldsig#"}
         evento_assinado = signer.sign(
             evento,
             key=chave_pem,
