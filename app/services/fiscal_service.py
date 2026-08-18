@@ -802,15 +802,18 @@ class SefazManifestacaoDestinatarioAdapter:
             c14n_algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315",
         )
         signer.namespaces = {None: "http://www.w3.org/2000/09/xmldsig#"}
-        evento_assinado = signer.sign(
-            evento,
+        # A Sefaz exige a assinatura aplicada ao infEvento, nao ao elemento evento.
+        inf_evento_assinado = signer.sign(
+            inf_evento,
             key=chave_pem,
             cert=certificado_pem,
             reference_uri=f"#{identificador}",
             always_add_key_value=False,
         )
-        env_evento.remove(evento)
-        env_evento.append(evento_assinado)
+        assinatura = inf_evento_assinado.find("{http://www.w3.org/2000/09/xmldsig#}Signature")
+        if assinatura is None:
+            raise FiscalIntegracaoErro("Nao foi possivel assinar o evento de manifestacao.")
+        evento.append(assinatura)
         return etree.tostring(env_evento, encoding="utf-8", xml_declaration=True)
 
     def _envelope_soap(self, xml_evento):
