@@ -630,16 +630,6 @@ class SefazManifestacaoDestinatarioAdapter:
             metodos_detectados=metodos_detectados,
         )
 
-        resposta = self._manifestar_via_pynfe(
-            metodos_detectados,
-            cnpj,
-            chave_acesso,
-            evento_codigo,
-            justificativa=justificativa,
-        )
-        if resposta is not None:
-            return resposta
-
         return self._manifestar_via_fallback(
             cnpj,
             chave_acesso,
