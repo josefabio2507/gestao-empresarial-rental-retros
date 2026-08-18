@@ -597,6 +597,27 @@ class FiscalDocumentosTestCase(unittest.TestCase):
         self.assertTrue(self.FakeManifestacaoAdapter.fallback_usado)
         self.assertIn("Evento registrado", resposta)
 
+    def test_adaptador_manifestacao_prefere_fallback_validado_mesmo_com_metodo_pynfe(self):
+        self.FakeManifestacaoAdapter.fallback_usado = False
+        comunicacao = Mock()
+        comunicacao.manifestar.return_value = "<retEnvEvento />"
+        adapter = self.FakeManifestacaoAdapter(
+            comunicacao=comunicacao,
+            certificado_path="certificado.pfx",
+            senha="segredo",
+            uf="sp",
+            homologacao=False,
+        )
+
+        resposta = adapter.manifestar(
+            "44555666000177",
+            "35260811222333000181550010000001231000001234",
+            "210210",
+        )
+
+        self.assertTrue(self.FakeManifestacaoAdapter.fallback_usado)
+        comunicacao.manifestar.assert_not_called()
+        self.assertIn("Evento registrado", resposta)
     def test_fallback_manifestacao_envia_acao_soap_e_trata_http_500(self):
         adapter = SefazManifestacaoDestinatarioAdapter(
             comunicacao=object(),
