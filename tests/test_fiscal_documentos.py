@@ -530,6 +530,47 @@ class FiscalDocumentosTestCase(unittest.TestCase):
         self.assertEqual("210210", chamada["manifestacao"]["evento_codigo"])
         self.assertEqual(documento.chave_acesso, chamada["download"]["chave_acesso"])
 
+    def test_manifestacao_sem_retevento_nao_marca_documento_como_manifestado(self):
+        sucesso, _, _ = salvar_certificado_a1(
+            {
+                "cnpj_empresa": "44.555.666/0001-77",
+                "razao_social": "Rental Retros LTDA",
+                "senha": "segredo",
+            },
+            self._arquivo_certificado(),
+            self.admin,
+        )
+        self.assertTrue(sucesso)
+        _, _, documento = salvar_resumo_nfe_bytes(
+            XML_RESUMO_NFE,
+            nsu="101",
+            cnpj_destinatario="44555666000177",
+        )
+        self.FakePyNFeClient.chamadas = []
+        self.FakePyNFeClient.resposta_manifestacao = """<?xml version="1.0" encoding="UTF-8"?>
+<envEvento xmlns="http://www.portalfiscal.inf.br/nfe" versao="1.00">
+  <evento versao="1.00">
+    <infEvento Id="ID2102103526081122233300018155001000000123100000123401">
+      <tpEvento>210210</tpEvento>
+    </infEvento>
+  </evento>
+</envEvento>
+"""
+        self.FakePyNFeClient.resposta_download = self._retorno_distribuicao_resumo()
+
+        sucesso, mensagem, manifestado = manifestar_documento_fiscal(
+            documento.id,
+            "ciencia",
+            self.admin,
+            cliente_cls=self.FakePyNFeClient,
+        )
+
+        self.assertFalse(sucesso)
+        self.assertIn("A Sefaz nao confirmou", mensagem)
+        self.assertEqual("Aguardando manifestacao", manifestado.manifestacao_status)
+        self.assertIsNone(manifestado.manifestacao_protocolo)
+        self.assertEqual(1, FiscalManifestacaoNFe.query.count())
+
     def test_adaptador_manifestacao_usa_fallback_quando_pynfe_nao_tem_metodo(self):
         self.FakeManifestacaoAdapter.fallback_usado = False
         adapter = self.FakeManifestacaoAdapter(
