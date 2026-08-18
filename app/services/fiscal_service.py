@@ -41,6 +41,7 @@ STATUS_CANCELADA = "Cancelada"
 TIPO_RESUMO_NFE = "resNFe"
 TIPO_XML_COMPLETO = "procNFe"
 TIPO_EVENTO = "evento"
+CSTAT_EVENTO_MANIFESTACAO_ACEITO = {"135", "136", "155"}
 
 EVENTOS_MANIFESTACAO = {
     "ciencia": {
@@ -982,8 +983,14 @@ def _status_retorno_evento(xml_resposta):
             "xml_bytes": xml_bytes,
         }
 
-    inf_evento = _filho(raiz, "infEvento")
-    origem_status = inf_evento if inf_evento is not None else raiz
+    ret_evento = None
+    for item in raiz.iter():
+        if item.tag.split("}")[-1] == "retEvento":
+            ret_evento = item
+            break
+
+    inf_evento_retorno = _filho(ret_evento, "infEvento") if ret_evento is not None else None
+    origem_status = inf_evento_retorno if inf_evento_retorno is not None else raiz
     return {
         "status_retorno": _texto_xml(origem_status, "cStat"),
         "motivo_retorno": _texto_xml(origem_status, "xMotivo"),
@@ -1212,6 +1219,21 @@ def manifestar_documento_fiscal(documento_id, evento, usuario, justificativa=Non
         usuario_id=usuario.id,
     )
     db.session.add(manifestacao)
+
+    if retorno["status_retorno"] not in CSTAT_EVENTO_MANIFESTACAO_ACEITO or not retorno["protocolo"]:
+        db.session.commit()
+        current_app.logger.error(
+            "[fiscal_manifestacao] Manifestacao nao confirmada pela Sefaz. NF-e: %s. Evento: %s. cStat: %s. Motivo: %s. Protocolo: %s",
+            documento.chave_acesso,
+            evento,
+            retorno["status_retorno"],
+            retorno["motivo_retorno"],
+            retorno["protocolo"],
+        )
+        return False, (
+            "A Sefaz nao confirmou o registro da manifestacao. "
+            f"Retorno: {retorno['status_retorno'] or '-'} - {retorno['motivo_retorno'] or 'sem motivo retornado'}."
+        ), documento
 
     documento.manifestacao_status = dados_evento["status"]
     documento.manifestacao_evento = evento
