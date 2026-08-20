@@ -13,6 +13,7 @@ GOOGLE_DRIVE_LIST_FIELDS = (
     "files(id,name,mimeType,webViewLink,webContentLink,createdTime)"
 )
 GOOGLE_DRIVE_UPLOAD_FIELDS = "id,name,webViewLink,webContentLink"
+GOOGLE_OAUTH_TOKEN_URI = "https://oauth2.googleapis.com/token"
 
 
 class GoogleDriveConfiguracaoErro(Exception):
@@ -71,6 +72,45 @@ def carregar_credenciais_service_account(scopes=None):
     )
 
 
+def credenciais_oauth_configuradas():
+    return all(
+        current_app.config.get(chave)
+        for chave in (
+            "GOOGLE_OAUTH_CLIENT_ID",
+            "GOOGLE_OAUTH_CLIENT_SECRET",
+            "GOOGLE_OAUTH_REFRESH_TOKEN",
+        )
+    )
+
+
+def carregar_credenciais_oauth(scopes=None):
+    try:
+        from google.oauth2.credentials import Credentials
+    except ImportError as exc:
+        raise GoogleDriveConfiguracaoErro(
+            "Bibliotecas do Google Drive não instaladas."
+        ) from exc
+
+    client_id = current_app.config.get("GOOGLE_OAUTH_CLIENT_ID")
+    client_secret = current_app.config.get("GOOGLE_OAUTH_CLIENT_SECRET")
+    refresh_token = current_app.config.get("GOOGLE_OAUTH_REFRESH_TOKEN")
+    token_uri = current_app.config.get("GOOGLE_OAUTH_TOKEN_URI") or GOOGLE_OAUTH_TOKEN_URI
+
+    if not all([client_id, client_secret, refresh_token]):
+        raise GoogleDriveConfiguracaoErro(
+            "Configure GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET e GOOGLE_OAUTH_REFRESH_TOKEN."
+        )
+
+    return Credentials(
+        token=None,
+        refresh_token=refresh_token,
+        token_uri=token_uri,
+        client_id=client_id,
+        client_secret=client_secret,
+        scopes=scopes or GOOGLE_DRIVE_UPLOAD_SCOPES,
+    )
+
+
 def criar_google_drive_client(scopes=None):
     try:
         from googleapiclient.discovery import build
@@ -81,6 +121,24 @@ def criar_google_drive_client(scopes=None):
 
     credenciais = carregar_credenciais_service_account(scopes=scopes)
     return build("drive", "v3", credentials=credenciais, cache_discovery=False)
+
+
+def criar_google_drive_client_oauth(scopes=None):
+    try:
+        from googleapiclient.discovery import build
+    except ImportError as exc:
+        raise GoogleDriveConfiguracaoErro(
+            "Bibliotecas do Google Drive não instaladas."
+        ) from exc
+
+    credenciais = carregar_credenciais_oauth(scopes=scopes)
+    return build("drive", "v3", credentials=credenciais, cache_discovery=False)
+
+
+def criar_google_drive_client_upload(scopes=None):
+    if credenciais_oauth_configuradas():
+        return criar_google_drive_client_oauth(scopes=scopes or GOOGLE_DRIVE_UPLOAD_SCOPES)
+    return criar_google_drive_client(scopes=scopes or GOOGLE_DRIVE_UPLOAD_SCOPES)
 
 
 def upload_arquivo_google_drive(service, folder_id, nome_arquivo, conteudo, mime_type):

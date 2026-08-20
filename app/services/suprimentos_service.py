@@ -49,7 +49,7 @@ from app.models import (
 from app.services.google_drive_service import (
     GOOGLE_DRIVE_UPLOAD_SCOPES,
     GoogleDriveConfiguracaoErro,
-    criar_google_drive_client,
+    criar_google_drive_client_upload,
     erro_cota_storage_service_account,
     mensagem_cota_storage_service_account,
     upload_arquivo_google_drive,
@@ -417,7 +417,7 @@ def salvar_evidencia_item_ordem_compra(
             return False, "Configure GOOGLE_DRIVE_EVIDENCIAS_OC_FOLDER_ID para salvar as fotos no Google Drive.", evidencia
 
         try:
-            service = drive_service or criar_google_drive_client(scopes=GOOGLE_DRIVE_UPLOAD_SCOPES)
+            service = drive_service or criar_google_drive_client_upload(scopes=GOOGLE_DRIVE_UPLOAD_SCOPES)
             for imagem in imagens_para_upload:
                 arquivo_drive = upload_arquivo_google_drive(
                     service,
