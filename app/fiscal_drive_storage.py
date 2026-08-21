@@ -1,4 +1,5 @@
 import os
+from io import BytesIO
 
 from flask import current_app
 
@@ -28,6 +29,10 @@ def _parece_pasta_drive(valor):
     if ":" in valor or "/" in valor or "\\" in valor:
         return False
     return len(valor) >= 10
+
+
+def _escapar_query_drive(valor):
+    return valor.replace("\\", "\\\\").replace("'", "\\'")
 
 
 def _upload_fiscal_drive(caminho, chave_config_pasta, mime_type, drive_service=None):
@@ -73,6 +78,54 @@ def _upload_fiscal_drive(caminho, chave_config_pasta, mime_type, drive_service=N
         arquivo.get("id"),
     )
     return True, ""
+
+
+def baixar_arquivo_fiscal_drive(nome_arquivo, chave_config_pasta, mime_type, drive_service=None):
+    folder_id = _valor_config(chave_config_pasta)
+    if not _parece_pasta_drive(folder_id):
+        return None
+
+    try:
+        service = drive_service or criar_google_drive_client_upload(scopes=GOOGLE_DRIVE_UPLOAD_SCOPES)
+        query = " and ".join(
+            [
+                f"'{_escapar_query_drive(folder_id)}' in parents",
+                f"name = '{_escapar_query_drive(nome_arquivo)}'",
+                "trashed = false",
+            ]
+        )
+        resposta = (
+            service.files()
+            .list(
+                q=query,
+                fields="files(id,name,createdTime)",
+                pageSize=10,
+                supportsAllDrives=True,
+                includeItemsFromAllDrives=True,
+            )
+            .execute()
+        )
+        arquivos = resposta.get("files", [])
+        if not arquivos:
+            return None
+
+        arquivo = sorted(
+            arquivos,
+            key=lambda item: item.get("createdTime") or "",
+            reverse=True,
+        )[0]
+        conteudo = service.files().get_media(fileId=arquivo["id"]).execute()
+    except Exception:
+        current_app.logger.exception(
+            "[fiscal_drive] Falha ao baixar arquivo fiscal do Google Drive. Pasta config: %s. Nome: %s",
+            chave_config_pasta,
+            nome_arquivo,
+        )
+        return None
+
+    buffer = BytesIO(conteudo)
+    buffer.seek(0)
+    return buffer
 
 
 def sincronizar_documento_fiscal_drive(documento, drive_service=None):
