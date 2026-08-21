@@ -1,6 +1,37 @@
 {% extends "base.html" %}
 
 {% block content %}
+<style>
+    .fiscal-notas-listbox {
+        --fiscal-header-height: 45px;
+        --fiscal-row-height: 68px;
+        border: 1px solid var(--rr-border);
+        border-radius: 8px;
+        margin-top: 12px;
+        max-height: calc(var(--fiscal-header-height) + (10 * var(--fiscal-row-height)));
+        overflow: auto;
+        scrollbar-gutter: stable both-edges;
+    }
+
+    .fiscal-notas-table {
+        min-width: 1320px;
+    }
+
+    .fiscal-notas-table thead th {
+        height: var(--fiscal-header-height);
+        position: sticky;
+        top: 0;
+        z-index: 2;
+    }
+
+    .fiscal-notas-table tbody tr {
+        height: var(--fiscal-row-height);
+    }
+
+    .fiscal-notas-table td {
+        vertical-align: middle;
+    }
+</style>
 <section class="page">
     <div class="top-bar">
         <div>
