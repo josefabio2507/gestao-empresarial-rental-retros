@@ -2,7 +2,7 @@ import os
 from decimal import Decimal, InvalidOperation
 from xml.etree import ElementTree
 
-from flask import current_app
+from flask import current_app, has_app_context
 
 try:
     from brazilfiscalreport.danfe import Danfe
@@ -166,11 +166,12 @@ def gerar_danfe_pdf_xml(documento, caminho):
     if not os.path.exists(caminho) or os.path.getsize(caminho) == 0:
         raise RuntimeError("A biblioteca fiscal nao retornou um DANFE PDF valido.")
 
-    current_app.logger.warning(
-        "[fiscal_danfe] DANFE profissional gerado com BrazilFiscalReport. NF-e: %s. Arquivo: %s",
-        getattr(documento, "chave_acesso", ""),
-        os.path.basename(caminho),
-    )
+    if has_app_context():
+        current_app.logger.warning(
+            "[fiscal_danfe] DANFE profissional gerado com BrazilFiscalReport. NF-e: %s. Arquivo: %s",
+            getattr(documento, "chave_acesso", ""),
+            os.path.basename(caminho),
+        )
     return caminho
 
 
