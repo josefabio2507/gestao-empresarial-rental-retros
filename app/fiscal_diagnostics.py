@@ -83,7 +83,7 @@ def aplicar_diagnostico_manifestacao(app):
             justificativa=justificativa,
         )
         try:
-            app.logger.info(
+            app.logger.warning(
                 "[fiscal_manifestacao_xml_estrutura] chave_len=%s evento=%s estrutura=%s",
                 len(chave_acesso or ""),
                 evento_codigo,
@@ -123,7 +123,7 @@ def aplicar_diagnostico_manifestacao(app):
         dados.append(etree.fromstring(xml_evento))
         envelope_xml = etree.tostring(envelope, encoding="utf-8", xml_declaration=True)
         try:
-            app.logger.info(
+            app.logger.warning(
                 "[fiscal_manifestacao_soap_estrutura] estrutura=%s",
                 _estrutura_xml(fiscal_service, envelope_xml),
             )
@@ -137,7 +137,7 @@ def aplicar_diagnostico_manifestacao(app):
     adaptador._montar_xml_evento_assinado = _montar_xml_evento_assinado_com_diagnostico
     adaptador._envelope_soap = _envelope_soap_com_cabecalho_e_diagnostico
     _PATCH_APLICADO = True
-    app.logger.info(
+    app.logger.warning(
         "[fiscal_manifestacao_patch] Diagnostico estrutural explicito da manifestacao fiscal ativo. "
         "Envelope original preservado para referencia: %s",
         getattr(envelope_original, "__name__", "_envelope_soap"),
