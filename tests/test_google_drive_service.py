@@ -19,6 +19,9 @@ class GoogleDriveServiceTestCase(unittest.TestCase):
             GOOGLE_OAUTH_CLIENT_ID="",
             GOOGLE_OAUTH_CLIENT_SECRET="",
             GOOGLE_OAUTH_REFRESH_TOKEN="",
+            GOOGLE_CLIENT_ID="",
+            GOOGLE_CLIENT_SECRET="",
+            GOOGLE_REFRESH_TOKEN="",
             GOOGLE_OAUTH_TOKEN_URI="",
         )
         self.ctx = self.app.app_context()
@@ -52,6 +55,20 @@ class GoogleDriveServiceTestCase(unittest.TestCase):
         self.assertEqual("refresh-token", credenciais.refresh_token)
         self.assertEqual(GOOGLE_OAUTH_TOKEN_URI, credenciais.token_uri)
         self.assertEqual(GOOGLE_DRIVE_UPLOAD_SCOPES, credenciais.scopes)
+
+    def test_aceita_nomes_de_variaveis_configuradas_no_render(self):
+        self.app.config.update(
+            GOOGLE_CLIENT_ID="client-id-render",
+            GOOGLE_CLIENT_SECRET="client-secret-render",
+            GOOGLE_REFRESH_TOKEN="refresh-token-render",
+        )
+
+        self.assertTrue(credenciais_oauth_configuradas())
+        credenciais = carregar_credenciais_oauth(scopes=GOOGLE_DRIVE_UPLOAD_SCOPES)
+
+        self.assertEqual("client-id-render", credenciais.client_id)
+        self.assertEqual("client-secret-render", credenciais.client_secret)
+        self.assertEqual("refresh-token-render", credenciais.refresh_token)
 
     def test_upload_prefere_oauth_quando_configurado(self):
         self.app.config.update(
