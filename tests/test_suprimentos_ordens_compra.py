@@ -773,6 +773,33 @@ class SuprimentosOrdensCompraTestCase(unittest.TestCase):
         self.assertIn("OC-", evidencia.foto_1_nome_arquivo)
         self.assertTrue(evidencia.foto_1_nome_arquivo.endswith(".jpg"))
 
+    def test_rota_detalhes_exibe_fotos_anexadas_da_evidencia(self):
+        ordem = self._criar_ordem_compra()
+        item = ordem.itens[0]
+        self.app.config["GOOGLE_DRIVE_EVIDENCIAS_OC_FOLDER_ID"] = "pasta-drive"
+        salvar_evidencia_item_ordem_compra(
+            ordem,
+            item,
+            {
+                "data_evidencia": "2026-08-10",
+                "destino_real": "Aplicado na retro R01",
+                "observacao": "foto no recebimento",
+            },
+            {"foto_1": self._arquivo_imagem()},
+            self.admin,
+            drive_service=FakeDriveService(),
+        )
+        self._autenticar(self.admin)
+
+        resposta = self.client.get(f"/suprimentos/ordens-compra/{ordem.id}")
+
+        self.assertEqual(200, resposta.status_code)
+        self.assertIn(b"Fotos anexadas a Ordem de Compra", resposta.data)
+        self.assertIn(b"Foto 1", resposta.data)
+        self.assertIn(b"Foto 2", resposta.data)
+        self.assertIn(b"thumbnail?id=drive-file-1", resposta.data)
+        self.assertIn(b"Nenhuma foto 2 anexada", resposta.data)
+
     def test_exibe_mensagem_clara_quando_drive_recusa_cota_da_conta_servico(self):
         ordem = self._criar_ordem_compra()
         item = ordem.itens[0]
