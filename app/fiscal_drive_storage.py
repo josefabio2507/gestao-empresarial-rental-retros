@@ -97,6 +97,10 @@ def sincronizar_documento_fiscal_drive(documento, drive_service=None):
     return True, ""
 
 
+def _mensagem_com_falha_drive(mensagem, mensagem_drive):
+    return f"{mensagem} Porem, {mensagem_drive}"
+
+
 def aplicar_upload_drive_fiscal(app):
     from app.services import fiscal_service
 
@@ -104,6 +108,7 @@ def aplicar_upload_drive_fiscal(app):
         return
 
     original_salvar_xml = fiscal_service.salvar_xml_documento_bytes
+    original_baixar_xml_completo = fiscal_service.baixar_xml_completo_documento
 
     def salvar_xml_documento_bytes_com_drive(xml_bytes, nsu=None, drive_service=None):
         sucesso, mensagem, documento = original_salvar_xml(xml_bytes, nsu=nsu)
@@ -115,10 +120,29 @@ def aplicar_upload_drive_fiscal(app):
             drive_service=drive_service,
         )
         if not sucesso_drive:
-            return False, f"{mensagem} Porem, {mensagem_drive}", documento
+            return False, _mensagem_com_falha_drive(mensagem, mensagem_drive), documento
+
+        return sucesso, mensagem, documento
+
+    def baixar_xml_completo_documento_com_drive(documento_id, usuario, cliente_cls=None, drive_service=None):
+        sucesso, mensagem, documento = original_baixar_xml_completo(
+            documento_id,
+            usuario,
+            cliente_cls=cliente_cls,
+        )
+        if not sucesso or not documento or not getattr(documento, "tem_xml_completo", False):
+            return sucesso, mensagem, documento
+
+        sucesso_drive, mensagem_drive = sincronizar_documento_fiscal_drive(
+            documento,
+            drive_service=drive_service,
+        )
+        if not sucesso_drive:
+            return False, _mensagem_com_falha_drive(mensagem, mensagem_drive), documento
 
         return sucesso, mensagem, documento
 
     fiscal_service.salvar_xml_documento_bytes = salvar_xml_documento_bytes_com_drive
+    fiscal_service.baixar_xml_completo_documento = baixar_xml_completo_documento_com_drive
     fiscal_service._upload_drive_fiscal_aplicado = True
     app.logger.warning("[fiscal_drive] Upload fiscal para Drive configurado.")
