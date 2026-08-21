@@ -1,8 +1,11 @@
+import os
+
 from flask import flash, redirect, render_template, request, send_file, url_for
 from flask_login import current_user, login_required
 
 from app.decorators import module_permission_required
 from app.fiscal import fiscal_bp
+from app.fiscal_drive_storage import MIME_PDF, MIME_XML, baixar_arquivo_fiscal_drive
 from app.models import FiscalDocumento
 from app.services.fiscal_service import (
     baixar_xml_completo_documento,
@@ -123,6 +126,24 @@ def baixar_xml_completo(documento_id):
     return redirect(url_for("fiscal.documentos"))
 
 
+def _baixar_arquivo_documento_fiscal(documento, caminho, sufixo, chave_config_pasta, mime_type):
+    nome_arquivo = f"{documento.chave_acesso}.{sufixo}"
+    if caminho and os.path.exists(caminho):
+        return send_file(caminho, as_attachment=True, download_name=nome_arquivo)
+
+    arquivo_drive = baixar_arquivo_fiscal_drive(nome_arquivo, chave_config_pasta, mime_type)
+    if arquivo_drive:
+        return send_file(
+            arquivo_drive,
+            as_attachment=True,
+            download_name=nome_arquivo,
+            mimetype=mime_type,
+        )
+
+    flash("Arquivo fiscal nao encontrado no servidor nem na pasta do Google Drive configurada.", "warning")
+    return redirect(url_for("fiscal.documentos"))
+
+
 @fiscal_bp.route("/documentos/<int:documento_id>/xml")
 @login_required
 @module_permission_required("fiscal", "documentos_fiscais", "visualizar")
@@ -131,7 +152,13 @@ def baixar_xml(documento_id):
     if not documento.xml_path:
         flash("XML completo ainda nao esta disponivel para esta NF-e.", "warning")
         return redirect(url_for("fiscal.documentos"))
-    return send_file(documento.xml_path, as_attachment=True, download_name=f"{documento.chave_acesso}.xml")
+    return _baixar_arquivo_documento_fiscal(
+        documento,
+        documento.xml_path,
+        "xml",
+        "FISCAL_XML_DIR",
+        MIME_XML,
+    )
 
 
 @fiscal_bp.route("/documentos/<int:documento_id>/danfe")
@@ -142,4 +169,10 @@ def baixar_danfe(documento_id):
     if not documento.danfe_path:
         flash("DANFE ainda nao foi gerado para esta NF-e.", "warning")
         return redirect(url_for("fiscal.documentos"))
-    return send_file(documento.danfe_path, as_attachment=True, download_name=f"{documento.chave_acesso}.pdf")
+    return _baixar_arquivo_documento_fiscal(
+        documento,
+        documento.danfe_path,
+        "pdf",
+        "FISCAL_DANFE_DIR",
+        MIME_PDF,
+    )
