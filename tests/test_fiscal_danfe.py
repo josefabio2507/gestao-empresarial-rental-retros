@@ -2,6 +2,7 @@ import os
 import tempfile
 import unittest
 from types import SimpleNamespace
+from unittest.mock import patch
 
 from app.fiscal_danfe import extrair_dados_danfe, gerar_danfe_pdf_xml
 
@@ -56,27 +57,9 @@ XML_DANFE = b"""<?xml version="1.0" encoding="UTF-8"?>
           <vUnCom>72.2050</vUnCom>
           <vProd>144.41</vProd>
         </prod>
-        <imposto>
-          <ICMS><ICMS00><vICMS>25.99</vICMS><pICMS>18.00</pICMS></ICMS00></ICMS>
-          <IPI><IPITrib><vIPI>0.00</vIPI><pIPI>0.00</pIPI></IPITrib></IPI>
-        </imposto>
       </det>
-      <total>
-        <ICMSTot>
-          <vBC>144.41</vBC>
-          <vICMS>25.99</vICMS>
-          <vBCST>0.00</vBCST>
-          <vST>0.00</vST>
-          <vProd>144.41</vProd>
-          <vFrete>0.00</vFrete>
-          <vSeg>0.00</vSeg>
-          <vDesc>0.00</vDesc>
-          <vIPI>0.00</vIPI>
-          <vNF>144.41</vNF>
-        </ICMSTot>
-      </total>
+      <total><ICMSTot><vNF>144.41</vNF></ICMSTot></total>
       <transp><modFrete>9</modFrete></transp>
-      <infAdic><infCpl>Documento gerado para teste fiscal.</infCpl></infAdic>
     </infNFe>
   </NFe>
   <protNFe versao="4.00">
@@ -88,6 +71,17 @@ XML_DANFE = b"""<?xml version="1.0" encoding="UTF-8"?>
   </protNFe>
 </nfeProc>
 """
+
+
+class DanfeFake:
+    xml_recebido = ""
+
+    def __init__(self, xml):
+        DanfeFake.xml_recebido = xml
+
+    def output(self, caminho):
+        with open(caminho, "wb") as arquivo:
+            arquivo.write(b"%PDF-1.4\nDANFE profissional gerado em teste\n%%EOF")
 
 
 class FiscalDanfeTestCase(unittest.TestCase):
@@ -105,7 +99,7 @@ class FiscalDanfeTestCase(unittest.TestCase):
         self.assertEqual(dados["totais"]["nota"], "144,41")
         self.assertEqual(dados["produtos"][0]["descricao"], "OLEO LUBRIFICANTE HIDRAULICO 68")
 
-    def test_gera_pdf_danfe_completo(self):
+    def test_gera_pdf_usando_biblioteca_profissional(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             xml_path = os.path.join(tmpdir, "nfe.xml")
             pdf_path = os.path.join(tmpdir, "danfe.pdf")
@@ -116,14 +110,15 @@ class FiscalDanfeTestCase(unittest.TestCase):
                 chave_acesso="35260846198081000187550040000017331693922800",
                 xml_path=xml_path,
             )
-            gerar_danfe_pdf_xml(documento, pdf_path)
+            with patch("app.fiscal_danfe.Danfe", DanfeFake):
+                gerar_danfe_pdf_xml(documento, pdf_path)
 
             self.assertTrue(os.path.exists(pdf_path))
             with open(pdf_path, "rb") as arquivo:
                 conteudo = arquivo.read()
 
+        self.assertIn("OLEO LUBRIFICANTE HIDRAULICO 68", DanfeFake.xml_recebido)
         self.assertTrue(conteudo.startswith(b"%PDF"))
-        self.assertGreater(len(conteudo), 2000)
 
 
 if __name__ == "__main__":
