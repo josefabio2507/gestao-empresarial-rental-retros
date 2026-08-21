@@ -72,14 +72,21 @@ def carregar_credenciais_service_account(scopes=None):
     )
 
 
+def _valor_config_oauth(chave_principal, chave_alternativa):
+    return (
+        current_app.config.get(chave_principal)
+        or current_app.config.get(chave_alternativa)
+        or ""
+    ).strip()
+
+
 def credenciais_oauth_configuradas():
     return all(
-        current_app.config.get(chave)
-        for chave in (
-            "GOOGLE_OAUTH_CLIENT_ID",
-            "GOOGLE_OAUTH_CLIENT_SECRET",
-            "GOOGLE_OAUTH_REFRESH_TOKEN",
-        )
+        [
+            _valor_config_oauth("GOOGLE_OAUTH_CLIENT_ID", "GOOGLE_CLIENT_ID"),
+            _valor_config_oauth("GOOGLE_OAUTH_CLIENT_SECRET", "GOOGLE_CLIENT_SECRET"),
+            _valor_config_oauth("GOOGLE_OAUTH_REFRESH_TOKEN", "GOOGLE_REFRESH_TOKEN"),
+        ]
     )
 
 
@@ -91,9 +98,9 @@ def carregar_credenciais_oauth(scopes=None):
             "Bibliotecas do Google Drive não instaladas."
         ) from exc
 
-    client_id = current_app.config.get("GOOGLE_OAUTH_CLIENT_ID")
-    client_secret = current_app.config.get("GOOGLE_OAUTH_CLIENT_SECRET")
-    refresh_token = current_app.config.get("GOOGLE_OAUTH_REFRESH_TOKEN")
+    client_id = _valor_config_oauth("GOOGLE_OAUTH_CLIENT_ID", "GOOGLE_CLIENT_ID")
+    client_secret = _valor_config_oauth("GOOGLE_OAUTH_CLIENT_SECRET", "GOOGLE_CLIENT_SECRET")
+    refresh_token = _valor_config_oauth("GOOGLE_OAUTH_REFRESH_TOKEN", "GOOGLE_REFRESH_TOKEN")
     token_uri = current_app.config.get("GOOGLE_OAUTH_TOKEN_URI") or GOOGLE_OAUTH_TOKEN_URI
 
     if not all([client_id, client_secret, refresh_token]):
