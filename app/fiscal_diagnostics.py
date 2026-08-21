@@ -1,4 +1,4 @@
-"""Diagnosticos seguros para integracoes fiscais.
+"""Diagnosticos e ajustes seguros para integracoes fiscais.
 
 Nao registra XML completo, certificado, assinatura, CNPJ, chave completa ou
 conteudo fiscal sensivel. O objetivo e expor apenas a estrutura enviada para
@@ -62,6 +62,28 @@ def _estrutura_xml(fiscal_service, xml_bytes):
     return estrutura[:140]
 
 
+def _certificado_pem_assinatura_unico(fiscal_service, certificado_path, senha):
+    with open(certificado_path, "rb") as origem:
+        conteudo = origem.read()
+
+    chave, certificado, _adicionais = fiscal_service.pkcs12.load_key_and_certificates(
+        conteudo,
+        senha.encode() if senha else None,
+    )
+    if not chave or not certificado:
+        raise fiscal_service.FiscalIntegracaoErro(
+            "Certificado A1 sem chave privada ou certificado publico valido."
+        )
+
+    chave_pem = chave.private_bytes(
+        encoding=fiscal_service.serialization.Encoding.PEM,
+        format=fiscal_service.serialization.PrivateFormat.TraditionalOpenSSL,
+        encryption_algorithm=fiscal_service.serialization.NoEncryption(),
+    )
+    certificado_pem = certificado.public_bytes(fiscal_service.serialization.Encoding.PEM)
+    return chave_pem, certificado_pem
+
+
 def aplicar_diagnostico_manifestacao(app):
     global _PATCH_APLICADO
     if _PATCH_APLICADO:
@@ -73,6 +95,10 @@ def aplicar_diagnostico_manifestacao(app):
     etree = fiscal_service.etree
     montar_original = adaptador._montar_xml_evento_assinado
     envelope_original = adaptador._envelope_soap
+    certificado_original = fiscal_service._certificado_pem_do_a1
+
+    def _certificado_pem_do_a1_assinatura_unica(certificado_path, senha):
+        return _certificado_pem_assinatura_unico(fiscal_service, certificado_path, senha)
 
     def _montar_xml_evento_assinado_com_diagnostico(self, cnpj, chave_acesso, evento_codigo, justificativa=None):
         xml_evento = montar_original(
@@ -134,11 +160,13 @@ def aplicar_diagnostico_manifestacao(app):
             )
         return envelope_xml
 
+    fiscal_service._certificado_pem_do_a1 = _certificado_pem_do_a1_assinatura_unica
     adaptador._montar_xml_evento_assinado = _montar_xml_evento_assinado_com_diagnostico
     adaptador._envelope_soap = _envelope_soap_com_cabecalho_e_diagnostico
     _PATCH_APLICADO = True
     app.logger.warning(
         "[fiscal_manifestacao_patch] Diagnostico estrutural explicito da manifestacao fiscal ativo. "
-        "Envelope original preservado para referencia: %s",
+        "Envelope original: %s. Certificado original: %s. Assinatura XML com certificado unico ativa.",
         getattr(envelope_original, "__name__", "_envelope_soap"),
+        getattr(certificado_original, "__name__", "_certificado_pem_do_a1"),
     )
