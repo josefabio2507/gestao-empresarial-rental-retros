@@ -16,6 +16,7 @@ def create_app():
     from app.startup_migrations import executar_migrations_startup
     from app.startup_seeds import executar_seeds_startup
     from app.fiscal_diagnostics import aplicar_diagnostico_manifestacao
+    from app.fiscal_drive_storage import aplicar_upload_drive_fiscal
 
     @login_manager.user_loader
     def load_user(user_id):
@@ -27,6 +28,7 @@ def create_app():
     executar_migrations_startup(app)
     executar_seeds_startup(app)
     aplicar_diagnostico_manifestacao(app)
+    aplicar_upload_drive_fiscal(app)
 
     # Importação dos Blueprints
     from app.main.routes import main_bp
