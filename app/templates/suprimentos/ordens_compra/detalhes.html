@@ -184,6 +184,53 @@
         </table>
     </div>
 
+    <div class="details-card">
+        <h2>Fotos anexadas a Ordem de Compra</h2>
+        {% set ns = namespace(total=0) %}
+        <div class="evidencias-fotos-grid">
+            {% for item in ordem.itens %}
+                {% set evidencia = item.evidencia %}
+                {% if evidencia and evidencia.status != "Cancelado" and evidencia.foto_1_drive_file_id %}
+                    {% set ns.total = ns.total + 1 %}
+                    <div class="evidencia-foto-card">
+                        <div class="evidencia-foto-item">
+                            <strong>{{ item.item_codigo_snapshot or "-" }} - {{ item.item_descricao_snapshot }}</strong>
+                            <span>{{ evidencia.destino_real }}</span>
+                        </div>
+                        <div class="evidencia-foto-dupla">
+                            <div class="evidencia-imagem-bloco">
+                                <span>Foto 1</span>
+                                <a class="evidencia-imagem-campo" href="{{ evidencia.foto_1_link or '#' }}" target="_blank" rel="noopener">
+                                    <img src="https://drive.google.com/thumbnail?id={{ evidencia.foto_1_drive_file_id }}&sz=w800" alt="Foto 1 da evidencia do item {{ item.item_descricao_snapshot }}">
+                                </a>
+                                {% if evidencia.foto_1_link %}
+                                    <a class="btn btn-secondary btn-sm" href="{{ evidencia.foto_1_link }}" target="_blank" rel="noopener">Abrir foto 1</a>
+                                {% endif %}
+                            </div>
+                            <div class="evidencia-imagem-bloco">
+                                <span>Foto 2</span>
+                                {% if evidencia.foto_2_drive_file_id %}
+                                    <a class="evidencia-imagem-campo" href="{{ evidencia.foto_2_link or '#' }}" target="_blank" rel="noopener">
+                                        <img src="https://drive.google.com/thumbnail?id={{ evidencia.foto_2_drive_file_id }}&sz=w800" alt="Foto 2 da evidencia do item {{ item.item_descricao_snapshot }}">
+                                    </a>
+                                    {% if evidencia.foto_2_link %}
+                                        <a class="btn btn-secondary btn-sm" href="{{ evidencia.foto_2_link }}" target="_blank" rel="noopener">Abrir foto 2</a>
+                                    {% endif %}
+                                {% else %}
+                                    <div class="evidencia-imagem-campo evidencia-imagem-placeholder">
+                                        Nenhuma foto 2 anexada.
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
+            {% endfor %}
+        </div>
+        {% if ns.total == 0 %}
+            <p class="empty-state">Nenhuma foto anexada aos itens desta Ordem de Compra.</p>
+        {% endif %}
+    </div>
     <div class="table-card table-responsive">
         <h2>Recebimentos</h2>
         <table class="table">
