@@ -126,10 +126,18 @@ def baixar_xml_completo(documento_id):
     return redirect(url_for("fiscal.documentos"))
 
 
+def _caminho_local_existente(caminho):
+    if not caminho:
+        return ""
+    caminho_absoluto = caminho if os.path.isabs(caminho) else os.path.abspath(caminho)
+    return caminho_absoluto if os.path.exists(caminho_absoluto) else ""
+
+
 def _baixar_arquivo_documento_fiscal(documento, caminho, sufixo, chave_config_pasta, mime_type):
     nome_arquivo = f"{documento.chave_acesso}.{sufixo}"
-    if caminho and os.path.exists(caminho):
-        return send_file(caminho, as_attachment=True, download_name=nome_arquivo)
+    caminho_local = _caminho_local_existente(caminho)
+    if caminho_local:
+        return send_file(caminho_local, as_attachment=True, download_name=nome_arquivo)
 
     arquivo_drive = baixar_arquivo_fiscal_drive(nome_arquivo, chave_config_pasta, mime_type)
     if arquivo_drive:
