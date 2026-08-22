@@ -159,10 +159,17 @@
                                         </form>
                                     {% endif %}
                                 {% endif %}
-                                {% if documento.xml_path %}
+                                {% if documento.xml_path and documento.danfe_path %}
+                                    <button
+                                        class="btn btn-secondary"
+                                        type="button"
+                                        data-download-fiscal-duplo
+                                        data-xml-url="{{ url_for('fiscal.baixar_xml', documento_id=documento.id) }}"
+                                        data-danfe-url="{{ url_for('fiscal.baixar_danfe', documento_id=documento.id) }}"
+                                    >Baixar XML + DANFE</button>
+                                {% elif documento.xml_path %}
                                     <a class="btn btn-secondary" href="{{ url_for('fiscal.baixar_xml', documento_id=documento.id) }}">XML</a>
-                                {% endif %}
-                                {% if documento.danfe_path %}
+                                {% elif documento.danfe_path %}
                                     <a class="btn btn-secondary" href="{{ url_for('fiscal.baixar_danfe', documento_id=documento.id) }}">DANFE</a>
                                 {% endif %}
                             </td>
@@ -203,4 +210,43 @@
         </table>
     </div>
 </section>
+
+<script>
+    document.addEventListener("click", function (event) {
+        const botao = event.target.closest("[data-download-fiscal-duplo]");
+        if (!botao) {
+            return;
+        }
+
+        const urls = [botao.dataset.xmlUrl, botao.dataset.danfeUrl].filter(Boolean);
+        if (!urls.length) {
+            return;
+        }
+
+        const textoOriginal = botao.textContent;
+        botao.disabled = true;
+        botao.textContent = "Baixando...";
+
+        urls.forEach(function (url, indice) {
+            window.setTimeout(function () {
+                const iframe = document.createElement("iframe");
+                iframe.src = url;
+                iframe.style.display = "none";
+                iframe.setAttribute("aria-hidden", "true");
+                document.body.appendChild(iframe);
+
+                window.setTimeout(function () {
+                    iframe.remove();
+                }, 60000);
+
+                if (indice === urls.length - 1) {
+                    window.setTimeout(function () {
+                        botao.disabled = false;
+                        botao.textContent = textoOriginal;
+                    }, 1500);
+                }
+            }, indice * 1200);
+        });
+    });
+</script>
 {% endblock %}
