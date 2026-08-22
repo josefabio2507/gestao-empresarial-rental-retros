@@ -18,6 +18,7 @@ def create_app():
     from app.fiscal_diagnostics import aplicar_diagnostico_manifestacao
     from app.fiscal_danfe import aplicar_gerador_danfe_completo
     from app.fiscal_drive_storage import aplicar_upload_drive_fiscal
+    from app.fiscal_oc_vinculo import aplicar_busca_documentos_oc
 
     @login_manager.user_loader
     def load_user(user_id):
@@ -31,6 +32,7 @@ def create_app():
     aplicar_diagnostico_manifestacao(app)
     aplicar_gerador_danfe_completo(app)
     aplicar_upload_drive_fiscal(app)
+    aplicar_busca_documentos_oc(app)
 
     # Importação dos Blueprints
     from app.main.routes import main_bp
