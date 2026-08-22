@@ -120,6 +120,7 @@
                 </thead>
                 <tbody>
                     {% for documento in documentos %}
+                        {% set manifestacao_registrada = documento.manifestacao_status or documento.manifestacao_protocolo %}
                         <tr>
                             <td>{{ documento.numero }}</td>
                             <td>{{ documento.serie or "-" }}</td>
@@ -144,16 +145,18 @@
                             <td>{{ documento.ordem_compra.numero if documento.ordem_compra else "-" }}</td>
                             <td class="col-acoes">
                                 {% if not documento.tem_xml_completo %}
-                                    {% for evento, dados in eventos_manifestacao.items() %}
-                                        <form class="inline-form" method="POST" action="{{ url_for('fiscal.manifestar', documento_id=documento.id) }}">
-                                            <input type="hidden" name="evento" value="{{ evento }}">
-                                            {% if evento == "nao_realizada" %}
-                                                <input name="justificativa" placeholder="Justificativa" required>
-                                            {% endif %}
-                                            <button class="btn btn-secondary" type="submit">{{ dados.label }}</button>
-                                        </form>
-                                    {% endfor %}
-                                    {% if documento.manifestacao_status %}
+                                    {% if not manifestacao_registrada %}
+                                        {% for evento, dados in eventos_manifestacao.items() %}
+                                            <form class="inline-form" method="POST" action="{{ url_for('fiscal.manifestar', documento_id=documento.id) }}">
+                                                <input type="hidden" name="evento" value="{{ evento }}">
+                                                {% if evento == "nao_realizada" %}
+                                                    <input name="justificativa" placeholder="Justificativa" required>
+                                                {% endif %}
+                                                <button class="btn btn-secondary" type="submit">{{ dados.label }}</button>
+                                            </form>
+                                        {% endfor %}
+                                    {% endif %}
+                                    {% if manifestacao_registrada %}
                                         <form class="inline-form" method="POST" action="{{ url_for('fiscal.baixar_xml_completo', documento_id=documento.id) }}">
                                             <button class="btn btn-primary" type="submit">Baixar XML completo</button>
                                         </form>
