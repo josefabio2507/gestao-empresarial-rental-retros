@@ -17,7 +17,7 @@ from app.services.operacao_pool_service import decimal_ou_none, texto, veiculos_
 from app.services.suprimentos_service import _normalizar_imagem_para_jpg
 from app.utils.datas import agora_brasil
 
-TIPOS_COMBUSTIVEL = ["Diesel", "Diesel S10", "Gasolina", "Etanol", "Arla 32", "Outro"]
+TIPOS_COMBUSTIVEL = ["Diesel S10", "Etanol", "Etanol aditivado", "Gasolina comum", "Gasolina aditivada", "Gasolina Premium"]
 MIME_CUPOM_ABASTECIMENTO = "image/jpeg"
 
 
