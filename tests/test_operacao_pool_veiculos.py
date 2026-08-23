@@ -453,5 +453,64 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         self.assertEqual("Tipo de combustivel invalido.", mensagem)
         self.assertIsNone(abastecimento)
         self.assertNotIn("Diesel", TIPOS_COMBUSTIVEL)
+
+    def test_central_custos_filtra_ativos_por_padrao(self):
+        veiculo_ativo = self._criar_veiculo("CAR501", "CAMINHAO ATIVO")
+        veiculo_inativo = self._criar_veiculo("CAR502", "CAMINHAO INATIVO")
+        veiculo_inativo.ativo = False
+        db.session.commit()
+        self._liberar_usuario(visualizar=True)
+        self._autenticar(self.usuario)
+
+        resposta = self.client.get("/operacao/central-custos")
+
+        self.assertEqual(200, resposta.status_code)
+        self.assertIn(b"Central de Custos", resposta.data)
+        self.assertIn(veiculo_ativo.identificacao.encode(), resposta.data)
+        self.assertNotIn(veiculo_inativo.identificacao.encode(), resposta.data)
+
+    def test_central_custos_veiculo_totaliza_abastecimento_e_exibe_detalhe(self):
+        veiculo = self._criar_veiculo("CAR503", "CAMINHAO CENTRAL")
+        self.usuario.colaborador_id = self.motorista.id
+        db.session.commit()
+        vincular_responsavel(
+            {"colaborador_id": str(self.motorista.id), "tipo_leitura": "odometro", "leitura_inicial": "10"},
+            usuario=self.admin,
+            veiculo=veiculo,
+        )
+        self.app.config["GOOGLE_DRIVE_CUPONS_ABASTECIMENTO_FOLDER_ID"] = "pasta-cupons"
+        sucesso, mensagem, abastecimento = salvar_abastecimento(
+            {
+                "data_abastecimento": "2026-08-23",
+                "tipo_combustivel": "Gasolina comum",
+                "qtd_litros": "20,00",
+                "preco": "123,45",
+            },
+            {"cupom_fiscal": self._arquivo_imagem()},
+            self.usuario,
+            veiculo=veiculo,
+            drive_service=FakeDriveService(),
+        )
+        self.assertTrue(sucesso, mensagem)
+        self._liberar_usuario(visualizar=True)
+        self._autenticar(self.usuario)
+
+        resposta = self.client.get(f"/operacao/central-custos/veiculos/{veiculo.id}")
+
+        self.assertEqual(200, resposta.status_code)
+        self.assertIn(b"Abastecimento", resposta.data)
+        self.assertIn(b"Manuten", resposta.data)
+        self.assertIn(b"Multas", resposta.data)
+        self.assertIn(b"Impostos e Taxas", resposta.data)
+        self.assertIn(b"Gasolina comum", resposta.data)
+        self.assertIn(b"R$ 123,45", resposta.data)
+        self.assertIn(b"Ver", resposta.data)
+
+        detalhe = self.client.get(f"/operacao/abastecimentos/{abastecimento.id}/ver")
+        self.assertEqual(200, detalhe.status_code)
+        self.assertIn(b"Detalhes do abastecimento", detalhe.data)
+        self.assertIn(b"Ver cupom fiscal", detalhe.data)
+        self.assertIn(b"https://drive.google.com/cupom/1", detalhe.data)
+
 if __name__ == "__main__":
     unittest.main()

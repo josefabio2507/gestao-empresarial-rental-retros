@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    .cost-summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+    .cost-summary-item {
+        border: 1px solid #d9e2ec;
+        border-radius: 8px;
+        padding: 12px;
+        background: #fff;
+    }
+    .cost-summary-item span {
+        display: block;
+        color: #526173;
+        font-size: 0.86rem;
+        margin-bottom: 6px;
+    }
+    .cost-summary-item strong {
+        font-size: 1.1rem;
+    }
+    .cost-list-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+        gap: 16px;
+    }
+    .cost-listbox {
+        height: 430px;
+        overflow: auto;
+    }
+</style>
+
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Central de Custos</span>
+            <h1>{{ veiculo.identificacao }} - {{ veiculo.descricao }}</h1>
+            <p>{{ veiculo.centro_custo }}</p>
+        </div>
+        <a class="btn btn-secondary" href="{{ url_for('operacao.central_custos') }}">Voltar</a>
+    </div>
+
+    <form class="filter-bar" method="GET">
+        <div class="form-group">
+            <label for="data_inicio">Data inicial</label>
+            <input id="data_inicio" name="data_inicio" type="date" value="{{ filtros.get('data_inicio', '') }}">
+        </div>
+        <div class="form-group">
+            <label for="data_fim">Data final</label>
+            <input id="data_fim" name="data_fim" type="date" value="{{ filtros.get('data_fim', '') }}">
+        </div>
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Filtrar</button>
+            <a class="btn btn-secondary" href="{{ url_for('operacao.central_custos_veiculo', veiculo_id=veiculo.id) }}">Limpar</a>
+        </div>
+    </form>
+
+    <div class="cost-summary-grid">
+        {% for chave, grupo in grupos.items() %}
+            <div class="cost-summary-item">
+                <span>{{ grupo.titulo }}</span>
+                <strong>{{ formatar_moeda_brl(grupo.total) }}</strong>
+            </div>
+        {% endfor %}
+        <div class="cost-summary-item">
+            <span>Total geral</span>
+            <strong>{{ formatar_moeda_brl(total_geral) }}</strong>
+        </div>
+    </div>
+
+    <div class="cost-list-grid">
+        {% for chave, grupo in grupos.items() %}
+            <div class="table-card table-responsive cost-listbox">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th colspan="5">{{ grupo.titulo }} · {{ formatar_moeda_brl(grupo.total) }}</th>
+                        </tr>
+                        <tr>
+                            <th>Data</th>
+                            <th>Descrição</th>
+                            <th>Documento/Responsável</th>
+                            <th>Valor</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for linha in grupo.linhas %}
+                            <tr>
+                                <td class="col-nowrap">{{ linha.data.strftime('%d/%m/%Y') if linha.data else '-' }}</td>
+                                <td>{{ linha.descricao }}</td>
+                                <td>{{ linha.documento if linha.documento is defined else linha.responsavel }}</td>
+                                <td class="col-nowrap">{{ formatar_moeda_brl(linha.valor) }}</td>
+                                <td class="col-acoes">
+                                    {% if chave == 'abastecimento' %}
+                                        <a class="btn btn-secondary" href="{{ url_for('operacao.ver_abastecimento', abastecimento_id=linha.id) }}">Ver</a>
+                                    {% elif chave == 'manutencao' and linha.ordem_compra_id %}
+                                        <a class="btn btn-secondary" href="{{ url_for('suprimentos_ordens_compra.detalhes', ordem_id=linha.ordem_compra_id) }}">Ver</a>
+                                    {% else %}
+                                        <span>-</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% else %}
+                            <tr><td class="empty-state" colspan="5">{{ grupo.mensagem_vazio }}</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

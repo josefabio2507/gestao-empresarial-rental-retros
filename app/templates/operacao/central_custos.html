@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Operação · Gestão de Veículos e EGPs</span>
+            <h1>Central de Custos</h1>
+            <p>Selecione um veículo/equipamento para consultar custos operacionais.</p>
+        </div>
+        <a class="btn btn-secondary" href="{{ url_for('veiculos_equipamentos.index') }}">Voltar</a>
+    </div>
+
+    <form class="filter-bar" method="GET">
+        <div class="form-group">
+            <label for="termo">Buscar</label>
+            <input id="termo" name="termo" value="{{ filtros.get('termo', '') }}" placeholder="Identificação, placa, descrição ou centro de custo">
+        </div>
+        <div class="form-group">
+            <label for="status">Status</label>
+            <select id="status" name="status">
+                <option value="ativos" {% if status_filtro == 'ativos' %}selected{% endif %}>Ativos</option>
+                <option value="inativos" {% if status_filtro == 'inativos' %}selected{% endif %}>Inativos</option>
+                <option value="todos" {% if status_filtro == 'todos' %}selected{% endif %}>Todos</option>
+            </select>
+        </div>
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Filtrar</button>
+            <a class="btn btn-secondary" href="{{ url_for('operacao.central_custos') }}">Limpar</a>
+        </div>
+    </form>
+
+    <div class="table-card table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Veículo/equipamento</th>
+                    <th>Tipo</th>
+                    <th>Status cadastro</th>
+                    <th>Status operacional</th>
+                    <th>Centro de custo</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for veiculo in veiculos %}
+                    <tr>
+                        <td><strong>{{ veiculo.identificacao }}</strong><br><small>{{ veiculo.descricao }}</small></td>
+                        <td>{{ veiculo.tipo }}</td>
+                        <td>{{ 'Ativo' if veiculo.ativo else 'Inativo' }}</td>
+                        <td>{{ veiculo.status_operacional }}</td>
+                        <td>{{ veiculo.centro_custo }}</td>
+                        <td class="col-acoes">
+                            <a class="btn btn-primary" href="{{ url_for('operacao.central_custos_veiculo', veiculo_id=veiculo.id) }}">Selecionar</a>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr><td class="empty-state" colspan="6">Nenhum veículo/equipamento encontrado.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

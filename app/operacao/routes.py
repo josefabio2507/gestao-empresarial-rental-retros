@@ -2,8 +2,14 @@ from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from app.decorators import module_permission_required
-from app.models import OperacaoVeiculoEquipamento, OperacaoVeiculoResponsavel
+from app.models import OperacaoAbastecimento, OperacaoVeiculoEquipamento, OperacaoVeiculoResponsavel
 from app.services.logs_service import registrar_log
+from app.services.operacao_central_custos_service import (
+    STATUS_CENTRAL_CUSTOS,
+    buscar_veiculos_central_custos,
+    central_custos_veiculo as central_custos_veiculo_service,
+    periodo_filtros,
+)
 from app.services.operacao_abastecimento_service import (
     TIPOS_COMBUSTIVEL,
     buscar_abastecimento_usuario,
@@ -33,6 +39,7 @@ from app.services.operacao_pool_service import (
     vincular_responsavel,
 )
 from app.services.permissoes_service import usuario_tem_permissao
+from app.services.suprimentos_service import formatar_moeda_brl
 
 operacao_bp = Blueprint("operacao", __name__)
 MODULO_POOL = "gestao_veiculos_epgs"
@@ -60,6 +67,42 @@ def index():
 def status():
     return "Operação online."
 
+
+@operacao_bp.route("/central-custos")
+@login_required
+@module_permission_required("operacao", MODULO_POOL, "visualizar")
+def central_custos():
+    veiculos, status_filtro = buscar_veiculos_central_custos(request.args)
+    return render_template(
+        "operacao/central_custos.html",
+        veiculos=veiculos,
+        filtros=request.args,
+        status_filtro=status_filtro,
+        status_opcoes=STATUS_CENTRAL_CUSTOS,
+    )
+
+
+@operacao_bp.route("/central-custos/veiculos/<int:veiculo_id>")
+@login_required
+@module_permission_required("operacao", MODULO_POOL, "visualizar")
+def central_custos_veiculo(veiculo_id):
+    veiculo = buscar_por_id(OperacaoVeiculoEquipamento, veiculo_id)
+    if not veiculo:
+        flash("Veiculo/equipamento nao encontrado.", "warning")
+        return redirect(url_for("operacao.central_custos"))
+
+    data_inicio, data_fim = periodo_filtros(request.args)
+    grupos, total_geral = central_custos_veiculo_service(veiculo, data_inicio, data_fim)
+    return render_template(
+        "operacao/central_custos_veiculo.html",
+        veiculo=veiculo,
+        grupos=grupos,
+        total_geral=total_geral,
+        filtros=request.args,
+        data_inicio=data_inicio,
+        data_fim=data_fim,
+        formatar_moeda_brl=formatar_moeda_brl,
+    )
 
 @operacao_bp.route("/abastecimentos")
 @login_required
@@ -108,6 +151,21 @@ def novo_abastecimento(veiculo_id):
         modo="novo",
     )
 
+
+@operacao_bp.route("/abastecimentos/<int:abastecimento_id>/ver")
+@login_required
+@module_permission_required("operacao", MODULO_POOL, "visualizar")
+def ver_abastecimento(abastecimento_id):
+    abastecimento = buscar_por_id(OperacaoAbastecimento, abastecimento_id)
+    if not abastecimento:
+        flash("Abastecimento nao encontrado.", "warning")
+        return redirect(url_for("operacao.central_custos"))
+
+    return render_template(
+        "operacao/abastecimento_detalhes.html",
+        abastecimento=abastecimento,
+        formatar_moeda_brl=formatar_moeda_brl,
+    )
 
 @operacao_bp.route("/abastecimentos/<int:abastecimento_id>/editar", methods=["GET", "POST"])
 @login_required
