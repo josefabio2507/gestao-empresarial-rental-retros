@@ -12,14 +12,6 @@
 
     <div class="modules-grid">
         {% if pode_acessar_gestao_veiculos %}
-            <a class="module-card module-card-link" href="{{ url_for('operacao.pool') }}">
-                <span class="module-card-icon">P</span>
-                <h2>Pool de Veiculos</h2>
-                <p>Responsabilidade operacional, disponibilidade e historico de leituras.</p>
-                <span class="badge badge-success">Liberado</span>
-                <span class="module-status">Acessar modulo</span>
-            </a>
-
             <a class="module-card module-card-link" href="{{ url_for('veiculos_equipamentos.index') }}">
                 <span class="module-card-icon">V</span>
                 <h2>Gestão de Veículos e EGPs</h2>

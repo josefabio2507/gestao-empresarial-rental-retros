@@ -104,6 +104,8 @@ class OperacaoVeiculosEpgsTestCase(unittest.TestCase):
 
         self.assertEqual(200, resposta.status_code)
         self.assertIn("Gestão de Veículos e EGPs".encode("utf-8"), resposta.data)
+        self.assertIn("Veículos e Equipamentos".encode("utf-8"), resposta.data)
+        self.assertIn("Pool de Veículos".encode("utf-8"), resposta.data)
 
     def test_usuario_sem_permissao_nao_acessa_rota_direta(self):
         self._autenticar(self.usuario)
