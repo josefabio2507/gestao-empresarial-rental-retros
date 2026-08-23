@@ -109,6 +109,28 @@
     height: var(--listbox-row-height);
 }
 
+.epis-listbox {
+    --listbox-header-height: 45px;
+    --listbox-row-height: 52px;
+    max-height: calc(var(--listbox-header-height) + (10 * var(--listbox-row-height)) + 48px);
+    overflow: auto;
+    scrollbar-gutter: stable both-edges;
+}
+
+.epis-listbox .table {
+    min-width: 980px;
+}
+
+.epis-listbox .table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
+
+.epis-listbox .table tbody tr {
+    height: var(--listbox-row-height);
+}
+
 .table {
     width: 100%;
     border-collapse: collapse;
