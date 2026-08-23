@@ -176,6 +176,27 @@ def ultima_leitura_valida(veiculo_id, tipo):
     )
 
 
+def leitura_final_anterior_sugerida(veiculo):
+    ativo_anterior = vinculo_ativo_do_veiculo(veiculo) if veiculo else None
+    if not ativo_anterior:
+        return None
+    if ativo_anterior.leitura_inicial is not None:
+        return ativo_anterior.leitura_inicial
+    if ativo_anterior.tipo_leitura:
+        ultima = (
+            OperacaoLeituraAtivo.query.filter_by(
+                veiculo_id=veiculo.id,
+                vinculo_id=ativo_anterior.id,
+                tipo=ativo_anterior.tipo_leitura,
+                valida=True,
+            )
+            .order_by(OperacaoLeituraAtivo.registrada_em.desc(), OperacaoLeituraAtivo.id.desc())
+            .first()
+        )
+        return ultima.leitura if ultima else None
+    return None
+
+
 def registrar_leitura(
     veiculo,
     tipo,
@@ -236,9 +257,10 @@ def vincular_responsavel(form_data, usuario=None, veiculo=None):
         return False, "Colaborador nao encontrado ou inativo.", None
     if equipe and not equipe.ativo:
         return False, "Equipe nao encontrada ou inativa.", None
-    if tipo_leitura and tipo_leitura not in TIPOS_LEITURA:
-        return False, "Tipo de leitura invalido.", None
-
+    if not tipo_leitura or tipo_leitura not in TIPOS_LEITURA:
+        return False, "Tipo de leitura e obrigatorio.", None
+    if leitura_inicial is None:
+        return False, "Leitura inicial e obrigatoria.", None
     ativo_anterior = vinculo_ativo_do_veiculo(veiculo)
     if ativo_anterior:
         if leitura_final_anterior is not None and ativo_anterior.tipo_leitura:

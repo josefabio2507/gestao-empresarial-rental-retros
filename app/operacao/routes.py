@@ -17,6 +17,7 @@ from app.services.operacao_pool_service import (
     buscar_por_id,
     buscar_veiculos_pool,
     corrigir_vinculo,
+    leitura_final_anterior_sugerida,
     encerrar_vinculo,
     salvar_veiculo_equipamento,
     vincular_responsavel,
@@ -123,8 +124,26 @@ def vincular_veiculo(veiculo_id):
         flash("Veiculo/equipamento nao encontrado.", "warning")
         return redirect(url_for("operacao.pool"))
 
+    colaborador_logado = getattr(current_user, "colaborador", None)
+    if not colaborador_logado or not colaborador_logado.ativo:
+        flash("Usuario logado precisa estar vinculado a um colaborador ativo para assumir o ativo.", "danger")
+        return redirect(url_for("operacao.pool"))
+
+    leitura_final_anterior = leitura_final_anterior_sugerida(veiculo)
+    leitura_final_anterior_form = (
+        format(leitura_final_anterior, "f").replace(".", ",")
+        if leitura_final_anterior is not None
+        else ""
+    )
+
     if request.method == "POST":
-        sucesso, mensagem, vinculo = vincular_responsavel(request.form, usuario=current_user, veiculo=veiculo)
+        dados_vinculo = request.form.to_dict()
+        dados_vinculo["colaborador_id"] = str(colaborador_logado.id)
+        dados_vinculo["equipe_id"] = str(colaborador_logado.equipe_id)
+        if leitura_final_anterior is not None:
+            dados_vinculo["leitura_final_anterior"] = leitura_final_anterior_form
+
+        sucesso, mensagem, vinculo = vincular_responsavel(dados_vinculo, usuario=current_user, veiculo=veiculo)
         if sucesso:
             registrar_log("operacao_vinculo_criado", f"Vinculo operacional criado. ID: {vinculo.id}.")
             flash(mensagem, "success")
@@ -134,8 +153,9 @@ def vincular_veiculo(veiculo_id):
     return render_template(
         "operacao/vinculo_form.html",
         veiculo=veiculo,
-        colaboradores=buscar_colaboradores_ativos(),
-        equipes=buscar_equipes_ativas(),
+        colaborador=colaborador_logado,
+        equipe=colaborador_logado.equipe,
+        leitura_final_anterior=leitura_final_anterior_form,
         tipos_leitura=TIPOS_LEITURA,
     )
 
