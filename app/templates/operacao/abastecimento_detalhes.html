@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Abastecimento</span>
+            <h1>Detalhes do abastecimento</h1>
+            <p>{{ abastecimento.veiculo.identificacao if abastecimento.veiculo else '-' }} - {{ abastecimento.veiculo.descricao if abastecimento.veiculo else '-' }}</p>
+        </div>
+        <a class="btn btn-secondary" href="{{ url_for('operacao.central_custos_veiculo', veiculo_id=abastecimento.veiculo_id) }}">Voltar</a>
+    </div>
+
+    <div class="details-card">
+        <p><strong>Data:</strong> {{ abastecimento.data_abastecimento.strftime('%d/%m/%Y') }}</p>
+        <p><strong>Motorista/Operador:</strong> {{ abastecimento.colaborador.nome if abastecimento.colaborador else '-' }}</p>
+        <p><strong>Equipe:</strong> {{ abastecimento.equipe.nome if abastecimento.equipe else '-' }}</p>
+        <p><strong>Tipo de combustível:</strong> {{ abastecimento.tipo_combustivel }}</p>
+        <p><strong>Qtd Litros:</strong> {{ (abastecimento.qtd_litros|string).replace('.', ',') }}</p>
+        <p><strong>Preço:</strong> {{ formatar_moeda_brl(abastecimento.preco) }}</p>
+        <p><strong>Observações:</strong> {{ abastecimento.observacoes or '-' }}</p>
+        <p>
+            <strong>Cupom fiscal:</strong>
+            {% if abastecimento.cupom_link %}
+                <a href="{{ abastecimento.cupom_link }}" target="_blank" rel="noopener">Ver cupom fiscal</a>
+            {% else %}
+                -
+            {% endif %}
+        </p>
+    </div>
+</section>
+{% endblock %}
