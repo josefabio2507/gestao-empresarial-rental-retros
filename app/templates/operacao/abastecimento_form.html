@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Abastecimento</span>
+            <h1>{{ 'Editar abastecimento' if modo == 'editar' else 'Registrar abastecimento' }}</h1>
+            <p>{{ veiculo.identificacao }} - {{ veiculo.descricao }}</p>
+        </div>
+        <a class="btn btn-secondary" href="{{ url_for('operacao.abastecimentos') }}">Voltar</a>
+    </div>
+
+    <form class="form-card" method="POST" enctype="multipart/form-data">
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="data_abastecimento">Data</label>
+                <input id="data_abastecimento" name="data_abastecimento" type="date" required value="{{ data_padrao }}">
+            </div>
+            <div class="form-group">
+                <label>Motorista/Operador</label>
+                <input value="{{ colaborador.nome }}" readonly>
+            </div>
+            <div class="form-group">
+                <label>Equipe</label>
+                <input value="{{ equipe.nome if equipe else 'Sem equipe vinculada' }}" readonly>
+            </div>
+            <div class="form-group">
+                <label for="tipo_combustivel">Tipo de Combustível</label>
+                <select id="tipo_combustivel" name="tipo_combustivel" required>
+                    <option value="">Selecione</option>
+                    {% for tipo in tipos_combustivel %}
+                        <option value="{{ tipo }}" {% if abastecimento and abastecimento.tipo_combustivel == tipo %}selected{% endif %}>{{ tipo }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="qtd_litros">Qtd Litros</label>
+                <input id="qtd_litros" name="qtd_litros" required inputmode="decimal" placeholder="0,00" value="{{ (abastecimento.qtd_litros|string).replace('.', ',') if abastecimento else '' }}">
+            </div>
+            <div class="form-group">
+                <label for="preco">Preço (R$)</label>
+                <input id="preco" name="preco" required inputmode="decimal" placeholder="R$ 0,00" value="{{ (abastecimento.preco|string).replace('.', ',') if abastecimento else '' }}">
+            </div>
+            <div class="form-group">
+                <label for="cupom_fiscal">Cupom fiscal</label>
+                <input id="cupom_fiscal" name="cupom_fiscal" type="file" accept="image/*" capture="environment" {% if modo != 'editar' %}required{% endif %}>
+                {% if abastecimento and abastecimento.cupom_link %}
+                    <small><a href="{{ abastecimento.cupom_link }}" target="_blank" rel="noopener">Cupom atual</a></small>
+                {% endif %}
+            </div>
+            <div class="form-group">
+                <label for="observacoes">Observações</label>
+                <textarea id="observacoes" name="observacoes">{{ abastecimento.observacoes if abastecimento and abastecimento.observacoes else '' }}</textarea>
+            </div>
+        </div>
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Salvar</button>
+            <a class="btn btn-secondary" href="{{ url_for('operacao.abastecimentos') }}">Cancelar</a>
+        </div>
+    </form>
+</section>
+{% endblock %}

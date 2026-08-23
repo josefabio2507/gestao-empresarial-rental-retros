@@ -1,4 +1,8 @@
 import unittest
+from io import BytesIO
+
+from PIL import Image
+from werkzeug.datastructures import FileStorage
 
 from app import create_app
 from app.extensions import db
@@ -8,12 +12,14 @@ from app.models import (
     Equipe,
     Modulo,
     NivelAcesso,
+    OperacaoAbastecimento,
     OperacaoLeituraAtivo,
     OperacaoVeiculoEquipamento,
     OperacaoVeiculoResponsavel,
     PermissaoUsuarioModulo,
     Usuario,
 )
+from app.services.operacao_abastecimento_service import salvar_abastecimento
 from app.services.operacao_pool_service import (
     STATUS_DISPONIVEL,
     STATUS_EM_USO,
@@ -29,6 +35,45 @@ from app.services.operacao_pool_service import (
     vincular_responsavel,
 )
 
+
+
+class FakeDriveCreateRequest:
+    def __init__(self, resposta):
+        self.resposta = resposta
+
+    def execute(self):
+        return self.resposta
+
+
+class FakeDriveFiles:
+    def __init__(self):
+        self.uploads = []
+
+    def create(self, body, media_body, fields, supportsAllDrives):
+        self.uploads.append(
+            {
+                "body": body,
+                "media_body": media_body,
+                "fields": fields,
+                "supportsAllDrives": supportsAllDrives,
+            }
+        )
+        indice = len(self.uploads)
+        return FakeDriveCreateRequest(
+            {
+                "id": f"drive-cupom-{indice}",
+                "name": body["name"],
+                "webViewLink": f"https://drive.google.com/cupom/{indice}",
+            }
+        )
+
+
+class FakeDriveService:
+    def __init__(self):
+        self._files = FakeDriveFiles()
+
+    def files(self):
+        return self._files
 
 class OperacaoPoolVeiculosTestCase(unittest.TestCase):
     def setUp(self):
@@ -111,6 +156,13 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
             sessao["_user_id"] = str(usuario.id)
             sessao["_fresh"] = True
 
+
+    def _arquivo_imagem(self, nome="cupom.png", tamanho=(800, 600), cor=(30, 90, 150)):
+        buffer = BytesIO()
+        imagem = Image.new("RGB", tamanho, cor)
+        imagem.save(buffer, format="PNG")
+        buffer.seek(0)
+        return FileStorage(stream=buffer, filename=nome, content_type="image/png")
     def _liberar_usuario(self, **acoes):
         permissao = PermissaoUsuarioModulo(
             usuario_id=self.usuario.id,
@@ -284,5 +336,88 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         self.assertEqual(self.operador.id, novo.colaborador_id)
         self.assertEqual(self.equipe.id, novo.equipe_id)
 
+
+    def test_salva_abastecimento_com_cupom_no_drive(self):
+        veiculo = self._criar_veiculo("RET001", "RETROESCAVADEIRA")
+        self.usuario.colaborador_id = self.motorista.id
+        db.session.commit()
+        _, _, vinculo = vincular_responsavel(
+            {"colaborador_id": str(self.motorista.id), "tipo_leitura": "horimetro", "leitura_inicial": "100"},
+            usuario=self.admin,
+            veiculo=veiculo,
+        )
+        self.app.config["GOOGLE_DRIVE_CUPONS_ABASTECIMENTO_FOLDER_ID"] = "pasta-cupons"
+        drive = FakeDriveService()
+
+        sucesso, mensagem, abastecimento = salvar_abastecimento(
+            {
+                "data_abastecimento": "2026-08-23",
+                "tipo_combustivel": "Diesel S10",
+                "qtd_litros": "12,50",
+                "preco": "345,67",
+                "observacoes": "cupom fiscal fotografado",
+            },
+            {"cupom_fiscal": self._arquivo_imagem()},
+            self.usuario,
+            veiculo=veiculo,
+            drive_service=drive,
+        )
+
+        self.assertTrue(sucesso, mensagem)
+        self.assertEqual("Abastecimento salvo com sucesso.", mensagem)
+        self.assertEqual(veiculo.id, abastecimento.veiculo_id)
+        self.assertEqual(vinculo.id, abastecimento.vinculo_id)
+        self.assertEqual(self.motorista.id, abastecimento.colaborador_id)
+        self.assertEqual(self.equipe.id, abastecimento.equipe_id)
+        self.assertEqual("12.500", str(abastecimento.qtd_litros))
+        self.assertEqual("345.67", str(abastecimento.preco))
+        self.assertEqual("drive-cupom-1", abastecimento.cupom_drive_file_id)
+        self.assertEqual("pasta-cupons", drive.files().uploads[0]["body"]["parents"][0])
+        self.assertTrue(abastecimento.cupom_nome_arquivo.startswith("ABAST-RET001-20260823-"))
+        self.assertEqual(1, OperacaoAbastecimento.query.count())
+
+    def test_rota_abastecimentos_lista_apenas_veiculos_vinculados_ao_usuario(self):
+        veiculo_vinculado = self._criar_veiculo("CAR101", "CAMINHAO DO USUARIO")
+        veiculo_outro = self._criar_veiculo("CAR202", "CAMINHAO DE OUTRO MOTORISTA")
+        self.usuario.colaborador_id = self.motorista.id
+        db.session.commit()
+        vincular_responsavel(
+            {"colaborador_id": str(self.motorista.id), "tipo_leitura": "odometro", "leitura_inicial": "10"},
+            usuario=self.admin,
+            veiculo=veiculo_vinculado,
+        )
+        vincular_responsavel(
+            {"colaborador_id": str(self.operador.id), "tipo_leitura": "odometro", "leitura_inicial": "20"},
+            usuario=self.admin,
+            veiculo=veiculo_outro,
+        )
+        self._liberar_usuario(visualizar=True)
+        self._autenticar(self.usuario)
+
+        resposta = self.client.get("/operacao/abastecimentos")
+
+        self.assertEqual(200, resposta.status_code)
+        self.assertIn(b"CAR101", resposta.data)
+        self.assertNotIn(b"CAR202", resposta.data)
+
+    def test_formulario_abastecimento_usa_camera_do_celular_para_cupom(self):
+        veiculo = self._criar_veiculo("CAR303", "CAMINHAO ABASTECIMENTO")
+        self.usuario.colaborador_id = self.motorista.id
+        db.session.commit()
+        vincular_responsavel(
+            {"colaborador_id": str(self.motorista.id), "tipo_leitura": "odometro", "leitura_inicial": "10"},
+            usuario=self.admin,
+            veiculo=veiculo,
+        )
+        self._liberar_usuario(editar=True)
+        self._autenticar(self.usuario)
+
+        resposta = self.client.get(f"/operacao/abastecimentos/veiculos/{veiculo.id}/novo")
+
+        self.assertEqual(200, resposta.status_code)
+        self.assertIn(b'accept="image/*"', resposta.data)
+        self.assertIn(b'capture="environment"', resposta.data)
+        self.assertIn(b"Motorista Um", resposta.data)
+        self.assertIn(b"Operacao", resposta.data)
 if __name__ == "__main__":
     unittest.main()
