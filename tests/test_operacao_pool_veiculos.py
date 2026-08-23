@@ -19,7 +19,7 @@ from app.models import (
     PermissaoUsuarioModulo,
     Usuario,
 )
-from app.services.operacao_abastecimento_service import salvar_abastecimento
+from app.services.operacao_abastecimento_service import TIPOS_COMBUSTIVEL, salvar_abastecimento
 from app.services.operacao_pool_service import (
     STATUS_DISPONIVEL,
     STATUS_EM_USO,
@@ -417,7 +417,41 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         self.assertEqual(200, resposta.status_code)
         self.assertIn(b'accept="image/*"', resposta.data)
         self.assertIn(b'capture="environment"', resposta.data)
+        self.assertIn(b'value="Diesel S10"', resposta.data)
+        self.assertIn(b'value="Etanol aditivado"', resposta.data)
+        self.assertIn(b'value="Gasolina Premium"', resposta.data)
+        self.assertNotIn(b'value="Diesel"', resposta.data)
+        self.assertNotIn(b'value="Gasolina"', resposta.data)
+        self.assertNotIn(b'value="Arla 32"', resposta.data)
+        self.assertNotIn(b'value="Outro"', resposta.data)
         self.assertIn(b"Motorista Um", resposta.data)
         self.assertIn(b"Operacao", resposta.data)
+
+    def test_bloqueia_combustivel_fora_da_lista(self):
+        veiculo = self._criar_veiculo("CAR404", "CAMINHAO COMBUSTIVEL")
+        self.usuario.colaborador_id = self.motorista.id
+        db.session.commit()
+        vincular_responsavel(
+            {"colaborador_id": str(self.motorista.id), "tipo_leitura": "odometro", "leitura_inicial": "10"},
+            usuario=self.admin,
+            veiculo=veiculo,
+        )
+
+        sucesso, mensagem, abastecimento = salvar_abastecimento(
+            {
+                "data_abastecimento": "2026-08-23",
+                "tipo_combustivel": "Diesel",
+                "qtd_litros": "10,00",
+                "preco": "50,00",
+            },
+            {},
+            self.usuario,
+            veiculo=veiculo,
+        )
+
+        self.assertFalse(sucesso)
+        self.assertEqual("Tipo de combustivel invalido.", mensagem)
+        self.assertIsNone(abastecimento)
+        self.assertNotIn("Diesel", TIPOS_COMBUSTIVEL)
 if __name__ == "__main__":
     unittest.main()

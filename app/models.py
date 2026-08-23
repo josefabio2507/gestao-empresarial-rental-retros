@@ -394,7 +394,7 @@ class OperacaoAbastecimento(db.Model):
 
     __table_args__ = (
         db.CheckConstraint(
-            "tipo_combustivel in ('Diesel', 'Diesel S10', 'Gasolina', 'Etanol', 'Arla 32', 'Outro')",
+            "tipo_combustivel in ('Diesel S10', 'Etanol', 'Etanol aditivado', 'Gasolina comum', 'Gasolina aditivada', 'Gasolina Premium')",
             name="ck_operacao_abastecimentos_tipo_combustivel",
         ),
         db.CheckConstraint("qtd_litros > 0", name="ck_operacao_abastecimentos_qtd_litros"),
