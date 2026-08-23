@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar"><div><span class="page-kicker">Historico do Ativo</span><h1>{{ veiculo.identificacao }}</h1><p>{{ veiculo.descricao }} | {{ veiculo.centro_custo }}</p></div><a class="btn btn-secondary" href="{{ url_for('operacao.pool') }}">Voltar</a></div>
+
+    <div class="details-card"><h2>Vinculos operacionais</h2></div>
+    <div class="table-card table-responsive"><table class="table"><thead><tr><th>Responsavel</th><th>Status</th><th>Inicio</th><th>Fim</th><th>Leituras</th><th>Correcao</th><th>Acoes</th></tr></thead><tbody>{% for vinculo in veiculo.vinculos_responsaveis %}<tr><td>{{ vinculo.colaborador.nome if vinculo.colaborador else '-' }}</td><td>{{ vinculo.status }}</td><td>{{ vinculo.iniciado_em.strftime('%d/%m/%Y %H:%M') if vinculo.iniciado_em else '-' }}</td><td>{{ vinculo.encerrado_em.strftime('%d/%m/%Y %H:%M') if vinculo.encerrado_em else '-' }}</td><td>{{ vinculo.tipo_leitura or '-' }} {{ vinculo.leitura_inicial or '-' }} / {{ vinculo.leitura_final or '-' }}</td><td>{{ vinculo.motivo_correcao or '-' }}</td><td>{% if vinculo.ativo %}<form class="inline-form" method="POST" action="{{ url_for('operacao.encerrar_vinculo_rota', vinculo_id=vinculo.id) }}"><input name="leitura_final" placeholder="Leitura final"><button class="btn btn-warning" type="submit">Encerrar</button></form>{% endif %}<a class="btn btn-secondary" href="{{ url_for('operacao.corrigir_vinculo_rota', vinculo_id=vinculo.id) }}">Corrigir</a></td></tr>{% else %}<tr><td class="empty-state" colspan="7">Nenhum vinculo registrado.</td></tr>{% endfor %}</tbody></table></div>
+
+    <div class="details-card"><h2>Leituras</h2></div>
+    <div class="table-card table-responsive"><table class="table"><thead><tr><th>Tipo</th><th>Leitura</th><th>Origem</th><th>Data</th><th>Motivo</th></tr></thead><tbody>{% for leitura in veiculo.leituras %}<tr><td>{{ leitura.tipo }}</td><td>{{ leitura.leitura }}</td><td>{{ leitura.origem }}</td><td>{{ leitura.registrada_em.strftime('%d/%m/%Y %H:%M') if leitura.registrada_em else '-' }}</td><td>{{ leitura.motivo_correcao or '-' }}</td></tr>{% else %}<tr><td class="empty-state" colspan="5">Nenhuma leitura registrada.</td></tr>{% endfor %}</tbody></table></div>
+</section>
+{% endblock %}

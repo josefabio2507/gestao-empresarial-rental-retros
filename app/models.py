@@ -188,8 +188,11 @@ class OperacaoVeiculoEquipamento(db.Model):
     chassi = db.Column(db.String(80), nullable=True, unique=True, index=True)
     renavam = db.Column(db.String(40), nullable=True)
     centro_custo = db.Column(db.String(360), nullable=False, index=True)
+    centro_custo_id = db.Column(db.Integer, db.ForeignKey("centros_custo.id"), nullable=True, index=True)
     situacao_aquisicao = db.Column(db.String(30), nullable=False)
     tipo = db.Column(db.String(40), nullable=False)
+    status_operacional = db.Column(db.String(30), default="Disponivel", nullable=False, index=True)
+    motivo_indisponibilidade = db.Column(db.Text, nullable=True)
     ativo = db.Column(db.Boolean, default=True, nullable=False, index=True)
     observacoes = db.Column(db.Text, nullable=True)
 
@@ -214,7 +217,38 @@ class OperacaoVeiculoEquipamento(db.Model):
             "tipo in ('Veiculo leve', 'Caminhao', 'Maquina', 'Equipamento', 'EPG', 'Outro')",
             name="ck_operacao_veiculos_tipo",
         ),
+        db.CheckConstraint(
+            "status_operacional in ('Disponivel', 'Em uso', 'Indisponivel')",
+            name="ck_operacao_veiculos_status_operacional",
+        ),
     )
+
+    centro_custo_ref = db.relationship("CentroCusto")
+    vinculos_responsaveis = db.relationship(
+        "OperacaoVeiculoResponsavel",
+        back_populates="veiculo",
+        order_by="OperacaoVeiculoResponsavel.iniciado_em.desc()",
+    )
+    leituras = db.relationship(
+        "OperacaoLeituraAtivo",
+        back_populates="veiculo",
+        order_by="OperacaoLeituraAtivo.registrada_em.desc()",
+    )
+    planos_manutencao = db.relationship(
+        "OperacaoPlanoManutencaoPreventiva",
+        back_populates="veiculo",
+    )
+    historicos_manutencao = db.relationship(
+        "OperacaoHistoricoManutencao",
+        back_populates="veiculo",
+    )
+
+    @property
+    def vinculo_ativo(self):
+        for vinculo in self.vinculos_responsaveis:
+            if vinculo.ativo:
+                return vinculo
+        return None
 
     @staticmethod
     def calcular_centro_custo(identificacao, descricao):
@@ -229,6 +263,176 @@ class OperacaoVeiculoEquipamento(db.Model):
     def __repr__(self):
         return f"<OperacaoVeiculoEquipamento {self.identificacao}>"
 
+
+class OperacaoVeiculoResponsavel(db.Model):
+    __tablename__ = "operacao_veiculos_responsaveis"
+
+    id = db.Column(db.Integer, primary_key=True)
+    veiculo_id = db.Column(
+        db.Integer,
+        db.ForeignKey("operacao_veiculos_equipamentos.id"),
+        nullable=False,
+        index=True,
+    )
+    colaborador_id = db.Column(db.Integer, db.ForeignKey("colaboradores.id"), nullable=False, index=True)
+    equipe_id = db.Column(db.Integer, db.ForeignKey("equipes.id"), nullable=True, index=True)
+    usuario_responsavel_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=True, index=True)
+    iniciado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False, index=True)
+    encerrado_em = db.Column(db.DateTime, nullable=True, index=True)
+    leitura_inicial = db.Column(db.Numeric(12, 2), nullable=True)
+    leitura_final = db.Column(db.Numeric(12, 2), nullable=True)
+    tipo_leitura = db.Column(db.String(20), nullable=True)
+    status = db.Column(db.String(30), default="Ativo", nullable=False, index=True)
+    motivo_correcao = db.Column(db.Text, nullable=True)
+    corrigido_por_usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=True, index=True)
+    corrigido_em = db.Column(db.DateTime, nullable=True)
+    criado_por_usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=True, index=True)
+    observacoes = db.Column(db.Text, nullable=True)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
+    atualizado_em = db.Column(db.DateTime, default=agora_brasil, onupdate=agora_brasil, nullable=False)
+
+    veiculo = db.relationship("OperacaoVeiculoEquipamento", back_populates="vinculos_responsaveis")
+    colaborador = db.relationship("Colaborador")
+    equipe = db.relationship("Equipe")
+    usuario_responsavel = db.relationship("Usuario", foreign_keys=[usuario_responsavel_id])
+    corrigido_por = db.relationship("Usuario", foreign_keys=[corrigido_por_usuario_id])
+    criado_por = db.relationship("Usuario", foreign_keys=[criado_por_usuario_id])
+    leituras = db.relationship("OperacaoLeituraAtivo", back_populates="vinculo")
+
+    __table_args__ = (
+        db.CheckConstraint(
+            "status in ('Ativo', 'Encerrado', 'Corrigido', 'Cancelado', 'Retificado')",
+            name="ck_operacao_vinculos_status",
+        ),
+        db.CheckConstraint(
+            "tipo_leitura is null or tipo_leitura in ('odometro', 'horimetro')",
+            name="ck_operacao_vinculos_tipo_leitura",
+        ),
+    )
+
+    @property
+    def ativo(self):
+        return self.status == "Ativo" and self.encerrado_em is None
+
+    def __repr__(self):
+        return f"<OperacaoVeiculoResponsavel veiculo={self.veiculo_id} colaborador={self.colaborador_id}>"
+
+
+class OperacaoLeituraAtivo(db.Model):
+    __tablename__ = "operacao_leituras_ativos"
+
+    id = db.Column(db.Integer, primary_key=True)
+    veiculo_id = db.Column(
+        db.Integer,
+        db.ForeignKey("operacao_veiculos_equipamentos.id"),
+        nullable=False,
+        index=True,
+    )
+    vinculo_id = db.Column(
+        db.Integer,
+        db.ForeignKey("operacao_veiculos_responsaveis.id"),
+        nullable=True,
+        index=True,
+    )
+    tipo = db.Column(db.String(20), nullable=False, index=True)
+    leitura = db.Column(db.Numeric(12, 2), nullable=False)
+    origem = db.Column(db.String(30), nullable=False, index=True)
+    registrada_em = db.Column(db.DateTime, default=agora_brasil, nullable=False, index=True)
+    valida = db.Column(db.Boolean, default=True, nullable=False, index=True)
+    motivo_correcao = db.Column(db.Text, nullable=True)
+    registrado_por_usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=True, index=True)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
+
+    veiculo = db.relationship("OperacaoVeiculoEquipamento", back_populates="leituras")
+    vinculo = db.relationship("OperacaoVeiculoResponsavel", back_populates="leituras")
+    registrado_por = db.relationship("Usuario")
+
+    __table_args__ = (
+        db.CheckConstraint("tipo in ('odometro', 'horimetro')", name="ck_operacao_leituras_tipo"),
+        db.CheckConstraint(
+            "origem in ('pool', 'abastecimento', 'manutencao', 'correcao')",
+            name="ck_operacao_leituras_origem",
+        ),
+        db.CheckConstraint("leitura >= 0", name="ck_operacao_leituras_valor"),
+    )
+
+    def __repr__(self):
+        return f"<OperacaoLeituraAtivo veiculo={self.veiculo_id} leitura={self.leitura}>"
+
+
+class OperacaoPlanoManutencaoPreventiva(db.Model):
+    __tablename__ = "operacao_planos_manutencao_preventiva"
+
+    id = db.Column(db.Integer, primary_key=True)
+    veiculo_id = db.Column(
+        db.Integer,
+        db.ForeignKey("operacao_veiculos_equipamentos.id"),
+        nullable=False,
+        index=True,
+    )
+    descricao = db.Column(db.String(220), nullable=False)
+    periodicidade_km = db.Column(db.Integer, nullable=True)
+    periodicidade_horimetro = db.Column(db.Integer, nullable=True)
+    periodicidade_dias = db.Column(db.Integer, nullable=True)
+    antecedencia_km = db.Column(db.Integer, nullable=True)
+    antecedencia_horimetro = db.Column(db.Integer, nullable=True)
+    antecedencia_dias = db.Column(db.Integer, nullable=True)
+    ativo = db.Column(db.Boolean, default=True, nullable=False, index=True)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
+    atualizado_em = db.Column(db.DateTime, default=agora_brasil, onupdate=agora_brasil, nullable=False)
+
+    veiculo = db.relationship("OperacaoVeiculoEquipamento", back_populates="planos_manutencao")
+
+    def __repr__(self):
+        return f"<OperacaoPlanoManutencaoPreventiva veiculo={self.veiculo_id}>"
+
+
+class OperacaoHistoricoManutencao(db.Model):
+    __tablename__ = "operacao_historico_manutencao"
+
+    id = db.Column(db.Integer, primary_key=True)
+    veiculo_id = db.Column(
+        db.Integer,
+        db.ForeignKey("operacao_veiculos_equipamentos.id"),
+        nullable=False,
+        index=True,
+    )
+    centro_custo_id = db.Column(db.Integer, db.ForeignKey("centros_custo.id"), nullable=True, index=True)
+    requisicao_compra_id = db.Column(
+        db.Integer,
+        db.ForeignKey("suprimentos_requisicoes_compra.id"),
+        nullable=True,
+        index=True,
+    )
+    ordem_compra_id = db.Column(
+        db.Integer,
+        db.ForeignKey("suprimentos_ordens_compra.id"),
+        nullable=True,
+        index=True,
+    )
+    origem_financeira = db.Column(db.String(30), default="Suprimentos", nullable=False)
+    descricao = db.Column(db.String(220), nullable=False)
+    realizada_em = db.Column(db.DateTime, nullable=True, index=True)
+    leitura_odometro = db.Column(db.Numeric(12, 2), nullable=True)
+    leitura_horimetro = db.Column(db.Numeric(12, 2), nullable=True)
+    observacoes = db.Column(db.Text, nullable=True)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
+    atualizado_em = db.Column(db.DateTime, default=agora_brasil, onupdate=agora_brasil, nullable=False)
+
+    veiculo = db.relationship("OperacaoVeiculoEquipamento", back_populates="historicos_manutencao")
+    centro_custo = db.relationship("CentroCusto")
+    requisicao_compra = db.relationship("SuprimentosRequisicaoCompra")
+    ordem_compra = db.relationship("SuprimentosOrdemCompra")
+
+    __table_args__ = (
+        db.CheckConstraint(
+            "origem_financeira = 'Suprimentos'",
+            name="ck_operacao_historico_manutencao_origem_financeira",
+        ),
+    )
+
+    def __repr__(self):
+        return f"<OperacaoHistoricoManutencao veiculo={self.veiculo_id}>"
 
 class PermissaoUsuarioModulo(db.Model):
     __tablename__ = "permissoes_usuario_modulo"
@@ -1225,7 +1429,7 @@ class SuprimentosRequisicaoCompra(db.Model):
 
     @property
     def pode_editar(self):
-        return self.status in ["Rascunho", "Enviada para Analise"]
+        return self.status == "Rascunho"
 
     def __repr__(self):
         return f"<SuprimentosRequisicaoCompra {self.numero}>"
