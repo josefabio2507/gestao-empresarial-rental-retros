@@ -20,7 +20,7 @@ seguranca_trabalho_bp = Blueprint("seguranca_trabalho", __name__)
 @seguranca_trabalho_bp.route("/")
 @login_required
 def index():
-    return render_template("seguranca_trabalho/index.html")
+    return redirect(url_for("departamentos.detalhe_departamento", slug_departamento="seguranca_trabalho"))
 
 
 @seguranca_trabalho_bp.route("/epis/")
