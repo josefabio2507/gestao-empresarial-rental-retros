@@ -4,6 +4,16 @@ from flask_login import current_user, login_required
 from app.decorators import module_permission_required
 from app.models import OperacaoVeiculoEquipamento, OperacaoVeiculoResponsavel
 from app.services.logs_service import registrar_log
+from app.services.operacao_abastecimento_service import (
+    TIPOS_COMBUSTIVEL,
+    buscar_abastecimento_usuario,
+    colaborador_do_usuario,
+    data_padrao_form,
+    listar_abastecimentos_usuario,
+    listar_veiculos_abastecimento_usuario,
+    salvar_abastecimento,
+    vinculo_ativo_usuario_veiculo,
+)
 from app.services.operacao_pool_service import (
     STATUS_DISPONIVEL,
     STATUS_EM_USO,
@@ -50,6 +60,93 @@ def index():
 def status():
     return "Operação online."
 
+
+@operacao_bp.route("/abastecimentos")
+@login_required
+@module_permission_required("operacao", MODULO_POOL, "visualizar")
+def abastecimentos():
+    colaborador = colaborador_do_usuario(current_user)
+    if not colaborador:
+        flash("Usuario logado precisa estar vinculado a um colaborador ativo para registrar abastecimentos.", "danger")
+        return redirect(url_for("operacao.pool"))
+
+    return render_template(
+        "operacao/abastecimentos.html",
+        colaborador=colaborador,
+        veiculos=listar_veiculos_abastecimento_usuario(current_user),
+        abastecimentos=listar_abastecimentos_usuario(current_user),
+    )
+
+
+@operacao_bp.route("/abastecimentos/veiculos/<int:veiculo_id>/novo", methods=["GET", "POST"])
+@login_required
+@module_permission_required("operacao", MODULO_POOL, "editar")
+def novo_abastecimento(veiculo_id):
+    veiculo = buscar_por_id(OperacaoVeiculoEquipamento, veiculo_id)
+    vinculo = vinculo_ativo_usuario_veiculo(current_user, veiculo_id)
+    if not veiculo or not vinculo:
+        flash("Veiculo/equipamento nao esta vinculado ao usuario logado.", "danger")
+        return redirect(url_for("operacao.abastecimentos"))
+
+    if request.method == "POST":
+        sucesso, mensagem, abastecimento = salvar_abastecimento(request.form, request.files, current_user, veiculo=veiculo)
+        if sucesso:
+            registrar_log("operacao_abastecimento_criado", f"Abastecimento registrado. ID: {abastecimento.id}.")
+            flash(mensagem, "success")
+            return redirect(url_for("operacao.abastecimentos"))
+        flash(mensagem, "danger")
+
+    return render_template(
+        "operacao/abastecimento_form.html",
+        abastecimento=None,
+        veiculo=veiculo,
+        vinculo=vinculo,
+        colaborador=vinculo.colaborador,
+        equipe=vinculo.equipe or vinculo.colaborador.equipe,
+        tipos_combustivel=TIPOS_COMBUSTIVEL,
+        data_padrao=data_padrao_form(),
+        modo="novo",
+    )
+
+
+@operacao_bp.route("/abastecimentos/<int:abastecimento_id>/editar", methods=["GET", "POST"])
+@login_required
+@module_permission_required("operacao", MODULO_POOL, "editar")
+def editar_abastecimento(abastecimento_id):
+    abastecimento = buscar_abastecimento_usuario(abastecimento_id, current_user)
+    if not abastecimento:
+        flash("Abastecimento nao encontrado para o usuario logado.", "warning")
+        return redirect(url_for("operacao.abastecimentos"))
+
+    vinculo = vinculo_ativo_usuario_veiculo(current_user, abastecimento.veiculo_id)
+    if not vinculo:
+        flash("Veiculo/equipamento nao esta mais vinculado ao usuario logado.", "danger")
+        return redirect(url_for("operacao.abastecimentos"))
+
+    if request.method == "POST":
+        sucesso, mensagem, abastecimento = salvar_abastecimento(
+            request.form,
+            request.files,
+            current_user,
+            abastecimento=abastecimento,
+        )
+        if sucesso:
+            registrar_log("operacao_abastecimento_atualizado", f"Abastecimento atualizado. ID: {abastecimento.id}.")
+            flash(mensagem, "success")
+            return redirect(url_for("operacao.abastecimentos"))
+        flash(mensagem, "danger")
+
+    return render_template(
+        "operacao/abastecimento_form.html",
+        abastecimento=abastecimento,
+        veiculo=abastecimento.veiculo,
+        vinculo=vinculo,
+        colaborador=abastecimento.colaborador,
+        equipe=abastecimento.equipe,
+        tipos_combustivel=TIPOS_COMBUSTIVEL,
+        data_padrao=abastecimento.data_abastecimento.isoformat(),
+        modo="editar",
+    )
 
 @operacao_bp.route("/pool-veiculos")
 @login_required

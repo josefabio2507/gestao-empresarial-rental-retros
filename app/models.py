@@ -243,6 +243,11 @@ class OperacaoVeiculoEquipamento(db.Model):
         back_populates="veiculo",
     )
 
+    abastecimentos = db.relationship(
+        "OperacaoAbastecimento",
+        back_populates="veiculo",
+        order_by="OperacaoAbastecimento.data_abastecimento.desc()",
+    )
     @property
     def vinculo_ativo(self):
         for vinculo in self.vinculos_responsaveis:
@@ -359,6 +364,45 @@ class OperacaoLeituraAtivo(db.Model):
     def __repr__(self):
         return f"<OperacaoLeituraAtivo veiculo={self.veiculo_id} leitura={self.leitura}>"
 
+
+
+class OperacaoAbastecimento(db.Model):
+    __tablename__ = "operacao_abastecimentos"
+
+    id = db.Column(db.Integer, primary_key=True)
+    veiculo_id = db.Column(db.Integer, db.ForeignKey("operacao_veiculos_equipamentos.id"), nullable=False, index=True)
+    vinculo_id = db.Column(db.Integer, db.ForeignKey("operacao_veiculos_responsaveis.id"), nullable=False, index=True)
+    colaborador_id = db.Column(db.Integer, db.ForeignKey("colaboradores.id"), nullable=False, index=True)
+    equipe_id = db.Column(db.Integer, db.ForeignKey("equipes.id"), nullable=True, index=True)
+    usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=False, index=True)
+    data_abastecimento = db.Column(db.Date, nullable=False, index=True)
+    tipo_combustivel = db.Column(db.String(40), nullable=False, index=True)
+    qtd_litros = db.Column(db.Numeric(12, 3), nullable=False)
+    preco = db.Column(db.Numeric(12, 2), nullable=False)
+    cupom_drive_file_id = db.Column(db.String(255), nullable=True)
+    cupom_nome_arquivo = db.Column(db.String(255), nullable=True)
+    cupom_link = db.Column(db.String(500), nullable=True)
+    observacoes = db.Column(db.Text, nullable=True)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
+    atualizado_em = db.Column(db.DateTime, default=agora_brasil, onupdate=agora_brasil, nullable=False)
+
+    veiculo = db.relationship("OperacaoVeiculoEquipamento", back_populates="abastecimentos")
+    vinculo = db.relationship("OperacaoVeiculoResponsavel")
+    colaborador = db.relationship("Colaborador")
+    equipe = db.relationship("Equipe")
+    usuario = db.relationship("Usuario")
+
+    __table_args__ = (
+        db.CheckConstraint(
+            "tipo_combustivel in ('Diesel', 'Diesel S10', 'Gasolina', 'Etanol', 'Arla 32', 'Outro')",
+            name="ck_operacao_abastecimentos_tipo_combustivel",
+        ),
+        db.CheckConstraint("qtd_litros > 0", name="ck_operacao_abastecimentos_qtd_litros"),
+        db.CheckConstraint("preco >= 0", name="ck_operacao_abastecimentos_preco"),
+    )
+
+    def __repr__(self):
+        return f"<OperacaoAbastecimento veiculo={self.veiculo_id} data={self.data_abastecimento}>"
 
 class OperacaoPlanoManutencaoPreventiva(db.Model):
     __tablename__ = "operacao_planos_manutencao_preventiva"

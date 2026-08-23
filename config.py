@@ -58,6 +58,10 @@ class Config:
         "GOOGLE_DRIVE_EVIDENCIAS_OC_FOLDER_ID",
         "",
     ).strip()
+    GOOGLE_DRIVE_CUPONS_ABASTECIMENTO_FOLDER_ID = os.getenv(
+        "GOOGLE_DRIVE_CUPONS_ABASTECIMENTO_FOLDER_ID",
+        "",
+    ).strip()
     GOOGLE_SERVICE_ACCOUNT_JSON = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON", "").strip()
     GOOGLE_SERVICE_ACCOUNT_FILE = os.getenv("GOOGLE_SERVICE_ACCOUNT_FILE", "").strip()
     GOOGLE_OAUTH_CLIENT_ID = os.getenv("GOOGLE_OAUTH_CLIENT_ID", os.getenv("GOOGLE_CLIENT_ID", "")).strip()
