@@ -67,7 +67,7 @@ def executar_seeds_startup(app):
 
                 with redirect_stdout(StringIO()):
                     executar_seed()
-            logger.info("Seed de veiculos e EPGs da operacao aplicado no startup.")
+            logger.info("Seed de veiculos e EGPs da operacao aplicado no startup.")
         except Exception:
-            logger.exception("Falha ao aplicar seed de veiculos e EPGs da operacao no startup.")
+            logger.exception("Falha ao aplicar seed de veiculos e EGPs da operacao no startup.")
             raise

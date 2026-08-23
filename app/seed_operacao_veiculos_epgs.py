@@ -46,7 +46,7 @@ def buscar_existente(identificacao, chassi):
 
 
 def executar_seed():
-    print("Seed de veículos e EPGs iniciado...")
+    print("Seed de veículos e EGPs iniciado...")
 
     processados = 0
     criados = 0
@@ -108,7 +108,7 @@ def executar_seed():
     for erro in erros:
         print(f"- {erro}")
 
-    print("Seed de veículos e EPGs concluído com sucesso.")
+    print("Seed de veículos e EGPs concluído com sucesso.")
 
 
 if __name__ == "__main__":
