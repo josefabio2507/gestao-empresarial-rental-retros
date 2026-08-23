@@ -1203,7 +1203,10 @@ def salvar_requisicao_compra(form_data, usuario, requisicao=None):
     ):
         return False, "Sub centro de custo - Placa do veiculo nao encontrado, inativo ou fora da classe permitida.", requisicao
 
-    if requisicao and not requisicao_compra_pode_editar(requisicao):
+    if requisicao and requisicao.status != STATUS_REQUISICAO_RASCUNHO:
+        return False, "Somente requisicoes em rascunho podem ser editadas.", requisicao
+
+    if requisicao and requisicao_tem_cotacao_vinculada(requisicao):
         return False, "Somente requisicoes sem cotacao vinculada podem ser editadas.", requisicao
 
     if requisicao is None:

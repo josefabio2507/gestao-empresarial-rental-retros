@@ -239,15 +239,17 @@ def enviar_email(requisicao_id):
         flash("Requisicao nao encontrada.", "warning")
         return redirect(url_for("suprimentos_requisicoes.listar"))
 
-    if requisicao_compra_pode_editar(requisicao):
+    if requisicao.status == STATUS_REQUISICAO_RASCUNHO:
         sucesso, mensagem = enviar_requisicao_compra(requisicao)
         if not sucesso:
             flash(mensagem, "danger")
             return redirect(url_for("suprimentos_requisicoes.detalhes", requisicao_id=requisicao.id))
         registrar_log("suprimentos_requisicao_enviada", f"Requisicao enviada por e-mail. ID: {requisicao.id}.")
-    else:
-        flash("Somente requisicoes sem cotacao vinculada podem ser enviadas por e-mail.", "danger")
+    elif requisicao.status != STATUS_REQUISICAO_ENVIADA:
+        flash("Somente requisicoes em rascunho ou ja enviadas podem ser enviadas por e-mail.", "danger")
         return redirect(url_for("suprimentos_requisicoes.detalhes", requisicao_id=requisicao.id))
+    else:
+        mensagem = "Requisicao ja enviada para analise."
 
     sucesso_email, mensagem_email, link_email = enviar_email_requisicao_compra(requisicao)
 

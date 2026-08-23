@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar"><div><span class="page-kicker">Pool de Veiculos</span><h1>Vincular Responsavel</h1><p>{{ veiculo.identificacao }} - {{ veiculo.descricao }}</p></div></div>
+    <form class="form-card" method="POST">
+        <div class="form-grid">
+            <div class="form-group"><label for="colaborador_id">Motorista/operador</label><select id="colaborador_id" name="colaborador_id" required>{% for colaborador in colaboradores %}<option value="{{ colaborador.id }}">{{ colaborador.nome }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="equipe_id">Equipe</label><select id="equipe_id" name="equipe_id"><option value="">Equipe do colaborador</option>{% for equipe in equipes %}<option value="{{ equipe.id }}">{{ equipe.nome }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="tipo_leitura">Tipo de leitura</label><select id="tipo_leitura" name="tipo_leitura"><option value="">Sem leitura</option>{% for tipo in tipos_leitura %}<option value="{{ tipo }}">{{ tipo }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="leitura_inicial">Leitura inicial</label><input id="leitura_inicial" name="leitura_inicial"></div>
+            <div class="form-group"><label for="leitura_final_anterior">Leitura final do responsavel anterior</label><input id="leitura_final_anterior" name="leitura_final_anterior"></div>
+            <div class="form-group"><label for="observacoes">Observacoes</label><textarea id="observacoes" name="observacoes"></textarea></div>
+        </div>
+        <div class="form-actions"><button class="btn btn-primary" type="submit">Criar vinculo</button><a class="btn btn-secondary" href="{{ url_for('operacao.pool') }}">Cancelar</a></div>
+    </form>
+</section>
+{% endblock %}

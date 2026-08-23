@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Pool de Veiculos</span>
+            <h1>{{ "Novo Ativo" if modo == "novo" else "Editar Ativo" }}</h1>
+            <p>O centro de custo operacional e calculado por identificacao e descricao.</p>
+        </div>
+    </div>
+
+    <form class="form-card" method="POST">
+        <div class="form-grid">
+            <div class="form-group"><label for="identificacao">Identificacao</label><input id="identificacao" name="identificacao" required value="{{ veiculo.identificacao if veiculo else '' }}"></div>
+            <div class="form-group"><label for="placa">Placa</label><input id="placa" name="placa" value="{{ veiculo.placa if veiculo else '' }}"></div>
+            <div class="form-group"><label for="descricao">Descricao</label><input id="descricao" name="descricao" required value="{{ veiculo.descricao if veiculo else '' }}"></div>
+            <div class="form-group"><label for="chassi">Chassi</label><input id="chassi" name="chassi" value="{{ veiculo.chassi if veiculo else '' }}"></div>
+            <div class="form-group"><label for="renavam">Renavam</label><input id="renavam" name="renavam" value="{{ veiculo.renavam if veiculo else '' }}"></div>
+            <div class="form-group"><label for="situacao_aquisicao">Situacao</label><select id="situacao_aquisicao" name="situacao_aquisicao"><option value="Quitado" {{ "selected" if not veiculo or veiculo.situacao_aquisicao == "Quitado" else "" }}>Quitado</option><option value="Financiado" {{ "selected" if veiculo and veiculo.situacao_aquisicao == "Financiado" else "" }}>Financiado</option></select></div>
+            <div class="form-group"><label for="tipo">Tipo</label><select id="tipo" name="tipo">{% for tipo in tipos_veiculo %}<option value="{{ tipo }}" {{ "selected" if veiculo and veiculo.tipo == tipo else "" }}>{{ tipo }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="centro_custo_id">Centro de custo de Suprimentos</label><select id="centro_custo_id" name="centro_custo_id"><option value="">Nao vinculado</option>{% for centro in centros_custo %}<option value="{{ centro.id }}" {{ "selected" if veiculo and veiculo.centro_custo_id == centro.id else "" }}>{{ centro.codigo or "" }} {{ centro.nome }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="observacoes">Observacoes</label><textarea id="observacoes" name="observacoes">{{ veiculo.observacoes if veiculo else '' }}</textarea></div>
+        </div>
+        {% if veiculo %}<label class="checkbox-line"><input type="checkbox" name="ativo" checked> Ativo</label>{% endif %}
+        <div class="form-actions"><button class="btn btn-primary" type="submit">Salvar</button><a class="btn btn-secondary" href="{{ url_for('operacao.pool') }}">Cancelar</a></div>
+    </form>
+</section>
+{% endblock %}

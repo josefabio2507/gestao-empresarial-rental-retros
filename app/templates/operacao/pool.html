@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Operacao</span>
+            <h1>Pool de Veiculos</h1>
+            <p>Responsabilidade operacional do ativo, sem apropriacao financeira de manutencao por motorista.</p>
+        </div>
+        <a class="btn btn-primary" href="{{ url_for('operacao.novo_veiculo') }}">+ Novo Ativo</a>
+    </div>
+
+    <form class="filter-card" method="GET">
+        <div class="form-group">
+            <label for="termo">Busca</label>
+            <input id="termo" name="termo" value="{{ filtros.get('termo', '') }}" placeholder="Identificacao, placa, chassi ou centro de custo">
+        </div>
+        <div class="form-group">
+            <label for="status">Status</label>
+            <select id="status" name="status">
+                <option value="">Todos</option>
+                {% for status in status_pool %}
+                    <option value="{{ status }}" {{ "selected" if filtros.get('status') == status else "" }}>{{ status }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="tipo">Tipo</label>
+            <select id="tipo" name="tipo">
+                <option value="">Todos</option>
+                {% for tipo in tipos_veiculo %}
+                    <option value="{{ tipo }}" {{ "selected" if filtros.get('tipo') == tipo else "" }}>{{ tipo }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Pesquisar</button>
+            <a class="btn btn-secondary" href="{{ url_for('operacao.pool') }}">Limpar</a>
+        </div>
+    </form>
+
+    <div class="table-card table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Ativo</th>
+                    <th>Tipo</th>
+                    <th>Centro de custo</th>
+                    <th>Status</th>
+                    <th>Responsavel atual</th>
+                    <th>Acoes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for veiculo in veiculos %}
+                    {% set vinculo = veiculo.vinculo_ativo %}
+                    <tr>
+                        <td><strong>{{ veiculo.identificacao }}</strong><br><small>{{ veiculo.descricao }}</small></td>
+                        <td>{{ veiculo.tipo }}</td>
+                        <td>{{ veiculo.centro_custo }}</td>
+                        <td>
+                            <span class="badge {{ 'badge-success' if veiculo.status_operacional == 'Disponivel' else ('badge-warning' if veiculo.status_operacional == 'Em uso' else 'badge-danger') }}">
+                                {{ veiculo.status_operacional }}
+                            </span>
+                        </td>
+                        <td>{{ vinculo.colaborador.nome if vinculo and vinculo.colaborador else "-" }}</td>
+                        <td class="col-acoes">
+                            <div class="acoes-botoes">
+                                <a class="btn btn-secondary" href="{{ url_for('operacao.historico_veiculo', veiculo_id=veiculo.id) }}">Historico</a>
+                                <a class="btn btn-primary" href="{{ url_for('operacao.vincular_veiculo', veiculo_id=veiculo.id) }}">Vincular</a>
+                                <a class="btn btn-secondary" href="{{ url_for('operacao.editar_veiculo', veiculo_id=veiculo.id) }}">Editar</a>
+                                <form class="inline-form" method="POST" action="{{ url_for('operacao.indisponibilidade_veiculo', veiculo_id=veiculo.id) }}">
+                                    {% if veiculo.status_operacional == 'Indisponivel' %}
+                                        <input type="hidden" name="acao" value="disponibilizar">
+                                        <button class="btn btn-warning" type="submit">Disponibilizar</button>
+                                    {% else %}
+                                        <input type="hidden" name="motivo_indisponibilidade" value="Indisponivel operacionalmente.">
+                                        <button class="btn btn-warning" type="submit">Indisponivel</button>
+                                    {% endif %}
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr><td class="empty-state" colspan="6">Nenhum ativo encontrado.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar"><div><span class="page-kicker">Correcao auditavel</span><h1>Corrigir Vinculo</h1><p>{{ vinculo.veiculo.identificacao }} - {{ vinculo.colaborador.nome if vinculo.colaborador else '-' }}</p></div></div>
+    <form class="form-card" method="POST">
+        <div class="form-grid">
+            <div class="form-group"><label for="status_correcao">Status da correcao</label><select id="status_correcao" name="status_correcao"><option value="Retificado">Retificado</option><option value="Corrigido">Corrigido</option><option value="Cancelado">Cancelado</option></select></div>
+            <div class="form-group"><label for="motivo_correcao">Motivo</label><textarea id="motivo_correcao" name="motivo_correcao" required></textarea></div>
+            <label class="checkbox-line"><input type="checkbox" name="criar_novo_vinculo" value="1"> Criar novo vinculo correto</label>
+            <div class="form-group"><label for="colaborador_id">Novo motorista/operador</label><select id="colaborador_id" name="colaborador_id">{% for colaborador in colaboradores %}<option value="{{ colaborador.id }}">{{ colaborador.nome }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="equipe_id">Equipe</label><select id="equipe_id" name="equipe_id"><option value="">Equipe do colaborador</option>{% for equipe in equipes %}<option value="{{ equipe.id }}">{{ equipe.nome }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="tipo_leitura">Tipo de leitura</label><select id="tipo_leitura" name="tipo_leitura"><option value="">Sem leitura</option>{% for tipo in tipos_leitura %}<option value="{{ tipo }}">{{ tipo }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="leitura_inicial">Leitura inicial</label><input id="leitura_inicial" name="leitura_inicial"></div>
+        </div>
+        <div class="form-actions"><button class="btn btn-primary" type="submit">Registrar correcao</button><a class="btn btn-secondary" href="{{ url_for('operacao.historico_veiculo', veiculo_id=vinculo.veiculo_id) }}">Cancelar</a></div>
+    </form>
+</section>
+{% endblock %}
