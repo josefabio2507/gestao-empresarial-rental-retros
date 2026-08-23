@@ -173,15 +173,15 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         veiculo_um = self._criar_veiculo("CAR001", "CAMINHAO")
         veiculo_dois = self._criar_veiculo("CAR002", "MAQUINA")
 
-        self.assertTrue(vincular_responsavel({"colaborador_id": str(self.motorista.id)}, usuario=self.admin, veiculo=veiculo_um)[0])
-        self.assertTrue(vincular_responsavel({"colaborador_id": str(self.motorista.id)}, usuario=self.admin, veiculo=veiculo_dois)[0])
+        self.assertTrue(vincular_responsavel({"colaborador_id": str(self.motorista.id), "tipo_leitura": "odometro", "leitura_inicial": "10"}, usuario=self.admin, veiculo=veiculo_um)[0])
+        self.assertTrue(vincular_responsavel({"colaborador_id": str(self.motorista.id), "tipo_leitura": "odometro", "leitura_inicial": "20"}, usuario=self.admin, veiculo=veiculo_dois)[0])
 
         vinculados = veiculos_vinculados_ao_colaborador(self.motorista.id)
         self.assertEqual({veiculo_um.id, veiculo_dois.id}, {veiculo.id for veiculo in vinculados})
 
     def test_correcao_auditavel_nao_apaga_original_e_cria_novo(self):
         veiculo = self._criar_veiculo()
-        _, _, vinculo = vincular_responsavel({"colaborador_id": str(self.motorista.id)}, usuario=self.admin, veiculo=veiculo)
+        _, _, vinculo = vincular_responsavel({"colaborador_id": str(self.motorista.id), "tipo_leitura": "odometro", "leitura_inicial": "10"}, usuario=self.admin, veiculo=veiculo)
 
         sucesso, mensagem, novo = corrigir_vinculo(
             vinculo,
@@ -190,6 +190,8 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
                 "status_correcao": STATUS_VINCULO_RETIFICADO,
                 "criar_novo_vinculo": "1",
                 "colaborador_id": str(self.operador.id),
+                "tipo_leitura": "odometro",
+                "leitura_inicial": "30",
             },
             usuario=self.admin,
         )
@@ -228,7 +230,7 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         veiculo = self._criar_veiculo()
         self.assertEqual(STATUS_DISPONIVEL, veiculo.status_operacional)
 
-        vincular_responsavel({"colaborador_id": str(self.motorista.id)}, usuario=self.admin, veiculo=veiculo)
+        vincular_responsavel({"colaborador_id": str(self.motorista.id), "tipo_leitura": "odometro", "leitura_inicial": "10"}, usuario=self.admin, veiculo=veiculo)
         self.assertEqual(STATUS_EM_USO, veiculo.status_operacional)
 
         sucesso, _ = alterar_indisponibilidade_veiculo(veiculo, indisponivel=True, motivo="Oficina")
@@ -247,6 +249,40 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         self.assertIn(b"Pool de Veiculos", resposta.data)
 
 
+
+    def test_rota_vincular_usa_colaborador_logado_e_leitura_final_anterior(self):
+        veiculo = self._criar_veiculo()
+        _, _, primeiro = vincular_responsavel(
+            {
+                "colaborador_id": str(self.motorista.id),
+                "tipo_leitura": "odometro",
+                "leitura_inicial": "50",
+            },
+            usuario=self.admin,
+            veiculo=veiculo,
+        )
+        self.usuario.colaborador_id = self.operador.id
+        db.session.commit()
+        self._liberar_usuario(editar=True)
+        self._autenticar(self.usuario)
+
+        resposta_get = self.client.get(f"/operacao/pool-veiculos/ativos/{veiculo.id}/vincular")
+        self.assertEqual(200, resposta_get.status_code)
+        self.assertIn(b"Operador Dois", resposta_get.data)
+        self.assertIn(b"Operacao", resposta_get.data)
+        self.assertIn(b"50,00", resposta_get.data)
+
+        resposta_post = self.client.post(
+            f"/operacao/pool-veiculos/ativos/{veiculo.id}/vincular",
+            data={"tipo_leitura": "odometro", "leitura_inicial": "80"},
+            follow_redirects=False,
+        )
+        self.assertEqual(302, resposta_post.status_code)
+        db.session.refresh(primeiro)
+        novo = OperacaoVeiculoResponsavel.query.order_by(OperacaoVeiculoResponsavel.id.desc()).first()
+        self.assertEqual("50.00", str(primeiro.leitura_final))
+        self.assertEqual(self.operador.id, novo.colaborador_id)
+        self.assertEqual(self.equipe.id, novo.equipe_id)
+
 if __name__ == "__main__":
     unittest.main()
-
