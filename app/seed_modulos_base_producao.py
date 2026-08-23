@@ -55,7 +55,7 @@ DEPARTAMENTOS_BASE = [
         "icone": "engrenagem",
         "ordem": 3,
         "modulos": [
-            ("Gestão de Veículos e EPGs", "gestao_veiculos_epgs", "Cadastro e consulta de veículos, máquinas e equipamentos operacionais"),
+            ("Gestão de Veículos e EGPs", "gestao_veiculos_epgs", "Cadastro e consulta de veículos, máquinas e equipamentos operacionais"),
             ("Ordens de Serviço", "ordens_de_servico", "Abertura e acompanhamento"),
             ("Equipes", "equipes", "Times e alocação"),
             ("Cronograma", "cronograma", "Prazos e agenda"),

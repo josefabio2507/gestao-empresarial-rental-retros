@@ -214,7 +214,7 @@ class OperacaoVeiculoEquipamento(db.Model):
             name="ck_operacao_veiculos_situacao_aquisicao",
         ),
         db.CheckConstraint(
-            "tipo in ('Veiculo leve', 'Caminhao', 'Maquina', 'Equipamento', 'EPG', 'Outro')",
+            "tipo in ('Veiculo leve', 'Caminhao', 'Maquina', 'Equipamento', 'EGP', 'Outro')",
             name="ck_operacao_veiculos_tipo",
         ),
         db.CheckConstraint(

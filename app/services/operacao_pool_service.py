@@ -24,7 +24,7 @@ STATUS_VINCULO_CORRIGIDO = "Corrigido"
 STATUS_VINCULO_CANCELADO = "Cancelado"
 STATUS_VINCULO_RETIFICADO = "Retificado"
 
-TIPOS_VEICULO = ["Veiculo leve", "Caminhao", "Maquina", "Equipamento", "EPG", "Outro"]
+TIPOS_VEICULO = ["Veiculo leve", "Caminhao", "Maquina", "Equipamento", "EGP", "Outro"]
 SITUACOES_AQUISICAO = ["Quitado", "Financiado"]
 TIPOS_LEITURA = ["odometro", "horimetro"]
 

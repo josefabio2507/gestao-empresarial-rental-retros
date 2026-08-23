@@ -10,7 +10,7 @@ TIPOS_VEICULO_EQUIPAMENTO = [
     "Caminhao",
     "Maquina",
     "Equipamento",
-    "EPG",
+    "EGP",
     "Outro",
 ]
 

@@ -70,7 +70,7 @@ DEPARTAMENTOS = [
             ("Checklists", "checklists", "Inspeções e rotinas"),
             ("Apontamentos", "apontamentos", "Horas e produção"),
             ("Indicadores", "indicadores", "Desempenho operacional"),
-            ("Gestao de Veiculos e EPGs", "gestao_veiculos_epgs", "Pool operacional de veiculos, equipamentos e EPGs"),
+            ("Gestao de Veiculos e EGPs", "gestao_veiculos_epgs", "Pool operacional de veiculos, equipamentos e EGPs"),
         ],
     },
     {

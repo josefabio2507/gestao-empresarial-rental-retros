@@ -60,7 +60,7 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         db.session.flush()
         self.modulo = Modulo(
             departamento_id=self.departamento.id,
-            nome="Gestao de Veiculos e EPGs",
+            nome="Gestao de Veiculos e EGPs",
             slug="gestao_veiculos_epgs",
             ativo=True,
             ordem=1,

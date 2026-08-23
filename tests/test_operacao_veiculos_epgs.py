@@ -64,7 +64,7 @@ class OperacaoVeiculosEpgsTestCase(unittest.TestCase):
 
         self.modulo = Modulo(
             departamento_id=departamento.id,
-            nome="Gestão de Veículos e EPGs",
+            nome="Gestão de Veículos e EGPs",
             slug="gestao_veiculos_epgs",
             ativo=True,
             ordem=1,
@@ -103,7 +103,7 @@ class OperacaoVeiculosEpgsTestCase(unittest.TestCase):
         resposta = self.client.get("/operacao/gestao-veiculos-epgs/")
 
         self.assertEqual(200, resposta.status_code)
-        self.assertIn("Gestão de Veículos e EPGs".encode("utf-8"), resposta.data)
+        self.assertIn("Gestão de Veículos e EGPs".encode("utf-8"), resposta.data)
 
     def test_usuario_sem_permissao_nao_acessa_rota_direta(self):
         self._autenticar(self.usuario)
