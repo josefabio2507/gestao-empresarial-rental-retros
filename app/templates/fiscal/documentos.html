@@ -120,7 +120,8 @@
                 </thead>
                 <tbody>
                     {% for documento in documentos %}
-                        {% set manifestacao_registrada = documento.manifestacao_status or documento.manifestacao_protocolo %}
+                        {% set manifestacao_status_normalizado = (documento.manifestacao_status or '')|lower %}
+                        {% set manifestacao_registrada = documento.manifestacao_protocolo or (documento.manifestacao_status and 'aguardando' not in manifestacao_status_normalizado) %}
                         <tr>
                             <td>{{ documento.numero }}</td>
                             <td>{{ documento.serie or "-" }}</td>
