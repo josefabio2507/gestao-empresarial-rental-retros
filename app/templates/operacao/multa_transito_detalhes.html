@@ -23,7 +23,7 @@
             <div><dt>Valor da multa</dt><dd>{{ formatar_moeda_brl(multa.valor_multa) }}</dd></div>
             <div><dt>Vencimento</dt><dd>{{ multa.data_vencimento.strftime('%d/%m/%Y') }}</dd></div>
             <div><dt>Motorista vinculado</dt><dd>{{ multa.motorista_vinculado.nome if multa.motorista_vinculado else '-' }}</dd></div>
-            <div><dt>Motorista indicado</dt><dd>{{ multa.motorista_indicado.nome if multa.motorista_indicado else '-' }}</dd></div>
+            <div><dt>Motorista indicado</dt><dd>{{ multa.motorista_indicado_nome or (multa.motorista_indicado.nome if multa.motorista_indicado else '-') }}</dd></div>
             <div><dt>Gravidade</dt><dd>{{ gravidades.get(multa.gravidade, multa.gravidade) }}</dd></div>
             <div><dt>Pontuação</dt><dd>{{ multa.pontuacao }}</dd></div>
             <div><dt>Vencimento 2ª cobrança</dt><dd>{{ multa.data_vencimento_segunda_cobranca.strftime('%d/%m/%Y') if multa.data_vencimento_segunda_cobranca else '-' }}</dd></div>
