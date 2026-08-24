@@ -14,12 +14,14 @@ from app.models import (
     NivelAcesso,
     OperacaoAbastecimento,
     OperacaoLeituraAtivo,
+    OperacaoMultaTransito,
     OperacaoVeiculoEquipamento,
     OperacaoVeiculoResponsavel,
     PermissaoUsuarioModulo,
     Usuario,
 )
 from app.services.operacao_abastecimento_service import TIPOS_COMBUSTIVEL, salvar_abastecimento
+from app.services.operacao_multas_transito_service import salvar_multa_transito
 from app.services.operacao_pool_service import (
     STATUS_DISPONIVEL,
     STATUS_EM_USO,
@@ -512,5 +514,82 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         self.assertIn(b"Ver cupom fiscal", detalhe.data)
         self.assertIn(b"https://drive.google.com/cupom/1", detalhe.data)
 
+    def test_salva_multa_transito_com_motorista_vinculado_e_custo_total(self):
+        veiculo = self._criar_veiculo("MLT001", "CAMINHAO MULTA")
+        sucesso, mensagem, _ = vincular_responsavel(
+            {"colaborador_id": str(self.motorista.id), "tipo_leitura": "odometro", "leitura_inicial": "10"},
+            usuario=self.admin,
+            veiculo=veiculo,
+        )
+        self.assertTrue(sucesso, mensagem)
+
+        sucesso, mensagem, multa = salvar_multa_transito(
+            {
+                "data_infracao": "2026-08-24",
+                "hora_infracao": "14:30",
+                "veiculo_id": str(veiculo.id),
+                "numero_auto_infracao": "AUTO-001",
+                "local_infracao": "Av. Principal, 100",
+                "cidade": "SANTOS",
+                "descricao_infracao": "Excesso de velocidade",
+                "valor_multa": "195,23",
+                "data_vencimento": "2026-09-10",
+                "motorista_indicado_id": str(self.operador.id),
+                "gravidade": "Grave",
+                "pontuacao": "5",
+                "data_vencimento_segunda_cobranca": "2026-10-10",
+                "valor_segunda_cobranca": "390,46",
+            },
+            self.admin,
+        )
+
+        self.assertTrue(sucesso, mensagem)
+        self.assertEqual(self.motorista.id, multa.motorista_vinculado_id)
+        self.assertEqual(self.operador.id, multa.motorista_indicado_id)
+        self.assertEqual("585.69", str(multa.custo_total))
+        self.assertEqual(1, OperacaoMultaTransito.query.count())
+
+    def test_rota_multas_transito_e_central_de_custos_exibem_multa(self):
+        veiculo = self._criar_veiculo("MLT002", "CAMINHAO CENTRAL MULTA")
+        vincular_responsavel(
+            {"colaborador_id": str(self.motorista.id), "tipo_leitura": "odometro", "leitura_inicial": "10"},
+            usuario=self.admin,
+            veiculo=veiculo,
+        )
+        sucesso, mensagem, multa = salvar_multa_transito(
+            {
+                "data_infracao": "2026-08-24",
+                "hora_infracao": "08:15",
+                "veiculo_id": str(veiculo.id),
+                "numero_auto_infracao": "AUTO-002",
+                "local_infracao": "Rodovia Anchieta",
+                "cidade": "CUBATAO",
+                "descricao_infracao": "Transitar em faixa exclusiva",
+                "valor_multa": "100,00",
+                "data_vencimento": "2026-09-01",
+                "gravidade": "Media",
+                "pontuacao": "4",
+            },
+            self.admin,
+        )
+        self.assertTrue(sucesso, mensagem)
+        self._liberar_usuario(visualizar=True, criar=True)
+        self._autenticar(self.usuario)
+
+        lista = self.client.get("/operacao/multas-transito")
+        self.assertEqual(200, lista.status_code)
+        self.assertIn(b"Multas de Tr", lista.data)
+        self.assertIn(b"AUTO-002", lista.data)
+
+        detalhe = self.client.get(f"/operacao/multas-transito/{multa.id}/ver")
+        self.assertEqual(200, detalhe.status_code)
+        self.assertIn(b"Detalhes da multa", detalhe.data)
+        self.assertIn(b"AUTO-002", detalhe.data)
+
+        central = self.client.get(f"/operacao/central-custos/veiculos/{veiculo.id}")
+        self.assertEqual(200, central.status_code)
+        self.assertIn(b"Transitar em faixa exclusiva", central.data)
+        self.assertIn(b"R$ 100,00", central.data)
+        self.assertIn(b"Ver", central.data)
 if __name__ == "__main__":
     unittest.main()

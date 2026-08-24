@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Gestão de Veículos e EGPs</span>
+            <h1>Multas de Trânsito</h1>
+            <p>Cadastro de autos de infração e custos por veículo.</p>
+        </div>
+        <div class="form-actions">
+            <a class="btn btn-primary" href="{{ url_for('operacao.nova_multa_transito') }}">Nova multa</a>
+            <a class="btn btn-secondary" href="{{ url_for('veiculos_equipamentos.index') }}">Voltar</a>
+        </div>
+    </div>
+
+    <div class="table-card table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Data</th>
+                    <th>Placa</th>
+                    <th>Veículo</th>
+                    <th>Auto de infração</th>
+                    <th>Motorista vinculado</th>
+                    <th>Valor total</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for multa in multas %}
+                    <tr>
+                        <td class="col-nowrap">{{ multa.data_infracao.strftime('%d/%m/%Y') }}</td>
+                        <td>{{ multa.veiculo.placa or multa.veiculo.identificacao }}</td>
+                        <td>{{ multa.veiculo.descricao }}</td>
+                        <td>{{ multa.numero_auto_infracao }}</td>
+                        <td>{{ multa.motorista_vinculado.nome if multa.motorista_vinculado else '-' }}</td>
+                        <td class="col-nowrap">{{ formatar_moeda_brl(multa.custo_total) }}</td>
+                        <td class="col-acoes"><a class="btn btn-secondary" href="{{ url_for('operacao.ver_multa_transito', multa_id=multa.id) }}">Ver</a></td>
+                    </tr>
+                {% else %}
+                    <tr><td class="empty-state" colspan="7">Nenhuma multa de trânsito cadastrada.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

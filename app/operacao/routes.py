@@ -1,8 +1,8 @@
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from app.decorators import module_permission_required
-from app.models import OperacaoAbastecimento, OperacaoVeiculoEquipamento, OperacaoVeiculoResponsavel
+from app.models import OperacaoAbastecimento, OperacaoMultaTransito, OperacaoVeiculoEquipamento, OperacaoVeiculoResponsavel
 from app.services.logs_service import registrar_log
 from app.services.operacao_central_custos_service import (
     STATUS_CENTRAL_CUSTOS,
@@ -19,6 +19,18 @@ from app.services.operacao_abastecimento_service import (
     listar_veiculos_abastecimento_usuario,
     salvar_abastecimento,
     vinculo_ativo_usuario_veiculo,
+)
+from app.services.operacao_multas_transito_service import (
+    CIDADES_MULTA,
+    GRAVIDADES_MULTA,
+    buscar_multa,
+    colaboradores_para_indicacao,
+    data_form,
+    hora_form,
+    listar_multas_transito,
+    motorista_vinculado_na_data,
+    salvar_multa_transito,
+    veiculos_para_multas,
 )
 from app.services.operacao_pool_service import (
     STATUS_DISPONIVEL,
@@ -205,6 +217,68 @@ def editar_abastecimento(abastecimento_id):
         data_padrao=abastecimento.data_abastecimento.isoformat(),
         modo="editar",
     )
+
+@operacao_bp.route("/multas-transito")
+@login_required
+@module_permission_required("operacao", MODULO_POOL, "visualizar")
+def multas_transito():
+    return render_template(
+        "operacao/multas_transito.html",
+        multas=listar_multas_transito(),
+        formatar_moeda_brl=formatar_moeda_brl,
+    )
+
+
+@operacao_bp.route("/multas-transito/nova", methods=["GET", "POST"])
+@login_required
+@module_permission_required("operacao", MODULO_POOL, "criar")
+def nova_multa_transito():
+    if request.method == "POST":
+        sucesso, mensagem, multa = salvar_multa_transito(request.form, current_user)
+        if sucesso:
+            registrar_log("operacao_multa_transito_criada", f"Multa de transito criada. ID: {multa.id}.")
+            flash(mensagem, "success")
+            return redirect(url_for("operacao.multas_transito"))
+        flash(mensagem, "danger")
+
+    return render_template(
+        "operacao/multa_transito_form.html",
+        multa=None,
+        veiculos=veiculos_para_multas(),
+        colaboradores=colaboradores_para_indicacao(),
+        cidades=CIDADES_MULTA,
+        gravidades=GRAVIDADES_MULTA,
+        dados=request.form,
+    )
+
+
+@operacao_bp.route("/multas-transito/<int:multa_id>/ver")
+@login_required
+@module_permission_required("operacao", MODULO_POOL, "visualizar")
+def ver_multa_transito(multa_id):
+    multa = buscar_multa(multa_id)
+    if not multa:
+        flash("Multa de transito nao encontrada.", "warning")
+        return redirect(url_for("operacao.multas_transito"))
+
+    return render_template(
+        "operacao/multa_transito_detalhes.html",
+        multa=multa,
+        cidades=dict(CIDADES_MULTA),
+        gravidades=dict(GRAVIDADES_MULTA),
+        formatar_moeda_brl=formatar_moeda_brl,
+    )
+
+
+@operacao_bp.route("/multas-transito/motorista-vinculado")
+@login_required
+@module_permission_required("operacao", MODULO_POOL, "visualizar")
+def motorista_vinculado_multa():
+    data_infracao = data_form(request.args.get("data_infracao"))
+    hora_infracao = hora_form(request.args.get("hora_infracao"))
+    veiculo_id = request.args.get("veiculo_id", type=int)
+    motorista = motorista_vinculado_na_data(veiculo_id, data_infracao, hora_infracao)
+    return jsonify({"nome": motorista.nome if motorista else "Sem motorista vinculado na data"})
 
 @operacao_bp.route("/pool-veiculos")
 @login_required

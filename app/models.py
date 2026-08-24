@@ -248,6 +248,11 @@ class OperacaoVeiculoEquipamento(db.Model):
         back_populates="veiculo",
         order_by="OperacaoAbastecimento.data_abastecimento.desc()",
     )
+    multas_transito = db.relationship(
+        "OperacaoMultaTransito",
+        back_populates="veiculo",
+        order_by="OperacaoMultaTransito.data_infracao.desc()",
+    )
     @property
     def vinculo_ativo(self):
         for vinculo in self.vinculos_responsaveis:
@@ -404,6 +409,58 @@ class OperacaoAbastecimento(db.Model):
     def __repr__(self):
         return f"<OperacaoAbastecimento veiculo={self.veiculo_id} data={self.data_abastecimento}>"
 
+class OperacaoMultaTransito(db.Model):
+    __tablename__ = "operacao_multas_transito"
+
+    id = db.Column(db.Integer, primary_key=True)
+    veiculo_id = db.Column(db.Integer, db.ForeignKey("operacao_veiculos_equipamentos.id"), nullable=False, index=True)
+    motorista_vinculado_id = db.Column(db.Integer, db.ForeignKey("colaboradores.id"), nullable=True, index=True)
+    motorista_indicado_id = db.Column(db.Integer, db.ForeignKey("colaboradores.id"), nullable=True, index=True)
+    usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=False, index=True)
+    data_infracao = db.Column(db.Date, nullable=False, index=True)
+    hora_infracao = db.Column(db.Time, nullable=False)
+    numero_auto_infracao = db.Column(db.String(80), nullable=False, unique=True, index=True)
+    local_infracao = db.Column(db.String(255), nullable=False)
+    cidade = db.Column(db.String(80), nullable=False, index=True)
+    descricao_infracao = db.Column(db.Text, nullable=False)
+    valor_multa = db.Column(db.Numeric(12, 2), nullable=False)
+    data_vencimento = db.Column(db.Date, nullable=False)
+    gravidade = db.Column(db.String(40), nullable=False)
+    pontuacao = db.Column(db.Integer, nullable=False)
+    data_vencimento_segunda_cobranca = db.Column(db.Date, nullable=True)
+    valor_segunda_cobranca = db.Column(db.Numeric(12, 2), nullable=True)
+    observacoes = db.Column(db.Text, nullable=True)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
+    atualizado_em = db.Column(db.DateTime, default=agora_brasil, onupdate=agora_brasil, nullable=False)
+
+    veiculo = db.relationship("OperacaoVeiculoEquipamento", back_populates="multas_transito")
+    motorista_vinculado = db.relationship("Colaborador", foreign_keys=[motorista_vinculado_id])
+    motorista_indicado = db.relationship("Colaborador", foreign_keys=[motorista_indicado_id])
+    usuario = db.relationship("Usuario")
+
+    __table_args__ = (
+        db.CheckConstraint(
+            "cidade in ('CUBATAO', 'SANTOS', 'SAO VICENTE', 'GUARUJA', 'PRAIA GRANDE', 'ITANHAEM', 'MONGAGUA', 'SAO PAULO')",
+            name="ck_operacao_multas_transito_cidade",
+        ),
+        db.CheckConstraint(
+            "gravidade in ('Leve', 'Media', 'Grave', 'Gravissima')",
+            name="ck_operacao_multas_transito_gravidade",
+        ),
+        db.CheckConstraint("valor_multa >= 0", name="ck_operacao_multas_transito_valor"),
+        db.CheckConstraint(
+            "valor_segunda_cobranca is null or valor_segunda_cobranca >= 0",
+            name="ck_operacao_multas_transito_valor_segunda",
+        ),
+        db.CheckConstraint("pontuacao >= 0", name="ck_operacao_multas_transito_pontuacao"),
+    )
+
+    @property
+    def custo_total(self):
+        return (self.valor_multa or 0) + (self.valor_segunda_cobranca or 0)
+
+    def __repr__(self):
+        return f"<OperacaoMultaTransito veiculo={self.veiculo_id} auto={self.numero_auto_infracao}>"
 class OperacaoPlanoManutencaoPreventiva(db.Model):
     __tablename__ = "operacao_planos_manutencao_preventiva"
 

@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Multas de Trânsito</span>
+            <h1>Nova multa</h1>
+            <p>Informe os dados do auto de infração.</p>
+        </div>
+        <a class="btn btn-secondary" href="{{ url_for('operacao.multas_transito') }}">Voltar</a>
+    </div>
+
+    <form class="form-card" method="POST">
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="data_infracao">Data da Infração</label>
+                <input id="data_infracao" name="data_infracao" type="date" required value="{{ dados.get('data_infracao', '') }}">
+            </div>
+            <div class="form-group">
+                <label for="hora_infracao">Hora da Infração</label>
+                <input id="hora_infracao" name="hora_infracao" type="time" required value="{{ dados.get('hora_infracao', '') }}">
+            </div>
+            <div class="form-group">
+                <label for="veiculo_id">Placa do veículo</label>
+                <select id="veiculo_id" name="veiculo_id" required>
+                    <option value="">Selecione</option>
+                    {% for veiculo in veiculos %}
+                        <option value="{{ veiculo.id }}" data-descricao="{{ veiculo.descricao }}" {% if dados.get('veiculo_id') == veiculo.id|string %}selected{% endif %}>{{ veiculo.placa or veiculo.identificacao }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Descrição do Veículo</label>
+                <input id="descricao_veiculo" readonly value="">
+            </div>
+            <div class="form-group">
+                <label for="numero_auto_infracao">Nº Auto de infração</label>
+                <input id="numero_auto_infracao" name="numero_auto_infracao" required value="{{ dados.get('numero_auto_infracao', '') }}">
+            </div>
+            <div class="form-group">
+                <label for="local_infracao">Local da Infração</label>
+                <input id="local_infracao" name="local_infracao" required value="{{ dados.get('local_infracao', '') }}">
+            </div>
+            <div class="form-group">
+                <label for="cidade">Cidade</label>
+                <select id="cidade" name="cidade" required>
+                    <option value="">Selecione</option>
+                    {% for valor, nome in cidades %}
+                        <option value="{{ valor }}" {% if dados.get('cidade') == valor %}selected{% endif %}>{{ nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="valor_multa">Valor da Multa (R$)</label>
+                <input id="valor_multa" name="valor_multa" required inputmode="decimal" placeholder="R$ 0,00" value="{{ dados.get('valor_multa', '') }}">
+            </div>
+            <div class="form-group form-group-wide">
+                <label for="descricao_infracao">Descrição da Infração</label>
+                <textarea id="descricao_infracao" name="descricao_infracao" required>{{ dados.get('descricao_infracao', '') }}</textarea>
+            </div>
+            <div class="form-group">
+                <label for="data_vencimento">Data de Vencimento</label>
+                <input id="data_vencimento" name="data_vencimento" type="date" required value="{{ dados.get('data_vencimento', '') }}">
+            </div>
+            <div class="form-group">
+                <label>Motorista Vinculado</label>
+                <input id="motorista_vinculado" readonly value="Calculado pela data da infração">
+            </div>
+            <div class="form-group">
+                <label for="motorista_indicado_id">Motorista indicado</label>
+                <select id="motorista_indicado_id" name="motorista_indicado_id">
+                    <option value="">Sem indicação</option>
+                    {% for colaborador in colaboradores %}
+                        <option value="{{ colaborador.id }}" {% if dados.get('motorista_indicado_id') == colaborador.id|string %}selected{% endif %}>{{ colaborador.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="gravidade">Gravidade</label>
+                <select id="gravidade" name="gravidade" required>
+                    <option value="">Selecione</option>
+                    {% for valor, nome in gravidades %}
+                        <option value="{{ valor }}" {% if dados.get('gravidade') == valor %}selected{% endif %}>{{ nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="pontuacao">Pontuação</label>
+                <input id="pontuacao" name="pontuacao" type="number" min="0" required value="{{ dados.get('pontuacao', '') }}">
+            </div>
+            <div class="form-group">
+                <label for="data_vencimento_segunda_cobranca">Data de vencimento da 2ª cobrança</label>
+                <input id="data_vencimento_segunda_cobranca" name="data_vencimento_segunda_cobranca" type="date" value="{{ dados.get('data_vencimento_segunda_cobranca', '') }}">
+            </div>
+            <div class="form-group">
+                <label for="valor_segunda_cobranca">Valor da 2ª cobrança (R$)</label>
+                <input id="valor_segunda_cobranca" name="valor_segunda_cobranca" inputmode="decimal" placeholder="R$ 0,00" value="{{ dados.get('valor_segunda_cobranca', '') }}">
+            </div>
+        </div>
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Salvar</button>
+            <a class="btn btn-secondary" href="{{ url_for('operacao.multas_transito') }}">Cancelar</a>
+        </div>
+    </form>
+</section>
+<script>
+(function () {
+    const veiculo = document.getElementById('veiculo_id');
+    const descricao = document.getElementById('descricao_veiculo');
+    const data = document.getElementById('data_infracao');
+    const hora = document.getElementById('hora_infracao');
+    const motorista = document.getElementById('motorista_vinculado');
+
+    function atualizarDescricao() {
+        const option = veiculo.options[veiculo.selectedIndex];
+        descricao.value = option ? (option.dataset.descricao || '') : '';
+    }
+
+    function atualizarMotorista() {
+        if (!veiculo.value || !data.value || !hora.value) {
+            motorista.value = 'Calculado pela data da infração';
+            return;
+        }
+        const params = new URLSearchParams({ veiculo_id: veiculo.value, data_infracao: data.value, hora_infracao: hora.value });
+        fetch(`{{ url_for('operacao.motorista_vinculado_multa') }}?${params.toString()}`)
+            .then(response => response.json())
+            .then(payload => { motorista.value = payload.nome; })
+            .catch(() => { motorista.value = 'Não foi possível consultar'; });
+    }
+
+    veiculo.addEventListener('change', function () { atualizarDescricao(); atualizarMotorista(); });
+    data.addEventListener('change', atualizarMotorista);
+    hora.addEventListener('change', atualizarMotorista);
+    atualizarDescricao();
+    atualizarMotorista();
+})();
+</script>
+{% endblock %}
