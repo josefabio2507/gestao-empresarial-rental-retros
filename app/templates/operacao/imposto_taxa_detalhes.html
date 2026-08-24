@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Impostos e Taxas</span>
+            <h1>Detalhes da parcela</h1>
+            <p>{{ lancamento.veiculo.placa or lancamento.veiculo.identificacao }} - {{ lancamento.veiculo.descricao }}</p>
+        </div>
+        <a class="btn btn-secondary" href="{{ url_for('operacao.impostos_taxas') }}">Voltar</a>
+    </div>
+
+    <div class="details-card">
+        <dl class="details-grid">
+            <div><dt>Placa</dt><dd>{{ lancamento.veiculo.placa or lancamento.veiculo.identificacao }}</dd></div>
+            <div><dt>Descrição</dt><dd>{{ lancamento.veiculo.descricao }}</dd></div>
+            <div><dt>Tipo de Custo</dt><dd>{{ lancamento.tipo_custo }}</dd></div>
+            <div><dt>Parcela</dt><dd>{{ parcelas.get(lancamento.numero_parcela, lancamento.numero_parcela) }}</dd></div>
+            <div><dt>Data de Vencimento</dt><dd>{{ lancamento.data_vencimento.strftime('%d/%m/%Y') }}</dd></div>
+            <div><dt>Valor</dt><dd>{{ formatar_moeda_brl(lancamento.valor) }}</dd></div>
+            <div class="details-wide"><dt>Observações</dt><dd>{{ lancamento.observacoes or '-' }}</dd></div>
+        </dl>
+    </div>
+</section>
+{% endblock %}

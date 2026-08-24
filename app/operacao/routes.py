@@ -20,6 +20,14 @@ from app.services.operacao_abastecimento_service import (
     salvar_abastecimento,
     vinculo_ativo_usuario_veiculo,
 )
+from app.services.operacao_impostos_taxas_service import (
+    PARCELAS_IMPOSTO_TAXA,
+    TIPOS_IMPOSTO_TAXA,
+    buscar_imposto_taxa,
+    listar_impostos_taxas,
+    salvar_impostos_taxas,
+    veiculos_para_impostos_taxas,
+)
 from app.services.operacao_multas_transito_service import (
     CIDADES_MULTA,
     GRAVIDADES_MULTA,
@@ -80,6 +88,55 @@ def index():
 def status():
     return "Operação online."
 
+
+@operacao_bp.route("/impostos-taxas")
+@login_required
+@module_permission_required("operacao", MODULO_POOL, "visualizar")
+def impostos_taxas():
+    return render_template(
+        "operacao/impostos_taxas.html",
+        lancamentos=listar_impostos_taxas(),
+        parcelas=dict(PARCELAS_IMPOSTO_TAXA),
+        formatar_moeda_brl=formatar_moeda_brl,
+    )
+
+
+@operacao_bp.route("/impostos-taxas/novo", methods=["GET", "POST"])
+@login_required
+@module_permission_required("operacao", MODULO_POOL, "criar")
+def novo_imposto_taxa():
+    if request.method == "POST":
+        sucesso, mensagem, lancamentos = salvar_impostos_taxas(request.form, current_user)
+        if sucesso:
+            registrar_log("operacao_impostos_taxas_criados", f"Impostos e taxas criados. Quantidade: {len(lancamentos)}.")
+            flash(mensagem, "success")
+            return redirect(url_for("operacao.impostos_taxas"))
+        flash(mensagem, "danger")
+
+    return render_template(
+        "operacao/imposto_taxa_form.html",
+        veiculos=veiculos_para_impostos_taxas(),
+        tipos_custo=TIPOS_IMPOSTO_TAXA,
+        parcelas=PARCELAS_IMPOSTO_TAXA,
+        dados=request.form,
+    )
+
+
+@operacao_bp.route("/impostos-taxas/<int:lancamento_id>/ver")
+@login_required
+@module_permission_required("operacao", MODULO_POOL, "visualizar")
+def ver_imposto_taxa(lancamento_id):
+    lancamento = buscar_imposto_taxa(lancamento_id)
+    if not lancamento:
+        flash("Imposto ou taxa nao encontrado.", "warning")
+        return redirect(url_for("operacao.impostos_taxas"))
+
+    return render_template(
+        "operacao/imposto_taxa_detalhes.html",
+        lancamento=lancamento,
+        parcelas=dict(PARCELAS_IMPOSTO_TAXA),
+        formatar_moeda_brl=formatar_moeda_brl,
+    )
 
 @operacao_bp.route("/central-custos")
 @login_required
