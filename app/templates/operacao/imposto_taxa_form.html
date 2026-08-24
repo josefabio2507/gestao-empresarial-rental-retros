@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Impostos e Taxas</span>
+            <h1>Novo cadastro</h1>
+            <p>Informe o veículo, o tipo de custo e as parcelas.</p>
+        </div>
+        <a class="btn btn-secondary" href="{{ url_for('operacao.impostos_taxas') }}">Voltar</a>
+    </div>
+
+    <form class="form-card" method="POST">
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="veiculo_id">Placa</label>
+                <select id="veiculo_id" name="veiculo_id" required>
+                    <option value="">Selecione</option>
+                    {% for veiculo in veiculos %}
+                        <option value="{{ veiculo.id }}" data-descricao="{{ veiculo.descricao }}" {% if dados.get('veiculo_id') == veiculo.id|string %}selected{% endif %}>{{ veiculo.placa or veiculo.identificacao }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Descrição</label>
+                <input id="descricao_veiculo" readonly value="">
+            </div>
+            <div class="form-group">
+                <label for="tipo_custo">Tipo de Custo</label>
+                <select id="tipo_custo" name="tipo_custo" required>
+                    <option value="">Selecione</option>
+                    {% for tipo in tipos_custo %}
+                        <option value="{{ tipo }}" {% if dados.get('tipo_custo') == tipo %}selected{% endif %}>{{ tipo }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div class="table-card table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Data de Vencimento</th>
+                        <th>Nº de Parcelas</th>
+                        <th>Valor da parcela</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for indice in range(6) %}
+                        <tr>
+                            <td><input name="data_vencimento" type="date" value="{{ dados.getlist('data_vencimento')[indice] if dados.getlist('data_vencimento')|length > indice else '' }}"></td>
+                            <td>
+                                <select name="numero_parcela">
+                                    <option value="">Selecione</option>
+                                    {% set parcela_atual = dados.getlist('numero_parcela')[indice] if dados.getlist('numero_parcela')|length > indice else '' %}
+                                    {% for valor, nome in parcelas %}
+                                        <option value="{{ valor }}" {% if parcela_atual == valor %}selected{% endif %}>{{ nome }}</option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                            <td><input name="valor" inputmode="decimal" placeholder="R$ 0,00" value="{{ dados.getlist('valor')[indice] if dados.getlist('valor')|length > indice else '' }}"></td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="form-group">
+            <label for="observacoes">Observações</label>
+            <textarea id="observacoes" name="observacoes">{{ dados.get('observacoes', '') }}</textarea>
+        </div>
+
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Salvar</button>
+            <a class="btn btn-secondary" href="{{ url_for('operacao.impostos_taxas') }}">Cancelar</a>
+        </div>
+    </form>
+</section>
+<script>
+(function () {
+    const veiculo = document.getElementById('veiculo_id');
+    const descricao = document.getElementById('descricao_veiculo');
+    function atualizarDescricao() {
+        const option = veiculo.options[veiculo.selectedIndex];
+        descricao.value = option ? (option.dataset.descricao || '') : '';
+    }
+    veiculo.addEventListener('change', atualizarDescricao);
+    atualizarDescricao();
+})();
+</script>
+{% endblock %}

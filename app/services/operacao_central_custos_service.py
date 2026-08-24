@@ -3,7 +3,7 @@ from decimal import Decimal
 
 from sqlalchemy import or_
 
-from app.models import OperacaoAbastecimento, OperacaoHistoricoManutencao, OperacaoMultaTransito, OperacaoVeiculoEquipamento
+from app.models import OperacaoAbastecimento, OperacaoHistoricoManutencao, OperacaoImpostoTaxa, OperacaoMultaTransito, OperacaoVeiculoEquipamento
 
 STATUS_CENTRAL_CUSTOS = ["ativos", "inativos", "todos"]
 TIPOS_CUSTO_CENTRAL = ["Abastecimento", "Manutenção", "Multas", "Impostos e Taxas"]
@@ -153,12 +153,43 @@ def linhas_multas(veiculo, inicio=None, fim=None):
             }
         )
     return linhas, total
+
+
+def _filtrar_data_imposto_taxa(query, inicio, fim):
+    if inicio:
+        query = query.filter(OperacaoImpostoTaxa.data_vencimento >= inicio)
+    if fim:
+        query = query.filter(OperacaoImpostoTaxa.data_vencimento <= fim)
+    return query
+
+
+def linhas_impostos_taxas(veiculo, inicio=None, fim=None):
+    query = OperacaoImpostoTaxa.query.filter_by(veiculo_id=veiculo.id)
+    query = _filtrar_data_imposto_taxa(query, inicio, fim)
+    registros = query.order_by(OperacaoImpostoTaxa.data_vencimento.desc(), OperacaoImpostoTaxa.id.desc()).all()
+
+    linhas = []
+    total = Decimal("0")
+    for registro in registros:
+        valor = decimal_zero(registro.valor)
+        total += valor
+        linhas.append(
+            {
+                "id": registro.id,
+                "data": registro.data_vencimento,
+                "descricao": registro.tipo_custo,
+                "documento": registro.numero_parcela,
+                "valor": valor,
+                "registro": registro,
+            }
+        )
+    return linhas, total
+
 def central_custos_veiculo(veiculo, inicio=None, fim=None):
     abastecimentos, total_abastecimento = linhas_abastecimento(veiculo, inicio, fim)
     manutencoes, total_manutencao = linhas_manutencao(veiculo, inicio, fim)
     multas, total_multas = linhas_multas(veiculo, inicio, fim)
-    impostos_taxas = []
-    total_impostos_taxas = Decimal("0")
+    impostos_taxas, total_impostos_taxas = linhas_impostos_taxas(veiculo, inicio, fim)
 
     grupos = {
         "abastecimento": {
@@ -183,7 +214,7 @@ def central_custos_veiculo(veiculo, inicio=None, fim=None):
             "titulo": "Impostos e Taxas",
             "linhas": impostos_taxas,
             "total": total_impostos_taxas,
-            "mensagem_vazio": "Cadastro de IPVA e licenciamento ainda não criado.",
+            "mensagem_vazio": "Nenhum imposto ou taxa no período.",
         },
     }
     total_geral = sum((grupo["total"] for grupo in grupos.values()), start=Decimal("0"))

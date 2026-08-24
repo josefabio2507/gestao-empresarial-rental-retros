@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Gestão de Veículos e EGPs</span>
+            <h1>Impostos e Taxas</h1>
+            <p>Parcelas de IPVA e licenciamento vinculadas aos veículos.</p>
+        </div>
+        <div class="form-actions">
+            <a class="btn btn-primary" href="{{ url_for('operacao.novo_imposto_taxa') }}">Novo cadastro</a>
+            <a class="btn btn-secondary" href="{{ url_for('veiculos_equipamentos.index') }}">Voltar</a>
+        </div>
+    </div>
+
+    <div class="table-card table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Vencimento</th>
+                    <th>Placa</th>
+                    <th>Veículo</th>
+                    <th>Tipo</th>
+                    <th>Parcela</th>
+                    <th>Valor</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for lancamento in lancamentos %}
+                    <tr>
+                        <td class="col-nowrap">{{ lancamento.data_vencimento.strftime('%d/%m/%Y') }}</td>
+                        <td>{{ lancamento.veiculo.placa or lancamento.veiculo.identificacao }}</td>
+                        <td>{{ lancamento.veiculo.descricao }}</td>
+                        <td>{{ lancamento.tipo_custo }}</td>
+                        <td>{{ parcelas.get(lancamento.numero_parcela, lancamento.numero_parcela) }}</td>
+                        <td class="col-nowrap">{{ formatar_moeda_brl(lancamento.valor) }}</td>
+                        <td class="col-acoes"><a class="btn btn-secondary" href="{{ url_for('operacao.ver_imposto_taxa', lancamento_id=lancamento.id) }}">Ver</a></td>
+                    </tr>
+                {% else %}
+                    <tr><td class="empty-state" colspan="7">Nenhuma parcela de imposto ou taxa cadastrada.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

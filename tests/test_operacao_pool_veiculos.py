@@ -2,7 +2,7 @@ import unittest
 from io import BytesIO
 
 from PIL import Image
-from werkzeug.datastructures import FileStorage
+from werkzeug.datastructures import FileStorage, MultiDict
 
 from app import create_app
 from app.extensions import db
@@ -13,6 +13,7 @@ from app.models import (
     Modulo,
     NivelAcesso,
     OperacaoAbastecimento,
+    OperacaoImpostoTaxa,
     OperacaoLeituraAtivo,
     OperacaoMultaTransito,
     OperacaoVeiculoEquipamento,
@@ -21,6 +22,7 @@ from app.models import (
     Usuario,
 )
 from app.services.operacao_abastecimento_service import TIPOS_COMBUSTIVEL, salvar_abastecimento
+from app.services.operacao_impostos_taxas_service import salvar_impostos_taxas
 from app.services.operacao_multas_transito_service import salvar_multa_transito
 from app.services.operacao_pool_service import (
     STATUS_DISPONIVEL,
@@ -655,5 +657,46 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         self.assertEqual(200, filtro_motorista.status_code)
         self.assertIn(b"AUTO-FLT-001", filtro_motorista.data)
         self.assertNotIn(b"AUTO-FLT-999", filtro_motorista.data)
+
+    def test_impostos_taxas_salva_parcelas_e_integra_central_custos(self):
+        veiculo = self._criar_veiculo("IPV001", "CAMINHAO IPVA")
+        sucesso, mensagem, lancamentos = salvar_impostos_taxas(
+            MultiDict(
+                [
+                    ("veiculo_id", str(veiculo.id)),
+                    ("tipo_custo", "IPVA"),
+                    ("data_vencimento", "2026-09-10"),
+                    ("numero_parcela", "1a"),
+                    ("valor", "100,00"),
+                    ("data_vencimento", "2026-10-10"),
+                    ("numero_parcela", "2a"),
+                    ("valor", "150,50"),
+                ]
+            ),
+            self.admin,
+        )
+
+        self.assertTrue(sucesso, mensagem)
+        self.assertEqual(2, len(lancamentos))
+        self.assertEqual(2, OperacaoImpostoTaxa.query.count())
+        self._liberar_usuario(visualizar=True, criar=True)
+        self._autenticar(self.usuario)
+
+        lista = self.client.get("/operacao/impostos-taxas")
+        self.assertEqual(200, lista.status_code)
+        self.assertIn(b"Impostos e Taxas", lista.data)
+        self.assertIn(b"IPVA", lista.data)
+        self.assertIn(b"R$ 150,50", lista.data)
+
+        detalhe = self.client.get(f"/operacao/impostos-taxas/{lancamentos[0].id}/ver")
+        self.assertEqual(200, detalhe.status_code)
+        self.assertIn(b"Detalhes da parcela", detalhe.data)
+        self.assertIn(b"IPVA", detalhe.data)
+
+        central = self.client.get(f"/operacao/central-custos/veiculos/{veiculo.id}")
+        self.assertEqual(200, central.status_code)
+        self.assertIn(b"Impostos e Taxas", central.data)
+        self.assertIn(b"R$ 250,50", central.data)
+        self.assertIn(b"Ver", central.data)
 if __name__ == "__main__":
     unittest.main()

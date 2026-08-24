@@ -253,6 +253,11 @@ class OperacaoVeiculoEquipamento(db.Model):
         back_populates="veiculo",
         order_by="OperacaoMultaTransito.data_infracao.desc()",
     )
+    impostos_taxas = db.relationship(
+        "OperacaoImpostoTaxa",
+        back_populates="veiculo",
+        order_by="OperacaoImpostoTaxa.data_vencimento.desc()",
+    )
     @property
     def vinculo_ativo(self):
         for vinculo in self.vinculos_responsaveis:
@@ -462,6 +467,34 @@ class OperacaoMultaTransito(db.Model):
 
     def __repr__(self):
         return f"<OperacaoMultaTransito veiculo={self.veiculo_id} auto={self.numero_auto_infracao}>"
+
+
+class OperacaoImpostoTaxa(db.Model):
+    __tablename__ = "operacao_impostos_taxas"
+
+    id = db.Column(db.Integer, primary_key=True)
+    veiculo_id = db.Column(db.Integer, db.ForeignKey("operacao_veiculos_equipamentos.id"), nullable=False, index=True)
+    usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=False, index=True)
+    tipo_custo = db.Column(db.String(30), nullable=False, index=True)
+    numero_parcela = db.Column(db.String(20), nullable=False, index=True)
+    data_vencimento = db.Column(db.Date, nullable=False, index=True)
+    valor = db.Column(db.Numeric(12, 2), nullable=False)
+    observacoes = db.Column(db.Text, nullable=True)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
+    atualizado_em = db.Column(db.DateTime, default=agora_brasil, onupdate=agora_brasil, nullable=False)
+
+    veiculo = db.relationship("OperacaoVeiculoEquipamento", back_populates="impostos_taxas")
+    usuario = db.relationship("Usuario")
+
+    __table_args__ = (
+        db.CheckConstraint("tipo_custo in ('IPVA', 'Licenciamento')", name="ck_operacao_impostos_taxas_tipo_custo"),
+        db.CheckConstraint("numero_parcela in ('Cota Unica', '1a', '2a', '3a', '4a', '5a')", name="ck_operacao_impostos_taxas_numero_parcela"),
+        db.CheckConstraint("valor >= 0", name="ck_operacao_impostos_taxas_valor"),
+    )
+
+    def __repr__(self):
+        return f"<OperacaoImpostoTaxa veiculo={self.veiculo_id} tipo={self.tipo_custo} parcela={self.numero_parcela}>"
+
 class OperacaoPlanoManutencaoPreventiva(db.Model):
     __tablename__ = "operacao_planos_manutencao_preventiva"
 
