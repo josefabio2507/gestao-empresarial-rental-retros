@@ -416,6 +416,7 @@ class OperacaoMultaTransito(db.Model):
     veiculo_id = db.Column(db.Integer, db.ForeignKey("operacao_veiculos_equipamentos.id"), nullable=False, index=True)
     motorista_vinculado_id = db.Column(db.Integer, db.ForeignKey("colaboradores.id"), nullable=True, index=True)
     motorista_indicado_id = db.Column(db.Integer, db.ForeignKey("colaboradores.id"), nullable=True, index=True)
+    motorista_indicado_nome = db.Column(db.String(160), nullable=True)
     usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=False, index=True)
     data_infracao = db.Column(db.Date, nullable=False, index=True)
     hora_infracao = db.Column(db.Time, nullable=False)

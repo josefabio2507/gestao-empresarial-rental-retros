@@ -534,7 +534,7 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
                 "descricao_infracao": "Excesso de velocidade",
                 "valor_multa": "195,23",
                 "data_vencimento": "2026-09-10",
-                "motorista_indicado_id": str(self.operador.id),
+                "motorista_indicado_nome": "Condutor Informado",
                 "gravidade": "Grave",
                 "pontuacao": "5",
                 "data_vencimento_segunda_cobranca": "2026-10-10",
@@ -545,7 +545,8 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
 
         self.assertTrue(sucesso, mensagem)
         self.assertEqual(self.motorista.id, multa.motorista_vinculado_id)
-        self.assertEqual(self.operador.id, multa.motorista_indicado_id)
+        self.assertIsNone(multa.motorista_indicado_id)
+        self.assertEqual("Condutor Informado", multa.motorista_indicado_nome)
         self.assertEqual("585.69", str(multa.custo_total))
         self.assertEqual(1, OperacaoMultaTransito.query.count())
 

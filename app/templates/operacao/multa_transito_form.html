@@ -68,13 +68,8 @@
                 <input id="motorista_vinculado" readonly value="Calculado pela data da infração">
             </div>
             <div class="form-group">
-                <label for="motorista_indicado_id">Motorista indicado</label>
-                <select id="motorista_indicado_id" name="motorista_indicado_id">
-                    <option value="">Sem indicação</option>
-                    {% for colaborador in colaboradores %}
-                        <option value="{{ colaborador.id }}" {% if dados.get('motorista_indicado_id') == colaborador.id|string %}selected{% endif %}>{{ colaborador.nome }}</option>
-                    {% endfor %}
-                </select>
+                <label for="motorista_indicado_nome">Motorista indicado</label>
+                <input id="motorista_indicado_nome" name="motorista_indicado_nome" value="{{ dados.get('motorista_indicado_nome', '') }}" placeholder="Nome do condutor indicado">
             </div>
             <div class="form-group">
                 <label for="gravidade">Gravidade</label>

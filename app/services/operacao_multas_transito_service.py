@@ -122,7 +122,7 @@ def salvar_multa_transito(dados, usuario, multa=None):
     descricao = texto(dados.get("descricao_infracao"))
     valor_multa = decimal_brl(dados.get("valor_multa"))
     data_vencimento = data_form(dados.get("data_vencimento"))
-    motorista_indicado_id = inteiro_form(dados.get("motorista_indicado_id"))
+    motorista_indicado_nome = texto(dados.get("motorista_indicado_nome"))
     gravidade = texto(dados.get("gravidade"))
     pontuacao = inteiro_form(dados.get("pontuacao"))
     data_segunda = data_form(dados.get("data_vencimento_segunda_cobranca"))
@@ -153,12 +153,11 @@ def salvar_multa_transito(dados, usuario, multa=None):
         return False, "Informe data e valor da segunda cobranca juntos.", None
 
     motorista_vinculado = motorista_vinculado_na_data(veiculo.id, data_infracao, hora_infracao)
-    motorista_indicado = Colaborador.query.get(motorista_indicado_id) if motorista_indicado_id else None
-
     multa = multa or OperacaoMultaTransito(usuario_id=usuario.id)
     multa.veiculo_id = veiculo.id
     multa.motorista_vinculado_id = motorista_vinculado.id if motorista_vinculado else None
-    multa.motorista_indicado_id = motorista_indicado.id if motorista_indicado else None
+    multa.motorista_indicado_id = None
+    multa.motorista_indicado_nome = motorista_indicado_nome or None
     multa.usuario_id = usuario.id
     multa.data_infracao = data_infracao
     multa.hora_infracao = hora_infracao
