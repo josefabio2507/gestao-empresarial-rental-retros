@@ -28,6 +28,7 @@ from app.services.operacao_multas_transito_service import (
     data_form,
     hora_form,
     listar_multas_transito,
+    listar_motoristas_vinculados_multas,
     motorista_vinculado_na_data,
     salvar_multa_transito,
     veiculos_para_multas,
@@ -224,7 +225,9 @@ def editar_abastecimento(abastecimento_id):
 def multas_transito():
     return render_template(
         "operacao/multas_transito.html",
-        multas=listar_multas_transito(),
+        multas=listar_multas_transito(request.args),
+        filtros=request.args,
+        motoristas_vinculados=listar_motoristas_vinculados_multas(),
         formatar_moeda_brl=formatar_moeda_brl,
     )
 

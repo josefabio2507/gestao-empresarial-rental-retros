@@ -592,5 +592,68 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         self.assertIn(b"Transitar em faixa exclusiva", central.data)
         self.assertIn(b"R$ 100,00", central.data)
         self.assertIn(b"Ver", central.data)
+
+    def test_filtros_multas_transito_por_periodo_placa_e_motorista(self):
+        veiculo_motorista = self._criar_veiculo("FLT001", "CAMINHAO FILTRO UM")
+        veiculo_operador = self._criar_veiculo("FLT999", "CAMINHAO FILTRO DOIS")
+        vincular_responsavel(
+            {"colaborador_id": str(self.motorista.id), "tipo_leitura": "odometro", "leitura_inicial": "10"},
+            usuario=self.admin,
+            veiculo=veiculo_motorista,
+        )
+        vincular_responsavel(
+            {"colaborador_id": str(self.operador.id), "tipo_leitura": "odometro", "leitura_inicial": "20"},
+            usuario=self.admin,
+            veiculo=veiculo_operador,
+        )
+        salvar_multa_transito(
+            {
+                "data_infracao": "2026-08-24",
+                "hora_infracao": "08:15",
+                "veiculo_id": str(veiculo_motorista.id),
+                "numero_auto_infracao": "AUTO-FLT-001",
+                "local_infracao": "Av. Teste",
+                "cidade": "SANTOS",
+                "descricao_infracao": "Multa filtravel um",
+                "valor_multa": "100,00",
+                "data_vencimento": "2026-09-01",
+                "gravidade": "Media",
+                "pontuacao": "4",
+            },
+            self.admin,
+        )
+        salvar_multa_transito(
+            {
+                "data_infracao": "2026-08-25",
+                "hora_infracao": "09:30",
+                "veiculo_id": str(veiculo_operador.id),
+                "numero_auto_infracao": "AUTO-FLT-999",
+                "local_infracao": "Rua Teste",
+                "cidade": "SANTOS",
+                "descricao_infracao": "Multa filtravel dois",
+                "valor_multa": "80,00",
+                "data_vencimento": "2026-09-05",
+                "gravidade": "Leve",
+                "pontuacao": "3",
+            },
+            self.admin,
+        )
+        self._liberar_usuario(visualizar=True)
+        self._autenticar(self.usuario)
+
+        filtro_periodo = self.client.get("/operacao/multas-transito?data_inicio=2026-08-24&data_fim=2026-08-24")
+        self.assertEqual(200, filtro_periodo.status_code)
+        self.assertIn(b"AUTO-FLT-001", filtro_periodo.data)
+        self.assertNotIn(b"AUTO-FLT-999", filtro_periodo.data)
+
+        filtro_placa = self.client.get("/operacao/multas-transito?placa=FLT001")
+        self.assertEqual(200, filtro_placa.status_code)
+        self.assertIn(b"AUTO-FLT-001", filtro_placa.data)
+        self.assertNotIn(b"AUTO-FLT-999", filtro_placa.data)
+
+        filtro_motorista = self.client.get(f"/operacao/multas-transito?motorista_vinculado_id={self.motorista.id}")
+        self.assertEqual(200, filtro_motorista.status_code)
+        self.assertIn(b"AUTO-FLT-001", filtro_motorista.data)
+        self.assertNotIn(b"AUTO-FLT-999", filtro_motorista.data)
 if __name__ == "__main__":
     unittest.main()
