@@ -100,6 +100,8 @@
                                         <a class="btn btn-secondary" href="{{ url_for('operacao.ver_abastecimento', abastecimento_id=linha.id) }}">Ver</a>
                                     {% elif chave == 'manutencao' and linha.ordem_compra_id %}
                                         <a class="btn btn-secondary" href="{{ url_for('suprimentos_ordens_compra.detalhes', ordem_id=linha.ordem_compra_id) }}">Ver</a>
+                                    {% elif chave == 'multas' %}
+                                        <a class="btn btn-secondary" href="{{ url_for('operacao.ver_multa_transito', multa_id=linha.id) }}">Ver</a>
                                     {% else %}
                                         <span>-</span>
                                     {% endif %}

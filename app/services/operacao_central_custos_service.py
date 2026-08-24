@@ -3,7 +3,7 @@ from decimal import Decimal
 
 from sqlalchemy import or_
 
-from app.models import OperacaoAbastecimento, OperacaoHistoricoManutencao, OperacaoVeiculoEquipamento
+from app.models import OperacaoAbastecimento, OperacaoHistoricoManutencao, OperacaoMultaTransito, OperacaoVeiculoEquipamento
 
 STATUS_CENTRAL_CUSTOS = ["ativos", "inativos", "todos"]
 TIPOS_CUSTO_CENTRAL = ["Abastecimento", "Manutenção", "Multas", "Impostos e Taxas"]
@@ -124,12 +124,40 @@ def linhas_manutencao(veiculo, inicio=None, fim=None):
     return linhas, total
 
 
+def _filtrar_data_multa(query, inicio, fim):
+    if inicio:
+        query = query.filter(OperacaoMultaTransito.data_infracao >= inicio)
+    if fim:
+        query = query.filter(OperacaoMultaTransito.data_infracao <= fim)
+    return query
+
+
+def linhas_multas(veiculo, inicio=None, fim=None):
+    query = OperacaoMultaTransito.query.filter_by(veiculo_id=veiculo.id)
+    query = _filtrar_data_multa(query, inicio, fim)
+    registros = query.order_by(OperacaoMultaTransito.data_infracao.desc(), OperacaoMultaTransito.id.desc()).all()
+
+    linhas = []
+    total = Decimal("0")
+    for registro in registros:
+        valor = decimal_zero(registro.custo_total)
+        total += valor
+        linhas.append(
+            {
+                "id": registro.id,
+                "data": registro.data_infracao,
+                "descricao": registro.descricao_infracao,
+                "documento": registro.numero_auto_infracao,
+                "valor": valor,
+                "registro": registro,
+            }
+        )
+    return linhas, total
 def central_custos_veiculo(veiculo, inicio=None, fim=None):
     abastecimentos, total_abastecimento = linhas_abastecimento(veiculo, inicio, fim)
     manutencoes, total_manutencao = linhas_manutencao(veiculo, inicio, fim)
-    multas = []
+    multas, total_multas = linhas_multas(veiculo, inicio, fim)
     impostos_taxas = []
-    total_multas = Decimal("0")
     total_impostos_taxas = Decimal("0")
 
     grupos = {
@@ -149,7 +177,7 @@ def central_custos_veiculo(veiculo, inicio=None, fim=None):
             "titulo": "Multas",
             "linhas": multas,
             "total": total_multas,
-            "mensagem_vazio": "Cadastro de multas de trânsito ainda não criado.",
+            "mensagem_vazio": "Nenhuma multa de trânsito no período.",
         },
         "impostos_taxas": {
             "titulo": "Impostos e Taxas",

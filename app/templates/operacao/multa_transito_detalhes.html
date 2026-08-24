@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Multas de Trânsito</span>
+            <h1>Detalhes da multa</h1>
+            <p>{{ multa.veiculo.placa or multa.veiculo.identificacao }} - {{ multa.veiculo.descricao }}</p>
+        </div>
+        <a class="btn btn-secondary" href="{{ url_for('operacao.multas_transito') }}">Voltar</a>
+    </div>
+
+    <div class="details-card">
+        <dl class="details-grid">
+            <div><dt>Data da infração</dt><dd>{{ multa.data_infracao.strftime('%d/%m/%Y') }}</dd></div>
+            <div><dt>Hora da infração</dt><dd>{{ multa.hora_infracao.strftime('%H:%M') }}</dd></div>
+            <div><dt>Placa</dt><dd>{{ multa.veiculo.placa or multa.veiculo.identificacao }}</dd></div>
+            <div><dt>Descrição do veículo</dt><dd>{{ multa.veiculo.descricao }}</dd></div>
+            <div><dt>Nº Auto de infração</dt><dd>{{ multa.numero_auto_infracao }}</dd></div>
+            <div><dt>Local</dt><dd>{{ multa.local_infracao }}</dd></div>
+            <div><dt>Cidade</dt><dd>{{ cidades.get(multa.cidade, multa.cidade) }}</dd></div>
+            <div><dt>Valor da multa</dt><dd>{{ formatar_moeda_brl(multa.valor_multa) }}</dd></div>
+            <div><dt>Vencimento</dt><dd>{{ multa.data_vencimento.strftime('%d/%m/%Y') }}</dd></div>
+            <div><dt>Motorista vinculado</dt><dd>{{ multa.motorista_vinculado.nome if multa.motorista_vinculado else '-' }}</dd></div>
+            <div><dt>Motorista indicado</dt><dd>{{ multa.motorista_indicado.nome if multa.motorista_indicado else '-' }}</dd></div>
+            <div><dt>Gravidade</dt><dd>{{ gravidades.get(multa.gravidade, multa.gravidade) }}</dd></div>
+            <div><dt>Pontuação</dt><dd>{{ multa.pontuacao }}</dd></div>
+            <div><dt>Vencimento 2ª cobrança</dt><dd>{{ multa.data_vencimento_segunda_cobranca.strftime('%d/%m/%Y') if multa.data_vencimento_segunda_cobranca else '-' }}</dd></div>
+            <div><dt>Valor 2ª cobrança</dt><dd>{{ formatar_moeda_brl(multa.valor_segunda_cobranca or 0) }}</dd></div>
+            <div><dt>Custo total</dt><dd>{{ formatar_moeda_brl(multa.custo_total) }}</dd></div>
+            <div class="details-wide"><dt>Descrição da infração</dt><dd>{{ multa.descricao_infracao }}</dd></div>
+        </dl>
+    </div>
+</section>
+{% endblock %}
