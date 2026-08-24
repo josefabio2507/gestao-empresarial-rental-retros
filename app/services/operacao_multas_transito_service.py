@@ -79,8 +79,37 @@ def colaboradores_para_indicacao():
     return Colaborador.query.filter_by(ativo=True).order_by(Colaborador.nome.asc()).all()
 
 
-def listar_multas_transito():
-    return OperacaoMultaTransito.query.order_by(
+def listar_motoristas_vinculados_multas():
+    return Colaborador.query.join(
+        OperacaoMultaTransito,
+        OperacaoMultaTransito.motorista_vinculado_id == Colaborador.id,
+    ).distinct().order_by(Colaborador.nome.asc()).all()
+
+
+def listar_multas_transito(filtros=None):
+    filtros = filtros or {}
+    data_inicio = data_form(filtros.get("data_inicio"))
+    data_fim = data_form(filtros.get("data_fim"))
+    placa = texto(filtros.get("placa"))
+    motorista_vinculado_id = inteiro_form(filtros.get("motorista_vinculado_id"))
+
+    query = OperacaoMultaTransito.query.join(OperacaoMultaTransito.veiculo)
+    if data_inicio:
+        query = query.filter(OperacaoMultaTransito.data_infracao >= data_inicio)
+    if data_fim:
+        query = query.filter(OperacaoMultaTransito.data_infracao <= data_fim)
+    if placa:
+        busca = f"%{placa}%"
+        query = query.filter(
+            or_(
+                OperacaoVeiculoEquipamento.placa.ilike(busca),
+                OperacaoVeiculoEquipamento.identificacao.ilike(busca),
+            )
+        )
+    if motorista_vinculado_id:
+        query = query.filter(OperacaoMultaTransito.motorista_vinculado_id == motorista_vinculado_id)
+
+    return query.order_by(
         OperacaoMultaTransito.data_infracao.desc(),
         OperacaoMultaTransito.id.desc(),
     ).all()
