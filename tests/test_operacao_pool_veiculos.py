@@ -33,6 +33,7 @@ from app.services.operacao_pool_service import (
     STATUS_VINCULO_RETIFICADO,
     alterar_indisponibilidade_veiculo,
     corrigir_vinculo,
+    encerrar_vinculo,
     registrar_leitura,
     salvar_veiculo_equipamento,
     veiculos_vinculados_ao_colaborador,
@@ -223,11 +224,10 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
             usuario=self.admin,
             veiculo=veiculo,
         )
-        primeiro.status = STATUS_VINCULO_ENCERRADO
-        primeiro.encerrado_em = primeiro.iniciado_em
-        veiculo.status_operacional = STATUS_INDISPONIVEL
-        veiculo.motivo_indisponibilidade = None
-        db.session.commit()
+
+        sucesso_encerrar, mensagem_encerrar = encerrar_vinculo(primeiro, usuario=self.admin)
+        self.assertTrue(sucesso_encerrar, mensagem_encerrar)
+        self.assertEqual(STATUS_DISPONIVEL, veiculo.status_operacional)
 
         sucesso, mensagem, segundo = vincular_responsavel(
             {"colaborador_id": str(self.operador.id), "tipo_leitura": "odometro", "leitura_inicial": "20"},
@@ -329,9 +329,23 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         vincular_responsavel({"colaborador_id": str(self.motorista.id), "tipo_leitura": "odometro", "leitura_inicial": "10"}, usuario=self.admin, veiculo=veiculo)
         self.assertEqual(STATUS_EM_USO, veiculo.status_operacional)
 
-        sucesso, _ = alterar_indisponibilidade_veiculo(veiculo, indisponivel=True, motivo="Oficina")
+        sucesso, mensagem = alterar_indisponibilidade_veiculo(veiculo, indisponivel=True, motivo="Manutencao")
+        self.assertFalse(sucesso)
+        self.assertEqual("Veiculo/equipamento com responsavel ativo deve permanecer Em uso.", mensagem)
+        self.assertEqual(STATUS_EM_USO, veiculo.status_operacional)
+
+    def test_indisponivel_somente_por_manutencao_ou_sinistro_sem_vinculo_ativo(self):
+        veiculo = self._criar_veiculo()
+
+        sucesso, mensagem = alterar_indisponibilidade_veiculo(veiculo, indisponivel=True, motivo="Oficina")
+        self.assertFalse(sucesso)
+        self.assertEqual("Indisponibilidade permitida apenas por manutencao ou sinistro.", mensagem)
+        self.assertEqual(STATUS_DISPONIVEL, veiculo.status_operacional)
+
+        sucesso, _ = alterar_indisponibilidade_veiculo(veiculo, indisponivel=True, motivo="Sinistro")
         self.assertTrue(sucesso)
         self.assertEqual(STATUS_INDISPONIVEL, veiculo.status_operacional)
+        self.assertEqual("Sinistro", veiculo.motivo_indisponibilidade)
 
     def test_permissao_visualizar_rota_pool(self):
         self._autenticar(self.usuario)
