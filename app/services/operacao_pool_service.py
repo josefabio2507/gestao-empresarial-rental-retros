@@ -70,6 +70,10 @@ def centro_custo_calculado(identificacao, descricao):
     return f"{texto_maiusculo(identificacao)}-{texto_maiusculo(descricao)}"
 
 
+def tipo_leitura_padrao_veiculo(veiculo):
+    return "horimetro" if veiculo and texto_maiusculo(veiculo.tipo) == "MAQUINA" else "odometro"
+
+
 def buscar_por_id(modelo, registro_id):
     if not registro_id:
         return None

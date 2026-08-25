@@ -158,14 +158,14 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         db.drop_all()
         self.contexto.pop()
 
-    def _criar_veiculo(self, identificacao="ABC1D23", descricao="FIAT MOBI"):
+    def _criar_veiculo(self, identificacao="ABC1D23", descricao="FIAT MOBI", tipo="Veiculo leve"):
         sucesso, _, veiculo = salvar_veiculo_equipamento(
             {
                 "identificacao": identificacao,
                 "placa": identificacao,
                 "descricao": descricao,
                 "situacao_aquisicao": "Quitado",
-                "tipo": "Veiculo leve",
+                "tipo": tipo,
             }
         )
         self.assertTrue(sucesso)
@@ -463,6 +463,8 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         self.assertIn(b"Operador Dois", resposta_get.data)
         self.assertIn(b"Operacao", resposta_get.data)
         self.assertIn(b"50,00", resposta_get.data)
+        self.assertIn(b"value=\"odometro\"", resposta_get.data)
+        self.assertNotIn(b"<select id=\"tipo_leitura\"", resposta_get.data)
 
         resposta_post = self.client.post(
             f"/operacao/pool-veiculos/ativos/{veiculo.id}/vincular",
@@ -475,6 +477,27 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         self.assertEqual("50.00", str(primeiro.leitura_final))
         self.assertEqual(self.operador.id, novo.colaborador_id)
         self.assertEqual(self.equipe.id, novo.equipe_id)
+
+    def test_rota_vincular_maquina_usa_horimetro_automatico(self):
+        veiculo = self._criar_veiculo("MAQ001", "ESCAVADEIRA", tipo="Maquina")
+        self.usuario.colaborador_id = self.operador.id
+        db.session.commit()
+        self._liberar_usuario(editar=True)
+        self._autenticar(self.usuario)
+
+        resposta_get = self.client.get(f"/operacao/pool-veiculos/ativos/{veiculo.id}/vincular")
+        self.assertEqual(200, resposta_get.status_code)
+        self.assertIn(b"value=\"horimetro\"", resposta_get.data)
+        self.assertNotIn(b"<select id=\"tipo_leitura\"", resposta_get.data)
+
+        resposta_post = self.client.post(
+            f"/operacao/pool-veiculos/ativos/{veiculo.id}/vincular",
+            data={"tipo_leitura": "odometro", "leitura_inicial": "80"},
+            follow_redirects=False,
+        )
+        self.assertEqual(302, resposta_post.status_code)
+        vinculo = OperacaoVeiculoResponsavel.query.order_by(OperacaoVeiculoResponsavel.id.desc()).first()
+        self.assertEqual("horimetro", vinculo.tipo_leitura)
 
 
     def test_salva_abastecimento_com_cupom_no_drive(self):
