@@ -55,7 +55,12 @@ DEPARTAMENTOS_BASE = [
         "icone": "engrenagem",
         "ordem": 3,
         "modulos": [
-            ("Gestão de Veículos e EGPs", "gestao_veiculos_epgs", "Cadastro e consulta de veículos, máquinas e equipamentos operacionais"),
+            ("Veículos e Equipamentos", "veiculos_equipamentos", "Cadastro, consulta, edição e controle de status da frota operacional"),
+            ("Pool de Veículos", "pool_veiculos", "Responsabilidade operacional, disponibilidade e histórico de leituras"),
+            ("Abastecimento", "abastecimento", "Registro e consulta de abastecimentos dos veículos"),
+            ("Multas de Trânsito", "multas_transito", "Cadastro e consulta de multas de trânsito por veículo"),
+            ("Impostos e Taxas", "impostos_taxas", "Cadastro e consulta de parcelas de IPVA e licenciamento"),
+            ("Central de Custos", "central_custos", "Consulta consolidada de custos por veículo ou equipamento"),
             ("Ordens de Serviço", "ordens_de_servico", "Abertura e acompanhamento"),
             ("Equipes", "equipes", "Times e alocação"),
             ("Cronograma", "cronograma", "Prazos e agenda"),

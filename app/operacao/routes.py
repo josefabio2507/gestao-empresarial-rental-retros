@@ -59,23 +59,26 @@ from app.services.operacao_pool_service import (
     salvar_veiculo_equipamento,
     vincular_responsavel,
 )
-from app.services.permissoes_service import usuario_tem_permissao
+from app.services.operacao_permissoes_service import (
+    MODULO_ABASTECIMENTO,
+    MODULO_CENTRAL_CUSTOS,
+    MODULO_IMPOSTOS_TAXAS,
+    MODULO_MULTAS_TRANSITO,
+    MODULO_POOL_VEICULOS,
+    MODULO_VEICULOS_EQUIPAMENTOS,
+    permissoes_cards_gestao,
+    usuario_tem_algum_submodulo_gestao,
+)
 from app.services.suprimentos_service import formatar_moeda_brl
 
 operacao_bp = Blueprint("operacao", __name__)
-MODULO_POOL = "gestao_veiculos_epgs"
 STATUS_POOL = [STATUS_DISPONIVEL, STATUS_EM_USO, STATUS_INDISPONIVEL]
 
 
 @operacao_bp.route("/")
 @login_required
 def index():
-    pode_acessar_gestao_veiculos = usuario_tem_permissao(
-        current_user,
-        "operacao",
-        "gestao_veiculos_epgs",
-        "visualizar",
-    )
+    pode_acessar_gestao_veiculos = usuario_tem_algum_submodulo_gestao(current_user)
 
     return render_template(
         "operacao/index.html",
@@ -91,7 +94,7 @@ def status():
 
 @operacao_bp.route("/impostos-taxas")
 @login_required
-@module_permission_required("operacao", MODULO_POOL, "visualizar")
+@module_permission_required("operacao", MODULO_IMPOSTOS_TAXAS, "visualizar")
 def impostos_taxas():
     return render_template(
         "operacao/impostos_taxas.html",
@@ -103,7 +106,7 @@ def impostos_taxas():
 
 @operacao_bp.route("/impostos-taxas/novo", methods=["GET", "POST"])
 @login_required
-@module_permission_required("operacao", MODULO_POOL, "criar")
+@module_permission_required("operacao", MODULO_IMPOSTOS_TAXAS, "criar")
 def novo_imposto_taxa():
     if request.method == "POST":
         sucesso, mensagem, lancamentos = salvar_impostos_taxas(request.form, current_user)
@@ -124,7 +127,7 @@ def novo_imposto_taxa():
 
 @operacao_bp.route("/impostos-taxas/<int:lancamento_id>/ver")
 @login_required
-@module_permission_required("operacao", MODULO_POOL, "visualizar")
+@module_permission_required("operacao", MODULO_IMPOSTOS_TAXAS, "visualizar")
 def ver_imposto_taxa(lancamento_id):
     lancamento = buscar_imposto_taxa(lancamento_id)
     if not lancamento:
@@ -140,7 +143,7 @@ def ver_imposto_taxa(lancamento_id):
 
 @operacao_bp.route("/central-custos")
 @login_required
-@module_permission_required("operacao", MODULO_POOL, "visualizar")
+@module_permission_required("operacao", MODULO_CENTRAL_CUSTOS, "visualizar")
 def central_custos():
     veiculos, status_filtro = buscar_veiculos_central_custos(request.args)
     return render_template(
@@ -154,7 +157,7 @@ def central_custos():
 
 @operacao_bp.route("/central-custos/veiculos/<int:veiculo_id>")
 @login_required
-@module_permission_required("operacao", MODULO_POOL, "visualizar")
+@module_permission_required("operacao", MODULO_CENTRAL_CUSTOS, "visualizar")
 def central_custos_veiculo(veiculo_id):
     veiculo = buscar_por_id(OperacaoVeiculoEquipamento, veiculo_id)
     if not veiculo:
@@ -176,10 +179,10 @@ def central_custos_veiculo(veiculo_id):
 
 @operacao_bp.route("/abastecimentos")
 @login_required
-@module_permission_required("operacao", MODULO_POOL, "visualizar")
+@module_permission_required("operacao", MODULO_ABASTECIMENTO, "visualizar")
 def abastecimentos():
     colaborador = colaborador_do_usuario(current_user)
-    if not colaborador:
+    if not colaborador and not current_user.is_admin:
         flash("Usuario logado precisa estar vinculado a um colaborador ativo para registrar abastecimentos.", "danger")
         return redirect(url_for("operacao.pool"))
 
@@ -188,12 +191,13 @@ def abastecimentos():
         colaborador=colaborador,
         veiculos=listar_veiculos_abastecimento_usuario(current_user),
         abastecimentos=listar_abastecimentos_usuario(current_user),
+        eh_admin=current_user.is_admin,
     )
 
 
 @operacao_bp.route("/abastecimentos/veiculos/<int:veiculo_id>/novo", methods=["GET", "POST"])
 @login_required
-@module_permission_required("operacao", MODULO_POOL, "editar")
+@module_permission_required("operacao", MODULO_ABASTECIMENTO, "criar")
 def novo_abastecimento(veiculo_id):
     veiculo = buscar_por_id(OperacaoVeiculoEquipamento, veiculo_id)
     vinculo = vinculo_ativo_usuario_veiculo(current_user, veiculo_id)
@@ -224,7 +228,7 @@ def novo_abastecimento(veiculo_id):
 
 @operacao_bp.route("/abastecimentos/<int:abastecimento_id>/ver")
 @login_required
-@module_permission_required("operacao", MODULO_POOL, "visualizar")
+@module_permission_required("operacao", MODULO_ABASTECIMENTO, "visualizar")
 def ver_abastecimento(abastecimento_id):
     abastecimento = buscar_por_id(OperacaoAbastecimento, abastecimento_id)
     if not abastecimento:
@@ -239,7 +243,7 @@ def ver_abastecimento(abastecimento_id):
 
 @operacao_bp.route("/abastecimentos/<int:abastecimento_id>/editar", methods=["GET", "POST"])
 @login_required
-@module_permission_required("operacao", MODULO_POOL, "editar")
+@module_permission_required("operacao", MODULO_ABASTECIMENTO, "editar")
 def editar_abastecimento(abastecimento_id):
     abastecimento = buscar_abastecimento_usuario(abastecimento_id, current_user)
     if not abastecimento:
@@ -278,7 +282,7 @@ def editar_abastecimento(abastecimento_id):
 
 @operacao_bp.route("/multas-transito")
 @login_required
-@module_permission_required("operacao", MODULO_POOL, "visualizar")
+@module_permission_required("operacao", MODULO_MULTAS_TRANSITO, "visualizar")
 def multas_transito():
     return render_template(
         "operacao/multas_transito.html",
@@ -291,7 +295,7 @@ def multas_transito():
 
 @operacao_bp.route("/multas-transito/nova", methods=["GET", "POST"])
 @login_required
-@module_permission_required("operacao", MODULO_POOL, "criar")
+@module_permission_required("operacao", MODULO_MULTAS_TRANSITO, "criar")
 def nova_multa_transito():
     if request.method == "POST":
         sucesso, mensagem, multa = salvar_multa_transito(request.form, current_user)
@@ -314,7 +318,7 @@ def nova_multa_transito():
 
 @operacao_bp.route("/multas-transito/<int:multa_id>/ver")
 @login_required
-@module_permission_required("operacao", MODULO_POOL, "visualizar")
+@module_permission_required("operacao", MODULO_MULTAS_TRANSITO, "visualizar")
 def ver_multa_transito(multa_id):
     multa = buscar_multa(multa_id)
     if not multa:
@@ -332,7 +336,7 @@ def ver_multa_transito(multa_id):
 
 @operacao_bp.route("/multas-transito/motorista-vinculado")
 @login_required
-@module_permission_required("operacao", MODULO_POOL, "visualizar")
+@module_permission_required("operacao", MODULO_MULTAS_TRANSITO, "visualizar")
 def motorista_vinculado_multa():
     data_infracao = data_form(request.args.get("data_infracao"))
     hora_infracao = hora_form(request.args.get("hora_infracao"))
@@ -342,7 +346,7 @@ def motorista_vinculado_multa():
 
 @operacao_bp.route("/pool-veiculos")
 @login_required
-@module_permission_required("operacao", MODULO_POOL, "visualizar")
+@module_permission_required("operacao", MODULO_POOL_VEICULOS, "visualizar")
 def pool():
     return render_template(
         "operacao/pool.html",
@@ -359,7 +363,7 @@ def pool():
 
 @operacao_bp.route("/pool-veiculos/ativos/novo", methods=["GET", "POST"])
 @login_required
-@module_permission_required("operacao", MODULO_POOL, "criar")
+@module_permission_required("operacao", MODULO_VEICULOS_EQUIPAMENTOS, "criar")
 def novo_veiculo():
     if request.method == "POST":
         sucesso, mensagem, veiculo = salvar_veiculo_equipamento(request.form)
@@ -380,7 +384,7 @@ def novo_veiculo():
 
 @operacao_bp.route("/pool-veiculos/ativos/<int:veiculo_id>/editar", methods=["GET", "POST"])
 @login_required
-@module_permission_required("operacao", MODULO_POOL, "editar")
+@module_permission_required("operacao", MODULO_VEICULOS_EQUIPAMENTOS, "editar")
 def editar_veiculo(veiculo_id):
     veiculo = buscar_por_id(OperacaoVeiculoEquipamento, veiculo_id)
     if not veiculo:
@@ -406,7 +410,7 @@ def editar_veiculo(veiculo_id):
 
 @operacao_bp.route("/pool-veiculos/ativos/<int:veiculo_id>/vincular", methods=["GET", "POST"])
 @login_required
-@module_permission_required("operacao", MODULO_POOL, "editar")
+@module_permission_required("operacao", MODULO_POOL_VEICULOS, "editar")
 def vincular_veiculo(veiculo_id):
     veiculo = buscar_por_id(OperacaoVeiculoEquipamento, veiculo_id)
     if not veiculo:
@@ -451,7 +455,7 @@ def vincular_veiculo(veiculo_id):
 
 @operacao_bp.route("/pool-veiculos/vinculos/<int:vinculo_id>/encerrar", methods=["POST"])
 @login_required
-@module_permission_required("operacao", MODULO_POOL, "editar")
+@module_permission_required("operacao", MODULO_POOL_VEICULOS, "editar")
 def encerrar_vinculo_rota(vinculo_id):
     vinculo = buscar_por_id(OperacaoVeiculoResponsavel, vinculo_id)
     sucesso, mensagem = encerrar_vinculo(vinculo, request.form, usuario=current_user)
@@ -463,7 +467,7 @@ def encerrar_vinculo_rota(vinculo_id):
 
 @operacao_bp.route("/pool-veiculos/vinculos/<int:vinculo_id>/corrigir", methods=["GET", "POST"])
 @login_required
-@module_permission_required("operacao", MODULO_POOL, "excluir")
+@module_permission_required("operacao", MODULO_POOL_VEICULOS, "excluir")
 def corrigir_vinculo_rota(vinculo_id):
     vinculo = buscar_por_id(OperacaoVeiculoResponsavel, vinculo_id)
     if not vinculo:
@@ -489,7 +493,7 @@ def corrigir_vinculo_rota(vinculo_id):
 
 @operacao_bp.route("/pool-veiculos/ativos/<int:veiculo_id>/indisponibilidade", methods=["POST"])
 @login_required
-@module_permission_required("operacao", MODULO_POOL, "excluir")
+@module_permission_required("operacao", MODULO_POOL_VEICULOS, "excluir")
 def indisponibilidade_veiculo(veiculo_id):
     veiculo = buscar_por_id(OperacaoVeiculoEquipamento, veiculo_id)
     indisponivel = request.form.get("acao") != "disponibilizar"
@@ -506,7 +510,7 @@ def indisponibilidade_veiculo(veiculo_id):
 
 @operacao_bp.route("/pool-veiculos/ativos/<int:veiculo_id>/historico")
 @login_required
-@module_permission_required("operacao", MODULO_POOL, "visualizar")
+@module_permission_required("operacao", MODULO_POOL_VEICULOS, "visualizar")
 def historico_veiculo(veiculo_id):
     veiculo = buscar_por_id(OperacaoVeiculoEquipamento, veiculo_id)
     if not veiculo:
