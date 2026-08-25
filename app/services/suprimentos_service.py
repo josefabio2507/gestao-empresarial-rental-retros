@@ -3359,6 +3359,44 @@ def registrar_recebimento_ordem_compra(form_data, ordem_compra, usuario):
     return True, "Recebimento registrado com sucesso.", recebimento
 
 
+def editar_recebimento_ordem_compra(form_data, recebimento):
+    if not recebimento:
+        return False, "Recebimento nao encontrado."
+
+    if recebimento.status != STATUS_RECEBIMENTO_COMPRA_REGISTRADO:
+        return False, "Somente recebimentos registrados podem ser editados."
+
+    tipo_documento = texto(form_data.get("tipo_documento"))
+    numero_documento = texto_maiusculo(form_data.get("numero_documento"))
+    data_documento = data_ou_none(form_data.get("data_documento"))
+    observacoes = texto_maiusculo(form_data.get("observacoes")) or None
+
+    if tipo_documento not in TIPOS_DOCUMENTO_RECEBIMENTO:
+        return False, "Tipo de documento e obrigatorio."
+
+    if not numero_documento:
+        return False, "Numero do documento e obrigatorio."
+
+    if not texto(form_data.get("data_documento")):
+        return False, "Data de recebimento e obrigatoria."
+
+    if data_documento is None:
+        return False, "Data de recebimento invalida."
+
+    recebimento.tipo_documento = tipo_documento
+    recebimento.numero_documento = numero_documento
+    recebimento.data_documento = data_documento
+    recebimento.observacoes = observacoes
+
+    for recebimento_item in recebimento.itens:
+        movimentacao = recebimento_item.movimentacao_estoque
+        if movimentacao:
+            movimentacao.documento_tipo = tipo_documento
+            movimentacao.documento_numero = numero_documento
+
+    db.session.commit()
+    return True, "Recebimento atualizado com sucesso."
+
 def registrar_entrada_estoque_recebimento_item(recebimento_item):
     item = recebimento_item.item
 
