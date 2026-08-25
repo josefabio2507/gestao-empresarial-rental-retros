@@ -56,6 +56,7 @@ from app.services.operacao_pool_service import (
     leitura_final_anterior_sugerida,
     encerrar_vinculo,
     salvar_veiculo_equipamento,
+    tipo_leitura_padrao_veiculo,
     vincular_responsavel,
 )
 from app.services.operacao_permissoes_service import (
@@ -421,6 +422,7 @@ def vincular_veiculo(veiculo_id):
         flash("Usuario logado precisa estar vinculado a um colaborador ativo para assumir o ativo.", "danger")
         return redirect(url_for("operacao.pool"))
 
+    tipo_leitura = tipo_leitura_padrao_veiculo(veiculo)
     leitura_final_anterior = leitura_final_anterior_sugerida(veiculo)
     leitura_final_anterior_form = (
         format(leitura_final_anterior, "f").replace(".", ",")
@@ -432,6 +434,7 @@ def vincular_veiculo(veiculo_id):
         dados_vinculo = request.form.to_dict()
         dados_vinculo["colaborador_id"] = str(colaborador_logado.id)
         dados_vinculo["equipe_id"] = str(colaborador_logado.equipe_id)
+        dados_vinculo["tipo_leitura"] = tipo_leitura
         if leitura_final_anterior is not None:
             dados_vinculo["leitura_final_anterior"] = leitura_final_anterior_form
 
@@ -448,7 +451,7 @@ def vincular_veiculo(veiculo_id):
         colaborador=colaborador_logado,
         equipe=colaborador_logado.equipe,
         leitura_final_anterior=leitura_final_anterior_form,
-        tipos_leitura=TIPOS_LEITURA,
+        tipo_leitura=tipo_leitura,
     )
 
 

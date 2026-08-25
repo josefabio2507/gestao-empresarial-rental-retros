@@ -23,13 +23,9 @@
                 <input type="hidden" name="equipe_id" value="{{ equipe.id if equipe else '' }}">
             </div>
             <div class="form-group">
-                <label for="tipo_leitura">Tipo de leitura</label>
-                <select id="tipo_leitura" name="tipo_leitura" required>
-                    <option value="">Selecione</option>
-                    {% for tipo in tipos_leitura %}
-                        <option value="{{ tipo }}">{{ tipo }}</option>
-                    {% endfor %}
-                </select>
+                <label>Tipo de leitura</label>
+                <input value="{{ tipo_leitura }}" readonly>
+                <input type="hidden" name="tipo_leitura" value="{{ tipo_leitura }}">
             </div>
             <div class="form-group">
                 <label for="leitura_inicial">Leitura inicial</label>
