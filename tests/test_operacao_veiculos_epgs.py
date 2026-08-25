@@ -124,6 +124,15 @@ class OperacaoVeiculosEpgsTestCase(unittest.TestCase):
         self.assertIn("Veículos e Equipamentos".encode("utf-8"), resposta.data)
         self.assertIn("Pool de Veículos".encode("utf-8"), resposta.data)
 
+    def test_tela_operacao_exibe_botao_voltar(self):
+        self._autenticar(self.admin)
+
+        resposta = self.client.get("/operacao/")
+
+        self.assertEqual(200, resposta.status_code)
+        self.assertIn(b"Voltar", resposta.data)
+        self.assertIn(b'href="/"', resposta.data)
+
     def test_admin_ve_cards_operacao_com_links_reais(self):
         self._autenticar(self.admin)
 
