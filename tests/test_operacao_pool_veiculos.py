@@ -32,6 +32,7 @@ from app.services.operacao_pool_service import (
     STATUS_VINCULO_ENCERRADO,
     STATUS_VINCULO_RETIFICADO,
     alterar_indisponibilidade_veiculo,
+    buscar_veiculos_pool,
     corrigir_vinculo,
     encerrar_vinculo,
     registrar_leitura,
@@ -172,6 +173,7 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
 
     def _autenticar(self, usuario):
         with self.client.session_transaction() as sessao:
+            sessao.clear()
             sessao["_user_id"] = str(usuario.id)
             sessao["_fresh"] = True
 
@@ -224,10 +226,14 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
             usuario=self.admin,
             veiculo=veiculo,
         )
+        veiculo.status_operacional = STATUS_INDISPONIVEL
+        veiculo.motivo_indisponibilidade = "Sinistro"
+        db.session.commit()
 
         sucesso_encerrar, mensagem_encerrar = encerrar_vinculo(primeiro, usuario=self.admin)
         self.assertTrue(sucesso_encerrar, mensagem_encerrar)
         self.assertEqual(STATUS_DISPONIVEL, veiculo.status_operacional)
+        self.assertIsNone(veiculo.motivo_indisponibilidade)
 
         sucesso, mensagem, segundo = vincular_responsavel(
             {"colaborador_id": str(self.operador.id), "tipo_leitura": "odometro", "leitura_inicial": "20"},
@@ -347,6 +353,79 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         self.assertEqual(STATUS_INDISPONIVEL, veiculo.status_operacional)
         self.assertEqual("Sinistro", veiculo.motivo_indisponibilidade)
 
+    def test_listagem_recalcula_status_indisponivel_sem_motivo_valido(self):
+        veiculo = self._criar_veiculo("QXN5F52", "FIAT MOBI LIKE")
+        veiculo.status_operacional = STATUS_INDISPONIVEL
+        veiculo.motivo_indisponibilidade = "Indisponivel operacionalmente."
+        db.session.commit()
+
+        veiculos = buscar_veiculos_pool()
+        db.session.refresh(veiculo)
+
+        self.assertIn(veiculo, veiculos)
+        self.assertEqual(STATUS_DISPONIVEL, veiculo.status_operacional)
+        self.assertIsNone(veiculo.motivo_indisponibilidade)
+
+    def test_historico_oculta_corrigir_para_usuario_comum(self):
+        veiculo = self._criar_veiculo()
+        _, _, vinculo = vincular_responsavel(
+            {"colaborador_id": str(self.motorista.id), "tipo_leitura": "odometro", "leitura_inicial": "10"},
+            usuario=self.admin,
+            veiculo=veiculo,
+        )
+        encerrar_vinculo(vinculo, usuario=self.admin)
+
+        self._autenticar(self.usuario)
+        self._liberar_usuario(visualizar=True)
+        resposta_usuario = self.client.get(f"/operacao/pool-veiculos/ativos/{veiculo.id}/historico")
+        self.assertEqual(200, resposta_usuario.status_code)
+        self.assertNotIn(b"Corrigir", resposta_usuario.data)
+
+    def test_historico_mostra_corrigir_para_admin(self):
+        veiculo = self._criar_veiculo()
+        _, _, vinculo = vincular_responsavel(
+            {"colaborador_id": str(self.motorista.id), "tipo_leitura": "odometro", "leitura_inicial": "10"},
+            usuario=self.admin,
+            veiculo=veiculo,
+        )
+        encerrar_vinculo(vinculo, usuario=self.admin)
+
+        self._autenticar(self.admin)
+        resposta_admin = self.client.get(f"/operacao/pool-veiculos/ativos/{veiculo.id}/historico")
+        self.assertEqual(200, resposta_admin.status_code)
+        self.assertIn(b"Corrigir", resposta_admin.data)
+
+    def test_corrigir_vinculo_restrito_a_admin_para_usuario_comum(self):
+        veiculo = self._criar_veiculo()
+        _, _, vinculo = vincular_responsavel(
+            {"colaborador_id": str(self.motorista.id), "tipo_leitura": "odometro", "leitura_inicial": "10"},
+            usuario=self.admin,
+            veiculo=veiculo,
+        )
+        encerrar_vinculo(vinculo, usuario=self.admin)
+
+        self._autenticar(self.usuario)
+        self._liberar_usuario(excluir=True)
+        resposta_usuario = self.client.get(f"/operacao/pool-veiculos/vinculos/{vinculo.id}/corrigir")
+        self.assertEqual(302, resposta_usuario.status_code)
+        self.assertIn("/acesso-negado", resposta_usuario.headers["Location"])
+
+    def test_corrigir_vinculo_admin_usa_motorista_do_vinculo(self):
+        veiculo = self._criar_veiculo()
+        _, _, vinculo = vincular_responsavel(
+            {"colaborador_id": str(self.motorista.id), "tipo_leitura": "odometro", "leitura_inicial": "10"},
+            usuario=self.admin,
+            veiculo=veiculo,
+        )
+        encerrar_vinculo(vinculo, usuario=self.admin)
+
+        self._autenticar(self.admin)
+        resposta_admin = self.client.get(f"/operacao/pool-veiculos/vinculos/{vinculo.id}/corrigir")
+        self.assertEqual(200, resposta_admin.status_code)
+        self.assertIn(b"Motorista Um", resposta_admin.data)
+        self.assertNotIn(b"Operador Dois", resposta_admin.data)
+        self.assertNotIn(b"<select id=\"colaborador_id\"", resposta_admin.data)
+
     def test_permissao_visualizar_rota_pool(self):
         self._autenticar(self.usuario)
         resposta = self.client.get("/operacao/pool-veiculos")
@@ -358,6 +437,7 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         resposta = self.client.get("/operacao/pool-veiculos")
         self.assertEqual(200, resposta.status_code)
         self.assertIn(b"Pool de Veiculos", resposta.data)
+        self.assertIn(b"href=\"/operacao/gestao-veiculos-epgs/\"", resposta.data)
         self.assertIn(b"Vincular", resposta.data)
         self.assertNotIn(b"Editar", resposta.data)
         self.assertNotIn(b"/editar", resposta.data)
