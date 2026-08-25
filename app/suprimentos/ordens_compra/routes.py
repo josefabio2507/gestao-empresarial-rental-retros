@@ -4,7 +4,14 @@ from flask import flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from app.decorators import module_permission_required
-from app.models import CentroCusto, SuprimentosCotacao, SuprimentosFornecedor, SuprimentosOrdemCompra, SuprimentosOrdemCompraItem
+from app.models import (
+    CentroCusto,
+    SuprimentosCotacao,
+    SuprimentosFornecedor,
+    SuprimentosOrdemCompra,
+    SuprimentosOrdemCompraItem,
+    SuprimentosRecebimentoCompra,
+)
 from app.services.fiscal_service import (
     buscar_documentos_para_ordem_compra,
     vincular_documento_ordem_compra,
@@ -30,6 +37,7 @@ from app.services.suprimentos_service import (
     buscar_ordens_compra,
     buscar_por_id,
     cancelar_ordem_compra,
+    editar_recebimento_ordem_compra,
     enviar_email_ordem_compra_fornecedor,
     formatar_decimal_brasil,
     formatar_moeda_brl,
@@ -422,6 +430,45 @@ def receber(ordem_id):
     )
 
 
+@suprimentos_ordens_compra_bp.route(
+    "/<int:ordem_id>/recebimentos/<int:recebimento_id>/editar",
+    methods=["GET", "POST"],
+)
+@login_required
+@module_permission_required("suprimentos", "ordens_compra", "editar")
+def editar_recebimento(ordem_id, recebimento_id):
+    ordem = buscar_por_id(SuprimentosOrdemCompra, ordem_id)
+    recebimento = buscar_por_id(SuprimentosRecebimentoCompra, recebimento_id)
+
+    if not ordem:
+        flash("Ordem de compra nao encontrada.", "warning")
+        return redirect(url_for("suprimentos_ordens_compra.listar"))
+
+    if not recebimento or recebimento.ordem_compra_id != ordem.id:
+        flash("Recebimento nao encontrado para esta ordem.", "warning")
+        return redirect(url_for("suprimentos_ordens_compra.detalhes", ordem_id=ordem.id))
+
+    if request.method == "POST":
+        sucesso, mensagem = editar_recebimento_ordem_compra(request.form, recebimento)
+
+        if sucesso:
+            registrar_log(
+                "suprimentos_recebimento_compra_atualizado",
+                f"Recebimento atualizado. ID: {recebimento.id}. Ordem ID: {ordem.id}.",
+            )
+            flash(mensagem, "success")
+            return redirect(url_for("suprimentos_ordens_compra.detalhes", ordem_id=ordem.id))
+
+        flash(mensagem, "danger")
+
+    return render_template(
+        "suprimentos/ordens_compra/editar_recebimento.html",
+        ordem=ordem,
+        recebimento=recebimento,
+        formatar_decimal_brasil=formatar_decimal_brasil,
+    )
+
+
 @suprimentos_ordens_compra_bp.route("/gerar/cotacao/<int:cotacao_id>", methods=["POST"])
 @login_required
 @module_permission_required("suprimentos", "ordens_compra", "criar")
@@ -465,3 +512,4 @@ def cancelar(ordem_id):
 
     flash(mensagem, "success" if sucesso else "danger")
     return redirect(url_for("suprimentos_ordens_compra.detalhes", ordem_id=ordem.id))
+

@@ -253,6 +253,7 @@
                     <th>Status</th>
                     <th>Itens</th>
                     <th>Observacoes</th>
+                    <th>Acoes</th>
                 </tr>
             </thead>
             <tbody>
@@ -267,9 +268,16 @@
                         <td><span class="badge badge-success">{{ recebimento.status }}</span></td>
                         <td>{{ recebimento.itens|length }}</td>
                         <td>{{ recebimento.observacoes or "-" }}</td>
+                        <td class="col-acoes">
+                            {% if pode_editar_ordem and recebimento.status == "Registrado" %}
+                                <a class="btn btn-secondary" href="{{ url_for('suprimentos_ordens_compra.editar_recebimento', ordem_id=ordem.id, recebimento_id=recebimento.id) }}">Editar</a>
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
                     </tr>
                 {% else %}
-                    <tr><td class="empty-state" colspan="9">Nenhum recebimento registrado.</td></tr>
+                    <tr><td class="empty-state" colspan="10">Nenhum recebimento registrado.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
@@ -343,3 +351,4 @@
     </div>
 </section>
 {% endblock %}
+
