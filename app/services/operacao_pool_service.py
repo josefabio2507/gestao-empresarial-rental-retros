@@ -96,14 +96,24 @@ def buscar_veiculos_pool(termo=None, status=None, tipo=None):
             )
         )
 
-    if status:
-        consulta = consulta.filter(OperacaoVeiculoEquipamento.status_operacional == status)
-
     if tipo:
         consulta = consulta.filter(OperacaoVeiculoEquipamento.tipo == tipo)
 
-    return consulta.order_by(OperacaoVeiculoEquipamento.identificacao.asc()).all()
+    veiculos = consulta.order_by(OperacaoVeiculoEquipamento.identificacao.asc()).all()
+    status_alterado = False
+    for veiculo in veiculos:
+        status_anterior = veiculo.status_operacional
+        motivo_anterior = veiculo.motivo_indisponibilidade
+        atualizar_status_pool(veiculo)
+        if veiculo.status_operacional != status_anterior or veiculo.motivo_indisponibilidade != motivo_anterior:
+            status_alterado = True
+    if status_alterado:
+        db.session.commit()
 
+    if status:
+        veiculos = [veiculo for veiculo in veiculos if veiculo.status_operacional == status]
+
+    return veiculos
 
 def buscar_colaboradores_ativos():
     return Colaborador.query.filter_by(ativo=True).order_by(Colaborador.nome.asc()).all()
@@ -347,6 +357,7 @@ def encerrar_vinculo(vinculo, form_data=None, usuario=None):
 
     vinculo.status = STATUS_VINCULO_ENCERRADO
     vinculo.encerrado_em = agora_brasil()
+    vinculo.veiculo.motivo_indisponibilidade = None
     atualizar_status_pool(vinculo.veiculo)
     db.session.commit()
     return True, "Vinculo encerrado com sucesso."

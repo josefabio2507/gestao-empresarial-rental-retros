@@ -49,7 +49,6 @@ from app.services.operacao_pool_service import (
     TIPOS_VEICULO,
     alterar_indisponibilidade_veiculo,
     buscar_centros_custo_ativos,
-    buscar_colaboradores_ativos,
     buscar_equipes_ativas,
     buscar_por_id,
     buscar_veiculos_pool,
@@ -473,6 +472,9 @@ def corrigir_vinculo_rota(vinculo_id):
     if not vinculo:
         flash("Vinculo nao encontrado.", "warning")
         return redirect(url_for("operacao.pool"))
+    if not current_user.is_admin:
+        flash("Correcao de vinculo restrita ao Administrador.", "danger")
+        return redirect(url_for("main.acesso_negado"))
 
     if request.method == "POST":
         sucesso, mensagem, _ = corrigir_vinculo(vinculo, request.form, usuario=current_user)
@@ -485,7 +487,6 @@ def corrigir_vinculo_rota(vinculo_id):
     return render_template(
         "operacao/correcao_vinculo.html",
         vinculo=vinculo,
-        colaboradores=buscar_colaboradores_ativos(),
         equipes=buscar_equipes_ativas(),
         tipos_leitura=TIPOS_LEITURA,
     )
