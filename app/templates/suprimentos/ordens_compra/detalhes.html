@@ -14,8 +14,16 @@
     <div class="details-card">
         <p><strong>Fornecedor:</strong> {{ ordem.fornecedor_razao_social_snapshot }}</p>
         <p><strong>CNPJ/CPF:</strong> {{ ordem.fornecedor_cnpj_cpf_snapshot or "-" }}</p>
-        <p><strong>Requisicao:</strong> {{ ordem.requisicao.numero }}</p>
-        <p><strong>Cotacao:</strong> {{ ordem.cotacao.numero }}</p>
+        <p>
+            <strong>Requisicao:</strong> {{ ordem.requisicao.numero if ordem.requisicao else "-" }}
+            | <strong>Criada em:</strong> {{ ordem.requisicao.criado_em.strftime("%d/%m/%Y %H:%M") if ordem.requisicao and ordem.requisicao.criado_em else "-" }}
+            | <strong>Criada por:</strong> {{ ordem.requisicao.solicitante.nome if ordem.requisicao and ordem.requisicao.solicitante else "-" }}
+        </p>
+        <p>
+            <strong>Cotacao:</strong> {{ ordem.cotacao.numero if ordem.cotacao else "-" }}
+            | <strong>Aprovada em:</strong> {{ ordem.cotacao.aprovada_em.strftime("%d/%m/%Y %H:%M") if ordem.cotacao and ordem.cotacao.aprovada_em else "-" }}
+            | <strong>Aprovada por:</strong> {{ ordem.cotacao.aprovada_por.nome if ordem.cotacao and ordem.cotacao.aprovada_por else "-" }}
+        </p>
         <p><strong>Condicao de pagamento:</strong> {{ ordem.condicao_pagamento_snapshot or "-" }}</p>
         <p><strong>Gerada por:</strong> {{ ordem.criado_por.nome }}</p>
         <p><strong>Gerada em:</strong> {{ ordem.gerada_em.strftime("%d/%m/%Y %H:%M") }}</p>
