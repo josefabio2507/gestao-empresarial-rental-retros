@@ -353,12 +353,14 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         self.assertEqual(302, resposta.status_code)
         self.assertIn("/acesso-negado", resposta.headers["Location"])
 
+        self._criar_veiculo()
         self._liberar_usuario(visualizar=True)
         resposta = self.client.get("/operacao/pool-veiculos")
         self.assertEqual(200, resposta.status_code)
         self.assertIn(b"Pool de Veiculos", resposta.data)
-
-
+        self.assertIn(b"Vincular", resposta.data)
+        self.assertNotIn(b"Editar", resposta.data)
+        self.assertNotIn(b"/editar", resposta.data)
 
     def test_rota_vincular_usa_colaborador_logado_e_leitura_final_anterior(self):
         veiculo = self._criar_veiculo()
