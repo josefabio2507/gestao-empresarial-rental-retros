@@ -27,6 +27,11 @@ STATUS_VINCULO_RETIFICADO = "Retificado"
 TIPOS_VEICULO = ["Veiculo leve", "Caminhao", "Maquina", "Equipamento", "EGP", "Outro"]
 SITUACOES_AQUISICAO = ["Quitado", "Financiado"]
 TIPOS_LEITURA = ["odometro", "horimetro"]
+MOTIVOS_INDISPONIBILIDADE = {
+    "manutencao": "Manutencao",
+    "manutenção": "Manutencao",
+    "sinistro": "Sinistro",
+}
 
 
 def texto(valor):
@@ -37,6 +42,10 @@ def texto(valor):
 
 def texto_maiusculo(valor):
     return texto(valor).upper()
+
+
+def motivo_indisponibilidade_normalizado(motivo):
+    return MOTIVOS_INDISPONIBILIDADE.get(texto(motivo).lower())
 
 
 def decimal_ou_none(valor):
@@ -235,9 +244,14 @@ def registrar_leitura(
 
 
 def atualizar_status_pool(veiculo):
-    if veiculo.status_operacional == STATUS_INDISPONIVEL and texto(veiculo.motivo_indisponibilidade):
+    if vinculo_ativo_do_veiculo(veiculo):
+        veiculo.status_operacional = STATUS_EM_USO
         return
-    veiculo.status_operacional = STATUS_EM_USO if vinculo_ativo_do_veiculo(veiculo) else STATUS_DISPONIVEL
+    if veiculo.status_operacional == STATUS_INDISPONIVEL:
+        if motivo_indisponibilidade_normalizado(veiculo.motivo_indisponibilidade):
+            return
+        veiculo.motivo_indisponibilidade = None
+    veiculo.status_operacional = STATUS_DISPONIVEL
 
 
 def vincular_responsavel(form_data, usuario=None, veiculo=None):
@@ -375,14 +389,18 @@ def alterar_indisponibilidade_veiculo(veiculo, indisponivel=True, motivo=None):
     if not veiculo:
         return False, "Veiculo/equipamento nao encontrado."
     if indisponivel:
+        if vinculo_ativo_do_veiculo(veiculo):
+            return False, "Veiculo/equipamento com responsavel ativo deve permanecer Em uso."
+        motivo_normalizado = motivo_indisponibilidade_normalizado(motivo)
+        if not motivo_normalizado:
+            return False, "Indisponibilidade permitida apenas por manutencao ou sinistro."
         veiculo.status_operacional = STATUS_INDISPONIVEL
-        veiculo.motivo_indisponibilidade = texto(motivo) or "Indisponivel operacionalmente."
+        veiculo.motivo_indisponibilidade = motivo_normalizado
     else:
         veiculo.motivo_indisponibilidade = None
         atualizar_status_pool(veiculo)
     db.session.commit()
     return True, "Status operacional atualizado com sucesso."
-
 
 def veiculos_vinculados_ao_colaborador(colaborador_id):
     return (
