@@ -4,7 +4,7 @@ from datetime import date, datetime
 from flask import current_app
 
 from app.extensions import db
-from app.models import OperacaoAbastecimento, OperacaoVeiculoResponsavel
+from app.models import OperacaoAbastecimento, OperacaoVeiculoEquipamento, OperacaoVeiculoResponsavel
 from app.services.google_drive_service import (
     GOOGLE_DRIVE_UPLOAD_SCOPES,
     GoogleDriveConfiguracaoErro,
@@ -14,6 +14,7 @@ from app.services.google_drive_service import (
     upload_arquivo_google_drive,
 )
 from app.services.operacao_pool_service import decimal_ou_none, texto, veiculos_vinculados_ao_colaborador
+from app.services.permissoes_service import usuario_eh_administrador
 from app.services.suprimentos_service import _normalizar_imagem_para_jpg
 from app.utils.datas import agora_brasil
 
@@ -51,6 +52,12 @@ def vinculo_ativo_usuario_veiculo(usuario, veiculo_id):
 
 
 def listar_veiculos_abastecimento_usuario(usuario):
+    if usuario_eh_administrador(usuario):
+        return (
+            OperacaoVeiculoEquipamento.query.filter_by(ativo=True)
+            .order_by(OperacaoVeiculoEquipamento.identificacao.asc())
+            .all()
+        )
     colaborador = colaborador_do_usuario(usuario)
     if not colaborador:
         return []
@@ -58,6 +65,12 @@ def listar_veiculos_abastecimento_usuario(usuario):
 
 
 def listar_abastecimentos_usuario(usuario):
+    if usuario_eh_administrador(usuario):
+        return (
+            OperacaoAbastecimento.query
+            .order_by(OperacaoAbastecimento.data_abastecimento.desc(), OperacaoAbastecimento.id.desc())
+            .all()
+        )
     colaborador = colaborador_do_usuario(usuario)
     if not colaborador:
         return []
@@ -69,6 +82,8 @@ def listar_abastecimentos_usuario(usuario):
 
 
 def buscar_abastecimento_usuario(abastecimento_id, usuario):
+    if usuario_eh_administrador(usuario):
+        return OperacaoAbastecimento.query.get(abastecimento_id)
     colaborador = colaborador_do_usuario(usuario)
     if not colaborador:
         return None

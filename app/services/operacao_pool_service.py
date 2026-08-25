@@ -235,7 +235,7 @@ def registrar_leitura(
 
 
 def atualizar_status_pool(veiculo):
-    if veiculo.status_operacional == STATUS_INDISPONIVEL:
+    if veiculo.status_operacional == STATUS_INDISPONIVEL and texto(veiculo.motivo_indisponibilidade):
         return
     veiculo.status_operacional = STATUS_EM_USO if vinculo_ativo_do_veiculo(veiculo) else STATUS_DISPONIVEL
 
@@ -251,6 +251,7 @@ def vincular_responsavel(form_data, usuario=None, veiculo=None):
 
     if not veiculo or not veiculo.ativo:
         return False, "Veiculo/equipamento nao encontrado ou inativo.", None
+    atualizar_status_pool(veiculo)
     if veiculo.status_operacional == STATUS_INDISPONIVEL:
         return False, "Veiculo/equipamento indisponivel para vinculo.", None
     if not colaborador or not colaborador.ativo:

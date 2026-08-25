@@ -62,14 +62,28 @@ class OperacaoVeiculosEpgsTestCase(unittest.TestCase):
         db.session.add(departamento)
         db.session.flush()
 
-        self.modulo = Modulo(
-            departamento_id=departamento.id,
-            nome="Gestão de Veículos e EGPs",
-            slug="gestao_veiculos_epgs",
-            ativo=True,
-            ordem=1,
-        )
-        db.session.add(self.modulo)
+        self.modulos = {}
+        for ordem, (nome, slug) in enumerate(
+            [
+                ("Veículos e Equipamentos", "veiculos_equipamentos"),
+                ("Pool de Veículos", "pool_veiculos"),
+                ("Abastecimento", "abastecimento"),
+                ("Multas de Trânsito", "multas_transito"),
+                ("Impostos e Taxas", "impostos_taxas"),
+                ("Central de Custos", "central_custos"),
+            ],
+            start=1,
+        ):
+            modulo = Modulo(
+                departamento_id=departamento.id,
+                nome=nome,
+                slug=slug,
+                ativo=True,
+                ordem=ordem,
+            )
+            self.modulos[slug] = modulo
+            db.session.add(modulo)
+        self.modulo = self.modulos["veiculos_equipamentos"]
         db.session.commit()
         self.client = self.app.test_client()
 
@@ -83,18 +97,21 @@ class OperacaoVeiculosEpgsTestCase(unittest.TestCase):
             sessao["_user_id"] = str(usuario.id)
             sessao["_fresh"] = True
 
-    def _liberar(self, **acoes):
-        permissao = PermissaoUsuarioModulo(
-            usuario_id=self.usuario.id,
-            modulo_id=self.modulo.id,
-            pode_visualizar=acoes.get("visualizar", False),
-            pode_criar=acoes.get("criar", False),
-            pode_editar=acoes.get("editar", False),
-            pode_excluir=acoes.get("excluir", False),
-            ativo=True,
-        )
+    def _liberar(self, modulo_slug="veiculos_equipamentos", **acoes):
+        modulo = self.modulos[modulo_slug]
+        permissao = PermissaoUsuarioModulo.query.filter_by(usuario_id=self.usuario.id, modulo_id=modulo.id).first()
+        if not permissao:
+            permissao = PermissaoUsuarioModulo(
+                usuario_id=self.usuario.id,
+                modulo_id=modulo.id,
+            )
+            db.session.add(permissao)
+        permissao.pode_visualizar = acoes.get("visualizar", False)
+        permissao.pode_criar = acoes.get("criar", False)
+        permissao.pode_editar = acoes.get("editar", False)
+        permissao.pode_excluir = acoes.get("excluir", False)
+        permissao.ativo = True
         permissao.garantir_visualizacao()
-        db.session.add(permissao)
         db.session.commit()
 
     def test_admin_acessa_gestao_veiculos_epgs(self):
@@ -114,6 +131,20 @@ class OperacaoVeiculosEpgsTestCase(unittest.TestCase):
 
         self.assertEqual(302, resposta.status_code)
         self.assertIn("/acesso-negado", resposta.headers["Location"])
+
+    def test_usuario_ve_apenas_cards_dos_submodulos_liberados(self):
+        self._liberar("pool_veiculos", visualizar=True)
+        self._liberar("abastecimento", visualizar=True)
+        self._autenticar(self.usuario)
+
+        resposta = self.client.get("/operacao/gestao-veiculos-epgs/")
+
+        self.assertEqual(200, resposta.status_code)
+        self.assertIn("Pool de Veículos".encode("utf-8"), resposta.data)
+        self.assertIn(b"Abastecimento", resposta.data)
+        self.assertNotIn("Veículos e Equipamentos".encode("utf-8"), resposta.data)
+        self.assertNotIn("Multas de Trânsito".encode("utf-8"), resposta.data)
+        self.assertNotIn(b"Central de Custos", resposta.data)
 
     def test_cria_edita_e_inativa_com_centro_custo_calculado(self):
         self._autenticar(self.admin)

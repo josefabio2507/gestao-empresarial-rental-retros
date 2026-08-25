@@ -12,53 +12,67 @@
     </div>
 
     <div class="modules-grid">
-        <a class="module-card module-card-link" href="{{ url_for('veiculos_equipamentos.listar') }}">
-            <span class="module-card-icon">V</span>
-            <h2>Veículos e Equipamentos</h2>
-            <p>Cadastro, consulta, edição e controle de status da frota operacional.</p>
-            <span class="badge badge-success">Liberado</span>
-            <span class="module-status">Acessar cadastro</span>
-        </a>
+        {% if permissoes_cards.veiculos_equipamentos %}
+            <a class="module-card module-card-link" href="{{ url_for('veiculos_equipamentos.listar') }}">
+                <span class="module-card-icon">V</span>
+                <h2>Veículos e Equipamentos</h2>
+                <p>Cadastro, consulta, edição e controle de status da frota operacional.</p>
+                <span class="badge badge-success">Liberado</span>
+                <span class="module-status">Acessar cadastro</span>
+            </a>
+        {% endif %}
 
-        <a class="module-card module-card-link" href="{{ url_for('operacao.pool') }}">
-            <span class="module-card-icon">P</span>
-            <h2>Pool de Veículos</h2>
-            <p>Responsabilidade operacional, disponibilidade e histórico de leituras.</p>
-            <span class="badge badge-success">Liberado</span>
-            <span class="module-status">Acessar pool</span>
-        </a>
+        {% if permissoes_cards.pool_veiculos %}
+            <a class="module-card module-card-link" href="{{ url_for('operacao.pool') }}">
+                <span class="module-card-icon">P</span>
+                <h2>Pool de Veículos</h2>
+                <p>Responsabilidade operacional, disponibilidade e histórico de leituras.</p>
+                <span class="badge badge-success">Liberado</span>
+                <span class="module-status">Acessar pool</span>
+            </a>
+        {% endif %}
 
-        <a class="module-card module-card-link" href="{{ url_for('operacao.abastecimentos') }}">
-            <span class="module-card-icon">A</span>
-            <h2>Abastecimento</h2>
-            <p>Registro de abastecimentos dos veículos vinculados ao usuário logado.</p>
-            <span class="badge badge-success">Liberado</span>
-            <span class="module-status">Registrar cupom</span>
-        </a>
+        {% if permissoes_cards.abastecimento %}
+            <a class="module-card module-card-link" href="{{ url_for('operacao.abastecimentos') }}">
+                <span class="module-card-icon">A</span>
+                <h2>Abastecimento</h2>
+                <p>Registro de abastecimentos dos veículos vinculados ao usuário logado.</p>
+                <span class="badge badge-success">Liberado</span>
+                <span class="module-status">Registrar cupom</span>
+            </a>
+        {% endif %}
 
-        <a class="module-card module-card-link" href="{{ url_for('operacao.multas_transito') }}">
-            <span class="module-card-icon">M</span>
-            <h2>Multas de Trânsito</h2>
-            <p>Cadastro e consulta de autos de infração vinculados aos veículos.</p>
-            <span class="badge badge-success">Liberado</span>
-            <span class="module-status">Cadastrar multas</span>
-        </a>
+        {% if permissoes_cards.multas_transito %}
+            <a class="module-card module-card-link" href="{{ url_for('operacao.multas_transito') }}">
+                <span class="module-card-icon">M</span>
+                <h2>Multas de Trânsito</h2>
+                <p>Cadastro e consulta de autos de infração vinculados aos veículos.</p>
+                <span class="badge badge-success">Liberado</span>
+                <span class="module-status">Cadastrar multas</span>
+            </a>
+        {% endif %}
 
-
-        <a class="module-card module-card-link" href="{{ url_for('operacao.impostos_taxas') }}">
-            <span class="module-card-icon">I</span>
-            <h2>Impostos e Taxas</h2>
-            <p>Cadastro de parcelas de IPVA e licenciamento dos veículos.</p>
-            <span class="badge badge-success">Liberado</span>
-            <span class="module-status">Cadastrar parcelas</span>
-        </a>
-        <a class="module-card module-card-link" href="{{ url_for('operacao.central_custos') }}">
-            <span class="module-card-icon">C</span>
-            <h2>Central de Custos</h2>
-            <p>Consulta consolidada de abastecimento, manutenção, multas, impostos e taxas por ativo.</p>
-            <span class="badge badge-success">Liberado</span>
-            <span class="module-status">Consultar custos</span>
-        </a>
+        {% if permissoes_cards.impostos_taxas %}
+            <a class="module-card module-card-link" href="{{ url_for('operacao.impostos_taxas') }}">
+                <span class="module-card-icon">I</span>
+                <h2>Impostos e Taxas</h2>
+                <p>Cadastro de parcelas de IPVA e licenciamento dos veículos.</p>
+                <span class="badge badge-success">Liberado</span>
+                <span class="module-status">Cadastrar parcelas</span>
+            </a>
+        {% endif %}
+        {% if permissoes_cards.central_custos %}
+            <a class="module-card module-card-link" href="{{ url_for('operacao.central_custos') }}">
+                <span class="module-card-icon">C</span>
+                <h2>Central de Custos</h2>
+                <p>Consulta consolidada de abastecimento, manutenção, multas, impostos e taxas por ativo.</p>
+                <span class="badge badge-success">Liberado</span>
+                <span class="module-status">Consultar custos</span>
+            </a>
+        {% endif %}
+        {% if not permissoes_cards.veiculos_equipamentos and not permissoes_cards.pool_veiculos and not permissoes_cards.abastecimento and not permissoes_cards.multas_transito and not permissoes_cards.impostos_taxas and not permissoes_cards.central_custos %}
+            <div class="empty-state">Nenhum submódulo liberado para este usuário.</div>
+        {% endif %}
     </div>
 </section>
 {% endblock %}

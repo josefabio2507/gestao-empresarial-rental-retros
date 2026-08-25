@@ -107,14 +107,28 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         self.departamento = Departamento(nome="Operacao", slug="operacao", descricao="Teste", ativo=True, ordem=2)
         db.session.add(self.departamento)
         db.session.flush()
-        self.modulo = Modulo(
-            departamento_id=self.departamento.id,
-            nome="Gestao de Veiculos e EGPs",
-            slug="gestao_veiculos_epgs",
-            ativo=True,
-            ordem=1,
-        )
-        db.session.add(self.modulo)
+        self.modulos = {}
+        for ordem, (nome, slug) in enumerate(
+            [
+                ("Veiculos e Equipamentos", "veiculos_equipamentos"),
+                ("Pool de Veiculos", "pool_veiculos"),
+                ("Abastecimento", "abastecimento"),
+                ("Multas de Transito", "multas_transito"),
+                ("Impostos e Taxas", "impostos_taxas"),
+                ("Central de Custos", "central_custos"),
+            ],
+            start=1,
+        ):
+            modulo = Modulo(
+                departamento_id=self.departamento.id,
+                nome=nome,
+                slug=slug,
+                ativo=True,
+                ordem=ordem,
+            )
+            self.modulos[slug] = modulo
+            db.session.add(modulo)
+        self.modulo = self.modulos["pool_veiculos"]
 
         self.equipe = Equipe(nome="Operacao", slug="operacao", ativo=True)
         db.session.add(self.equipe)
@@ -167,18 +181,21 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         imagem.save(buffer, format="PNG")
         buffer.seek(0)
         return FileStorage(stream=buffer, filename=nome, content_type="image/png")
-    def _liberar_usuario(self, **acoes):
-        permissao = PermissaoUsuarioModulo(
-            usuario_id=self.usuario.id,
-            modulo_id=self.modulo.id,
-            pode_visualizar=acoes.get("visualizar", False),
-            pode_criar=acoes.get("criar", False),
-            pode_editar=acoes.get("editar", False),
-            pode_excluir=acoes.get("excluir", False),
-            ativo=True,
-        )
+    def _liberar_usuario(self, modulo_slug="pool_veiculos", **acoes):
+        modulo = self.modulos[modulo_slug]
+        permissao = PermissaoUsuarioModulo.query.filter_by(usuario_id=self.usuario.id, modulo_id=modulo.id).first()
+        if not permissao:
+            permissao = PermissaoUsuarioModulo(
+                usuario_id=self.usuario.id,
+                modulo_id=modulo.id,
+            )
+            db.session.add(permissao)
+        permissao.pode_visualizar = acoes.get("visualizar", False)
+        permissao.pode_criar = acoes.get("criar", False)
+        permissao.pode_editar = acoes.get("editar", False)
+        permissao.pode_excluir = acoes.get("excluir", False)
+        permissao.ativo = True
         permissao.garantir_visualizacao()
-        db.session.add(permissao)
         db.session.commit()
 
     def test_cria_vinculo_e_registra_leitura_do_pool(self):
@@ -198,6 +215,29 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         self.assertEqual(STATUS_VINCULO_ATIVO, vinculo.status)
         self.assertEqual(STATUS_EM_USO, veiculo.status_operacional)
         self.assertEqual(1, OperacaoLeituraAtivo.query.filter_by(veiculo_id=veiculo.id, origem="pool").count())
+
+    def test_encerrar_vinculo_deixa_veiculo_disponivel_para_novo_usuario(self):
+        veiculo = self._criar_veiculo("POOL001", "CAMINHAO POOL")
+        _, _, primeiro = vincular_responsavel(
+            {"colaborador_id": str(self.motorista.id), "tipo_leitura": "odometro", "leitura_inicial": "10"},
+            usuario=self.admin,
+            veiculo=veiculo,
+        )
+        primeiro.status = STATUS_VINCULO_ENCERRADO
+        primeiro.encerrado_em = primeiro.iniciado_em
+        veiculo.status_operacional = STATUS_INDISPONIVEL
+        veiculo.motivo_indisponibilidade = None
+        db.session.commit()
+
+        sucesso, mensagem, segundo = vincular_responsavel(
+            {"colaborador_id": str(self.operador.id), "tipo_leitura": "odometro", "leitura_inicial": "20"},
+            usuario=self.admin,
+            veiculo=veiculo,
+        )
+
+        self.assertTrue(sucesso, mensagem)
+        self.assertEqual(STATUS_VINCULO_ATIVO, segundo.status)
+        self.assertEqual(STATUS_EM_USO, veiculo.status_operacional)
 
     def test_troca_automatica_preserva_historico(self):
         veiculo = self._criar_veiculo()
@@ -395,7 +435,7 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
             usuario=self.admin,
             veiculo=veiculo_outro,
         )
-        self._liberar_usuario(visualizar=True)
+        self._liberar_usuario("abastecimento", visualizar=True)
         self._autenticar(self.usuario)
 
         resposta = self.client.get("/operacao/abastecimentos")
@@ -403,6 +443,23 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         self.assertEqual(200, resposta.status_code)
         self.assertIn(b"CAR101", resposta.data)
         self.assertNotIn(b"CAR202", resposta.data)
+
+    def test_admin_visualiza_todos_veiculos_em_abastecimento_sem_vinculo(self):
+        veiculo_um = self._criar_veiculo("ADM101", "CAMINHAO ADMIN UM")
+        veiculo_dois = self._criar_veiculo("ADM202", "CAMINHAO ADMIN DOIS")
+        vincular_responsavel(
+            {"colaborador_id": str(self.motorista.id), "tipo_leitura": "odometro", "leitura_inicial": "10"},
+            usuario=self.admin,
+            veiculo=veiculo_um,
+        )
+        self._autenticar(self.admin)
+
+        resposta = self.client.get("/operacao/abastecimentos")
+
+        self.assertEqual(200, resposta.status_code)
+        self.assertIn(veiculo_um.identificacao.encode(), resposta.data)
+        self.assertIn(veiculo_dois.identificacao.encode(), resposta.data)
+        self.assertNotIn(b">Abastecer</a>", resposta.data)
 
     def test_formulario_abastecimento_usa_camera_do_celular_para_cupom(self):
         veiculo = self._criar_veiculo("CAR303", "CAMINHAO ABASTECIMENTO")
@@ -413,7 +470,7 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
             usuario=self.admin,
             veiculo=veiculo,
         )
-        self._liberar_usuario(editar=True)
+        self._liberar_usuario("abastecimento", criar=True)
         self._autenticar(self.usuario)
 
         resposta = self.client.get(f"/operacao/abastecimentos/veiculos/{veiculo.id}/novo")
@@ -463,7 +520,7 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         veiculo_inativo = self._criar_veiculo("CAR502", "CAMINHAO INATIVO")
         veiculo_inativo.ativo = False
         db.session.commit()
-        self._liberar_usuario(visualizar=True)
+        self._liberar_usuario("central_custos", visualizar=True)
         self._autenticar(self.usuario)
 
         resposta = self.client.get("/operacao/central-custos")
@@ -496,7 +553,8 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
             drive_service=FakeDriveService(),
         )
         self.assertTrue(sucesso, mensagem)
-        self._liberar_usuario(visualizar=True)
+        self._liberar_usuario("central_custos", visualizar=True)
+        self._liberar_usuario("abastecimento", visualizar=True)
         self._autenticar(self.usuario)
 
         resposta = self.client.get(f"/operacao/central-custos/veiculos/{veiculo.id}")
@@ -527,7 +585,7 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
 
         sucesso, mensagem, multa = salvar_multa_transito(
             {
-                "data_infracao": "2026-08-24",
+                "data_infracao": "2026-08-26",
                 "hora_infracao": "14:30",
                 "veiculo_id": str(veiculo.id),
                 "numero_auto_infracao": "AUTO-001",
@@ -561,7 +619,7 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         )
         sucesso, mensagem, multa = salvar_multa_transito(
             {
-                "data_infracao": "2026-08-24",
+                "data_infracao": "2026-08-26",
                 "hora_infracao": "08:15",
                 "veiculo_id": str(veiculo.id),
                 "numero_auto_infracao": "AUTO-002",
@@ -576,7 +634,8 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
             self.admin,
         )
         self.assertTrue(sucesso, mensagem)
-        self._liberar_usuario(visualizar=True, criar=True)
+        self._liberar_usuario("multas_transito", visualizar=True, criar=True)
+        self._liberar_usuario("central_custos", visualizar=True)
         self._autenticar(self.usuario)
 
         lista = self.client.get("/operacao/multas-transito")
@@ -610,7 +669,7 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         )
         salvar_multa_transito(
             {
-                "data_infracao": "2026-08-24",
+                "data_infracao": "2026-08-25",
                 "hora_infracao": "08:15",
                 "veiculo_id": str(veiculo_motorista.id),
                 "numero_auto_infracao": "AUTO-FLT-001",
@@ -626,7 +685,7 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         )
         salvar_multa_transito(
             {
-                "data_infracao": "2026-08-25",
+                "data_infracao": "2026-08-26",
                 "hora_infracao": "09:30",
                 "veiculo_id": str(veiculo_operador.id),
                 "numero_auto_infracao": "AUTO-FLT-999",
@@ -640,10 +699,10 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
             },
             self.admin,
         )
-        self._liberar_usuario(visualizar=True)
+        self._liberar_usuario("multas_transito", visualizar=True)
         self._autenticar(self.usuario)
 
-        filtro_periodo = self.client.get("/operacao/multas-transito?data_inicio=2026-08-24&data_fim=2026-08-24")
+        filtro_periodo = self.client.get("/operacao/multas-transito?data_inicio=2026-08-25&data_fim=2026-08-25")
         self.assertEqual(200, filtro_periodo.status_code)
         self.assertIn(b"AUTO-FLT-001", filtro_periodo.data)
         self.assertNotIn(b"AUTO-FLT-999", filtro_periodo.data)
@@ -679,7 +738,8 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         self.assertTrue(sucesso, mensagem)
         self.assertEqual(2, len(lancamentos))
         self.assertEqual(2, OperacaoImpostoTaxa.query.count())
-        self._liberar_usuario(visualizar=True, criar=True)
+        self._liberar_usuario("impostos_taxas", visualizar=True, criar=True)
+        self._liberar_usuario("central_custos", visualizar=True)
         self._autenticar(self.usuario)
 
         lista = self.client.get("/operacao/impostos-taxas")
