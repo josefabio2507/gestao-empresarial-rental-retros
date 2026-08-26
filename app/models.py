@@ -1352,6 +1352,145 @@ class CentroCusto(db.Model):
     def __repr__(self):
         return f"<CentroCusto {self.codigo or ''} {self.nome}>"
 
+class FinanceiroContaPagarTitulo(db.Model):
+    __tablename__ = "financeiro_contas_pagar_titulos"
+
+    id = db.Column(db.Integer, primary_key=True)
+    fornecedor_id = db.Column(
+        db.Integer,
+        db.ForeignKey("suprimentos_fornecedores.id"),
+        nullable=True,
+        index=True,
+    )
+    fornecedor_nome_snapshot = db.Column(db.String(180), nullable=False, index=True)
+    fornecedor_cnpj_cpf_snapshot = db.Column(db.String(14), nullable=True, index=True)
+    descricao = db.Column(db.String(220), nullable=False, index=True)
+    numero_documento = db.Column(db.String(80), nullable=True, index=True)
+    numero_nfe = db.Column(db.String(20), nullable=True, index=True)
+    chave_acesso_nfe = db.Column(db.String(44), nullable=True, index=True)
+    ordem_compra_id = db.Column(
+        db.Integer,
+        db.ForeignKey("suprimentos_ordens_compra.id"),
+        nullable=True,
+        index=True,
+    )
+    fiscal_documento_id = db.Column(
+        db.Integer,
+        db.ForeignKey("fiscal_documentos.id"),
+        nullable=True,
+        index=True,
+    )
+    cartao_credito_id = db.Column(db.Integer, nullable=True, index=True)
+    origem_lancamento = db.Column(db.String(30), nullable=False, index=True)
+    tipo_pagamento = db.Column(db.String(30), nullable=False, index=True)
+    forma_pagamento = db.Column(db.String(30), nullable=False, index=True)
+    competencia = db.Column(db.Date, nullable=True, index=True)
+    data_emissao = db.Column(db.Date, nullable=True)
+    data_vencimento = db.Column(db.Date, nullable=False, index=True)
+    data_pagamento = db.Column(db.Date, nullable=True, index=True)
+    valor_original = db.Column(db.Numeric(12, 2), nullable=False)
+    valor_desconto = db.Column(db.Numeric(12, 2), default=0, nullable=False)
+    valor_acrescimo = db.Column(db.Numeric(12, 2), default=0, nullable=False)
+    valor_juros_multa = db.Column(db.Numeric(12, 2), default=0, nullable=False)
+    valor_pago = db.Column(db.Numeric(12, 2), default=0, nullable=False)
+    parcela_numero = db.Column(db.Integer, default=1, nullable=False)
+    total_parcelas = db.Column(db.Integer, default=1, nullable=False)
+    centro_custo_id = db.Column(
+        db.Integer,
+        db.ForeignKey("centros_custo.id"),
+        nullable=True,
+        index=True,
+    )
+    sub_centro_custo_equipe_id = db.Column(
+        db.Integer,
+        db.ForeignKey("equipes.id"),
+        nullable=True,
+        index=True,
+    )
+    sub_centro_custo_veiculo_id = db.Column(
+        db.Integer,
+        db.ForeignKey("operacao_veiculos_equipamentos.id"),
+        nullable=True,
+        index=True,
+    )
+    status = db.Column(db.String(30), nullable=False, default="Agendado", index=True)
+    observacoes = db.Column(db.Text, nullable=True)
+    criado_por_usuario_id = db.Column(
+        db.Integer,
+        db.ForeignKey("usuarios.id"),
+        nullable=True,
+        index=True,
+    )
+    atualizado_por_usuario_id = db.Column(
+        db.Integer,
+        db.ForeignKey("usuarios.id"),
+        nullable=True,
+        index=True,
+    )
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
+    atualizado_em = db.Column(
+        db.DateTime,
+        default=agora_brasil,
+        onupdate=agora_brasil,
+        nullable=False,
+    )
+
+    fornecedor = db.relationship("SuprimentosFornecedor")
+    ordem_compra = db.relationship("SuprimentosOrdemCompra")
+    fiscal_documento = db.relationship("FiscalDocumento")
+    centro_custo = db.relationship("CentroCusto")
+    sub_centro_custo_equipe = db.relationship("Equipe")
+    sub_centro_custo_veiculo = db.relationship("OperacaoVeiculoEquipamento")
+    criado_por = db.relationship("Usuario", foreign_keys=[criado_por_usuario_id])
+    atualizado_por = db.relationship("Usuario", foreign_keys=[atualizado_por_usuario_id])
+
+    __table_args__ = (
+        db.CheckConstraint(
+            "origem_lancamento in ('Manual', 'Ordem de Compra', 'XML Fiscal', 'Cartao de Credito')",
+            name="ck_financeiro_cp_origem_lancamento",
+        ),
+        db.CheckConstraint(
+            "tipo_pagamento in ('Faturado', 'Cartao de Credito')",
+            name="ck_financeiro_cp_tipo_pagamento",
+        ),
+        db.CheckConstraint(
+            "forma_pagamento in ('Boleto', 'Pix', 'Transferencia', 'Deposito', 'Cartao de Credito', 'Outro')",
+            name="ck_financeiro_cp_forma_pagamento",
+        ),
+        db.CheckConstraint(
+            "status in ('Rascunho', 'Aguardando conferencia', 'Agendado', 'A vencer', 'Vencido', 'Pago', 'Pago parcialmente', 'Cancelado', 'Estornado')",
+            name="ck_financeiro_cp_status",
+        ),
+        db.CheckConstraint("valor_original > 0", name="ck_financeiro_cp_valor_original"),
+        db.CheckConstraint("valor_desconto >= 0", name="ck_financeiro_cp_valor_desconto"),
+        db.CheckConstraint("valor_acrescimo >= 0", name="ck_financeiro_cp_valor_acrescimo"),
+        db.CheckConstraint("valor_juros_multa >= 0", name="ck_financeiro_cp_valor_juros_multa"),
+        db.CheckConstraint("valor_pago >= 0", name="ck_financeiro_cp_valor_pago"),
+        db.CheckConstraint("parcela_numero >= 1", name="ck_financeiro_cp_parcela_numero"),
+        db.CheckConstraint("total_parcelas >= 1", name="ck_financeiro_cp_total_parcelas"),
+        db.CheckConstraint("parcela_numero <= total_parcelas", name="ck_financeiro_cp_parcela_total"),
+    )
+
+    @property
+    def valor_liquido_previsto(self):
+        return (
+            (self.valor_original or 0)
+            - (self.valor_desconto or 0)
+            + (self.valor_acrescimo or 0)
+            + (self.valor_juros_multa or 0)
+        )
+
+    def status_exibicao(self, hoje=None):
+        from datetime import date
+
+        hoje = hoje or date.today()
+        status_final = self.status in ("Pago", "Pago parcialmente", "Cancelado", "Estornado")
+        if not status_final and self.data_vencimento and self.data_vencimento < hoje:
+            return "Vencido"
+        return self.status
+
+    def __repr__(self):
+        return f"<FinanceiroContaPagarTitulo {self.id} {self.fornecedor_nome_snapshot}>"
 
 class SuprimentosItem(db.Model):
     __tablename__ = "suprimentos_itens"
@@ -2659,3 +2798,4 @@ class SegurancaTrabalhoEntregaEpi(db.Model):
 
     def __repr__(self):
         return f"<SegurancaTrabalhoEntregaEpi colaborador={self.colaborador_id} item={self.item_id}>"
+

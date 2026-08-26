@@ -1495,3 +1495,7 @@ textarea:focus {
         grid-template-columns: 1fr;
     }
 }
+
+.financeiro-contas-pagar-table {
+    min-width: 1800px;
+}
