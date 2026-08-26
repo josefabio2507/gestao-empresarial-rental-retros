@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Financeiro &gt; Contas a Pagar &gt; Dashboard</span>
+            <h1>Contas a Pagar</h1>
+            <p>Base operacional de titulos a pagar e agendamentos financeiros.</p>
+        </div>
+        {% include "financeiro/contas_pagar/_nav.html" %}
+    </div>
+
+    <div class="stat-grid">
+        <div class="stat-card"><span>Total em aberto</span><strong>R$ {{ "%.2f"|format(indicadores.total_aberto)|replace('.', ',') }}</strong></div>
+        <div class="stat-card"><span>Total vencido</span><strong>R$ {{ "%.2f"|format(indicadores.total_vencido)|replace('.', ',') }}</strong></div>
+        <div class="stat-card"><span>A vencer em 7 dias</span><strong>R$ {{ "%.2f"|format(indicadores.total_7_dias)|replace('.', ',') }}</strong></div>
+        <div class="stat-card"><span>A pagar no mes</span><strong>R$ {{ "%.2f"|format(indicadores.total_mes)|replace('.', ',') }}</strong></div>
+        <div class="stat-card"><span>Aguardando conferencia</span><strong>{{ indicadores.qtd_aguardando_conferencia }}</strong></div>
+        <div class="stat-card"><span>Cadastrados manualmente</span><strong>{{ indicadores.qtd_manuais }}</strong></div>
+    </div>
+
+    <div class="page-actions">
+        <a class="btn btn-primary" href="{{ url_for('financeiro_contas_pagar.novo') }}">Novo lancamento</a>
+        <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.titulos') }}">Ver titulos</a>
+        <a class="btn btn-secondary" href="{{ url_for('departamentos.detalhe_departamento', slug_departamento='financeiro') }}">Voltar ao Financeiro</a>
+    </div>
+</section>
+{% endblock %}

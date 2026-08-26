@@ -2,7 +2,23 @@
 
 {% block content %}
 <section class="page">
-    <h1>Financeiro</h1>
-    <p>Módulo Financeiro em construção.</p>
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Financeiro</span>
+            <h1>Financeiro</h1>
+            <p>Controle financeiro operacional da Rental Retros.</p>
+        </div>
+        <a class="btn btn-secondary" href="{{ url_for('main.inicio') }}">Voltar ao inicio</a>
+    </div>
+
+    <div class="modules-grid">
+        <a class="module-card module-card-link" href="{{ url_for('financeiro_contas_pagar.dashboard') }}">
+            <span class="module-card-icon">P</span>
+            <h2>Contas a Pagar</h2>
+            <p>Dashboard, titulos, filtros e lancamentos manuais.</p>
+            <span class="badge badge-success">Ativo</span>
+            <span class="module-status">Acessar submodulo</span>
+        </a>
+    </div>
 </section>
 {% endblock %}

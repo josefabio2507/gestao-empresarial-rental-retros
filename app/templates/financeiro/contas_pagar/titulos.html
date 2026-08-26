@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Financeiro &gt; Contas a Pagar &gt; Titulos</span>
+            <h1>Titulos a Pagar</h1>
+            <p>Consulta dos titulos cadastrados e preparados para integracoes futuras.</p>
+        </div>
+        {% include "financeiro/contas_pagar/_nav.html" %}
+    </div>
+
+    <form class="filter-card" method="GET">
+        <div class="filter-grid">
+            <div class="form-group"><label for="fornecedor">Fornecedor</label><input id="fornecedor" name="fornecedor" value="{{ filtros.get('fornecedor', '') }}"></div>
+            <div class="form-group"><label for="cnpj_cpf">CNPJ/CPF</label><input id="cnpj_cpf" name="cnpj_cpf" value="{{ filtros.get('cnpj_cpf', '') }}" data-documento-br></div>
+            <div class="form-group"><label for="status">Status</label><select id="status" name="status"><option value="">Todos</option>{% for item in status_titulo %}<option value="{{ item }}" {{ "selected" if filtros.get('status') == item else "" }}>{{ item }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="origem_lancamento">Origem</label><select id="origem_lancamento" name="origem_lancamento"><option value="">Todas</option>{% for item in origens %}<option value="{{ item }}" {{ "selected" if filtros.get('origem_lancamento') == item else "" }}>{{ item }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="tipo_pagamento">Tipo de pagamento</label><select id="tipo_pagamento" name="tipo_pagamento"><option value="">Todos</option>{% for item in tipos_pagamento %}<option value="{{ item }}" {{ "selected" if filtros.get('tipo_pagamento') == item else "" }}>{{ item }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="forma_pagamento">Forma de pagamento</label><select id="forma_pagamento" name="forma_pagamento"><option value="">Todas</option>{% for item in formas_pagamento %}<option value="{{ item }}" {{ "selected" if filtros.get('forma_pagamento') == item else "" }}>{{ item }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="vencimento_inicio">Vencimento inicial</label><input id="vencimento_inicio" name="vencimento_inicio" type="date" value="{{ filtros.get('vencimento_inicio', '') }}"></div>
+            <div class="form-group"><label for="vencimento_fim">Vencimento final</label><input id="vencimento_fim" name="vencimento_fim" type="date" value="{{ filtros.get('vencimento_fim', '') }}"></div>
+            <div class="form-group"><label for="numero_documento">Numero do documento</label><input id="numero_documento" name="numero_documento" value="{{ filtros.get('numero_documento', '') }}"></div>
+            <div class="form-group"><label for="numero_nfe">Numero da NF-e</label><input id="numero_nfe" name="numero_nfe" value="{{ filtros.get('numero_nfe', '') }}"></div>
+            <div class="form-group"><label for="ordem_compra">Ordem de Compra</label><input id="ordem_compra" name="ordem_compra" value="{{ filtros.get('ordem_compra', '') }}"></div>
+            <div class="form-group"><label for="centro_custo_id">Centro de custo</label><select id="centro_custo_id" name="centro_custo_id"><option value="">Todos</option>{% for centro in opcoes.centros_custo %}<option value="{{ centro.id }}" {{ "selected" if filtros.get('centro_custo_id') == centro.id|string else "" }}>{{ centro.codigo or "-" }} - {{ centro.nome }}</option>{% endfor %}</select></div>
+        </div>
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Pesquisar</button>
+            <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.titulos') }}">Limpar</a>
+        </div>
+    </form>
+
+    <div class="table-card table-responsive">
+        <table class="table financeiro-contas-pagar-table">
+            <thead>
+                <tr>
+                    <th>ID</th><th>Fornecedor</th><th>CNPJ/CPF</th><th>Descricao</th><th>Documento</th><th>NF-e</th><th>O.C.</th><th>Origem</th><th>Tipo</th><th>Forma</th><th>Vencimento</th><th>Valor original</th><th>Valor pago</th><th>Status</th><th>Acoes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for titulo in titulos %}
+                    <tr>
+                        <td>{{ titulo.id }}</td>
+                        <td>{{ titulo.fornecedor_nome_snapshot }}</td>
+                        <td>{{ titulo.fornecedor_cnpj_cpf_snapshot or "-" }}</td>
+                        <td>{{ titulo.descricao }}</td>
+                        <td>{{ titulo.numero_documento or "-" }}</td>
+                        <td>{{ titulo.numero_nfe or "-" }}</td>
+                        <td>{{ titulo.ordem_compra.numero if titulo.ordem_compra else "-" }}</td>
+                        <td>{{ titulo.origem_lancamento }}</td>
+                        <td>{{ titulo.tipo_pagamento }}</td>
+                        <td>{{ titulo.forma_pagamento }}</td>
+                        <td>{{ titulo.data_vencimento.strftime("%d/%m/%Y") }}</td>
+                        <td>R$ {{ "%.2f"|format(titulo.valor_original)|replace('.', ',') }}</td>
+                        <td>R$ {{ "%.2f"|format(titulo.valor_pago)|replace('.', ',') }}</td>
+                        {% set status_view = titulo.status_exibicao() %}
+                        <td><span class="badge {{ 'badge-danger' if status_view in ['Vencido', 'Cancelado'] else 'badge-success' if status_view == 'Pago' else 'badge-warning' }}">{{ status_view }}</span></td>
+                        <td class="col-acoes">
+                            <div class="acoes-botoes">
+                                <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.detalhes', titulo_id=titulo.id) }}">Ver</a>
+                                <a class="btn btn-primary" href="{{ url_for('financeiro_contas_pagar.editar', titulo_id=titulo.id) }}">Editar</a>
+                                {% if titulo.status not in ['Pago', 'Cancelado', 'Estornado'] %}
+                                    <form class="inline-form" method="POST" action="{{ url_for('financeiro_contas_pagar.cancelar', titulo_id=titulo.id) }}">
+                                        <button class="btn btn-warning" type="submit">Cancelar</button>
+                                    </form>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr><td class="empty-state" colspan="15">Nenhum titulo a pagar encontrado.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="page-actions"><a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.dashboard') }}">Voltar</a></div>
+</section>
+{% endblock %}

@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Financeiro &gt; Contas a Pagar &gt; {{ "Novo Lancamento" if modo == "novo" else "Editar Titulo" }}</span>
+            <h1>{{ "Novo Lancamento Manual" if modo == "novo" else "Editar Titulo a Pagar" }}</h1>
+            <p>Cadastro manual de titulo a pagar com estrutura preparada para integracoes futuras.</p>
+        </div>
+        {% include "financeiro/contas_pagar/_nav.html" %}
+    </div>
+
+    <form class="form-card" method="POST">
+        <h2>Fornecedor</h2>
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="fornecedor_id">Fornecedor cadastrado</label>
+                <select id="fornecedor_id" name="fornecedor_id">
+                    <option value="">Informar manualmente</option>
+                    {% for fornecedor in opcoes.fornecedores %}
+                        <option value="{{ fornecedor.id }}" {{ "selected" if titulo and titulo.fornecedor_id == fornecedor.id else "" }}>{{ fornecedor.razao_social }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group"><label for="fornecedor_nome_snapshot">Nome do fornecedor</label><input id="fornecedor_nome_snapshot" name="fornecedor_nome_snapshot" value="{{ titulo.fornecedor_nome_snapshot if titulo else '' }}" maxlength="180" data-uppercase required></div>
+            <div class="form-group"><label for="fornecedor_cnpj_cpf_snapshot">CNPJ/CPF</label><input id="fornecedor_cnpj_cpf_snapshot" name="fornecedor_cnpj_cpf_snapshot" value="{{ titulo.fornecedor_cnpj_cpf_snapshot if titulo else '' }}" maxlength="18" data-documento-br></div>
+        </div>
+
+        <h2>Documento</h2>
+        <div class="form-grid">
+            <div class="form-group"><label for="descricao">Descricao</label><input id="descricao" name="descricao" value="{{ titulo.descricao if titulo else '' }}" maxlength="220" data-uppercase required></div>
+            <div class="form-group"><label for="numero_documento">Numero do documento</label><input id="numero_documento" name="numero_documento" value="{{ titulo.numero_documento if titulo else '' }}" maxlength="80"></div>
+            <div class="form-group"><label for="numero_nfe">Numero da NF-e</label><input id="numero_nfe" name="numero_nfe" value="{{ titulo.numero_nfe if titulo else '' }}" maxlength="20"></div>
+            <div class="form-group"><label for="chave_acesso_nfe">Chave de acesso da NF-e</label><input id="chave_acesso_nfe" name="chave_acesso_nfe" value="{{ titulo.chave_acesso_nfe if titulo else '' }}" maxlength="44"></div>
+            <div class="form-group"><label for="data_emissao">Data de emissao</label><input id="data_emissao" name="data_emissao" type="date" value="{{ titulo.data_emissao.isoformat() if titulo and titulo.data_emissao else '' }}"></div>
+            <div class="form-group"><label for="data_vencimento">Data de vencimento</label><input id="data_vencimento" name="data_vencimento" type="date" value="{{ titulo.data_vencimento.isoformat() if titulo and titulo.data_vencimento else '' }}" required></div>
+            <div class="form-group"><label for="competencia">Competencia</label><input id="competencia" name="competencia" type="month" value="{{ titulo.competencia.strftime('%Y-%m') if titulo and titulo.competencia else '' }}"></div>
+        </div>
+
+        <h2>Valores</h2>
+        <div class="form-grid">
+            <div class="form-group"><label for="valor_original">Valor original</label><input id="valor_original" name="valor_original" value="{{ '%.2f'|format(titulo.valor_original)|replace('.', ',') if titulo else '' }}" required></div>
+            <div class="form-group"><label for="valor_desconto">Valor de desconto</label><input id="valor_desconto" name="valor_desconto" value="{{ '%.2f'|format(titulo.valor_desconto)|replace('.', ',') if titulo else '0,00' }}"></div>
+            <div class="form-group"><label for="valor_acrescimo">Valor de acrescimo</label><input id="valor_acrescimo" name="valor_acrescimo" value="{{ '%.2f'|format(titulo.valor_acrescimo)|replace('.', ',') if titulo else '0,00' }}"></div>
+            <div class="form-group"><label for="valor_juros_multa">Valor de juros/multa</label><input id="valor_juros_multa" name="valor_juros_multa" value="{{ '%.2f'|format(titulo.valor_juros_multa)|replace('.', ',') if titulo else '0,00' }}"></div>
+            <div class="form-group"><label for="valor_pago">Valor pago</label><input id="valor_pago" name="valor_pago" value="{{ '%.2f'|format(titulo.valor_pago)|replace('.', ',') if titulo else '0,00' }}"></div>
+        </div>
+
+        <h2>Classificacao</h2>
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="origem_lancamento">Origem do lancamento</label>
+                <select id="origem_lancamento" name="origem_lancamento" {{ "disabled" if modo == "novo" else "" }}>
+                    {% set origem_atual = titulo.origem_lancamento if titulo else "Manual" %}
+                    {% for item in opcoes.origens %}<option value="{{ item }}" {{ "selected" if origem_atual == item else "" }}>{{ item }}</option>{% endfor %}
+                </select>
+                {% if modo == "novo" %}<input type="hidden" name="origem_lancamento" value="Manual">{% endif %}
+            </div>
+            <div class="form-group"><label for="tipo_pagamento">Tipo de pagamento</label><select id="tipo_pagamento" name="tipo_pagamento" required>{% set tipo_atual = titulo.tipo_pagamento if titulo else "Faturado" %}{% for item in opcoes.tipos_pagamento %}<option value="{{ item }}" {{ "selected" if tipo_atual == item else "" }}>{{ item }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="forma_pagamento">Forma de pagamento</label><select id="forma_pagamento" name="forma_pagamento" required>{% set forma_atual = titulo.forma_pagamento if titulo else "Boleto" %}{% for item in opcoes.formas_pagamento %}<option value="{{ item }}" {{ "selected" if forma_atual == item else "" }}>{{ item }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="status">Status</label><select id="status" name="status" required>{% set status_atual = titulo.status if titulo else "Agendado" %}{% for item in opcoes.status %}<option value="{{ item }}" {{ "selected" if status_atual == item else "" }}>{{ item }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="parcela_numero">Numero da parcela</label><input id="parcela_numero" name="parcela_numero" type="number" min="1" value="{{ titulo.parcela_numero if titulo else 1 }}"></div>
+            <div class="form-group"><label for="total_parcelas">Total de parcelas</label><input id="total_parcelas" name="total_parcelas" type="number" min="1" value="{{ titulo.total_parcelas if titulo else 1 }}"></div>
+            <div class="form-group"><label for="centro_custo_id">Centro de custo</label><select id="centro_custo_id" name="centro_custo_id"><option value="">Nao informado</option>{% for centro in opcoes.centros_custo %}<option value="{{ centro.id }}" {{ "selected" if titulo and titulo.centro_custo_id == centro.id else "" }}>{{ centro.codigo or "-" }} - {{ centro.nome }}</option>{% endfor %}</select></div>
+        </div>
+
+        <div class="details-card table-card-inner">
+            <h2>Integracoes futuras</h2>
+            <p>Campos tecnicos ja preparados para Ordem de Compra, XML Fiscal e Cartao de Credito, sem geracao automatica nesta fase.</p>
+        </div>
+
+        <div class="form-group"><label for="observacoes">Observacoes</label><textarea id="observacoes" name="observacoes" data-uppercase>{{ titulo.observacoes if titulo else '' }}</textarea></div>
+
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Salvar</button>
+            <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.titulos') }}">Cancelar</a>
+        </div>
+    </form>
+</section>
+{% endblock %}

@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Financeiro &gt; Contas a Pagar &gt; Titulo</span>
+            <h1>Titulo a Pagar #{{ titulo.id }}</h1>
+            <p>{{ titulo.fornecedor_nome_snapshot }} - {{ titulo.descricao }}</p>
+        </div>
+        {% include "financeiro/contas_pagar/_nav.html" %}
+    </div>
+
+    <div class="details-card">
+        {% set status_view = titulo.status_exibicao() %}
+        <p><strong>Status:</strong> <span class="badge {{ 'badge-danger' if status_view in ['Vencido', 'Cancelado'] else 'badge-success' if status_view == 'Pago' else 'badge-warning' }}">{{ status_view }}</span></p>
+        <p><strong>Fornecedor:</strong> {{ titulo.fornecedor_nome_snapshot }}</p>
+        <p><strong>CNPJ/CPF:</strong> {{ titulo.fornecedor_cnpj_cpf_snapshot or "-" }}</p>
+        <p><strong>Descricao:</strong> {{ titulo.descricao }}</p>
+        <p><strong>Documento:</strong> {{ titulo.numero_documento or "-" }}</p>
+        <p><strong>NF-e:</strong> {{ titulo.numero_nfe or "-" }}</p>
+        <p><strong>Chave NF-e:</strong> {{ titulo.chave_acesso_nfe or "-" }}</p>
+        <p><strong>Ordem de Compra:</strong> {{ titulo.ordem_compra.numero if titulo.ordem_compra else "-" }}</p>
+        <p><strong>Origem:</strong> {{ titulo.origem_lancamento }}</p>
+        <p><strong>Tipo de pagamento:</strong> {{ titulo.tipo_pagamento }}</p>
+        <p><strong>Forma de pagamento:</strong> {{ titulo.forma_pagamento }}</p>
+        <p><strong>Emissao:</strong> {{ titulo.data_emissao.strftime("%d/%m/%Y") if titulo.data_emissao else "-" }}</p>
+        <p><strong>Vencimento:</strong> {{ titulo.data_vencimento.strftime("%d/%m/%Y") }}</p>
+        <p><strong>Competencia:</strong> {{ titulo.competencia.strftime("%m/%Y") if titulo.competencia else "-" }}</p>
+        <p><strong>Parcela:</strong> {{ titulo.parcela_numero }}/{{ titulo.total_parcelas }}</p>
+        <p><strong>Centro de custo:</strong> {{ titulo.centro_custo.nome if titulo.centro_custo else "-" }}</p>
+        <p><strong>Valor original:</strong> R$ {{ "%.2f"|format(titulo.valor_original)|replace('.', ',') }}</p>
+        <p><strong>Desconto:</strong> R$ {{ "%.2f"|format(titulo.valor_desconto)|replace('.', ',') }}</p>
+        <p><strong>Acrescimo:</strong> R$ {{ "%.2f"|format(titulo.valor_acrescimo)|replace('.', ',') }}</p>
+        <p><strong>Juros/multa:</strong> R$ {{ "%.2f"|format(titulo.valor_juros_multa)|replace('.', ',') }}</p>
+        <p><strong>Valor pago:</strong> R$ {{ "%.2f"|format(titulo.valor_pago)|replace('.', ',') }}</p>
+        <p><strong>Observacoes:</strong> {{ titulo.observacoes or "-" }}</p>
+    </div>
+
+    <div class="page-actions">
+        <a class="btn btn-primary" href="{{ url_for('financeiro_contas_pagar.editar', titulo_id=titulo.id) }}">Editar</a>
+        <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.titulos') }}">Voltar</a>
+        {% if titulo.status not in ['Pago', 'Cancelado', 'Estornado'] %}
+            <form class="inline-form" method="POST" action="{{ url_for('financeiro_contas_pagar.cancelar', titulo_id=titulo.id) }}">
+                <button class="btn btn-warning" type="submit">Cancelar titulo</button>
+            </form>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}
