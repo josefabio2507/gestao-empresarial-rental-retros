@@ -59,15 +59,24 @@
             </div>
             <div class="form-group"><label for="tipo_pagamento">Tipo de pagamento</label><select id="tipo_pagamento" name="tipo_pagamento" required>{% set tipo_atual = titulo.tipo_pagamento if titulo else "Faturado" %}{% for item in opcoes.tipos_pagamento %}<option value="{{ item }}" {{ "selected" if tipo_atual == item else "" }}>{{ item }}</option>{% endfor %}</select></div>
             <div class="form-group"><label for="forma_pagamento">Forma de pagamento</label><select id="forma_pagamento" name="forma_pagamento" required>{% set forma_atual = titulo.forma_pagamento if titulo else "Boleto" %}{% for item in opcoes.formas_pagamento %}<option value="{{ item }}" {{ "selected" if forma_atual == item else "" }}>{{ item }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="cartao_credito_id">Cartao de credito</label><select id="cartao_credito_id" name="cartao_credito_id"><option value="">Nao informado</option>{% for cartao in opcoes.cartoes_credito %}<option value="{{ cartao.id }}" {{ "selected" if titulo and titulo.cartao_credito_id == cartao.id else "" }}>{{ cartao.identificacao_segura }}{{ " (inativo)" if not cartao.ativo else "" }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="data_compra_cartao">Data da compra no cartao</label><input id="data_compra_cartao" name="data_compra_cartao" type="date" value="{{ titulo.data_compra_cartao.isoformat() if titulo and titulo.data_compra_cartao else '' }}"></div>
             <div class="form-group"><label for="status">Status</label><select id="status" name="status" required>{% set status_atual = titulo.status if titulo else "Agendado" %}{% for item in opcoes.status %}<option value="{{ item }}" {{ "selected" if status_atual == item else "" }}>{{ item }}</option>{% endfor %}</select></div>
             <div class="form-group"><label for="parcela_numero">Numero da parcela</label><input id="parcela_numero" name="parcela_numero" type="number" min="1" value="{{ titulo.parcela_numero if titulo else 1 }}"></div>
             <div class="form-group"><label for="total_parcelas">Total de parcelas</label><input id="total_parcelas" name="total_parcelas" type="number" min="1" value="{{ titulo.total_parcelas if titulo else 1 }}"></div>
             <div class="form-group"><label for="centro_custo_id">Centro de custo</label><select id="centro_custo_id" name="centro_custo_id"><option value="">Nao informado</option>{% for centro in opcoes.centros_custo %}<option value="{{ centro.id }}" {{ "selected" if titulo and titulo.centro_custo_id == centro.id else "" }}>{{ centro.codigo or "-" }} - {{ centro.nome }}</option>{% endfor %}</select></div>
         </div>
 
+        {% if titulo and titulo.fatura_cartao %}
+            <div class="details-card table-card-inner">
+                <h2>Fatura vinculada</h2>
+                <p>{{ titulo.fatura_cartao.cartao_credito.identificacao_segura }} - {{ titulo.fatura_cartao.competencia_formatada }} - vencimento {{ titulo.fatura_cartao.data_vencimento.strftime("%d/%m/%Y") }}</p>
+            </div>
+        {% endif %}
+
         <div class="details-card table-card-inner">
             <h2>Integracoes futuras</h2>
-            <p>Campos tecnicos ja preparados para Ordem de Compra, XML Fiscal e Cartao de Credito, sem geracao automatica nesta fase.</p>
+            <p>Campos tecnicos ja preparados para Ordem de Compra, XML Fiscal e Cartao de Credito.</p>
         </div>
 
         <div class="form-group"><label for="observacoes">Observacoes</label><textarea id="observacoes" name="observacoes" data-uppercase>{{ titulo.observacoes if titulo else '' }}</textarea></div>
@@ -78,4 +87,21 @@
         </div>
     </form>
 </section>
+<script>
+(function () {
+    var forma = document.getElementById('forma_pagamento');
+    var tipo = document.getElementById('tipo_pagamento');
+    var dataCompra = document.getElementById('data_compra_cartao');
+    var dataEmissao = document.getElementById('data_emissao');
+    if (!forma || !tipo) { return; }
+    forma.addEventListener('change', function () {
+        if (forma.value === 'Cartao de Credito') {
+            tipo.value = 'Cartao de Credito';
+            if (dataCompra && dataEmissao && !dataCompra.value) {
+                dataCompra.value = dataEmissao.value;
+            }
+        }
+    });
+})();
+</script>
 {% endblock %}

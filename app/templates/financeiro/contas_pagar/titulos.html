@@ -36,7 +36,7 @@
         <table class="table financeiro-contas-pagar-table">
             <thead>
                 <tr>
-                    <th>ID</th><th>Fornecedor</th><th>CNPJ/CPF</th><th>Descricao</th><th>Documento</th><th>NF-e</th><th>O.C.</th><th>Origem</th><th>Tipo</th><th>Forma</th><th>Vencimento</th><th>Valor original</th><th>Valor pago</th><th>Status</th><th>Acoes</th>
+                    <th>ID</th><th>Fornecedor</th><th>CNPJ/CPF</th><th>Descricao</th><th>Documento</th><th>NF-e</th><th>O.C.</th><th>Origem</th><th>Tipo</th><th>Forma</th><th>Cartao</th><th>Fatura</th><th>Vencimento</th><th>Valor original</th><th>Valor pago</th><th>Status</th><th>Acoes</th>
                 </tr>
             </thead>
             <tbody>
@@ -52,6 +52,8 @@
                         <td>{{ titulo.origem_lancamento }}</td>
                         <td>{{ titulo.tipo_pagamento }}</td>
                         <td>{{ titulo.forma_pagamento }}</td>
+                        <td>{{ titulo.cartao_credito.identificacao_segura if titulo.cartao_credito else "-" }}</td>
+                        <td>{% if titulo.fatura_cartao %}<a href="{{ url_for('financeiro_contas_pagar.detalhes_fatura', fatura_id=titulo.fatura_cartao.id) }}">{{ titulo.fatura_cartao.competencia_formatada }}</a>{% else %}-{% endif %}</td>
                         <td>{{ titulo.data_vencimento.strftime("%d/%m/%Y") }}</td>
                         <td>R$ {{ "%.2f"|format(titulo.valor_original)|replace('.', ',') }}</td>
                         <td>R$ {{ "%.2f"|format(titulo.valor_pago)|replace('.', ',') }}</td>
@@ -70,7 +72,7 @@
                         </td>
                     </tr>
                 {% else %}
-                    <tr><td class="empty-state" colspan="15">Nenhum titulo a pagar encontrado.</td></tr>
+                    <tr><td class="empty-state" colspan="17">Nenhum titulo a pagar encontrado.</td></tr>
                 {% endfor %}
             </tbody>
         </table>

@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Financeiro &gt; Contas a Pagar &gt; Detalhe da Fatura</span>
+            <h1>Fatura {{ fatura.competencia_formatada }}</h1>
+            <p>{{ fatura.cartao_credito.identificacao_segura }}</p>
+        </div>
+        {% include "financeiro/contas_pagar/_nav.html" %}
+    </div>
+
+    <div class="details-card">
+        {% set status_view = fatura.status_exibicao() %}
+        <p><strong>Cartao:</strong> {{ fatura.cartao_credito.identificacao_segura }}</p>
+        <p><strong>Competencia:</strong> {{ fatura.competencia_formatada }}</p>
+        <p><strong>Fechamento:</strong> {{ fatura.data_fechamento.strftime("%d/%m/%Y") }}</p>
+        <p><strong>Vencimento:</strong> {{ fatura.data_vencimento.strftime("%d/%m/%Y") }}</p>
+        <p><strong>Status:</strong> <span class="badge {{ 'badge-danger' if status_view in ['Vencida', 'Cancelada'] else 'badge-success' if status_view == 'Paga' else 'badge-warning' }}">{{ status_view }}</span></p>
+        <p><strong>Valor total:</strong> R$ {{ "%.2f"|format(fatura.valor_total)|replace('.', ',') }}</p>
+        <p><strong>Valor pago:</strong> R$ {{ "%.2f"|format(fatura.valor_pago)|replace('.', ',') }}</p>
+    </div>
+
+    <div class="table-card table-responsive">
+        <table class="table financeiro-contas-pagar-table">
+            <thead>
+                <tr><th>Compra</th><th>Fornecedor</th><th>Descricao</th><th>Documento</th><th>Parcela</th><th>Valor</th><th>Status</th><th>O.C.</th><th>XML Fiscal</th><th>Acoes</th></tr>
+            </thead>
+            <tbody>
+                {% for titulo in fatura.titulos %}
+                    <tr>
+                        <td>{{ titulo.data_compra_cartao.strftime("%d/%m/%Y") if titulo.data_compra_cartao else titulo.data_emissao.strftime("%d/%m/%Y") if titulo.data_emissao else "-" }}</td>
+                        <td>{{ titulo.fornecedor_nome_snapshot }}</td>
+                        <td>{{ titulo.descricao }}</td>
+                        <td>{{ titulo.numero_documento or "-" }}</td>
+                        <td>{{ titulo.parcela_numero }}/{{ titulo.total_parcelas }}</td>
+                        <td>R$ {{ "%.2f"|format(titulo.valor_original)|replace('.', ',') }}</td>
+                        <td>{{ titulo.status_exibicao() }}</td>
+                        <td>{{ titulo.ordem_compra.numero if titulo.ordem_compra else "-" }}</td>
+                        <td>{{ titulo.fiscal_documento_id or "-" }}</td>
+                        <td><a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.detalhes', titulo_id=titulo.id) }}">Ver titulo</a></td>
+                    </tr>
+                {% else %}
+                    <tr><td class="empty-state" colspan="10">Nenhum titulo vinculado a esta fatura.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="page-actions">
+        {% if fatura.status != 'Fechada' and fatura.status not in ['Paga', 'Cancelada'] %}
+            <form class="inline-form" method="POST" action="{{ url_for('financeiro_contas_pagar.fechar_fatura', fatura_id=fatura.id) }}"><button class="btn btn-primary" type="submit">Fechar fatura</button></form>
+        {% endif %}
+        {% if fatura.status == 'Fechada' %}
+            <form class="inline-form" method="POST" action="{{ url_for('financeiro_contas_pagar.reabrir_fatura', fatura_id=fatura.id) }}"><button class="btn btn-secondary" type="submit">Reabrir fatura</button></form>
+        {% endif %}
+        {% if fatura.status not in ['Paga', 'Cancelada'] %}
+            <form class="inline-form" method="POST" action="{{ url_for('financeiro_contas_pagar.cancelar_fatura', fatura_id=fatura.id) }}"><button class="btn btn-warning" type="submit">Cancelar fatura</button></form>
+        {% endif %}
+        <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.faturas') }}">Voltar</a>
+    </div>
+</section>
+{% endblock %}

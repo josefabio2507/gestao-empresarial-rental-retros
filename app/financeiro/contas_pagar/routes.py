@@ -5,13 +5,21 @@ from app.decorators import module_permission_required
 from app.services.financeiro_contas_pagar_service import (
     FORMAS_PAGAMENTO,
     ORIGENS_LANCAMENTO,
+    STATUS_FATURA,
     STATUS_TITULO,
     TIPOS_PAGAMENTO,
+    alterar_status_cartao,
+    atualizar_status_fatura,
+    buscar_cartao_por_id,
+    buscar_fatura_por_id,
     buscar_opcoes_formulario,
     buscar_titulo_por_id,
     cancelar_titulo,
     indicadores_dashboard,
+    listar_cartoes,
+    listar_faturas,
     listar_titulos,
+    salvar_cartao,
     salvar_titulo,
 )
 from app.services.logs_service import registrar_log
@@ -65,6 +73,139 @@ def novo():
     )
 
 
+@financeiro_contas_pagar_bp.route("/cartoes")
+@login_required
+@module_permission_required("financeiro", "contas_a_pagar", "visualizar")
+def cartoes():
+    return render_template(
+        "financeiro/contas_pagar/cartoes.html",
+        cartoes=listar_cartoes(request.args),
+        filtros=request.args,
+    )
+
+
+@financeiro_contas_pagar_bp.route("/cartoes/novo", methods=["GET", "POST"])
+@login_required
+@module_permission_required("financeiro", "contas_a_pagar", "criar")
+def novo_cartao():
+    if request.method == "POST":
+        sucesso, mensagem, cartao = salvar_cartao(request.form, usuario=current_user)
+        if sucesso:
+            registrar_log("financeiro_cartao_credito_criado", f"Cartao de credito criado. ID: {cartao.id}.")
+            flash(mensagem, "success")
+            return redirect(url_for("financeiro_contas_pagar.cartoes"))
+        flash(mensagem, "danger")
+
+    return render_template(
+        "financeiro/contas_pagar/cartao_form.html",
+        cartao=None,
+        modo="novo",
+        opcoes=buscar_opcoes_formulario(),
+    )
+
+
+@financeiro_contas_pagar_bp.route("/cartoes/<int:cartao_id>/editar", methods=["GET", "POST"])
+@login_required
+@module_permission_required("financeiro", "contas_a_pagar", "editar")
+def editar_cartao(cartao_id):
+    cartao = buscar_cartao_por_id(cartao_id)
+    if not cartao:
+        flash("Cartao nao encontrado.", "warning")
+        return redirect(url_for("financeiro_contas_pagar.cartoes"))
+
+    if request.method == "POST":
+        sucesso, mensagem, cartao = salvar_cartao(request.form, cartao=cartao, usuario=current_user)
+        if sucesso:
+            registrar_log("financeiro_cartao_credito_atualizado", f"Cartao de credito atualizado. ID: {cartao.id}.")
+            flash(mensagem, "success")
+            return redirect(url_for("financeiro_contas_pagar.cartoes"))
+        flash(mensagem, "danger")
+
+    return render_template(
+        "financeiro/contas_pagar/cartao_form.html",
+        cartao=cartao,
+        modo="editar",
+        opcoes=buscar_opcoes_formulario(),
+    )
+
+
+@financeiro_contas_pagar_bp.route("/cartoes/<int:cartao_id>/status", methods=["POST"])
+@login_required
+@module_permission_required("financeiro", "contas_a_pagar", "excluir")
+def status_cartao(cartao_id):
+    cartao = buscar_cartao_por_id(cartao_id)
+    ativar = request.form.get("ativo") == "1"
+    sucesso, mensagem = alterar_status_cartao(cartao, ativar, usuario=current_user)
+    if sucesso:
+        registrar_log(
+            "financeiro_cartao_credito_status_alterado",
+            f"Cartao de credito {'reativado' if ativar else 'inativado'}. ID: {cartao.id}.",
+        )
+    flash(mensagem, "success" if sucesso else "danger")
+    return redirect(url_for("financeiro_contas_pagar.cartoes"))
+
+
+@financeiro_contas_pagar_bp.route("/faturas")
+@login_required
+@module_permission_required("financeiro", "contas_a_pagar", "visualizar")
+def faturas():
+    return render_template(
+        "financeiro/contas_pagar/faturas.html",
+        faturas=listar_faturas(request.args),
+        filtros=request.args,
+        opcoes=buscar_opcoes_formulario(),
+        cartoes_filtro=listar_cartoes({}),
+        status_fatura=STATUS_FATURA,
+    )
+
+
+@financeiro_contas_pagar_bp.route("/faturas/<int:fatura_id>")
+@login_required
+@module_permission_required("financeiro", "contas_a_pagar", "visualizar")
+def detalhes_fatura(fatura_id):
+    fatura = buscar_fatura_por_id(fatura_id)
+    if not fatura:
+        flash("Fatura nao encontrada.", "warning")
+        return redirect(url_for("financeiro_contas_pagar.faturas"))
+    return render_template("financeiro/contas_pagar/fatura_detalhes.html", fatura=fatura)
+
+
+@financeiro_contas_pagar_bp.route("/faturas/<int:fatura_id>/fechar", methods=["POST"])
+@login_required
+@module_permission_required("financeiro", "contas_a_pagar", "editar")
+def fechar_fatura(fatura_id):
+    fatura = buscar_fatura_por_id(fatura_id)
+    sucesso, mensagem = atualizar_status_fatura(fatura, "Fechada", usuario=current_user)
+    if sucesso:
+        registrar_log("financeiro_cartao_fatura_fechada", f"Fatura fechada. ID: {fatura.id}.")
+    flash(mensagem, "success" if sucesso else "danger")
+    return redirect(url_for("financeiro_contas_pagar.detalhes_fatura", fatura_id=fatura_id))
+
+
+@financeiro_contas_pagar_bp.route("/faturas/<int:fatura_id>/reabrir", methods=["POST"])
+@login_required
+@module_permission_required("financeiro", "contas_a_pagar", "editar")
+def reabrir_fatura(fatura_id):
+    fatura = buscar_fatura_por_id(fatura_id)
+    sucesso, mensagem = atualizar_status_fatura(fatura, "Aberta", usuario=current_user)
+    if sucesso:
+        registrar_log("financeiro_cartao_fatura_reaberta", f"Fatura reaberta. ID: {fatura.id}.")
+    flash(mensagem, "success" if sucesso else "danger")
+    return redirect(url_for("financeiro_contas_pagar.detalhes_fatura", fatura_id=fatura_id))
+
+
+@financeiro_contas_pagar_bp.route("/faturas/<int:fatura_id>/cancelar", methods=["POST"])
+@login_required
+@module_permission_required("financeiro", "contas_a_pagar", "excluir")
+def cancelar_fatura(fatura_id):
+    fatura = buscar_fatura_por_id(fatura_id)
+    sucesso, mensagem = atualizar_status_fatura(fatura, "Cancelada", usuario=current_user)
+    if sucesso:
+        registrar_log("financeiro_cartao_fatura_cancelada", f"Fatura cancelada. ID: {fatura.id}.")
+    flash(mensagem, "success" if sucesso else "danger")
+    return redirect(url_for("financeiro_contas_pagar.detalhes_fatura", fatura_id=fatura_id))
+
+
 @financeiro_contas_pagar_bp.route("/<int:titulo_id>")
 @login_required
 @module_permission_required("financeiro", "contas_a_pagar", "visualizar")
@@ -104,7 +245,7 @@ def editar(titulo_id):
         "financeiro/contas_pagar/form.html",
         titulo=titulo,
         modo="editar",
-        opcoes=buscar_opcoes_formulario(),
+        opcoes=buscar_opcoes_formulario(titulo=titulo),
     )
 
 
