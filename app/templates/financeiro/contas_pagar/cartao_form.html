@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Financeiro &gt; Contas a Pagar &gt; {{ "Novo Cartao" if modo == "novo" else "Editar Cartao" }}</span>
+            <h1>{{ "Novo Cartao" if modo == "novo" else "Editar Cartao" }}</h1>
+            <p>Somente dados seguros do cartao: banco, bandeira e ultimos 4 digitos.</p>
+        </div>
+        {% include "financeiro/contas_pagar/_nav.html" %}
+    </div>
+
+    <form class="form-card" method="POST">
+        <div class="form-grid">
+            <div class="form-group"><label for="nome">Nome do cartao</label><input id="nome" name="nome" value="{{ cartao.nome if cartao else '' }}" maxlength="120" data-uppercase required></div>
+            <div class="form-group"><label for="banco">Banco/instituicao</label><input id="banco" name="banco" value="{{ cartao.banco if cartao else '' }}" maxlength="120" data-uppercase required></div>
+            <div class="form-group"><label for="bandeira">Bandeira</label><input id="bandeira" name="bandeira" value="{{ cartao.bandeira if cartao else '' }}" maxlength="60" data-uppercase></div>
+            <div class="form-group"><label for="ultimos_4_digitos">Ultimos 4 digitos</label><input id="ultimos_4_digitos" name="ultimos_4_digitos" value="{{ cartao.ultimos_4_digitos if cartao else '' }}" maxlength="4" inputmode="numeric"></div>
+            <div class="form-group"><label for="titular_responsavel">Titular/responsavel</label><input id="titular_responsavel" name="titular_responsavel" value="{{ cartao.titular_responsavel if cartao else '' }}" maxlength="120" data-uppercase></div>
+            <div class="form-group"><label for="dia_fechamento">Dia de fechamento</label><input id="dia_fechamento" name="dia_fechamento" type="number" min="1" max="31" value="{{ cartao.dia_fechamento if cartao else '' }}" required></div>
+            <div class="form-group"><label for="dia_vencimento">Dia de vencimento</label><input id="dia_vencimento" name="dia_vencimento" type="number" min="1" max="31" value="{{ cartao.dia_vencimento if cartao else '' }}" required></div>
+            <div class="form-group"><label for="limite">Limite</label><input id="limite" name="limite" value="{{ '%.2f'|format(cartao.limite)|replace('.', ',') if cartao and cartao.limite is not none else '' }}"></div>
+            <div class="form-group"><label for="centro_custo_id">Centro de custo padrao</label><select id="centro_custo_id" name="centro_custo_id"><option value="">Nao informado</option>{% for centro in opcoes.centros_custo %}<option value="{{ centro.id }}" {{ "selected" if cartao and cartao.centro_custo_id == centro.id else "" }}>{{ centro.codigo or "-" }} - {{ centro.nome }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="ativo">Ativo</label><label class="checkbox-line"><input id="ativo" name="ativo" type="checkbox" {{ "checked" if not cartao or cartao.ativo else "" }}> Cartao ativo</label></div>
+        </div>
+        <div class="form-group"><label for="observacoes">Observacoes</label><textarea id="observacoes" name="observacoes" data-uppercase>{{ cartao.observacoes if cartao else '' }}</textarea></div>
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Salvar</button>
+            <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.cartoes') }}">Cancelar</a>
+        </div>
+    </form>
+</section>
+{% endblock %}

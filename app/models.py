@@ -1147,7 +1147,7 @@ class ItemCardapio(db.Model):
 
     def __repr__(self):
         return f"<ItemCardapio {self.tipo} - {self.nome}>"
-    
+
 class PedidoRefeicao(db.Model):
     __tablename__ = "pedidos_refeicao"
 
@@ -1192,7 +1192,7 @@ class PedidoRefeicao(db.Model):
 
     def __repr__(self):
         return f"<PedidoRefeicao {self.numero_pedido}>"
- 
+
 class ConsumoRefeicao(db.Model):
     __tablename__ = "consumos_refeicao"
 
@@ -1234,7 +1234,7 @@ class ConsumoRefeicao(db.Model):
     item_cardapio = db.relationship("ItemCardapio")
 
     def __repr__(self):
-        return f"<ConsumoRefeicao pedido={self.pedido_id} colaborador={self.colaborador_id}>" 
+        return f"<ConsumoRefeicao pedido={self.pedido_id} colaborador={self.colaborador_id}>"
 
 
 class SuprimentosFornecedor(db.Model):
@@ -1352,6 +1352,141 @@ class CentroCusto(db.Model):
     def __repr__(self):
         return f"<CentroCusto {self.codigo or ''} {self.nome}>"
 
+class FinanceiroCartaoCredito(db.Model):
+    __tablename__ = "financeiro_cartoes_credito"
+
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String(120), nullable=False, index=True)
+    banco = db.Column(db.String(120), nullable=False, index=True)
+    bandeira = db.Column(db.String(60), nullable=True, index=True)
+    ultimos_4_digitos = db.Column(db.String(4), nullable=True)
+    titular_responsavel = db.Column(db.String(120), nullable=True)
+    dia_fechamento = db.Column(db.Integer, nullable=False)
+    dia_vencimento = db.Column(db.Integer, nullable=False)
+    limite = db.Column(db.Numeric(12, 2), nullable=True)
+    centro_custo_id = db.Column(
+        db.Integer,
+        db.ForeignKey("centros_custo.id"),
+        nullable=True,
+        index=True,
+    )
+    observacoes = db.Column(db.Text, nullable=True)
+    ativo = db.Column(db.Boolean, default=True, nullable=False, index=True)
+    criado_por_usuario_id = db.Column(
+        db.Integer,
+        db.ForeignKey("usuarios.id"),
+        nullable=True,
+        index=True,
+    )
+    atualizado_por_usuario_id = db.Column(
+        db.Integer,
+        db.ForeignKey("usuarios.id"),
+        nullable=True,
+        index=True,
+    )
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
+    atualizado_em = db.Column(
+        db.DateTime,
+        default=agora_brasil,
+        onupdate=agora_brasil,
+        nullable=False,
+    )
+
+    centro_custo = db.relationship("CentroCusto")
+    criado_por = db.relationship("Usuario", foreign_keys=[criado_por_usuario_id])
+    atualizado_por = db.relationship("Usuario", foreign_keys=[atualizado_por_usuario_id])
+    faturas = db.relationship(
+        "FinanceiroCartaoFatura",
+        back_populates="cartao_credito",
+        cascade="all, delete-orphan",
+    )
+    titulos = db.relationship("FinanceiroContaPagarTitulo", back_populates="cartao_credito")
+
+    __table_args__ = (
+        db.CheckConstraint("dia_fechamento between 1 and 31", name="ck_fin_cartao_dia_fechamento"),
+        db.CheckConstraint("dia_vencimento between 1 and 31", name="ck_fin_cartao_dia_vencimento"),
+        db.CheckConstraint("limite is null or limite >= 0", name="ck_fin_cartao_limite"),
+        db.CheckConstraint("ultimos_4_digitos is null or length(ultimos_4_digitos) = 4", name="ck_fin_cartao_ultimos_4"),
+    )
+
+    @property
+    def identificacao_segura(self):
+        final = f" - final {self.ultimos_4_digitos}" if self.ultimos_4_digitos else ""
+        return f"{self.nome} - {self.banco}{final}"
+
+    def __repr__(self):
+        return f"<FinanceiroCartaoCredito {self.id} {self.nome}>"
+
+
+class FinanceiroCartaoFatura(db.Model):
+    __tablename__ = "financeiro_cartoes_faturas"
+
+    id = db.Column(db.Integer, primary_key=True)
+    cartao_credito_id = db.Column(
+        db.Integer,
+        db.ForeignKey("financeiro_cartoes_credito.id"),
+        nullable=False,
+        index=True,
+    )
+    competencia = db.Column(db.Date, nullable=False, index=True)
+    data_fechamento = db.Column(db.Date, nullable=False, index=True)
+    data_vencimento = db.Column(db.Date, nullable=False, index=True)
+    valor_total = db.Column(db.Numeric(12, 2), default=0, nullable=False)
+    valor_pago = db.Column(db.Numeric(12, 2), default=0, nullable=False)
+    data_pagamento = db.Column(db.Date, nullable=True, index=True)
+    status = db.Column(db.String(30), nullable=False, default="Aberta", index=True)
+    observacoes = db.Column(db.Text, nullable=True)
+    criado_por_usuario_id = db.Column(
+        db.Integer,
+        db.ForeignKey("usuarios.id"),
+        nullable=True,
+        index=True,
+    )
+    atualizado_por_usuario_id = db.Column(
+        db.Integer,
+        db.ForeignKey("usuarios.id"),
+        nullable=True,
+        index=True,
+    )
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
+    atualizado_em = db.Column(
+        db.DateTime,
+        default=agora_brasil,
+        onupdate=agora_brasil,
+        nullable=False,
+    )
+
+    cartao_credito = db.relationship("FinanceiroCartaoCredito", back_populates="faturas")
+    titulos = db.relationship("FinanceiroContaPagarTitulo", back_populates="fatura_cartao")
+    criado_por = db.relationship("Usuario", foreign_keys=[criado_por_usuario_id])
+    atualizado_por = db.relationship("Usuario", foreign_keys=[atualizado_por_usuario_id])
+
+    __table_args__ = (
+        db.UniqueConstraint("cartao_credito_id", "competencia", name="uq_fin_cartao_fatura_competencia"),
+        db.CheckConstraint("valor_total >= 0", name="ck_fin_fatura_valor_total"),
+        db.CheckConstraint("valor_pago >= 0", name="ck_fin_fatura_valor_pago"),
+        db.CheckConstraint(
+            "status in ('Aberta', 'Fechada', 'Agendada', 'Paga', 'Vencida', 'Cancelada')",
+            name="ck_fin_fatura_status",
+        ),
+    )
+
+    @property
+    def competencia_formatada(self):
+        return self.competencia.strftime("%m/%Y") if self.competencia else "-"
+
+    def status_exibicao(self, hoje=None):
+        from datetime import date
+
+        hoje = hoje or date.today()
+        if self.status not in ("Paga", "Cancelada") and self.data_vencimento and self.data_vencimento < hoje:
+            return "Vencida"
+        return self.status
+
+    def __repr__(self):
+        return f"<FinanceiroCartaoFatura {self.id} {self.competencia}>"
+
+
 class FinanceiroContaPagarTitulo(db.Model):
     __tablename__ = "financeiro_contas_pagar_titulos"
 
@@ -1380,13 +1515,26 @@ class FinanceiroContaPagarTitulo(db.Model):
         nullable=True,
         index=True,
     )
-    cartao_credito_id = db.Column(db.Integer, nullable=True, index=True)
+    cartao_credito_id = db.Column(
+        db.Integer,
+        db.ForeignKey("financeiro_cartoes_credito.id"),
+        nullable=True,
+        index=True,
+    )
+    fatura_cartao_id = db.Column(
+        db.Integer,
+        db.ForeignKey("financeiro_cartoes_faturas.id"),
+        nullable=True,
+        index=True,
+    )
     origem_lancamento = db.Column(db.String(30), nullable=False, index=True)
     tipo_pagamento = db.Column(db.String(30), nullable=False, index=True)
     forma_pagamento = db.Column(db.String(30), nullable=False, index=True)
     competencia = db.Column(db.Date, nullable=True, index=True)
     data_emissao = db.Column(db.Date, nullable=True)
     data_vencimento = db.Column(db.Date, nullable=False, index=True)
+    data_compra_cartao = db.Column(db.Date, nullable=True, index=True)
+    competencia_fatura_cartao = db.Column(db.Date, nullable=True, index=True)
     data_pagamento = db.Column(db.Date, nullable=True, index=True)
     valor_original = db.Column(db.Numeric(12, 2), nullable=False)
     valor_desconto = db.Column(db.Numeric(12, 2), default=0, nullable=False)
@@ -1438,6 +1586,8 @@ class FinanceiroContaPagarTitulo(db.Model):
     fornecedor = db.relationship("SuprimentosFornecedor")
     ordem_compra = db.relationship("SuprimentosOrdemCompra")
     fiscal_documento = db.relationship("FiscalDocumento")
+    cartao_credito = db.relationship("FinanceiroCartaoCredito", back_populates="titulos")
+    fatura_cartao = db.relationship("FinanceiroCartaoFatura", back_populates="titulos")
     centro_custo = db.relationship("CentroCusto")
     sub_centro_custo_equipe = db.relationship("Equipe")
     sub_centro_custo_veiculo = db.relationship("OperacaoVeiculoEquipamento")
@@ -2798,4 +2948,3 @@ class SegurancaTrabalhoEntregaEpi(db.Model):
 
     def __repr__(self):
         return f"<SegurancaTrabalhoEntregaEpi colaborador={self.colaborador_id} item={self.item_id}>"
-

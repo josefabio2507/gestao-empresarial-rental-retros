@@ -8,6 +8,7 @@ from app.extensions import db
 from app.models import (
     CentroCusto,
     Departamento,
+    FinanceiroCartaoCredito,
     FinanceiroContaPagarTitulo,
     Modulo,
     NivelAcesso,
@@ -15,6 +16,7 @@ from app.models import (
     SuprimentosFornecedor,
     Usuario,
 )
+from app.services.financeiro_contas_pagar_service import salvar_titulo
 
 
 def ambiente_local_liberado(app):
@@ -150,6 +152,27 @@ def criar_base_demo():
     return fornecedores, centros
 
 
+def criar_cartao_demo(nome, usuario, centro, dados):
+    cartao = FinanceiroCartaoCredito.query.filter_by(nome=nome).first()
+    if not cartao:
+        cartao = FinanceiroCartaoCredito(nome=nome)
+        db.session.add(cartao)
+
+    cartao.banco = dados["banco"]
+    cartao.bandeira = dados.get("bandeira")
+    cartao.ultimos_4_digitos = dados.get("ultimos_4_digitos")
+    cartao.titular_responsavel = dados.get("titular_responsavel")
+    cartao.dia_fechamento = dados["dia_fechamento"]
+    cartao.dia_vencimento = dados["dia_vencimento"]
+    cartao.limite = dados.get("limite")
+    cartao.centro_custo_id = centro.id if centro else None
+    cartao.observacoes = dados.get("observacoes")
+    cartao.ativo = dados.get("ativo", True)
+    cartao.criado_por_usuario_id = usuario.id
+    cartao.atualizado_por_usuario_id = usuario.id
+    return cartao
+
+
 def criar_titulo_demo(chave, usuario, fornecedor, centro, dados):
     titulo = FinanceiroContaPagarTitulo.query.filter_by(numero_documento=chave).first()
     if not titulo:
@@ -181,6 +204,41 @@ def criar_titulo_demo(chave, usuario, fornecedor, centro, dados):
     titulo.criado_por_usuario_id = usuario.id
     titulo.atualizado_por_usuario_id = usuario.id
     return titulo
+
+
+def criar_titulo_cartao_demo(chave, usuario, fornecedor, centro, cartao, data_compra, descricao, valor, parcela=1, total=1):
+    titulo = FinanceiroContaPagarTitulo.query.filter_by(numero_documento=chave).first()
+    sucesso, mensagem, _ = salvar_titulo(
+        {
+            "fornecedor_id": str(fornecedor.id),
+            "fornecedor_nome_snapshot": "",
+            "fornecedor_cnpj_cpf_snapshot": "",
+            "descricao": descricao,
+            "numero_documento": chave,
+            "data_emissao": data_compra.isoformat(),
+            "data_compra_cartao": data_compra.isoformat(),
+            "data_vencimento": (data_compra + timedelta(days=30)).isoformat(),
+            "competencia": data_compra.strftime("%Y-%m"),
+            "valor_original": valor,
+            "valor_desconto": "0,00",
+            "valor_acrescimo": "0,00",
+            "valor_juros_multa": "0,00",
+            "valor_pago": "0,00",
+            "origem_lancamento": "Manual",
+            "tipo_pagamento": "Cartao de Credito",
+            "forma_pagamento": "Cartao de Credito",
+            "cartao_credito_id": str(cartao.id),
+            "parcela_numero": str(parcela),
+            "total_parcelas": str(total),
+            "centro_custo_id": str(centro.id),
+            "status": "Agendado",
+            "observacoes": "Dado ficticio local da Missao 17.2.",
+        },
+        titulo=titulo,
+        usuario=usuario,
+    )
+    if not sucesso:
+        print(f"Falha ao criar titulo de cartao {chave}: {mensagem}")
 
 
 def executar_seed():
@@ -252,33 +310,78 @@ def executar_seed():
                 "status": "Agendado",
             },
         )
-        criar_titulo_demo(
-            "CP-DEMO-004",
+
+        cartao_adm = criar_cartao_demo(
+            "CARTAO ADMINISTRATIVO DEMO",
+            usuario,
+            centros["ADMINISTRATIVO"],
+            {
+                "banco": "BANCO DEMO",
+                "bandeira": "VISA",
+                "ultimos_4_digitos": "1234",
+                "titular_responsavel": "FINANCEIRO DEMO",
+                "dia_fechamento": 20,
+                "dia_vencimento": 28,
+                "limite": 15000.00,
+                "observacoes": "Cartao ficticio para testes locais.",
+            },
+        )
+        cartao_operacao = criar_cartao_demo(
+            "CARTAO OPERACAO DEMO",
+            usuario,
+            centros["OPERACAO"],
+            {
+                "banco": "COOPERATIVA DEMO",
+                "bandeira": "MASTERCARD",
+                "ultimos_4_digitos": "9876",
+                "titular_responsavel": "OPERACAO DEMO",
+                "dia_fechamento": 10,
+                "dia_vencimento": 18,
+                "limite": 25000.00,
+                "observacoes": "Cartao ficticio para compras operacionais.",
+            },
+        )
+        db.session.flush()
+
+        compra_antes_fechamento = hoje.replace(day=min(15, hoje.day))
+        criar_titulo_cartao_demo(
+            "CP-CARTAO-DEMO-001",
             usuario,
             fornecedores["PRESTADOR AUTONOMO DEMO"],
             centros["ADMINISTRATIVO"],
-            {
-                "descricao": "DESPESA ADMINISTRATIVA NO CARTAO",
-                "data_emissao": hoje,
-                "data_vencimento": hoje + timedelta(days=25),
-                "competencia": competencia,
-                "valor_original": 349.90,
-                "tipo_pagamento": "Cartao de Credito",
-                "forma_pagamento": "Cartao de Credito",
-                "status": "Agendado",
-                "observacoes": "Registro informativo; fatura de cartao fica para fase futura.",
-            },
+            cartao_adm,
+            compra_antes_fechamento,
+            "DESPESA ADMINISTRATIVA NO CARTAO",
+            "349,90",
+        )
+        criar_titulo_cartao_demo(
+            "CP-CARTAO-DEMO-002",
+            usuario,
+            fornecedores["FORNECEDOR DEMO PECAS LTDA"],
+            centros["MANUTENCAO"],
+            cartao_adm,
+            hoje,
+            "PARCELA DE PECAS NO CARTAO",
+            "780,50",
+            parcela=1,
+            total=3,
+        )
+        criar_titulo_cartao_demo(
+            "CP-CARTAO-DEMO-003",
+            usuario,
+            fornecedores["EPI SEGURO DEMO LTDA"],
+            centros["OPERACAO"],
+            cartao_operacao,
+            hoje,
+            "COMPRA OPERACIONAL NO CARTAO",
+            "465,30",
         )
 
         db.session.commit()
-        print("Seed dev de Contas a Pagar concluido com sucesso.")
+        print("Seed dev de Contas a Pagar concluido com dados ficticios da Missao 17.2.")
         print("Usuario demo: financeiro.demo@rentalretros.local")
         print("Senha demo: Demo@12345")
 
 
 if __name__ == "__main__":
     executar_seed()
-
-
-
-

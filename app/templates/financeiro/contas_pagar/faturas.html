@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Financeiro &gt; Contas a Pagar &gt; Faturas</span>
+            <h1>Faturas de Cartao</h1>
+            <p>Controle das faturas geradas a partir dos titulos pagos com cartao.</p>
+        </div>
+        {% include "financeiro/contas_pagar/_nav.html" %}
+    </div>
+
+    <form class="filter-card" method="GET">
+        <div class="filter-grid">
+            <div class="form-group"><label for="cartao_id">Cartao</label><select id="cartao_id" name="cartao_id"><option value="">Todos</option>{% for cartao in cartoes_filtro %}<option value="{{ cartao.id }}" {{ "selected" if filtros.get('cartao_id') == cartao.id|string else "" }}>{{ cartao.identificacao_segura }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="competencia">Competencia</label><input id="competencia" name="competencia" type="month" value="{{ filtros.get('competencia', '') }}"></div>
+            <div class="form-group"><label for="status">Status</label><select id="status" name="status"><option value="">Todos</option>{% for item in status_fatura %}<option value="{{ item }}" {{ "selected" if filtros.get('status') == item else "" }}>{{ item }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="vencimento_inicio">Vencimento inicial</label><input id="vencimento_inicio" name="vencimento_inicio" type="date" value="{{ filtros.get('vencimento_inicio', '') }}"></div>
+            <div class="form-group"><label for="vencimento_fim">Vencimento final</label><input id="vencimento_fim" name="vencimento_fim" type="date" value="{{ filtros.get('vencimento_fim', '') }}"></div>
+            <div class="form-group"><label for="fechamento_inicio">Fechamento inicial</label><input id="fechamento_inicio" name="fechamento_inicio" type="date" value="{{ filtros.get('fechamento_inicio', '') }}"></div>
+            <div class="form-group"><label for="fechamento_fim">Fechamento final</label><input id="fechamento_fim" name="fechamento_fim" type="date" value="{{ filtros.get('fechamento_fim', '') }}"></div>
+        </div>
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Pesquisar</button>
+            <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.faturas') }}">Limpar</a>
+        </div>
+    </form>
+
+    <div class="table-card table-responsive">
+        <table class="table">
+            <thead>
+                <tr><th>Cartao</th><th>Competencia</th><th>Fechamento</th><th>Vencimento</th><th>Valor total</th><th>Valor pago</th><th>Status</th><th>Titulos</th><th>Acoes</th></tr>
+            </thead>
+            <tbody>
+                {% for fatura in faturas %}
+                    <tr>
+                        <td>{{ fatura.cartao_credito.identificacao_segura }}</td>
+                        <td>{{ fatura.competencia_formatada }}</td>
+                        <td>{{ fatura.data_fechamento.strftime("%d/%m/%Y") }}</td>
+                        <td>{{ fatura.data_vencimento.strftime("%d/%m/%Y") }}</td>
+                        <td>R$ {{ "%.2f"|format(fatura.valor_total)|replace('.', ',') }}</td>
+                        <td>R$ {{ "%.2f"|format(fatura.valor_pago)|replace('.', ',') }}</td>
+                        {% set status_view = fatura.status_exibicao() %}
+                        <td><span class="badge {{ 'badge-danger' if status_view in ['Vencida', 'Cancelada'] else 'badge-success' if status_view == 'Paga' else 'badge-warning' }}">{{ status_view }}</span></td>
+                        <td>{{ fatura.titulos|length }}</td>
+                        <td><a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.detalhes_fatura', fatura_id=fatura.id) }}">Ver</a></td>
+                    </tr>
+                {% else %}
+                    <tr><td class="empty-state" colspan="9">Nenhuma fatura encontrada.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

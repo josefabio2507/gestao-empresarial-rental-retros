@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Financeiro &gt; Contas a Pagar &gt; Cartoes</span>
+            <h1>Cartoes de Credito</h1>
+            <p>Cadastro seguro dos cartoes usados em compras a pagar.</p>
+        </div>
+        {% include "financeiro/contas_pagar/_nav.html" %}
+    </div>
+
+    <form class="filter-card" method="GET">
+        <div class="filter-grid">
+            <div class="form-group"><label for="busca">Busca</label><input id="busca" name="busca" value="{{ filtros.get('busca', '') }}"></div>
+            <div class="form-group"><label for="status">Status</label><select id="status" name="status"><option value="">Todos</option><option value="ativos" {{ "selected" if filtros.get('status') == 'ativos' else "" }}>Ativos</option><option value="inativos" {{ "selected" if filtros.get('status') == 'inativos' else "" }}>Inativos</option></select></div>
+        </div>
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Pesquisar</button>
+            <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.cartoes') }}">Limpar</a>
+            <a class="btn btn-primary" href="{{ url_for('financeiro_contas_pagar.novo_cartao') }}">Novo cartao</a>
+        </div>
+    </form>
+
+    <div class="table-card table-responsive">
+        <table class="table">
+            <thead>
+                <tr><th>ID</th><th>Cartao</th><th>Banco</th><th>Bandeira</th><th>Final</th><th>Titular</th><th>Fechamento</th><th>Vencimento</th><th>Limite</th><th>Status</th><th>Acoes</th></tr>
+            </thead>
+            <tbody>
+                {% for cartao in cartoes %}
+                    <tr>
+                        <td>{{ cartao.id }}</td>
+                        <td>{{ cartao.nome }}</td>
+                        <td>{{ cartao.banco }}</td>
+                        <td>{{ cartao.bandeira or "-" }}</td>
+                        <td>{{ cartao.ultimos_4_digitos or "-" }}</td>
+                        <td>{{ cartao.titular_responsavel or "-" }}</td>
+                        <td>Dia {{ cartao.dia_fechamento }}</td>
+                        <td>Dia {{ cartao.dia_vencimento }}</td>
+                        <td>{{ "R$ %.2f"|format(cartao.limite)|replace('.', ',') if cartao.limite is not none else "-" }}</td>
+                        <td><span class="badge {{ 'badge-success' if cartao.ativo else 'badge-danger' }}">{{ "Ativo" if cartao.ativo else "Inativo" }}</span></td>
+                        <td class="col-acoes">
+                            <div class="acoes-botoes">
+                                <a class="btn btn-primary" href="{{ url_for('financeiro_contas_pagar.editar_cartao', cartao_id=cartao.id) }}">Editar</a>
+                                <form class="inline-form" method="POST" action="{{ url_for('financeiro_contas_pagar.status_cartao', cartao_id=cartao.id) }}">
+                                    <input type="hidden" name="ativo" value="{{ 0 if cartao.ativo else 1 }}">
+                                    <button class="btn btn-warning" type="submit">{{ "Inativar" if cartao.ativo else "Reativar" }}</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr><td class="empty-state" colspan="11">Nenhum cartao cadastrado.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}
