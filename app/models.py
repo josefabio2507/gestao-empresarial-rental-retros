@@ -2838,6 +2838,12 @@ class SuprimentosMovimentacaoEstoque(db.Model):
         nullable=True,
         index=True,
     )
+    centro_custo_id = db.Column(
+        db.Integer,
+        db.ForeignKey("centros_custo.id"),
+        nullable=True,
+        index=True,
+    )
     tipo = db.Column(db.String(20), nullable=False)
     origem = db.Column(db.String(40), nullable=False)
     status = db.Column(db.String(30), default="Registrada", nullable=False, index=True)
@@ -2865,6 +2871,7 @@ class SuprimentosMovimentacaoEstoque(db.Model):
     ordem_compra = db.relationship("SuprimentosOrdemCompra")
     fornecedor = db.relationship("SuprimentosFornecedor")
     responsavel = db.relationship("Usuario")
+    centro_custo = db.relationship("CentroCusto")
 
     __table_args__ = (
         db.CheckConstraint(
@@ -2921,6 +2928,15 @@ class SegurancaTrabalhoEntregaEpi(db.Model):
     tamanho = db.Column(db.String(40), nullable=True)
     motivo_entrega = db.Column(db.String(160), nullable=False)
     observacoes = db.Column(db.Text, nullable=True)
+    status = db.Column(db.String(20), default="Ativa", nullable=False, index=True)
+    cancelado_em = db.Column(db.DateTime, nullable=True)
+    cancelado_por_usuario_id = db.Column(
+        db.Integer,
+        db.ForeignKey("usuarios.id"),
+        nullable=True,
+        index=True,
+    )
+    motivo_cancelamento = db.Column(db.Text, nullable=True)
 
     criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
     atualizado_em = db.Column(
@@ -2933,7 +2949,8 @@ class SegurancaTrabalhoEntregaEpi(db.Model):
     colaborador = db.relationship("Colaborador")
     item = db.relationship("SuprimentosItem")
     movimentacao_estoque = db.relationship("SuprimentosMovimentacaoEstoque")
-    entregue_por = db.relationship("Usuario")
+    entregue_por = db.relationship("Usuario", foreign_keys=[entregue_por_usuario_id])
+    cancelado_por = db.relationship("Usuario", foreign_keys=[cancelado_por_usuario_id])
 
     __table_args__ = (
         db.CheckConstraint(
@@ -2944,7 +2961,13 @@ class SegurancaTrabalhoEntregaEpi(db.Model):
             "quantidade > 0",
             name="ck_seguranca_entregas_epi_quantidade",
         ),
+        db.CheckConstraint(
+            "status in ('Ativa', 'Cancelada')",
+            name="ck_seguranca_entregas_epi_status",
+        ),
     )
 
     def __repr__(self):
         return f"<SegurancaTrabalhoEntregaEpi colaborador={self.colaborador_id} item={self.item_id}>"
+
+

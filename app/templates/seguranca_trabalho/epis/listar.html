@@ -61,7 +61,9 @@
                     <th>Qtd.</th>
                     <th>Motivo</th>
                     <th>Documento</th>
+                    <th>Status</th>
                     <th>Entregue por</th>
+                    <th>Acoes</th>
                 </tr>
             </thead>
             <tbody>
@@ -74,10 +76,27 @@
                         <td>{{ formatar_decimal_brasil(entrega.quantidade) }} {{ entrega.item.unidade_medida.sigla }}</td>
                         <td>{{ entrega.motivo_entrega }}</td>
                         <td>{{ entrega.movimentacao_estoque.documento_numero if entrega.movimentacao_estoque else "-" }}</td>
+                        <td>
+                            <span class="badge {{ 'badge-success' if entrega.status == status_entrega_ativa else 'badge-warning' }}">{{ entrega.status }}</span>
+                            {% if entrega.status != status_entrega_ativa and entrega.motivo_cancelamento %}
+                                <br><small>{{ entrega.motivo_cancelamento }}</small>
+                            {% endif %}
+                        </td>
                         <td>{{ entrega.entregue_por.nome if entrega.entregue_por else "-" }}</td>
+                        <td class="col-acoes">
+                            {% if entrega.status == status_entrega_ativa %}
+                                <a class="btn btn-secondary" href="{{ url_for('seguranca_trabalho.editar_entrega_epi_route', entrega_id=entrega.id) }}">Editar</a>
+                                <form class="inline-form" method="POST" action="{{ url_for('seguranca_trabalho.cancelar_entrega_epi_route', entrega_id=entrega.id) }}" onsubmit="return confirm('Cancelar esta entrega e devolver o item ao estoque?');">
+                                    <input type="hidden" name="motivo_cancelamento" value="CANCELAMENTO MANUAL">
+                                    <button class="btn btn-warning" type="submit">Cancelar</button>
+                                </form>
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
                     </tr>
                 {% else %}
-                    <tr><td class="empty-state" colspan="8">Nenhuma entrega registrada.</td></tr>
+                    <tr><td class="empty-state" colspan="10">Nenhuma entrega registrada.</td></tr>
                 {% endfor %}
             </tbody>
         </table>

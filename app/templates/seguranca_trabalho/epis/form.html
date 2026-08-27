@@ -5,8 +5,8 @@
     <div class="top-bar">
         <div>
             <span class="page-kicker">Seguranca do Trabalho</span>
-            <h1>Nova Entrega de EPI/Uniforme</h1>
-            <p>Registre a entrega ao colaborador e gere a baixa automatica no estoque.</p>
+            <h1>{{ "Editar Entrega de EPI/Uniforme" if entrega else "Nova Entrega de EPI/Uniforme" }}</h1>
+            <p>{{ "Atualize a entrega e ajuste automaticamente a baixa no estoque." if entrega else "Registre a entrega ao colaborador e gere a baixa automatica no estoque." }}</p>
         </div>
         <a class="btn btn-secondary" href="{{ url_for('seguranca_trabalho.epis') }}">Voltar</a>
     </div>
@@ -15,8 +15,15 @@
         <div class="form-grid">
             <div class="form-group">
                 <label for="colaborador_busca">Colaborador</label>
-                <input id="colaborador_busca" list="colaboradores_lista" data-datalist-target="colaborador_id" required autocomplete="off">
-                <input type="hidden" id="colaborador_id" name="colaborador_id">
+                <input
+                    id="colaborador_busca"
+                    list="colaboradores_lista"
+                    data-datalist-target="colaborador_id"
+                    required
+                    autocomplete="off"
+                    value="{{ entrega.colaborador.matricula ~ ' - ' ~ entrega.colaborador.nome if entrega and entrega.colaborador else '' }}"
+                >
+                <input type="hidden" id="colaborador_id" name="colaborador_id" value="{{ entrega.colaborador_id if entrega else '' }}">
                 <datalist id="colaboradores_lista">
                     {% for colaborador in colaboradores %}
                         <option value="{{ colaborador.matricula }} - {{ colaborador.nome }}" data-value="{{ colaborador.id }}"></option>
@@ -25,12 +32,19 @@
             </div>
             <div class="form-group">
                 <label for="item_busca">Item do estoque</label>
-                <input id="item_busca" list="itens_lista" data-datalist-target="item_id" required autocomplete="off">
-                <input type="hidden" id="item_id" name="item_id">
+                <input
+                    id="item_busca"
+                    list="itens_lista"
+                    data-datalist-target="item_id"
+                    required
+                    autocomplete="off"
+                    value="{{ (entrega.item.codigo_interno or '-') ~ ' - ' ~ entrega.item.descricao ~ ' | Saldo: ' ~ formatar_decimal_brasil(entrega.item.saldo_estoque + entrega.quantidade) ~ ' ' ~ entrega.item.unidade_medida.sigla if entrega and entrega.item else '' }}"
+                >
+                <input type="hidden" id="item_id" name="item_id" value="{{ entrega.item_id if entrega else '' }}">
                 <datalist id="itens_lista">
                     {% for item in itens %}
                         <option
-                            value="{{ item.codigo_interno or '-' }} - {{ item.descricao }} | Saldo: {{ formatar_decimal_brasil(item.saldo_estoque) }} {{ item.unidade_medida.sigla }}"
+                            value="{{ item.codigo_interno or '-' }} - {{ item.descricao }} | Saldo: {{ formatar_decimal_brasil(item.saldo_estoque + entrega.quantidade) if entrega and entrega.item_id == item.id else formatar_decimal_brasil(item.saldo_estoque) }} {{ item.unidade_medida.sigla }}"
                             data-value="{{ item.id }}"
                         ></option>
                     {% endfor %}
@@ -41,42 +55,42 @@
                 <select id="tipo_material" name="tipo_material" required>
                     <option value="">Selecione</option>
                     {% for tipo in tipos_material %}
-                        <option value="{{ tipo }}">{{ tipo }}</option>
+                        <option value="{{ tipo }}" {{ "selected" if entrega and entrega.tipo_material == tipo else "" }}>{{ tipo }}</option>
                     {% endfor %}
                 </select>
             </div>
             <div class="form-group">
                 <label for="quantidade">Quantidade</label>
-                <input id="quantidade" name="quantidade" required inputmode="decimal">
+                <input id="quantidade" name="quantidade" required inputmode="decimal" value="{{ formatar_decimal_brasil(entrega.quantidade) if entrega else '' }}">
             </div>
             <div class="form-group">
                 <label for="data_entrega">Data da entrega</label>
-                <input id="data_entrega" name="data_entrega" type="date" required value="{{ hoje }}">
+                <input id="data_entrega" name="data_entrega" type="date" required value="{{ entrega.data_entrega.isoformat() if entrega and entrega.data_entrega else hoje }}">
             </div>
             <div class="form-group">
                 <label for="motivo_entrega">Motivo</label>
                 <select id="motivo_entrega" name="motivo_entrega" required>
                     <option value="">Selecione</option>
                     {% for motivo in motivos_entrega %}
-                        <option value="{{ motivo }}">{{ motivo }}</option>
+                        <option value="{{ motivo }}" {{ "selected" if entrega and entrega.motivo_entrega == motivo.upper() else "" }}>{{ motivo }}</option>
                     {% endfor %}
                 </select>
             </div>
             <div class="form-group">
                 <label for="ca_numero">CA do EPI</label>
-                <input id="ca_numero" name="ca_numero" maxlength="80" data-uppercase>
+                <input id="ca_numero" name="ca_numero" maxlength="80" data-uppercase value="{{ entrega.ca_numero or '' if entrega else '' }}">
             </div>
             <div class="form-group">
                 <label for="tamanho">Tamanho</label>
-                <input id="tamanho" name="tamanho" maxlength="40" data-uppercase>
+                <input id="tamanho" name="tamanho" maxlength="40" data-uppercase value="{{ entrega.tamanho or '' if entrega else '' }}">
             </div>
         </div>
         <div class="form-group">
             <label for="observacoes">Observacoes</label>
-            <textarea id="observacoes" name="observacoes" data-uppercase></textarea>
+            <textarea id="observacoes" name="observacoes" data-uppercase>{{ entrega.observacoes or "" if entrega else "" }}</textarea>
         </div>
         <div class="form-actions">
-            <button class="btn btn-primary" type="submit">Registrar entrega</button>
+            <button class="btn btn-primary" type="submit">{{ "Salvar alteracoes" if entrega else "Registrar entrega" }}</button>
             <a class="btn btn-secondary" href="{{ url_for('seguranca_trabalho.epis') }}">Cancelar</a>
         </div>
     </form>

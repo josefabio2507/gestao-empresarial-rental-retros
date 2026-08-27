@@ -1701,6 +1701,7 @@ def buscar_movimentacoes_estoque(
             joinedload(SuprimentosMovimentacaoEstoque.ordem_compra),
             joinedload(SuprimentosMovimentacaoEstoque.fornecedor),
             joinedload(SuprimentosMovimentacaoEstoque.responsavel),
+            joinedload(SuprimentosMovimentacaoEstoque.centro_custo),
         )
     )
 
@@ -1907,11 +1908,20 @@ def registrar_movimentacao_manual_estoque(form_data, usuario):
     saldo_inventario = decimal_ou_none(form_data.get("saldo_inventario"))
     documento_tipo = texto_maiusculo(form_data.get("documento_tipo")) or None
     documento_numero = texto_maiusculo(form_data.get("documento_numero")) or None
+    centro_custo_id = inteiro_ou_none(form_data.get("centro_custo_id"))
+    centro_custo_busca = texto(form_data.get("centro_custo_busca"))
     data_movimentacao = data_ou_none(form_data.get("data_movimentacao"))
     motivo = texto_maiusculo(form_data.get("motivo"))
     observacoes = texto_maiusculo(form_data.get("observacoes")) or None
 
     item = buscar_por_id(SuprimentosItem, item_id) if item_id else None
+    centro_custo = buscar_centro_custo_ativo_por_classe(centro_custo_id, CLASSE_CENTRO_CUSTO_EQUIPES) if centro_custo_id else None
+
+    if centro_custo_busca and not centro_custo_id:
+        return False, "Selecione um centro de custo da lista.", None
+
+    if centro_custo_id and not centro_custo:
+        return False, "Centro de custo deve ser da classe CENTRO DE CUSTO EQUIPES.", None
 
     if not item or not item.ativo or not item.item_estocavel:
         return False, "Informe um item estocavel ativo.", None
@@ -1961,6 +1971,7 @@ def registrar_movimentacao_manual_estoque(form_data, usuario):
     movimentacao = SuprimentosMovimentacaoEstoque(
         item_id=item.id,
         responsavel_usuario_id=usuario.id if usuario else None,
+        centro_custo_id=centro_custo.id if centro_custo else None,
         tipo=tipo,
         origem=configuracao["origem"],
         status=STATUS_MOVIMENTACAO_ESTOQUE_REGISTRADA,
@@ -3637,3 +3648,4 @@ def consultar_cnpj_publico(cnpj):
         return False, "Consulta retornou dados incompletos.", None
 
     return True, "CNPJ consultado com sucesso.", dados_normalizados
+
