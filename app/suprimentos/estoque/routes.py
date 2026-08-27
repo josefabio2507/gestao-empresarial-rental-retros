@@ -6,7 +6,9 @@ from flask_login import current_user, login_required
 from app.decorators import module_permission_required
 from app.services.logs_service import registrar_log
 from app.services.suprimentos_service import (
+    CLASSE_CENTRO_CUSTO_EQUIPES,
     buscar_categorias_ativas,
+    buscar_centros_custo_ativos,
     buscar_fornecedores_ativos,
     buscar_itens_ativos,
     buscar_movimentacoes_estoque,
@@ -101,7 +103,9 @@ def nova_movimentacao():
         "suprimentos/estoque/form_movimentacao.html",
         itens=itens,
         item_fixado=item_fixado,
+        centros_custo_equipes=buscar_centros_custo_ativos(CLASSE_CENTRO_CUSTO_EQUIPES),
         hoje=date.today().isoformat(),
         filtros=request.args,
         formatar_decimal_brasil=formatar_decimal_brasil,
     )
+

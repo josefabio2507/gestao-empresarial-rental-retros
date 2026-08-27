@@ -73,6 +73,7 @@
                     <th>Documento</th>
                     <th>OC</th>
                     <th>Fornecedor</th>
+                    <th>Centro de custo</th>
                     <th>Responsavel</th>
                     <th>Qtd.</th>
                     <th>Valor unit.</th>
@@ -96,6 +97,7 @@
                             {% endif %}
                         </td>
                         <td>{{ movimentacao.fornecedor.razao_social if movimentacao.fornecedor else "-" }}</td>
+                        <td>{{ movimentacao.centro_custo.nome if movimentacao.centro_custo else "-" }}</td>
                         <td>{{ movimentacao.responsavel.nome if movimentacao.responsavel else "-" }}</td>
                         <td>{{ formatar_decimal_brasil(movimentacao.quantidade) }}</td>
                         <td>{{ formatar_moeda_brl(movimentacao.valor_unitario) }}</td>
@@ -103,10 +105,11 @@
                         <td><span class="badge badge-success">{{ movimentacao.status }}</span></td>
                     </tr>
                 {% else %}
-                    <tr><td class="empty-state" colspan="12">Nenhuma movimentacao encontrada.</td></tr>
+                    <tr><td class="empty-state" colspan="13">Nenhuma movimentacao encontrada.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
 </section>
 {% endblock %}
+

@@ -59,6 +59,16 @@
                 <input id="data_movimentacao" name="data_movimentacao" type="date" value="{{ hoje }}" required>
             </div>
             <div class="form-group">
+                <label for="centro_custo_busca">Centro de custo</label>
+                <input id="centro_custo_busca" name="centro_custo_busca" list="centros_custo_equipes_lista" data-datalist-target="centro_custo_id" autocomplete="off">
+                <input type="hidden" id="centro_custo_id" name="centro_custo_id">
+                <datalist id="centros_custo_equipes_lista">
+                    {% for centro in centros_custo_equipes %}
+                        <option value="{{ (centro.codigo or '-') ~ ' - ' ~ centro.nome }}" data-value="{{ centro.id }}"></option>
+                    {% endfor %}
+                </datalist>
+            </div>
+            <div class="form-group">
                 <label for="documento_tipo">Tipo de documento</label>
                 <input id="documento_tipo" name="documento_tipo" maxlength="30" data-uppercase>
             </div>
@@ -83,3 +93,5 @@
     </form>
 </section>
 {% endblock %}
+
+
