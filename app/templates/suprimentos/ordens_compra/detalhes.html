@@ -35,70 +35,71 @@
     </div>
 
     <div class="details-card">
-        <h2>Preparacao Financeira</h2>
+        <h2>Dados Financeiros</h2>
         <p><strong>Status financeiro:</strong> {{ ordem.status_financeiro }}</p>
         <p><strong>Valor previsto:</strong> {{ formatar_moeda_brl(ordem.valor_total) }}</p>
-        <p><strong>Previsao de vencimento:</strong> {{ ordem.previsao_vencimento.strftime("%d/%m/%Y") if ordem.previsao_vencimento else "-" }}</p>
-        <p><strong>Parcelas:</strong> {{ ordem.quantidade_parcelas }}</p>
+        <p><strong>Tipo de pagamento:</strong> {{ ordem.tipo_pagamento_financeiro or "-" }}</p>
+        <p><strong>Forma de pagamento:</strong> {{ ordem.forma_pagamento_financeiro or "-" }}</p>
+        <p><strong>Condicao de pagamento:</strong> {{ ordem.condicao_pagamento_financeiro or ordem.condicao_pagamento_snapshot or "-" }}</p>
+        <p><strong>Primeiro vencimento:</strong> {{ ordem.data_primeiro_vencimento_financeiro.strftime("%d/%m/%Y") if ordem.data_primeiro_vencimento_financeiro else (ordem.previsao_vencimento.strftime("%d/%m/%Y") if ordem.previsao_vencimento else "-") }}</p>
+        <p><strong>Parcelas:</strong> {{ ordem.numero_parcelas_financeiro or ordem.quantidade_parcelas }}</p>
+        <p><strong>Cartao:</strong> {{ ordem.cartao_credito.identificacao_segura if ordem.cartao_credito else "-" }}</p>
         <p><strong>Observacoes financeiras:</strong> {{ ordem.observacoes_financeiras or "-" }}</p>
         {% if ordem.preparado_financeiro_em %}
             <p><strong>Preparado em:</strong> {{ ordem.preparado_financeiro_em.strftime("%d/%m/%Y %H:%M") }}</p>
         {% endif %}
-        {% if ordem.provisionado_financeiro_em %}
+        {% if ordem.financeiro_integrado_em %}
+            <p><strong>Integrado ao Financeiro em:</strong> {{ ordem.financeiro_integrado_em.strftime("%d/%m/%Y %H:%M") }}</p>
+        {% elif ordem.provisionado_financeiro_em %}
             <p><strong>Provisionado em:</strong> {{ ordem.provisionado_financeiro_em.strftime("%d/%m/%Y %H:%M") }}</p>
         {% endif %}
     </div>
 
-    <div class="table-card table-responsive">
-        <h2>Documentos Fiscais</h2>
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>NF-e</th>
-                    <th>Emissao</th>
-                    <th>Chave</th>
-                    <th>Valor</th>
-                    <th>Vinculado em</th>
-                    <th>Acoes</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for documento in ordem.documentos_fiscais %}
-                    <tr>
-                        <td>{{ documento.numero }}</td>
-                        <td>{{ documento.data_emissao.strftime("%d/%m/%Y") if documento.data_emissao else "-" }}</td>
-                        <td>{{ documento.chave_acesso }}</td>
-                        <td>{{ formatar_moeda_brl(documento.valor_total) }}</td>
-                        <td>{{ documento.vinculado_em.strftime("%d/%m/%Y %H:%M") if documento.vinculado_em else "-" }}</td>
-                        <td class="col-acoes">
-                            {% if pode_visualizar_fiscal %}
-                                <a class="btn btn-secondary" href="{{ url_for('fiscal.baixar_xml', documento_id=documento.id) }}">XML</a>
-                                {% if documento.danfe_path %}
-                                    <a class="btn btn-secondary" href="{{ url_for('fiscal.baixar_danfe', documento_id=documento.id) }}">DANFE</a>
-                                {% endif %}
-                            {% else %}
-                                -
-                            {% endif %}
-                        </td>
-                    </tr>
-                {% else %}
-                    <tr><td class="empty-state" colspan="6">Nenhum documento fiscal vinculado.</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-
-    {% if ordem.status != "Cancelada" and ordem.status_financeiro != "Provisionado" %}
+    {% if ordem.status != "Cancelada" and not ordem.titulos_financeiros %}
         <form class="form-card" method="POST" action="{{ url_for('suprimentos_ordens_compra.preparar_financeiro', ordem_id=ordem.id) }}">
-            <h2>Preparar para o futuro Financeiro</h2>
+            <h2>Preparar Contas a Pagar</h2>
             <div class="form-grid">
                 <div class="form-group">
-                    <label for="previsao_vencimento">Previsao de vencimento</label>
-                    <input id="previsao_vencimento" name="previsao_vencimento" type="date" required value="{{ ordem.previsao_vencimento.isoformat() if ordem.previsao_vencimento else '' }}">
+                    <label for="tipo_pagamento_financeiro">Tipo de pagamento</label>
+                    <select id="tipo_pagamento_financeiro" name="tipo_pagamento_financeiro" required>
+                        {% for tipo in tipos_pagamento_financeiro %}
+                            <option value="{{ tipo }}" {% if ordem.tipo_pagamento_financeiro == tipo %}selected{% endif %}>{{ tipo }}</option>
+                        {% endfor %}
+                    </select>
                 </div>
                 <div class="form-group">
-                    <label for="quantidade_parcelas">Quantidade de parcelas</label>
-                    <input id="quantidade_parcelas" name="quantidade_parcelas" type="number" min="1" value="{{ ordem.quantidade_parcelas or 1 }}" required>
+                    <label for="forma_pagamento_financeiro">Forma de pagamento</label>
+                    <select id="forma_pagamento_financeiro" name="forma_pagamento_financeiro" required>
+                        {% for forma in formas_pagamento_financeiro %}
+                            <option value="{{ forma }}" {% if ordem.forma_pagamento_financeiro == forma %}selected{% endif %}>{{ forma }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="condicao_pagamento_financeiro">Condicao de pagamento</label>
+                    <select id="condicao_pagamento_financeiro" name="condicao_pagamento_financeiro">
+                        <option value="">Selecione</option>
+                        {% for condicao in condicoes_pagamento_financeiro %}
+                            <option value="{{ condicao }}" {% if ordem.condicao_pagamento_financeiro == condicao %}selected{% endif %}>{{ condicao }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="numero_parcelas_financeiro">Numero de parcelas</label>
+                    <input id="numero_parcelas_financeiro" name="numero_parcelas_financeiro" type="number" min="1" value="{{ ordem.numero_parcelas_financeiro or ordem.quantidade_parcelas or 1 }}" required>
+                </div>
+                <div class="form-group">
+                    <label for="data_primeiro_vencimento_financeiro">Primeiro vencimento</label>
+                    <input id="data_primeiro_vencimento_financeiro" name="data_primeiro_vencimento_financeiro" type="date" required value="{{ ordem.data_primeiro_vencimento_financeiro.isoformat() if ordem.data_primeiro_vencimento_financeiro else (ordem.previsao_vencimento.isoformat() if ordem.previsao_vencimento else '') }}">
+                </div>
+                <div class="form-group">
+                    <label for="cartao_credito_id">Cartao de credito</label>
+                    <select id="cartao_credito_id" name="cartao_credito_id">
+                        <option value="">Nao se aplica</option>
+                        {% for cartao in cartoes_credito %}
+                            <option value="{{ cartao.id }}" {% if ordem.cartao_credito_id == cartao.id %}selected{% endif %}>{{ cartao.identificacao_segura }}</option>
+                        {% endfor %}
+                    </select>
                 </div>
             </div>
             <div class="form-group">
@@ -106,12 +107,10 @@
                 <textarea id="observacoes_financeiras" name="observacoes_financeiras" data-uppercase>{{ ordem.observacoes_financeiras or "" }}</textarea>
             </div>
             <div class="form-actions">
-                <button class="btn btn-primary" type="submit">Preparar financeiro</button>
+                <button class="btn btn-primary" type="submit">Salvar dados financeiros</button>
             </div>
         </form>
-    {% endif %}
-
-    <div class="table-card table-responsive">
+    {% endif %}    <div class="table-card table-responsive">
         <h2>Parcelas previstas</h2>
         <table class="table">
             <thead>
@@ -139,6 +138,38 @@
         </table>
     </div>
 
+
+    <div class="table-card table-responsive">
+        <h2>Titulos Financeiros Gerados</h2>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Parcela</th>
+                    <th>Vencimento</th>
+                    <th>Valor</th>
+                    <th>Status</th>
+                    <th>Cartao</th>
+                    <th>Fatura</th>
+                    <th>Acoes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for titulo in ordem.titulos_financeiros %}
+                    <tr>
+                        <td>{{ titulo.parcela_numero }}/{{ titulo.total_parcelas }}</td>
+                        <td>{{ titulo.data_vencimento.strftime("%d/%m/%Y") if titulo.data_vencimento else "-" }}</td>
+                        <td>{{ formatar_moeda_brl(titulo.valor_original) }}</td>
+                        <td><span class="badge badge-warning">{{ titulo.status }}</span></td>
+                        <td>{{ titulo.cartao_credito.identificacao_segura if titulo.cartao_credito else "-" }}</td>
+                        <td>{{ titulo.fatura_cartao.competencia_formatada if titulo.fatura_cartao else "-" }}</td>
+                        <td class="col-acoes"><a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.detalhes', titulo_id=titulo.id) }}">Ver titulo</a></td>
+                    </tr>
+                {% else %}
+                    <tr><td class="empty-state" colspan="7">Nenhum titulo financeiro gerado para esta O.C.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
     <div class="table-card table-responsive">
         <h2>Itens da Ordem</h2>
         <table class="table">
@@ -285,7 +316,7 @@
 
     <div class="details-card">
         <p><strong>Total da ordem:</strong> {{ formatar_moeda_brl(ordem.valor_total) }}</p>
-        <p><strong>Proxima etapa:</strong> os dados acima serao usados pelo futuro modulo Financeiro.</p>
+        <p><strong>Proxima etapa:</strong> os dados acima alimentam o Contas a Pagar.</p>
     </div>
 
     <div class="table-card table-responsive">
@@ -337,7 +368,7 @@
         {% endif %}
         {% if ordem.status_financeiro == "Preparado para Financeiro" %}
             <form class="inline-form" method="POST" action="{{ url_for('suprimentos_ordens_compra.provisionar_financeiro', ordem_id=ordem.id) }}">
-                <button class="btn btn-primary" type="submit">Marcar como provisionado</button>
+                <button class="btn btn-primary" type="submit">Gerar Contas a Pagar</button>
             </form>
         {% endif %}
         {% if ordem.pode_cancelar %}
@@ -351,4 +382,3 @@
     </div>
 </section>
 {% endblock %}
-

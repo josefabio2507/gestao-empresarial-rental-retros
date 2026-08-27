@@ -1,3 +1,4 @@
+import calendar
 import hashlib
 import re
 import json
@@ -21,6 +22,8 @@ from app.services.email_service import enviar_email, smtp_configurado
 from app.utils.datas import agora_brasil
 from app.models import (
     CentroCusto,
+    FinanceiroCartaoCredito,
+    FinanceiroContaPagarTitulo,
     Departamento,
     Equipe,
     Modulo,
@@ -107,7 +110,36 @@ CLASSES_CENTRO_CUSTO = [
 STATUS_FINANCEIRO_PENDENTE = "Pendente de Financeiro"
 STATUS_FINANCEIRO_PREPARADO = "Preparado para Financeiro"
 STATUS_FINANCEIRO_PROVISIONADO = "Provisionado"
+STATUS_FINANCEIRO_CONFERENCIA = "Pendente de conferencia"
+STATUS_FINANCEIRO_INTEGRADO = "Integrado ao Financeiro"
 STATUS_FINANCEIRO_CANCELADO = "Cancelado"
+STATUS_FINANCEIRO_DIVERGENTE = "Divergente"
+STATUS_OC_PERMITIDOS_GERAR_CONTAS_PAGAR = [
+    STATUS_ORDEM_COMPRA_GERADA,
+    STATUS_ORDEM_COMPRA_PARCIAL,
+    STATUS_ORDEM_COMPRA_RECEBIDA,
+]
+TIPOS_PAGAMENTO_FINANCEIRO_OC = ["Faturado", "Cartao de Credito"]
+FORMAS_PAGAMENTO_FINANCEIRO_OC = [
+    "Boleto",
+    "Pix",
+    "Transferencia",
+    "Deposito",
+    "Cartao de Credito",
+    "Outro",
+]
+CONDICOES_PAGAMENTO_FINANCEIRO_OC = [
+    "A vista",
+    "7 dias",
+    "14 dias",
+    "21 dias",
+    "28 dias",
+    "30 dias",
+    "45 dias",
+    "60 dias",
+    "Parcelado",
+    "Personalizado",
+]
 STATUS_RECEBIMENTO_COMPRA_REGISTRADO = "Registrado"
 STATUS_RECEBIMENTO_COMPRA_CANCELADO = "Cancelado"
 TIPO_MOVIMENTACAO_ESTOQUE_ENTRADA = "Entrada"
@@ -1529,17 +1561,28 @@ def buscar_ordens_compra(
 
 
 def buscar_ordens_aguardando_financeiro():
-    return (
-        SuprimentosOrdemCompra.query
-        .filter(
-            SuprimentosOrdemCompra.status != STATUS_ORDEM_COMPRA_CANCELADA,
-            SuprimentosOrdemCompra.status_financeiro.in_(
-                [STATUS_FINANCEIRO_PENDENTE, STATUS_FINANCEIRO_PREPARADO]
-            ),
-        )
-        .order_by(SuprimentosOrdemCompra.previsao_vencimento.asc(), SuprimentosOrdemCompra.gerada_em.desc())
-        .all()
-    )
+    return buscar_agendamentos_oc_contas_pagar()
+
+
+def _registrar_log_financeiro_oc(evento, mensagem):
+    try:
+        from app.services.logs_service import registrar_log
+
+        registrar_log(evento, mensagem)
+    except Exception:
+        pass
+
+
+def _data_com_dia_valido(ano, mes, dia):
+    ultimo_dia = calendar.monthrange(ano, mes)[1]
+    return date(ano, mes, min(int(dia or 1), ultimo_dia))
+
+
+def somar_meses_data(data_base, meses):
+    mes_zero = data_base.month - 1 + meses
+    ano = data_base.year + mes_zero // 12
+    mes = mes_zero % 12 + 1
+    return _data_com_dia_valido(ano, mes, data_base.day)
 
 
 def buscar_ordens_compra_cotacao(cotacao):
@@ -1592,7 +1635,7 @@ def criar_parcelas_financeiras_ordem(ordem, previsao_vencimento, quantidade_parc
 
     valores = calcular_parcelas_previstas(ordem.valor_total, quantidade_parcelas)
     for indice, valor in enumerate(valores, start=1):
-        vencimento = previsao_vencimento + timedelta(days=30 * (indice - 1))
+        vencimento = somar_meses_data(previsao_vencimento, indice - 1)
         db.session.add(
             SuprimentosOrdemCompraParcela(
                 ordem_compra_id=ordem.id,
@@ -1605,20 +1648,134 @@ def criar_parcelas_financeiras_ordem(ordem, previsao_vencimento, quantidade_parc
         )
 
 
+def _titulos_ativos_ordem_compra(ordem):
+    if not ordem or not ordem.id:
+        return []
+    return (
+        FinanceiroContaPagarTitulo.query
+        .filter(
+            FinanceiroContaPagarTitulo.ordem_compra_id == ordem.id,
+            FinanceiroContaPagarTitulo.origem_lancamento == "Ordem de Compra",
+            FinanceiroContaPagarTitulo.status != "Cancelado",
+        )
+        .order_by(FinanceiroContaPagarTitulo.parcela_numero.asc())
+        .all()
+    )
+
+
+def titulos_ativos_ordem_compra(ordem):
+    return _titulos_ativos_ordem_compra(ordem)
+
+
+def status_financeiro_calculado_ordem(ordem):
+    if ordem.status == STATUS_ORDEM_COMPRA_CANCELADA:
+        return STATUS_FINANCEIRO_CANCELADO
+    titulos = _titulos_ativos_ordem_compra(ordem)
+    if titulos:
+        if any(titulo.status == "Aguardando conferencia" for titulo in titulos):
+            return STATUS_FINANCEIRO_CONFERENCIA
+        return STATUS_FINANCEIRO_INTEGRADO
+    if ordem.financeiro_integrado:
+        return STATUS_FINANCEIRO_INTEGRADO
+    if ordem.status_financeiro == STATUS_FINANCEIRO_PREPARADO:
+        return "Pronto para gerar"
+    if (
+        ordem.tipo_pagamento_financeiro
+        and ordem.forma_pagamento_financeiro
+        and ordem.data_primeiro_vencimento_financeiro
+        and ordem.numero_parcelas_financeiro
+    ):
+        return "Pronto para gerar"
+    return "Nao preparado"
+
+
+def buscar_agendamentos_oc_contas_pagar():
+    ordens = (
+        SuprimentosOrdemCompra.query
+        .filter(SuprimentosOrdemCompra.status != STATUS_ORDEM_COMPRA_CANCELADA)
+        .order_by(SuprimentosOrdemCompra.data_primeiro_vencimento_financeiro.asc().nullslast(), SuprimentosOrdemCompra.gerada_em.desc())
+        .all()
+    )
+    return [
+        ordem for ordem in ordens
+        if ordem.valor_total and ordem.fornecedor_id and (
+            ordem.status_financeiro in [
+                STATUS_FINANCEIRO_PENDENTE,
+                STATUS_FINANCEIRO_PREPARADO,
+                STATUS_FINANCEIRO_CONFERENCIA,
+                STATUS_FINANCEIRO_INTEGRADO,
+            ]
+            or ordem.tipo_pagamento_financeiro
+            or ordem.financeiro_integrado
+        )
+    ]
+
+
+def validar_dados_financeiros_ordem(ordem):
+    if ordem.status == STATUS_ORDEM_COMPRA_CANCELADA:
+        return False, "O.C. cancelada nao pode gerar Contas a Pagar."
+    if ordem.status not in STATUS_OC_PERMITIDOS_GERAR_CONTAS_PAGAR:
+        return False, "Status da O.C. nao permite gerar Contas a Pagar."
+    if not ordem.fornecedor_id:
+        return False, "O.C. sem fornecedor nao pode gerar Contas a Pagar."
+    if not ordem.valor_total or Decimal(ordem.valor_total or 0) <= 0:
+        return False, "O.C. sem valor total nao pode gerar Contas a Pagar."
+    if ordem.tipo_pagamento_financeiro not in TIPOS_PAGAMENTO_FINANCEIRO_OC:
+        return False, "Informe o tipo de pagamento financeiro."
+    if ordem.forma_pagamento_financeiro not in FORMAS_PAGAMENTO_FINANCEIRO_OC:
+        return False, "Informe a forma de pagamento."
+    if not ordem.data_primeiro_vencimento_financeiro:
+        return False, "Informe a data do primeiro vencimento."
+    if not ordem.numero_parcelas_financeiro or ordem.numero_parcelas_financeiro < 1:
+        return False, "Numero de parcelas deve ser no minimo 1."
+    if ordem.tipo_pagamento_financeiro == "Cartao de Credito" and not ordem.cartao_credito_id:
+        return False, "Informe o cartao de credito para compras pagas com cartao."
+    return True, None
+
+
 def preparar_financeiro_ordem_compra(ordem, form_data):
     if ordem.status == STATUS_ORDEM_COMPRA_CANCELADA:
         return False, "Ordem de compra cancelada nao pode ser preparada para financeiro."
 
-    previsao_vencimento = data_ou_none((form_data or {}).get("previsao_vencimento"))
-    quantidade_parcelas = inteiro_ou_none((form_data or {}).get("quantidade_parcelas")) or 1
-    observacoes = texto_maiusculo((form_data or {}).get("observacoes_financeiras")) or None
+    form_data = form_data or {}
+    tipo_pagamento = texto(form_data.get("tipo_pagamento_financeiro")) or "Faturado"
+    forma_pagamento = texto(form_data.get("forma_pagamento_financeiro")) or "Boleto"
+    condicao_pagamento = texto(form_data.get("condicao_pagamento_financeiro")) or None
+    previsao_vencimento = data_ou_none(
+        form_data.get("data_primeiro_vencimento_financeiro") or form_data.get("previsao_vencimento")
+    )
+    quantidade_parcelas = inteiro_ou_none(
+        form_data.get("numero_parcelas_financeiro") or form_data.get("quantidade_parcelas")
+    ) or 1
+    cartao_credito_id = inteiro_ou_none(form_data.get("cartao_credito_id"))
+    observacoes = texto_maiusculo(form_data.get("observacoes_financeiras")) or None
 
+    if tipo_pagamento not in TIPOS_PAGAMENTO_FINANCEIRO_OC:
+        return False, "Tipo de pagamento financeiro invalido."
+    if forma_pagamento not in FORMAS_PAGAMENTO_FINANCEIRO_OC:
+        return False, "Forma de pagamento invalida."
+    if condicao_pagamento and condicao_pagamento not in CONDICOES_PAGAMENTO_FINANCEIRO_OC:
+        return False, "Condicao de pagamento invalida."
     if not previsao_vencimento:
-        return False, "Previsao de vencimento e obrigatoria."
-
+        return False, "Informe a data do primeiro vencimento."
     if quantidade_parcelas < 1:
-        return False, "Quantidade de parcelas deve ser maior ou igual a 1."
+        return False, "Numero de parcelas deve ser no minimo 1."
+    if tipo_pagamento == "Cartao de Credito":
+        if not cartao_credito_id:
+            return False, "Informe o cartao de credito para compras pagas com cartao."
+        cartao = FinanceiroCartaoCredito.query.get(cartao_credito_id)
+        if not cartao or not cartao.ativo:
+            return False, "Cartao de credito ativo nao encontrado."
+        forma_pagamento = "Cartao de Credito"
+    else:
+        cartao_credito_id = None
 
+    ordem.tipo_pagamento_financeiro = tipo_pagamento
+    ordem.forma_pagamento_financeiro = forma_pagamento
+    ordem.condicao_pagamento_financeiro = condicao_pagamento
+    ordem.data_primeiro_vencimento_financeiro = previsao_vencimento
+    ordem.numero_parcelas_financeiro = quantidade_parcelas
+    ordem.cartao_credito_id = cartao_credito_id
     ordem.previsao_vencimento = previsao_vencimento
     ordem.quantidade_parcelas = quantidade_parcelas
     ordem.observacoes_financeiras = observacoes
@@ -1626,22 +1783,139 @@ def preparar_financeiro_ordem_compra(ordem, form_data):
     ordem.preparado_financeiro_em = agora_brasil()
     criar_parcelas_financeiras_ordem(ordem, previsao_vencimento, quantidade_parcelas, observacoes)
     db.session.commit()
-    return True, "Dados financeiros preparados com sucesso."
+    _registrar_log_financeiro_oc("suprimentos_oc_dados_financeiros_salvos", f"Dados financeiros salvos. O.C.: {ordem.id}.")
+    return True, "Dados financeiros da O.C. salvos com sucesso."
 
 
-def provisionar_financeiro_ordem_compra(ordem):
-    if ordem.status == STATUS_ORDEM_COMPRA_CANCELADA:
-        return False, "Ordem de compra cancelada nao pode ser provisionada."
+def _data_compra_parcela_cartao(ordem, indice):
+    data_base = ordem.gerada_em.date() if getattr(ordem, "gerada_em", None) else date.today()
+    return somar_meses_data(data_base, indice - 1)
 
-    if not ordem.parcelas_financeiras:
-        return False, "Prepare as parcelas financeiras antes de provisionar."
 
-    ordem.status_financeiro = STATUS_FINANCEIRO_PROVISIONADO
-    ordem.provisionado_financeiro_em = agora_brasil()
+def _centro_custo_ordem(ordem):
+    requisicao = getattr(ordem, "requisicao", None)
+    return getattr(requisicao, "centro_custo_id", None)
+
+
+def _subcentro_equipe_ordem(ordem):
+    requisicao = getattr(ordem, "requisicao", None)
+    return getattr(requisicao, "sub_centro_custo_equipe_id", None)
+
+
+def _subcentro_veiculo_ordem(ordem):
+    requisicao = getattr(ordem, "requisicao", None)
+    return getattr(requisicao, "sub_centro_custo_veiculo_id", None)
+
+
+def gerar_contas_pagar_ordem_compra(ordem, usuario=None):
+    sucesso, mensagem = validar_dados_financeiros_ordem(ordem)
+    if not sucesso:
+        _registrar_log_financeiro_oc("suprimentos_oc_financeiro_validacao_falhou", f"{mensagem} O.C.: {getattr(ordem, 'id', None)}.")
+        return False, mensagem, []
+
+    titulos_existentes = _titulos_ativos_ordem_compra(ordem)
+    if titulos_existentes:
+        _registrar_log_financeiro_oc("suprimentos_oc_financeiro_duplicidade", f"Bloqueio de duplicidade. O.C.: {ordem.id}.")
+        return False, "Esta Ordem de Compra ja possui titulos financeiros gerados.", titulos_existentes
+
+    from app.services.financeiro_contas_pagar_service import recalcular_fatura, vincular_titulo_a_fatura_cartao
+
+    valores = calcular_parcelas_previstas(ordem.valor_total, ordem.numero_parcelas_financeiro)
+    titulos = []
+    faturas_afetadas = set()
+    emissao = ordem.gerada_em.date() if getattr(ordem, "gerada_em", None) else date.today()
+
+    for indice, valor in enumerate(valores, start=1):
+        vencimento = somar_meses_data(ordem.data_primeiro_vencimento_financeiro, indice - 1)
+        titulo = FinanceiroContaPagarTitulo(
+            fornecedor_id=ordem.fornecedor_id,
+            fornecedor_nome_snapshot=ordem.fornecedor_razao_social_snapshot,
+            fornecedor_cnpj_cpf_snapshot=somente_digitos(ordem.fornecedor_cnpj_cpf_snapshot),
+            descricao=f"ORDEM DE COMPRA {ordem.numero} - PARCELA {indice}/{ordem.numero_parcelas_financeiro}",
+            numero_documento=f"{ordem.numero}-{indice:02d}/{ordem.numero_parcelas_financeiro:02d}",
+            ordem_compra_id=ordem.id,
+            origem_lancamento="Ordem de Compra",
+            tipo_pagamento=ordem.tipo_pagamento_financeiro,
+            forma_pagamento="Cartao de Credito" if ordem.tipo_pagamento_financeiro == "Cartao de Credito" else ordem.forma_pagamento_financeiro,
+            competencia=vencimento.replace(day=1),
+            data_emissao=emissao,
+            data_vencimento=vencimento,
+            valor_original=valor,
+            valor_desconto=Decimal("0.00"),
+            valor_acrescimo=Decimal("0.00"),
+            valor_juros_multa=Decimal("0.00"),
+            valor_pago=Decimal("0.00"),
+            parcela_numero=indice,
+            total_parcelas=ordem.numero_parcelas_financeiro,
+            centro_custo_id=_centro_custo_ordem(ordem),
+            sub_centro_custo_equipe_id=_subcentro_equipe_ordem(ordem),
+            sub_centro_custo_veiculo_id=_subcentro_veiculo_ordem(ordem),
+            status="Aguardando conferencia",
+            observacoes=ordem.observacoes_financeiras,
+            criado_por_usuario_id=getattr(usuario, "id", None),
+            atualizado_por_usuario_id=getattr(usuario, "id", None),
+        )
+        if ordem.tipo_pagamento_financeiro == "Cartao de Credito":
+            titulo.cartao_credito_id = ordem.cartao_credito_id
+            titulo.data_compra_cartao = _data_compra_parcela_cartao(ordem, indice)
+        db.session.add(titulo)
+        db.session.flush()
+        if titulo.tipo_pagamento == "Cartao de Credito":
+            _, fatura = vincular_titulo_a_fatura_cartao(titulo, usuario=usuario)
+            if fatura:
+                titulo.data_vencimento = fatura.data_vencimento
+                titulo.competencia = fatura.competencia
+                faturas_afetadas.add(fatura.id)
+                _registrar_log_financeiro_oc("suprimentos_oc_titulo_vinculado_fatura", f"Titulo {titulo.id} vinculado a fatura {fatura.id}. O.C.: {ordem.id}.")
+        titulos.append(titulo)
+
+    for fatura_id in faturas_afetadas:
+        fatura = next((titulo.fatura_cartao for titulo in titulos if titulo.fatura_cartao_id == fatura_id), None)
+        recalcular_fatura(fatura)
+
+    ordem.financeiro_integrado = True
+    ordem.financeiro_integrado_em = agora_brasil()
+    ordem.financeiro_integrado_por_usuario_id = getattr(usuario, "id", None)
+    ordem.provisionado_financeiro_em = ordem.financeiro_integrado_em
+    ordem.status_financeiro = STATUS_FINANCEIRO_INTEGRADO
     db.session.commit()
-    return True, "Ordem de compra provisionada para o futuro Financeiro."
+    _registrar_log_financeiro_oc("suprimentos_oc_financeiro_gerado", f"Gerados {len(titulos)} titulos financeiros. O.C.: {ordem.id}.")
+    return True, f"Titulos financeiros gerados com sucesso. Total: {len(titulos)}.", titulos
 
 
+def provisionar_financeiro_ordem_compra(ordem, usuario=None):
+    sucesso, mensagem, _titulos = gerar_contas_pagar_ordem_compra(ordem, usuario=usuario)
+    return sucesso, mensagem
+
+
+def indicadores_financeiro_ordens_compra(hoje=None):
+    hoje = hoje or date.today()
+    inicio_mes = hoje.replace(day=1)
+    if hoje.month == 12:
+        inicio_proximo_mes = hoje.replace(year=hoje.year + 1, month=1, day=1)
+    else:
+        inicio_proximo_mes = hoje.replace(month=hoje.month + 1, day=1)
+
+    titulos_conferencia = FinanceiroContaPagarTitulo.query.filter(
+        FinanceiroContaPagarTitulo.origem_lancamento == "Ordem de Compra",
+        FinanceiroContaPagarTitulo.status == "Aguardando conferencia",
+    )
+    valor_integrado_mes = FinanceiroContaPagarTitulo.query.filter(
+        FinanceiroContaPagarTitulo.origem_lancamento == "Ordem de Compra",
+        FinanceiroContaPagarTitulo.criado_em >= inicio_mes,
+        FinanceiroContaPagarTitulo.criado_em < inicio_proximo_mes,
+        FinanceiroContaPagarTitulo.status != "Cancelado",
+    ).with_entities(func.coalesce(func.sum(FinanceiroContaPagarTitulo.valor_original), 0)).scalar()
+
+    ordens = buscar_agendamentos_oc_contas_pagar()
+    prontas = sum(1 for ordem in ordens if status_financeiro_calculado_ordem(ordem) == "Pronto para gerar")
+    pendentes = sum(1 for ordem in ordens if status_financeiro_calculado_ordem(ordem) == "Nao preparado")
+    return {
+        "titulos_oc_conferencia": titulos_conferencia.count(),
+        "valor_oc_integrado_mes": valor_integrado_mes or Decimal("0.00"),
+        "ocs_prontas_gerar": prontas,
+        "ocs_pendencia_financeira": pendentes,
+    }
 def buscar_saldos_estoque(descricao=None, categoria_id=None, somente_abaixo_minimo=False):
     descricao = texto(descricao).upper()
     categoria_id = inteiro_ou_none(categoria_id)
@@ -3648,4 +3922,3 @@ def consultar_cnpj_publico(cnpj):
         return False, "Consulta retornou dados incompletos.", None
 
     return True, "CNPJ consultado com sucesso.", dados_normalizados
-

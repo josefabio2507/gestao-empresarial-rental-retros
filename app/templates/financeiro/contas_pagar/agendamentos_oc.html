@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Financeiro &gt; Contas a Pagar &gt; Agendamentos de O.C.</span>
+            <h1>Agendamentos de O.C.</h1>
+            <p>Ordens de Compra preparadas para gerar titulos no Contas a Pagar.</p>
+        </div>
+        {% include "financeiro/contas_pagar/_nav.html" %}
+    </div>
+
+    <div class="table-card table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Numero da O.C.</th>
+                    <th>Fornecedor</th>
+                    <th>CNPJ/CPF</th>
+                    <th>Data da O.C.</th>
+                    <th>Valor total</th>
+                    <th>Tipo</th>
+                    <th>Forma</th>
+                    <th>Parcelas</th>
+                    <th>Primeiro vencimento</th>
+                    <th>Status O.C.</th>
+                    <th>Status financeiro</th>
+                    <th>Acoes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ordem in ordens %}
+                    {% set status_financeiro = status_financeiro_calculado_ordem(ordem) %}
+                    {% set titulos = titulos_ativos_ordem_compra(ordem) %}
+                    <tr>
+                        <td>{{ ordem.numero }}</td>
+                        <td>{{ ordem.fornecedor_razao_social_snapshot }}</td>
+                        <td>{{ ordem.fornecedor_cnpj_cpf_snapshot or "-" }}</td>
+                        <td>{{ ordem.gerada_em.strftime("%d/%m/%Y") if ordem.gerada_em else "-" }}</td>
+                        <td>{{ formatar_moeda_brl(ordem.valor_total) }}</td>
+                        <td>{{ ordem.tipo_pagamento_financeiro or "-" }}</td>
+                        <td>{{ ordem.forma_pagamento_financeiro or "-" }}</td>
+                        <td>{{ ordem.numero_parcelas_financeiro or ordem.quantidade_parcelas or 1 }}</td>
+                        <td>{{ ordem.data_primeiro_vencimento_financeiro.strftime("%d/%m/%Y") if ordem.data_primeiro_vencimento_financeiro else (ordem.previsao_vencimento.strftime("%d/%m/%Y") if ordem.previsao_vencimento else "-") }}</td>
+                        <td><span class="badge badge-secondary">{{ ordem.status }}</span></td>
+                        <td><span class="badge badge-warning">{{ status_financeiro }}</span></td>
+                        <td class="col-acoes">
+                            <a class="btn btn-secondary" href="{{ url_for('suprimentos_ordens_compra.detalhes', ordem_id=ordem.id) }}">Ver O.C.</a>
+                            {% if titulos %}
+                                <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.titulos', ordem_compra=ordem.id) }}">Ver titulos</a>
+                            {% elif status_financeiro == "Pronto para gerar" %}
+                                <form class="inline-form" method="POST" action="{{ url_for('financeiro_contas_pagar.gerar_agendamento_oc', ordem_id=ordem.id) }}">
+                                    <button class="btn btn-primary" type="submit">Gerar Contas a Pagar</button>
+                                </form>
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr><td class="empty-state" colspan="12">Nenhuma Ordem de Compra aguardando acao financeira.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

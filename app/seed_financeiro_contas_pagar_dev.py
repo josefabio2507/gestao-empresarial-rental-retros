@@ -13,10 +13,29 @@ from app.models import (
     Modulo,
     NivelAcesso,
     PermissaoUsuarioModulo,
+    SuprimentosCategoriaItem,
     SuprimentosFornecedor,
+    SuprimentosFornecedorItem,
+    SuprimentosItem,
+    SuprimentosOrdemCompra,
+    SuprimentosOrdemCompraItem,
+    SuprimentosUnidadeMedida,
     Usuario,
 )
 from app.services.financeiro_contas_pagar_service import salvar_titulo
+from app.services.suprimentos_service import (
+    adicionar_item_requisicao,
+    aprovar_cotacao,
+    enviar_cotacao_para_aprovacao,
+    enviar_requisicao_compra,
+    gerar_ordens_compra_cotacao,
+    preparar_financeiro_ordem_compra,
+    provisionar_financeiro_ordem_compra,
+    salvar_cotacao,
+    salvar_proposta_cotacao,
+    salvar_requisicao_compra,
+    selecionar_proposta_vencedora,
+)
 
 
 def ambiente_local_liberado(app):
@@ -114,6 +133,45 @@ def criar_usuario_demo(modulo):
     permissao.garantir_visualizacao()
     return usuario
 
+
+
+def garantir_modulo_suprimentos_ordens_compra(usuario):
+    departamento = obter_ou_criar(
+        Departamento,
+        {"slug": "suprimentos"},
+        {
+            "nome": "Suprimentos",
+            "descricao": "Compras, fornecedores, requisicoes e ordens de compra.",
+            "icone": "caixa",
+            "ativo": True,
+            "ordem": 2,
+        },
+    )
+    db.session.flush()
+    modulo = obter_ou_criar(
+        Modulo,
+        {"departamento_id": departamento.id, "slug": "ordens_compra"},
+        {
+            "nome": "Ordens de Compra",
+            "descricao": "Controle de ordens de compra.",
+            "icone": None,
+            "ativo": True,
+            "ordem": 9,
+        },
+    )
+    db.session.flush()
+    permissao = PermissaoUsuarioModulo.query.filter_by(usuario_id=usuario.id, modulo_id=modulo.id).first()
+    if not permissao:
+        permissao = PermissaoUsuarioModulo(usuario_id=usuario.id, modulo_id=modulo.id)
+        db.session.add(permissao)
+    permissao.pode_visualizar = True
+    permissao.pode_criar = True
+    permissao.pode_editar = True
+    permissao.pode_excluir = True
+    permissao.pode_exportar = True
+    permissao.ativo = True
+    permissao.garantir_visualizacao()
+    return modulo
 
 def criar_base_demo():
     fornecedores = {}
@@ -241,6 +299,130 @@ def criar_titulo_cartao_demo(chave, usuario, fornecedor, centro, cartao, data_co
         print(f"Falha ao criar titulo de cartao {chave}: {mensagem}")
 
 
+
+def criar_ordem_compra_demo(usuario, fornecedor, centro, cartao=None, com_cartao=False):
+    codigo_item = "OC-DEMO-CARTAO" if com_cartao else "OC-DEMO-FATURADO"
+    categoria = obter_ou_criar(
+        SuprimentosCategoriaItem,
+        {"slug": "demo-financeiro-oc"},
+        {"nome": "DEMO FINANCEIRO OC", "ativo": True},
+    )
+    unidade = obter_ou_criar(
+        SuprimentosUnidadeMedida,
+        {"sigla": "UN"},
+        {"nome": "UNIDADE", "ativo": True},
+    )
+    db.session.flush()
+
+    item = obter_ou_criar(
+        SuprimentosItem,
+        {"codigo_interno": codigo_item},
+        {
+            "descricao": "ITEM FICTICIO INTEGRACAO OC CARTAO" if com_cartao else "ITEM FICTICIO INTEGRACAO OC FATURADO",
+            "categoria_id": categoria.id,
+            "unidade_medida_id": unidade.id,
+            "centro_custo_padrao_id": centro.id,
+            "tipo": "material",
+            "item_estocavel": False,
+            "ativo": True,
+        },
+    )
+    db.session.flush()
+
+    obter_ou_criar(
+        SuprimentosFornecedorItem,
+        {"fornecedor_id": fornecedor.id, "item_id": item.id},
+        {"ativo": True, "fornecedor_preferencial": True},
+    )
+    db.session.flush()
+
+    chave_titulo = "OC-CARTAO-DEMO-01/02" if com_cartao else "OC-FATURADA-DEMO-01/03"
+    titulo_existente = FinanceiroContaPagarTitulo.query.filter_by(numero_documento=chave_titulo).first()
+    if titulo_existente and titulo_existente.ordem_compra:
+        return titulo_existente.ordem_compra
+
+    sucesso, mensagem, requisicao = salvar_requisicao_compra(
+        {"centro_custo_id": str(centro.id), "justificativa": "Teste local da integracao O.C. com Contas a Pagar"},
+        usuario,
+    )
+    if not sucesso:
+        print(f"Falha ao criar requisicao demo O.C.: {mensagem}")
+        return None
+    adicionar_item_requisicao({"item_id": str(item.id), "quantidade": "3" if not com_cartao else "2"}, requisicao)
+    enviar_requisicao_compra(requisicao)
+
+    _, _, cotacao = salvar_cotacao({"requisicao_id": str(requisicao.id), "observacoes": "Cotacao ficticia local"}, usuario)
+    _, _, proposta = salvar_proposta_cotacao(
+        {
+            "requisicao_item_id": str(requisicao.itens[0].id),
+            "fornecedor_id": str(fornecedor.id),
+            "preco_unitario": "333,33" if not com_cartao else "250,00",
+            "prazo_entrega_dias": "5",
+            "condicao_pagamento": "Parcelado",
+            "observacoes": "Dado ficticio local da Missao 17.3",
+        },
+        cotacao,
+    )
+    selecionar_proposta_vencedora({"proposta_id": str(proposta.id)}, cotacao, usuario)
+    enviar_cotacao_para_aprovacao(cotacao, usuario)
+    aprovar_cotacao(cotacao, usuario, {"observacoes_aprovacao": "Aprovacao ficticia local"})
+    _, mensagem_ordem, ordens = gerar_ordens_compra_cotacao(cotacao, usuario)
+    ordem = ordens[0] if ordens else SuprimentosOrdemCompra.query.filter_by(
+        cotacao_id=cotacao.id,
+        fornecedor_id=fornecedor.id,
+    ).first()
+    if not ordem:
+        numero_oc = f"OC-CP-DEMO-{'CARTAO' if com_cartao else 'FATURADO'}-{date.today().strftime('%Y%m%d')}-{fornecedor.id}"
+        ordem = SuprimentosOrdemCompra(
+            numero=numero_oc,
+            cotacao_id=cotacao.id,
+            requisicao_id=requisicao.id,
+            fornecedor_id=fornecedor.id,
+            criado_por_usuario_id=usuario.id,
+            fornecedor_razao_social_snapshot=fornecedor.razao_social,
+            fornecedor_cnpj_cpf_snapshot=fornecedor.cnpj_cpf,
+            condicao_pagamento_snapshot="Parcelado",
+            status="Gerada",
+        )
+        db.session.add(ordem)
+        db.session.flush()
+        db.session.add(
+            SuprimentosOrdemCompraItem(
+                ordem_compra_id=ordem.id,
+                cotacao_proposta_id=proposta.id,
+                requisicao_item_id=requisicao.itens[0].id,
+                item_id=item.id,
+                item_codigo_snapshot=item.codigo_interno,
+                item_descricao_snapshot=item.descricao,
+                unidade_medida_snapshot=unidade.sigla,
+                quantidade=requisicao.itens[0].quantidade,
+                preco_unitario=proposta.preco_unitario,
+                prazo_entrega_dias=proposta.prazo_entrega_dias,
+                observacoes="Dado ficticio local da Missao 17.3.",
+            )
+        )
+        db.session.flush()
+
+    dados_financeiros = {
+        "tipo_pagamento_financeiro": "Cartao de Credito" if com_cartao else "Faturado",
+        "forma_pagamento_financeiro": "Cartao de Credito" if com_cartao else "Boleto",
+        "condicao_pagamento_financeiro": "Parcelado",
+        "data_primeiro_vencimento_financeiro": (date.today() + timedelta(days=20)).isoformat(),
+        "numero_parcelas_financeiro": "2" if com_cartao else "3",
+        "observacoes_financeiras": "Dado ficticio local da Missao 17.3.",
+    }
+    if com_cartao and cartao:
+        dados_financeiros["cartao_credito_id"] = str(cartao.id)
+
+    sucesso, mensagem = preparar_financeiro_ordem_compra(ordem, dados_financeiros)
+    if not sucesso:
+        print(f"Falha ao preparar financeiro da O.C. demo: {mensagem}")
+        return ordem
+    sucesso, mensagem = provisionar_financeiro_ordem_compra(ordem, usuario=usuario)
+    if not sucesso:
+        print(f"Falha ao gerar Contas a Pagar da O.C. demo: {mensagem}")
+    return ordem
+
 def executar_seed():
     app = create_app()
     if not ambiente_local_liberado(app):
@@ -254,6 +436,7 @@ def executar_seed():
 
         _, modulo = garantir_financeiro_contas_pagar()
         usuario = criar_usuario_demo(modulo)
+        garantir_modulo_suprimentos_ordens_compra(usuario)
         fornecedores, centros = criar_base_demo()
         hoje = date.today()
         competencia = hoje.replace(day=1)
@@ -377,8 +560,11 @@ def executar_seed():
             "465,30",
         )
 
+        criar_ordem_compra_demo(usuario, fornecedores["FORNECEDOR DEMO PECAS LTDA"], centros["MANUTENCAO"], com_cartao=False)
+        criar_ordem_compra_demo(usuario, fornecedores["EPI SEGURO DEMO LTDA"], centros["OPERACAO"], cartao=cartao_operacao, com_cartao=True)
+
         db.session.commit()
-        print("Seed dev de Contas a Pagar concluido com dados ficticios da Missao 17.2.")
+        print("Seed dev de Contas a Pagar concluido com dados ficticios das Missoes 17.2 e 17.3.")
         print("Usuario demo: financeiro.demo@rentalretros.local")
         print("Senha demo: Demo@12345")
 

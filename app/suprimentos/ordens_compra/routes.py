@@ -6,6 +6,7 @@ from flask_login import current_user, login_required
 from app.decorators import module_permission_required
 from app.models import (
     CentroCusto,
+    FinanceiroCartaoCredito,
     SuprimentosCotacao,
     SuprimentosFornecedor,
     SuprimentosOrdemCompra,
@@ -27,6 +28,11 @@ from app.services.suprimentos_service import (
     STATUS_ORDEM_COMPRA_PARCIAL,
     STATUS_ORDEM_COMPRA_RECEBIDA,
     STATUS_FINANCEIRO_CANCELADO,
+    STATUS_FINANCEIRO_CONFERENCIA,
+    STATUS_FINANCEIRO_INTEGRADO,
+    CONDICOES_PAGAMENTO_FINANCEIRO_OC,
+    FORMAS_PAGAMENTO_FINANCEIRO_OC,
+    TIPOS_PAGAMENTO_FINANCEIRO_OC,
     STATUS_FINANCEIRO_PENDENTE,
     STATUS_FINANCEIRO_PREPARADO,
     STATUS_FINANCEIRO_PROVISIONADO,
@@ -68,6 +74,8 @@ STATUS_FINANCEIROS_OC = [
     STATUS_FINANCEIRO_PREPARADO,
     STATUS_FINANCEIRO_PROVISIONADO,
     STATUS_FINANCEIRO_CANCELADO,
+    STATUS_FINANCEIRO_CONFERENCIA,
+    STATUS_FINANCEIRO_INTEGRADO,
 ]
 
 
@@ -175,6 +183,10 @@ def detalhes(ordem_id):
             "ordens_compra",
             "editar",
         ),
+        cartoes_credito=FinanceiroCartaoCredito.query.filter_by(ativo=True).order_by(FinanceiroCartaoCredito.nome.asc()).all(),
+        tipos_pagamento_financeiro=TIPOS_PAGAMENTO_FINANCEIRO_OC,
+        formas_pagamento_financeiro=FORMAS_PAGAMENTO_FINANCEIRO_OC,
+        condicoes_pagamento_financeiro=CONDICOES_PAGAMENTO_FINANCEIRO_OC,
         pode_visualizar_fiscal=usuario_tem_permissao(
             current_user,
             "fiscal",
@@ -387,10 +399,10 @@ def provisionar_financeiro(ordem_id):
         flash("Ordem de compra nao encontrada.", "warning")
         return redirect(url_for("suprimentos_ordens_compra.listar"))
 
-    sucesso, mensagem = provisionar_financeiro_ordem_compra(ordem)
+    sucesso, mensagem = provisionar_financeiro_ordem_compra(ordem, usuario=current_user)
 
     if sucesso:
-        registrar_log("suprimentos_oc_financeiro_provisionado", f"Financeiro provisionado. Ordem ID: {ordem.id}.")
+        registrar_log("suprimentos_oc_financeiro_gerado", f"Contas a pagar gerado. Ordem ID: {ordem.id}.")
 
     flash(mensagem, "success" if sucesso else "danger")
     return redirect(url_for("suprimentos_ordens_compra.detalhes", ordem_id=ordem.id))
@@ -512,4 +524,3 @@ def cancelar(ordem_id):
 
     flash(mensagem, "success" if sucesso else "danger")
     return redirect(url_for("suprimentos_ordens_compra.detalhes", ordem_id=ordem.id))
-

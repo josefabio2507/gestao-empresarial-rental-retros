@@ -23,11 +23,16 @@
         <div class="stat-card"><span>Faturas vencendo em 7 dias</span><strong>{{ indicadores.qtd_faturas_7_dias }}</strong></div>
         <div class="stat-card"><span>Cartoes ativos</span><strong>{{ indicadores.qtd_cartoes_ativos }}</strong></div>
         <div class="stat-card"><span>Compras no cartao no mes</span><strong>R$ {{ "%.2f"|format(indicadores.compras_cartao_mes)|replace('.', ',') }}</strong></div>
+        <div class="stat-card"><span>O.C. aguardando conferencia</span><strong>{{ indicadores.titulos_oc_conferencia }}</strong></div>
+        <div class="stat-card"><span>Valor de O.C.s no mes</span><strong>R$ {{ "%.2f"|format(indicadores.valor_oc_integrado_mes)|replace('.', ',') }}</strong></div>
+        <div class="stat-card"><span>O.C.s prontas para gerar</span><strong>{{ indicadores.ocs_prontas_gerar }}</strong></div>
+        <div class="stat-card"><span>O.C.s com pendencia financeira</span><strong>{{ indicadores.ocs_pendencia_financeira }}</strong></div>
     </div>
 
     <div class="page-actions">
         <a class="btn btn-primary" href="{{ url_for('financeiro_contas_pagar.novo') }}">Novo lancamento</a>
         <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.titulos') }}">Ver titulos</a>
+        <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.agendamentos_oc') }}">Agendamentos O.C.</a>
         <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.cartoes') }}">Ver cartoes</a>
         <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.faturas') }}">Ver faturas</a>
         <a class="btn btn-secondary" href="{{ url_for('departamentos.detalhe_departamento', slug_departamento='financeiro') }}">Voltar ao Financeiro</a>
