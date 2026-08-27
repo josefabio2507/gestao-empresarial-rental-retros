@@ -1584,7 +1584,7 @@ class FinanceiroContaPagarTitulo(db.Model):
     )
 
     fornecedor = db.relationship("SuprimentosFornecedor")
-    ordem_compra = db.relationship("SuprimentosOrdemCompra")
+    ordem_compra = db.relationship("SuprimentosOrdemCompra", back_populates="titulos_financeiros")
     fiscal_documento = db.relationship("FiscalDocumento")
     cartao_credito = db.relationship("FinanceiroCartaoCredito", back_populates="titulos")
     fatura_cartao = db.relationship("FinanceiroCartaoFatura", back_populates="titulos")
@@ -2216,9 +2216,28 @@ class SuprimentosOrdemCompra(db.Model):
     status_financeiro = db.Column(db.String(30), default="Pendente de Financeiro", nullable=False, index=True)
     previsao_vencimento = db.Column(db.Date, nullable=True, index=True)
     quantidade_parcelas = db.Column(db.Integer, default=1, nullable=False)
+    tipo_pagamento_financeiro = db.Column(db.String(30), nullable=True, index=True)
+    forma_pagamento_financeiro = db.Column(db.String(30), nullable=True, index=True)
+    condicao_pagamento_financeiro = db.Column(db.String(60), nullable=True)
+    numero_parcelas_financeiro = db.Column(db.Integer, default=1, nullable=False)
+    data_primeiro_vencimento_financeiro = db.Column(db.Date, nullable=True, index=True)
+    cartao_credito_id = db.Column(
+        db.Integer,
+        db.ForeignKey("financeiro_cartoes_credito.id"),
+        nullable=True,
+        index=True,
+    )
     observacoes_financeiras = db.Column(db.Text, nullable=True)
     preparado_financeiro_em = db.Column(db.DateTime, nullable=True)
     provisionado_financeiro_em = db.Column(db.DateTime, nullable=True)
+    financeiro_integrado = db.Column(db.Boolean, default=False, nullable=False, index=True)
+    financeiro_integrado_em = db.Column(db.DateTime, nullable=True)
+    financeiro_integrado_por_usuario_id = db.Column(
+        db.Integer,
+        db.ForeignKey("usuarios.id"),
+        nullable=True,
+        index=True,
+    )
     observacoes = db.Column(db.Text, nullable=True)
     gerada_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
     cancelada_em = db.Column(db.DateTime, nullable=True)
@@ -2235,7 +2254,9 @@ class SuprimentosOrdemCompra(db.Model):
     cotacao = db.relationship("SuprimentosCotacao")
     requisicao = db.relationship("SuprimentosRequisicaoCompra")
     fornecedor = db.relationship("SuprimentosFornecedor")
-    criado_por = db.relationship("Usuario")
+    criado_por = db.relationship("Usuario", foreign_keys=[criado_por_usuario_id])
+    cartao_credito = db.relationship("FinanceiroCartaoCredito")
+    financeiro_integrado_por = db.relationship("Usuario", foreign_keys=[financeiro_integrado_por_usuario_id])
     itens = db.relationship(
         "SuprimentosOrdemCompraItem",
         back_populates="ordem_compra",
@@ -2262,6 +2283,11 @@ class SuprimentosOrdemCompra(db.Model):
         back_populates="ordem_compra",
         order_by="FiscalDocumento.data_emissao.desc()",
     )
+    titulos_financeiros = db.relationship(
+        "FinanceiroContaPagarTitulo",
+        back_populates="ordem_compra",
+        order_by="FinanceiroContaPagarTitulo.parcela_numero",
+    )
 
     __table_args__ = (
         db.UniqueConstraint(
@@ -2274,11 +2300,11 @@ class SuprimentosOrdemCompra(db.Model):
             name="ck_suprimentos_ordens_compra_status",
         ),
         db.CheckConstraint(
-            "status_financeiro in ('Pendente de Financeiro', 'Preparado para Financeiro', 'Provisionado', 'Cancelado')",
+            "status_financeiro in ('Pendente de Financeiro', 'Preparado para Financeiro', 'Provisionado', 'Pendente de conferencia', 'Integrado ao Financeiro', 'Cancelado', 'Divergente')",
             name="ck_suprimentos_ordens_compra_status_financeiro",
         ),
         db.CheckConstraint(
-            "quantidade_parcelas >= 1",
+            "quantidade_parcelas >= 1 and numero_parcelas_financeiro >= 1",
             name="ck_suprimentos_ordens_compra_qtd_parcelas",
         ),
     )
@@ -2969,5 +2995,3 @@ class SegurancaTrabalhoEntregaEpi(db.Model):
 
     def __repr__(self):
         return f"<SegurancaTrabalhoEntregaEpi colaborador={self.colaborador_id} item={self.item_id}>"
-
-

@@ -20,7 +20,7 @@
         <p><strong>Documento:</strong> {{ titulo.numero_documento or "-" }}</p>
         <p><strong>NF-e:</strong> {{ titulo.numero_nfe or "-" }}</p>
         <p><strong>Chave NF-e:</strong> {{ titulo.chave_acesso_nfe or "-" }}</p>
-        <p><strong>Ordem de Compra:</strong> {{ titulo.ordem_compra.numero if titulo.ordem_compra else "-" }}</p>
+        <p><strong>Ordem de Compra:</strong> {% if titulo.ordem_compra %}<a href="{{ url_for('suprimentos_ordens_compra.detalhes', ordem_id=titulo.ordem_compra_id) }}">{{ titulo.ordem_compra.numero }}</a>{% else %}-{% endif %}</p>
         <p><strong>Origem:</strong> {{ titulo.origem_lancamento }}</p>
         <p><strong>Tipo de pagamento:</strong> {{ titulo.tipo_pagamento }}</p>
         <p><strong>Forma de pagamento:</strong> {{ titulo.forma_pagamento }}</p>

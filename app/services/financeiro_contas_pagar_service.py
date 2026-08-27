@@ -293,6 +293,18 @@ def indicadores_dashboard(hoje=None):
         func.coalesce(func.sum(FinanceiroContaPagarTitulo.valor_original), 0)
     ).scalar()
 
+    try:
+        from app.services.suprimentos_service import indicadores_financeiro_ordens_compra
+
+        indicadores_oc = indicadores_financeiro_ordens_compra(hoje=hoje)
+    except Exception:
+        indicadores_oc = {
+            "titulos_oc_conferencia": 0,
+            "valor_oc_integrado_mes": Decimal("0.00"),
+            "ocs_prontas_gerar": 0,
+            "ocs_pendencia_financeira": 0,
+        }
+
     return {
         "total_aberto": total_aberto or Decimal("0.00"),
         "total_vencido": total_vencido or Decimal("0.00"),
@@ -309,6 +321,10 @@ def indicadores_dashboard(hoje=None):
         "qtd_faturas_7_dias": faturas_7_dias,
         "qtd_cartoes_ativos": FinanceiroCartaoCredito.query.filter_by(ativo=True).count(),
         "compras_cartao_mes": compras_cartao_mes or Decimal("0.00"),
+        "titulos_oc_conferencia": indicadores_oc["titulos_oc_conferencia"],
+        "valor_oc_integrado_mes": indicadores_oc["valor_oc_integrado_mes"],
+        "ocs_prontas_gerar": indicadores_oc["ocs_prontas_gerar"],
+        "ocs_pendencia_financeira": indicadores_oc["ocs_pendencia_financeira"],
     }
 
 

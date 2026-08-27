@@ -10,6 +10,9 @@ from app import create_app
 from app.extensions import db
 from app.models import (
     CentroCusto,
+    FinanceiroCartaoCredito,
+    FinanceiroCartaoFatura,
+    FinanceiroContaPagarTitulo,
     Departamento,
     Modulo,
     NivelAcesso,
@@ -29,6 +32,7 @@ from app.models import (
 from app.services.suprimentos_service import (
     STATUS_COTACAO_APROVADA,
     STATUS_FINANCEIRO_CANCELADO,
+    STATUS_FINANCEIRO_INTEGRADO,
     STATUS_FINANCEIRO_PENDENTE,
     STATUS_FINANCEIRO_PREPARADO,
     STATUS_FINANCEIRO_PROVISIONADO,
@@ -336,34 +340,47 @@ class SuprimentosOrdensCompraTestCase(unittest.TestCase):
         _, _, ordens = gerar_ordens_compra_cotacao(cotacao, self.admin)
         ordem = ordens[0]
 
-        sucesso, mensagem = provisionar_financeiro_ordem_compra(ordem)
+        sucesso, mensagem = provisionar_financeiro_ordem_compra(ordem, usuario=self.admin)
         self.assertFalse(sucesso)
-        self.assertEqual("Prepare as parcelas financeiras antes de provisionar.", mensagem)
+        self.assertEqual("Informe o tipo de pagamento financeiro.", mensagem)
 
         sucesso, mensagem = preparar_financeiro_ordem_compra(
             ordem,
             {
-                "previsao_vencimento": "2026-09-15",
-                "quantidade_parcelas": "3",
+                "tipo_pagamento_financeiro": "Faturado",
+                "forma_pagamento_financeiro": "Boleto",
+                "condicao_pagamento_financeiro": "Parcelado",
+                "data_primeiro_vencimento_financeiro": "2026-09-15",
+                "numero_parcelas_financeiro": "3",
                 "observacoes_financeiras": "parcelar compra",
             },
         )
 
         self.assertTrue(sucesso)
-        self.assertEqual("Dados financeiros preparados com sucesso.", mensagem)
+        self.assertEqual("Dados financeiros da O.C. salvos com sucesso.", mensagem)
         self.assertEqual(STATUS_FINANCEIRO_PREPARADO, ordem.status_financeiro)
+        self.assertEqual("Faturado", ordem.tipo_pagamento_financeiro)
+        self.assertEqual("Boleto", ordem.forma_pagamento_financeiro)
         self.assertEqual(3, SuprimentosOrdemCompraParcela.query.filter_by(ordem_compra_id=ordem.id).count())
         self.assertEqual(Decimal("83.67"), ordem.parcelas_financeiras[0].valor_previsto)
         self.assertEqual(Decimal("83.67"), ordem.parcelas_financeiras[1].valor_previsto)
         self.assertEqual(Decimal("83.66"), ordem.parcelas_financeiras[2].valor_previsto)
 
-        sucesso, mensagem = provisionar_financeiro_ordem_compra(ordem)
+        sucesso, mensagem = provisionar_financeiro_ordem_compra(ordem, usuario=self.admin)
 
         self.assertTrue(sucesso)
-        self.assertEqual("Ordem de compra provisionada para o futuro Financeiro.", mensagem)
-        self.assertEqual(STATUS_FINANCEIRO_PROVISIONADO, ordem.status_financeiro)
+        self.assertIn("Titulos financeiros gerados com sucesso", mensagem)
+        self.assertEqual(STATUS_FINANCEIRO_INTEGRADO, ordem.status_financeiro)
+        self.assertTrue(ordem.financeiro_integrado)
         self.assertIsNotNone(ordem.provisionado_financeiro_em)
+        titulos = FinanceiroContaPagarTitulo.query.filter_by(ordem_compra_id=ordem.id).order_by(FinanceiroContaPagarTitulo.parcela_numero).all()
+        self.assertEqual(3, len(titulos))
+        self.assertEqual([Decimal("83.67"), Decimal("83.67"), Decimal("83.66")], [titulo.valor_original for titulo in titulos])
+        self.assertTrue(all(titulo.origem_lancamento == "Ordem de Compra" for titulo in titulos))
 
+        sucesso, mensagem = provisionar_financeiro_ordem_compra(ordem, usuario=self.admin)
+        self.assertFalse(sucesso)
+        self.assertEqual("Esta Ordem de Compra ja possui titulos financeiros gerados.", mensagem)
     def test_listagem_de_ordens_aguardando_financeiro(self):
         cotacao = self._criar_cotacao_aprovada()
         _, _, ordens = gerar_ordens_compra_cotacao(cotacao, self.admin)
@@ -380,7 +397,46 @@ class SuprimentosOrdensCompraTestCase(unittest.TestCase):
         provisionar_financeiro_ordem_compra(ordem)
 
         aguardando = buscar_ordens_aguardando_financeiro()
-        self.assertNotIn(ordem, aguardando)
+        self.assertIn(ordem, aguardando)
+
+
+    def test_ordem_compra_com_cartao_gera_titulos_e_faturas(self):
+        cartao = FinanceiroCartaoCredito(
+            nome="Cartao Administrativo",
+            banco="Banco Teste",
+            bandeira="Visa",
+            ultimos_4_digitos="1234",
+            dia_fechamento=20,
+            dia_vencimento=28,
+            limite=Decimal("5000.00"),
+            ativo=True,
+        )
+        db.session.add(cartao)
+        db.session.commit()
+
+        ordem = self._criar_ordem_compra()
+        sucesso, mensagem = preparar_financeiro_ordem_compra(
+            ordem,
+            {
+                "tipo_pagamento_financeiro": "Cartao de Credito",
+                "forma_pagamento_financeiro": "Cartao de Credito",
+                "condicao_pagamento_financeiro": "Parcelado",
+                "data_primeiro_vencimento_financeiro": "2026-09-15",
+                "numero_parcelas_financeiro": "2",
+                "cartao_credito_id": str(cartao.id),
+            },
+        )
+        self.assertTrue(sucesso, mensagem)
+
+        sucesso, mensagem = provisionar_financeiro_ordem_compra(ordem, usuario=self.admin)
+
+        self.assertTrue(sucesso, mensagem)
+        titulos = FinanceiroContaPagarTitulo.query.filter_by(ordem_compra_id=ordem.id).all()
+        self.assertEqual(2, len(titulos))
+        self.assertTrue(all(titulo.cartao_credito_id == cartao.id for titulo in titulos))
+        self.assertTrue(all(titulo.fatura_cartao_id for titulo in titulos))
+        self.assertEqual(2, FinanceiroCartaoFatura.query.filter_by(cartao_credito_id=cartao.id).count())
+        self.assertEqual(sum((titulo.valor_original for titulo in titulos), Decimal("0.00")), ordem.valor_total)
 
     def test_nao_gera_ordem_compra_duplicada_para_mesma_cotacao(self):
         cotacao = self._criar_cotacao_aprovada()

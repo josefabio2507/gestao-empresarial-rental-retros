@@ -2,6 +2,7 @@ from flask import flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from app.decorators import module_permission_required
+from app.models import SuprimentosOrdemCompra
 from app.services.financeiro_contas_pagar_service import (
     FORMAS_PAGAMENTO,
     ORIGENS_LANCAMENTO,
@@ -21,6 +22,14 @@ from app.services.financeiro_contas_pagar_service import (
     listar_titulos,
     salvar_cartao,
     salvar_titulo,
+)
+from app.services.suprimentos_service import (
+    buscar_agendamentos_oc_contas_pagar,
+    buscar_por_id,
+    formatar_moeda_brl,
+    gerar_contas_pagar_ordem_compra,
+    status_financeiro_calculado_ordem,
+    titulos_ativos_ordem_compra,
 )
 from app.services.logs_service import registrar_log
 from app.financeiro.contas_pagar import financeiro_contas_pagar_bp
@@ -71,6 +80,36 @@ def novo():
         modo="novo",
         opcoes=buscar_opcoes_formulario(),
     )
+
+
+
+@financeiro_contas_pagar_bp.route("/agendamentos-oc")
+@login_required
+@module_permission_required("financeiro", "contas_a_pagar", "visualizar")
+def agendamentos_oc():
+    return render_template(
+        "financeiro/contas_pagar/agendamentos_oc.html",
+        ordens=buscar_agendamentos_oc_contas_pagar(),
+        formatar_moeda_brl=formatar_moeda_brl,
+        status_financeiro_calculado_ordem=status_financeiro_calculado_ordem,
+        titulos_ativos_ordem_compra=titulos_ativos_ordem_compra,
+    )
+
+
+@financeiro_contas_pagar_bp.route("/agendamentos-oc/<int:ordem_id>/gerar", methods=["POST"])
+@login_required
+@module_permission_required("financeiro", "contas_a_pagar", "criar")
+def gerar_agendamento_oc(ordem_id):
+    ordem = buscar_por_id(SuprimentosOrdemCompra, ordem_id)
+    if not ordem:
+        flash("Ordem de compra nao encontrada.", "warning")
+        return redirect(url_for("financeiro_contas_pagar.agendamentos_oc"))
+
+    sucesso, mensagem, titulos = gerar_contas_pagar_ordem_compra(ordem, usuario=current_user)
+    if sucesso:
+        registrar_log("financeiro_contas_pagar_oc_gerado", f"Contas a pagar gerado por O.C. ID: {ordem.id}. Titulos: {len(titulos)}.")
+    flash(mensagem, "success" if sucesso else "danger")
+    return redirect(url_for("financeiro_contas_pagar.agendamentos_oc"))
 
 
 @financeiro_contas_pagar_bp.route("/cartoes")
