@@ -86,12 +86,12 @@ def upgrade():
 
     inspector = sa.inspect(bind)
     for nome, tabela, colunas in [
-        ("ix_suprimentos_ordens_compra_tipo_pagamento_financeiro", T_OC, ["tipo_pagamento_financeiro"]),
-        ("ix_suprimentos_ordens_compra_forma_pagamento_financeiro", T_OC, ["forma_pagamento_financeiro"]),
-        ("ix_suprimentos_ordens_compra_data_primeiro_vencimento_financeiro", T_OC, ["data_primeiro_vencimento_financeiro"]),
-        ("ix_suprimentos_ordens_compra_cartao_credito_id", T_OC, ["cartao_credito_id"]),
-        ("ix_suprimentos_ordens_compra_financeiro_integrado", T_OC, ["financeiro_integrado"]),
-        ("ix_suprimentos_ordens_compra_financeiro_integrado_por_usuario_id", T_OC, ["financeiro_integrado_por_usuario_id"]),
+        ("ix_soc_tipo_pag_fin", T_OC, ["tipo_pagamento_financeiro"]),
+        ("ix_soc_forma_pag_fin", T_OC, ["forma_pagamento_financeiro"]),
+        ("ix_soc_prim_venc_fin", T_OC, ["data_primeiro_vencimento_financeiro"]),
+        ("ix_soc_cartao_cred_id", T_OC, ["cartao_credito_id"]),
+        ("ix_soc_fin_integrado", T_OC, ["financeiro_integrado"]),
+        ("ix_soc_fin_int_usuario_id", T_OC, ["financeiro_integrado_por_usuario_id"]),
         ("ix_financeiro_cp_ordem_compra_id", T_TITULOS, ["ordem_compra_id"]),
         ("ix_financeiro_cp_origem_lancamento", T_TITULOS, ["origem_lancamento"]),
         ("ix_financeiro_cp_status", T_TITULOS, ["status"]),
@@ -110,12 +110,12 @@ def downgrade():
         ("ix_financeiro_cp_status", T_TITULOS),
         ("ix_financeiro_cp_origem_lancamento", T_TITULOS),
         ("ix_financeiro_cp_ordem_compra_id", T_TITULOS),
-        ("ix_suprimentos_ordens_compra_financeiro_integrado_por_usuario_id", T_OC),
-        ("ix_suprimentos_ordens_compra_financeiro_integrado", T_OC),
-        ("ix_suprimentos_ordens_compra_cartao_credito_id", T_OC),
-        ("ix_suprimentos_ordens_compra_data_primeiro_vencimento_financeiro", T_OC),
-        ("ix_suprimentos_ordens_compra_forma_pagamento_financeiro", T_OC),
-        ("ix_suprimentos_ordens_compra_tipo_pagamento_financeiro", T_OC),
+        ("ix_soc_fin_int_usuario_id", T_OC),
+        ("ix_soc_fin_integrado", T_OC),
+        ("ix_soc_cartao_cred_id", T_OC),
+        ("ix_soc_prim_venc_fin", T_OC),
+        ("ix_soc_forma_pag_fin", T_OC),
+        ("ix_soc_tipo_pag_fin", T_OC),
     ]:
         if tabela in inspector.get_table_names() and nome in _indices(inspector, tabela):
             op.drop_index(nome, table_name=tabela)
@@ -137,3 +137,4 @@ def downgrade():
             ]:
                 if coluna in colunas:
                     batch_op.drop_column(coluna)
+
