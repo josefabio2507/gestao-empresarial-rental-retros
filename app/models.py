@@ -1585,7 +1585,7 @@ class FinanceiroContaPagarTitulo(db.Model):
 
     fornecedor = db.relationship("SuprimentosFornecedor")
     ordem_compra = db.relationship("SuprimentosOrdemCompra", back_populates="titulos_financeiros")
-    fiscal_documento = db.relationship("FiscalDocumento")
+    fiscal_documento = db.relationship("FiscalDocumento", back_populates="titulos_financeiros")
     cartao_credito = db.relationship("FinanceiroCartaoCredito", back_populates="titulos")
     fatura_cartao = db.relationship("FinanceiroCartaoFatura", back_populates="titulos")
     centro_custo = db.relationship("CentroCusto")
@@ -2414,6 +2414,24 @@ class FiscalDocumento(db.Model):
     )
     xml_completo_baixado_em = db.Column(db.DateTime, nullable=True)
     ultima_consulta_em = db.Column(db.DateTime, nullable=True)
+    financeiro_status = db.Column(db.String(40), default="Pendente de geracao", nullable=False, index=True)
+    financeiro_integrado = db.Column(db.Boolean, default=False, nullable=False, index=True)
+    financeiro_integrado_em = db.Column(db.DateTime, nullable=True)
+    financeiro_integrado_por_usuario_id = db.Column(
+        db.Integer,
+        db.ForeignKey("usuarios.id"),
+        nullable=True,
+        index=True,
+    )
+    financeiro_ignorado = db.Column(db.Boolean, default=False, nullable=False, index=True)
+    financeiro_ignorado_em = db.Column(db.DateTime, nullable=True)
+    financeiro_ignorado_por_usuario_id = db.Column(
+        db.Integer,
+        db.ForeignKey("usuarios.id"),
+        nullable=True,
+        index=True,
+    )
+    financeiro_observacoes = db.Column(db.Text, nullable=True)
     status = db.Column(db.String(40), default="XML baixado", nullable=False, index=True)
     ordem_compra_id = db.Column(
         db.Integer,
@@ -2438,8 +2456,11 @@ class FiscalDocumento(db.Model):
     )
 
     ordem_compra = db.relationship("SuprimentosOrdemCompra", back_populates="documentos_fiscais")
+    titulos_financeiros = db.relationship("FinanceiroContaPagarTitulo", back_populates="fiscal_documento")
     vinculado_por = db.relationship("Usuario", foreign_keys=[vinculado_por_usuario_id])
     manifestado_por = db.relationship("Usuario", foreign_keys=[manifestado_por_usuario_id])
+    financeiro_integrado_por = db.relationship("Usuario", foreign_keys=[financeiro_integrado_por_usuario_id])
+    financeiro_ignorado_por = db.relationship("Usuario", foreign_keys=[financeiro_ignorado_por_usuario_id])
     manifestacoes = db.relationship(
         "FiscalManifestacaoNFe",
         back_populates="documento",

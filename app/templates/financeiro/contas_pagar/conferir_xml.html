@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Financeiro &gt; Contas a Pagar &gt; Conferir XML</span>
+            <h1>Conferir XML Fiscal</h1>
+            <p>NF-e {{ documento.numero }} - {{ documento.emitente_nome }}</p>
+        </div>
+        {% include "financeiro/contas_pagar/_nav.html" %}
+    </div>
+
+    <div class="details-card">
+        <p><strong>Status financeiro:</strong> <span class="badge badge-warning">{{ status_financeiro }}</span></p>
+        <p><strong>NF-e:</strong> {{ documento.numero }} / Serie {{ documento.serie or "-" }}</p>
+        <p><strong>Chave:</strong> {{ documento.chave_acesso }}</p>
+        <p><strong>Fornecedor:</strong> {{ documento.emitente_nome }} - {{ documento.emitente_cnpj }}</p>
+        <p><strong>Emissao:</strong> {{ documento.data_emissao.strftime("%d/%m/%Y") if documento.data_emissao else "-" }}</p>
+        <p><strong>Valor total:</strong> {{ formatar_moeda_brl(documento.valor_total) }}</p>
+        <p><strong>Ordem de Compra:</strong> {% if documento.ordem_compra %}<a href="{{ url_for('suprimentos_ordens_compra.detalhes', ordem_id=documento.ordem_compra_id) }}">{{ documento.ordem_compra.numero }}</a>{% else %}-{% endif %}</p>
+        <p><strong>Arquivos:</strong> {% if documento.xml_path %}<a href="{{ url_for('fiscal.baixar_xml', documento_id=documento.id) }}">XML</a>{% endif %} {% if documento.danfe_path %}<a href="{{ url_for('fiscal.baixar_danfe', documento_id=documento.id) }}">DANFE</a>{% endif %}</p>
+    </div>
+
+    {% if titulos %}
+        <div class="table-card table-responsive">
+            <h2>Titulos ja gerados</h2>
+            <table class="table"><thead><tr><th>Parcela</th><th>Vencimento</th><th>Valor</th><th>Status</th><th>Acoes</th></tr></thead><tbody>
+                {% for titulo in titulos %}<tr><td>{{ titulo.parcela_numero }}/{{ titulo.total_parcelas }}</td><td>{{ titulo.data_vencimento.strftime("%d/%m/%Y") }}</td><td>{{ formatar_moeda_brl(titulo.valor_original) }}</td><td>{{ titulo.status }}</td><td><a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.detalhes', titulo_id=titulo.id) }}">Ver titulo</a></td></tr>{% endfor %}
+            </tbody></table>
+        </div>
+    {% else %}
+        <form class="form-card" method="POST">
+            <h2>Dados financeiros</h2>
+            <div class="form-grid">
+                <div class="form-group"><label for="tipo_pagamento">Tipo de pagamento</label><select id="tipo_pagamento" name="tipo_pagamento" required>{% for tipo in opcoes.tipos_pagamento %}<option value="{{ tipo }}" {{ "selected" if padrao.tipo_pagamento == tipo else "" }}>{{ tipo }}</option>{% endfor %}</select></div>
+                <div class="form-group"><label for="forma_pagamento">Forma de pagamento</label><select id="forma_pagamento" name="forma_pagamento" required>{% for forma in opcoes.formas_pagamento %}<option value="{{ forma }}" {{ "selected" if padrao.forma_pagamento == forma else "" }}>{{ forma }}</option>{% endfor %}</select></div>
+                <div class="form-group"><label for="condicao_pagamento">Condicao de pagamento</label><select id="condicao_pagamento" name="condicao_pagamento">{% for condicao in opcoes.condicoes_pagamento %}<option value="{{ condicao }}" {{ "selected" if padrao.condicao_pagamento == condicao else "" }}>{{ condicao }}</option>{% endfor %}</select></div>
+                <div class="form-group"><label for="numero_parcelas">Parcelas</label><input id="numero_parcelas" name="numero_parcelas" type="number" min="1" value="{{ padrao.numero_parcelas }}" required></div>
+                <div class="form-group"><label for="data_primeiro_vencimento">Primeiro vencimento</label><input id="data_primeiro_vencimento" name="data_primeiro_vencimento" type="date" value="{{ padrao.data_primeiro_vencimento.strftime('%Y-%m-%d') if padrao.data_primeiro_vencimento else '' }}" required></div>
+                <div class="form-group"><label for="cartao_credito_id">Cartao de credito</label><select id="cartao_credito_id" name="cartao_credito_id"><option value="">Nao usar</option>{% for cartao in opcoes.cartoes_credito %}<option value="{{ cartao.id }}" {{ "selected" if padrao.cartao_credito_id == cartao.id else "" }}>{{ cartao.identificacao_segura }}</option>{% endfor %}</select></div>
+                <div class="form-group"><label for="centro_custo_id">Centro de custo</label><select id="centro_custo_id" name="centro_custo_id"><option value="">Nao informado</option>{% for centro in opcoes.centros_custo %}<option value="{{ centro.id }}" {{ "selected" if padrao.centro_custo_id == centro.id else "" }}>{{ centro.nome }}</option>{% endfor %}</select></div>
+                <div class="form-group form-group-full"><label for="observacoes">Observacoes financeiras</label><textarea id="observacoes" name="observacoes">{{ padrao.observacoes }}</textarea></div>
+            </div>
+            <div class="form-actions"><button class="btn btn-primary" type="submit">Gerar titulos</button><a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.agendamentos_xml') }}">Voltar</a></div>
+        </form>
+    {% endif %}
+</section>
+{% endblock %}

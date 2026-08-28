@@ -1,5 +1,5 @@
 import os
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 from sqlalchemy import inspect as sa_inspect
 
@@ -10,6 +10,7 @@ from app.models import (
     Departamento,
     FinanceiroCartaoCredito,
     FinanceiroContaPagarTitulo,
+    FiscalDocumento,
     Modulo,
     NivelAcesso,
     PermissaoUsuarioModulo,
@@ -22,7 +23,7 @@ from app.models import (
     SuprimentosUnidadeMedida,
     Usuario,
 )
-from app.services.financeiro_contas_pagar_service import salvar_titulo
+from app.services.financeiro_contas_pagar_service import gerar_contas_pagar_xml, salvar_titulo
 from app.services.suprimentos_service import (
     adicionar_item_requisicao,
     aprovar_cotacao,
@@ -172,6 +173,27 @@ def garantir_modulo_suprimentos_ordens_compra(usuario):
     permissao.ativo = True
     permissao.garantir_visualizacao()
     return modulo
+
+def conceder_acesso_demo_sistema_completo(usuario):
+    """Libera todos os modulos ativos para o usuario demo local."""
+    modulos = Modulo.query.filter_by(ativo=True).all()
+    for modulo in modulos:
+        permissao = PermissaoUsuarioModulo.query.filter_by(
+            usuario_id=usuario.id,
+            modulo_id=modulo.id,
+        ).first()
+        if not permissao:
+            permissao = PermissaoUsuarioModulo(usuario_id=usuario.id, modulo_id=modulo.id)
+            db.session.add(permissao)
+
+        permissao.pode_visualizar = True
+        permissao.pode_criar = True
+        permissao.pode_editar = True
+        permissao.pode_excluir = True
+        permissao.pode_aprovar = True
+        permissao.pode_exportar = True
+        permissao.ativo = True
+        permissao.garantir_visualizacao()
 
 def criar_base_demo():
     fornecedores = {}
@@ -341,6 +363,11 @@ def criar_ordem_compra_demo(usuario, fornecedor, centro, cartao=None, com_cartao
     if titulo_existente and titulo_existente.ordem_compra:
         return titulo_existente.ordem_compra
 
+    numero_oc_demo = f"OC-CP-DEMO-{'CARTAO' if com_cartao else 'FATURADO'}-{date.today().strftime('%Y%m%d')}-{fornecedor.id}"
+    ordem_existente = SuprimentosOrdemCompra.query.filter_by(numero=numero_oc_demo).first()
+    if ordem_existente:
+        return ordem_existente
+
     sucesso, mensagem, requisicao = salvar_requisicao_compra(
         {"centro_custo_id": str(centro.id), "justificativa": "Teste local da integracao O.C. com Contas a Pagar"},
         usuario,
@@ -372,9 +399,8 @@ def criar_ordem_compra_demo(usuario, fornecedor, centro, cartao=None, com_cartao
         fornecedor_id=fornecedor.id,
     ).first()
     if not ordem:
-        numero_oc = f"OC-CP-DEMO-{'CARTAO' if com_cartao else 'FATURADO'}-{date.today().strftime('%Y%m%d')}-{fornecedor.id}"
         ordem = SuprimentosOrdemCompra(
-            numero=numero_oc,
+            numero=numero_oc_demo,
             cotacao_id=cotacao.id,
             requisicao_id=requisicao.id,
             fornecedor_id=fornecedor.id,
@@ -423,6 +449,48 @@ def criar_ordem_compra_demo(usuario, fornecedor, centro, cartao=None, com_cartao
         print(f"Falha ao gerar Contas a Pagar da O.C. demo: {mensagem}")
     return ordem
 
+
+def criar_documento_fiscal_demo(chave, fornecedor, dados):
+    documento = FiscalDocumento.query.filter_by(chave_acesso=chave).first()
+    emissao = dados.get("data_emissao") or datetime.combine(date.today(), datetime.min.time())
+    if isinstance(emissao, date) and not isinstance(emissao, datetime):
+        emissao = datetime.combine(emissao, datetime.min.time())
+
+    if not documento:
+        documento = FiscalDocumento(
+            chave_acesso=chave,
+            emitente_nome=fornecedor.razao_social,
+            emitente_cnpj=fornecedor.cnpj_cpf,
+            destinatario_nome="RENTAL RETROS DEMO",
+            destinatario_cnpj="12345678000190",
+            valor_total=dados["valor_total"],
+        )
+        db.session.add(documento)
+
+    documento.nsu = dados.get("nsu")
+    documento.modelo = "55"
+    documento.serie = dados.get("serie", "1")
+    documento.numero = dados["numero"]
+    documento.natureza_operacao = dados.get("natureza_operacao", "VENDA MERCADORIA DEMO")
+    documento.data_emissao = emissao
+    documento.emitente_nome = fornecedor.razao_social
+    documento.emitente_cnpj = fornecedor.cnpj_cpf
+    documento.destinatario_nome = "RENTAL RETROS DEMO"
+    documento.destinatario_cnpj = "12345678000190"
+    documento.valor_total = dados["valor_total"]
+    documento.xml_path = dados.get("xml_path", f"local/demo/{chave}.xml")
+    documento.danfe_path = dados.get("danfe_path", f"local/demo/{chave}.pdf")
+    documento.tipo_distribuicao = "procNFe"
+    documento.tem_xml_completo = True
+    documento.manifestacao_status = dados.get("manifestacao_status", "Ciencia registrada")
+    documento.status = dados.get("status", "XML baixado")
+    documento.ordem_compra_id = dados.get("ordem_compra_id")
+    documento.financeiro_status = dados.get("financeiro_status", "Pendente de geracao")
+    documento.financeiro_integrado = dados.get("financeiro_integrado", False)
+    documento.financeiro_ignorado = dados.get("financeiro_ignorado", False)
+    documento.financeiro_observacoes = dados.get("financeiro_observacoes")
+    return documento
+
 def executar_seed():
     app = create_app()
     if not ambiente_local_liberado(app):
@@ -434,9 +502,13 @@ def executar_seed():
         if "departamentos" not in inspector.get_table_names():
             db.create_all()
 
+        from app.seed_modulos_base_producao import executar_seed as executar_seed_modulos_base
+
+        executar_seed_modulos_base()
         _, modulo = garantir_financeiro_contas_pagar()
         usuario = criar_usuario_demo(modulo)
         garantir_modulo_suprimentos_ordens_compra(usuario)
+        conceder_acesso_demo_sistema_completo(usuario)
         fornecedores, centros = criar_base_demo()
         hoje = date.today()
         competencia = hoje.replace(day=1)
@@ -560,14 +632,67 @@ def executar_seed():
             "465,30",
         )
 
-        criar_ordem_compra_demo(usuario, fornecedores["FORNECEDOR DEMO PECAS LTDA"], centros["MANUTENCAO"], com_cartao=False)
+        ordem_faturada = criar_ordem_compra_demo(usuario, fornecedores["FORNECEDOR DEMO PECAS LTDA"], centros["MANUTENCAO"], com_cartao=False)
         criar_ordem_compra_demo(usuario, fornecedores["EPI SEGURO DEMO LTDA"], centros["OPERACAO"], cartao=cartao_operacao, com_cartao=True)
 
+        criar_documento_fiscal_demo(
+            "35260811222333000181550010000174011000174011",
+            fornecedores["FORNECEDOR DEMO PECAS LTDA"],
+            {
+                "numero": "17401",
+                "serie": "1",
+                "data_emissao": hoje - timedelta(days=1),
+                "valor_total": 1490.75,
+                "financeiro_status": "Pendente de conferencia",
+            },
+        )
+        if ordem_faturada:
+            criar_documento_fiscal_demo(
+                "35260811222333000181550010000174021000174022",
+                fornecedores["FORNECEDOR DEMO PECAS LTDA"],
+                {
+                    "numero": "17402",
+                    "serie": "1",
+                    "data_emissao": hoje - timedelta(days=2),
+                    "valor_total": ordem_faturada.valor_total,
+                    "ordem_compra_id": ordem_faturada.id,
+                    "financeiro_status": "Ja integrado via O.C.",
+                },
+            )
+        xml_gerado = criar_documento_fiscal_demo(
+            "35260819131243000197550010000174031000174033",
+            fornecedores["SERVICOS HIDRAULICOS DEMO ME"],
+            {
+                "numero": "17403",
+                "serie": "1",
+                "data_emissao": hoje - timedelta(days=4),
+                "valor_total": 960.00,
+                "financeiro_status": "Pendente de geracao",
+            },
+        )
+        db.session.flush()
+        if not FinanceiroContaPagarTitulo.query.filter_by(fiscal_documento_id=xml_gerado.id).first():
+            gerar_contas_pagar_xml(
+                xml_gerado,
+                {
+                    "tipo_pagamento": "Faturado",
+                    "forma_pagamento": "Boleto",
+                    "condicao_pagamento": "Parcelado",
+                    "numero_parcelas": "2",
+                    "data_primeiro_vencimento": (hoje + timedelta(days=15)).isoformat(),
+                    "centro_custo_id": str(centros["MANUTENCAO"].id),
+                    "observacoes": "Dado ficticio local da Missao 17.4.",
+                },
+                usuario=usuario,
+            )
+
         db.session.commit()
-        print("Seed dev de Contas a Pagar concluido com dados ficticios das Missoes 17.2 e 17.3.")
+        print("Seed dev de Contas a Pagar concluido com dados ficticios das Missoes 17.2, 17.3 e 17.4.")
         print("Usuario demo: financeiro.demo@rentalretros.local")
         print("Senha demo: Demo@12345")
 
 
 if __name__ == "__main__":
     executar_seed()
+
+

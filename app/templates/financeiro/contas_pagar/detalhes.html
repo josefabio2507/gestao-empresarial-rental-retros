@@ -20,6 +20,8 @@
         <p><strong>Documento:</strong> {{ titulo.numero_documento or "-" }}</p>
         <p><strong>NF-e:</strong> {{ titulo.numero_nfe or "-" }}</p>
         <p><strong>Chave NF-e:</strong> {{ titulo.chave_acesso_nfe or "-" }}</p>
+        <p><strong>XML Fiscal:</strong> {% if titulo.fiscal_documento %}NF-e {{ titulo.fiscal_documento.numero }}{% else %}-{% endif %}</p>
+        <p><strong>Arquivos fiscais:</strong> {% if titulo.fiscal_documento and titulo.fiscal_documento.xml_path %}<a href="{{ url_for('fiscal.baixar_xml', documento_id=titulo.fiscal_documento_id) }}">XML</a>{% endif %} {% if titulo.fiscal_documento and titulo.fiscal_documento.danfe_path %}<a href="{{ url_for('fiscal.baixar_danfe', documento_id=titulo.fiscal_documento_id) }}">DANFE</a>{% endif %}</p>
         <p><strong>Ordem de Compra:</strong> {% if titulo.ordem_compra %}<a href="{{ url_for('suprimentos_ordens_compra.detalhes', ordem_id=titulo.ordem_compra_id) }}">{{ titulo.ordem_compra.numero }}</a>{% else %}-{% endif %}</p>
         <p><strong>Origem:</strong> {{ titulo.origem_lancamento }}</p>
         <p><strong>Tipo de pagamento:</strong> {{ titulo.tipo_pagamento }}</p>

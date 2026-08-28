@@ -115,6 +115,7 @@
                         <th>Manifestação</th>
                         <th>XML</th>
                         <th>O.C.</th>
+                        <th>Financeiro</th>
                         <th>Ações</th>
                     </tr>
                 </thead>
@@ -144,6 +145,12 @@
                                 {% endif %}
                             </td>
                             <td>{{ documento.ordem_compra.numero if documento.ordem_compra else "-" }}</td>
+                            {% set titulos_fin = titulos_ativos_documento_fiscal(documento) %}
+                            {% set status_fin = status_financeiro_xml(documento) %}
+                            <td>
+                                <span class="badge {{ 'badge-success' if status_fin in ['Titulos gerados', 'Ja integrado via O.C.'] else 'badge-warning' if status_fin != 'Ignorado' else 'badge-secondary' }}">{{ status_fin }}</span>
+                                {% if titulos_fin %}<br><small>{{ titulos_fin|length }} titulo(s)</small>{% endif %}
+                            </td>
                             <td class="col-acoes">
                                 {% if not documento.tem_xml_completo %}
                                     {% if not manifestacao_registrada %}
@@ -163,6 +170,11 @@
                                         </form>
                                     {% endif %}
                                 {% endif %}
+                                {% if titulos_fin %}
+                                    <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.titulos', numero_nfe=documento.numero) }}">Titulos</a>
+                                {% elif status_fin in ['Pendente de geracao', 'Pendente de conferencia'] %}
+                                    <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.conferir_xml', documento_id=documento.id) }}">Financeiro</a>
+                                {% endif %}
                                 {% if documento.xml_path and documento.danfe_path %}
                                     <button
                                         class="btn btn-secondary"
@@ -179,7 +191,7 @@
                             </td>
                         </tr>
                     {% else %}
-                        <tr><td class="empty-state" colspan="11">Nenhum documento fiscal encontrado.</td></tr>
+                        <tr><td class="empty-state" colspan="12">Nenhum documento fiscal encontrado.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
