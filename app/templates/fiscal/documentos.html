@@ -149,7 +149,7 @@
                             {% set status_fin = status_financeiro_xml(documento) %}
                             <td>
                                 <span class="badge {{ 'badge-success' if status_fin in ['Titulos gerados', 'Ja integrado via O.C.'] else 'badge-warning' if status_fin != 'Ignorado' else 'badge-secondary' }}">{{ status_fin }}</span>
-                                {% if titulos_fin %}<br><small>{{ titulos_fin|length }} titulo(s)</small>{% endif %}
+                                {% if titulos_fin %}<br><small>{{ titulos_fin|length }} titulo(s)</small>{% for titulo_fin in titulos_fin %}<br><small>#{{ titulo_fin.id }}: pago R$ {{ "%.2f"|format(titulo_fin.valor_pago)|replace(".", ",") }} | saldo R$ {{ "%.2f"|format(titulo_fin.saldo_aberto)|replace(".", ",") }}</small>{% endfor %}{% endif %}
                             </td>
                             <td class="col-acoes">
                                 {% if not documento.tem_xml_completo %}
@@ -266,3 +266,4 @@
     });
 </script>
 {% endblock %}
+

@@ -9,6 +9,7 @@ from app.models import (
     CentroCusto,
     Departamento,
     FinanceiroCartaoCredito,
+    FinanceiroContaPagarBaixa,
     FinanceiroContaPagarTitulo,
     FiscalDocumento,
     Modulo,
@@ -23,7 +24,7 @@ from app.models import (
     SuprimentosUnidadeMedida,
     Usuario,
 )
-from app.services.financeiro_contas_pagar_service import gerar_contas_pagar_xml, salvar_titulo
+from app.services.financeiro_contas_pagar_service import gerar_contas_pagar_xml, recalcular_pagamento_titulo, registrar_baixa_titulo, salvar_titulo
 from app.services.suprimentos_service import (
     adicionar_item_requisicao,
     aprovar_cotacao,
@@ -286,6 +287,32 @@ def criar_titulo_demo(chave, usuario, fornecedor, centro, dados):
     return titulo
 
 
+
+def criar_baixa_demo(titulo, usuario, valor, forma, observacoes, dias_atras=0):
+    if not titulo:
+        return None
+    baixa = FinanceiroContaPagarBaixa.query.filter_by(
+        titulo_id=titulo.id,
+        observacoes=observacoes,
+    ).first()
+    if baixa:
+        recalcular_pagamento_titulo(titulo, usuario=usuario)
+        return baixa
+    sucesso, mensagem, baixa = registrar_baixa_titulo(
+        titulo,
+        {
+            "data_pagamento": (date.today() - timedelta(days=dias_atras)).isoformat(),
+            "valor_pago": str(valor).replace(".", ","),
+            "forma_pagamento": forma,
+            "conta_pagamento_descricao": "Conta demo local",
+            "observacoes": observacoes,
+        },
+        usuario=usuario,
+    )
+    if not sucesso:
+        print(f"Falha ao criar baixa demo: {mensagem}")
+    return baixa
+
 def criar_titulo_cartao_demo(chave, usuario, fornecedor, centro, cartao, data_compra, descricao, valor, parcela=1, total=1):
     titulo = FinanceiroContaPagarTitulo.query.filter_by(numero_documento=chave).first()
     sucesso, mensagem, _ = salvar_titulo(
@@ -513,7 +540,7 @@ def executar_seed():
         hoje = date.today()
         competencia = hoje.replace(day=1)
 
-        criar_titulo_demo(
+        titulo_vencido = criar_titulo_demo(
             "CP-DEMO-001",
             usuario,
             fornecedores["FORNECEDOR DEMO PECAS LTDA"],
@@ -530,7 +557,7 @@ def executar_seed():
                 "observacoes": "Titulo demo vencido para validar indicador visual.",
             },
         )
-        criar_titulo_demo(
+        titulo_conferencia = criar_titulo_demo(
             "CP-DEMO-002",
             usuario,
             fornecedores["EPI SEGURO DEMO LTDA"],
@@ -547,7 +574,7 @@ def executar_seed():
                 "observacoes": "Titulo demo aguardando conferencia.",
             },
         )
-        criar_titulo_demo(
+        titulo_parcelado = criar_titulo_demo(
             "CP-DEMO-003",
             usuario,
             fornecedores["SERVICOS HIDRAULICOS DEMO ME"],
@@ -565,6 +592,10 @@ def executar_seed():
                 "status": "Agendado",
             },
         )
+
+        db.session.flush()
+        criar_baixa_demo(titulo_vencido, usuario, "1250.75", "Boleto", "Baixa total ficticia sem comprovante - Missao 17.5", dias_atras=1)
+        criar_baixa_demo(titulo_parcelado, usuario, "700.00", "Transferencia", "Baixa parcial ficticia - Missao 17.5", dias_atras=0)
 
         cartao_adm = criar_cartao_demo(
             "CARTAO ADMINISTRATIVO DEMO",
@@ -687,12 +718,15 @@ def executar_seed():
             )
 
         db.session.commit()
-        print("Seed dev de Contas a Pagar concluido com dados ficticios das Missoes 17.2, 17.3 e 17.4.")
+        print("Seed dev de Contas a Pagar concluido com dados ficticios das Missoes 17.2, 17.3, 17.4 e 17.5.")
         print("Usuario demo: financeiro.demo@rentalretros.local")
         print("Senha demo: Demo@12345")
 
 
 if __name__ == "__main__":
     executar_seed()
+
+
+
 
 

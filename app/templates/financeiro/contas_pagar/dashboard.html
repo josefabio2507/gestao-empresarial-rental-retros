@@ -16,6 +16,10 @@
         ("Total vencido", "R$ " ~ ("%.2f"|format(indicadores.total_vencido)|replace('.', ',')), "Soma dos titulos em aberto com vencimento anterior a data atual."),
         ("A vencer em 7 dias", "R$ " ~ ("%.2f"|format(indicadores.total_7_dias)|replace('.', ',')), "Soma dos titulos em aberto com vencimento dentro dos proximos 7 dias."),
         ("A pagar no mes", "R$ " ~ ("%.2f"|format(indicadores.total_mes)|replace('.', ',')), "Soma dos titulos com vencimento no mes atual."),
+        ("Total pago no mes", "R$ " ~ ("%.2f"|format(indicadores.total_pago_mes)|replace('.', ',')), "Soma das baixas ativas registradas no mes atual."),
+        ("Total parcialmente pago", "R$ " ~ ("%.2f"|format(indicadores.total_parcialmente_pago)|replace('.', ',')), "Soma dos valores ja pagos em titulos que ainda possuem saldo em aberto."),
+        ("Titulos pagos no mes", indicadores.titulos_pagos_mes, "Quantidade de titulos quitados com data de pagamento no mes atual."),
+        ("Titulos sem comprovante", indicadores.titulos_sem_comprovante, "Quantidade de titulos com pagamento registrado sem comprovante ativo anexado."),
         ("Aguardando conferencia", indicadores.qtd_aguardando_conferencia, "Quantidade de titulos que precisam ser conferidos pelo financeiro antes do pagamento."),
         ("Cadastrados manualmente", indicadores.qtd_manuais, "Quantidade de titulos incluidos manualmente, sem origem automatica de O.C. ou XML."),
         ("Faturas abertas", indicadores.qtd_faturas_abertas, "Quantidade de faturas de cartao ainda abertas para receber compras vinculadas."),
@@ -55,3 +59,4 @@
     </div>
 </section>
 {% endblock %}
+

@@ -147,6 +147,8 @@
                     <th>Parcela</th>
                     <th>Vencimento</th>
                     <th>Valor</th>
+                    <th>Pago</th>
+                    <th>Saldo</th>
                     <th>Status</th>
                     <th>Cartao</th>
                     <th>Fatura</th>
@@ -159,13 +161,15 @@
                         <td>{{ titulo.parcela_numero }}/{{ titulo.total_parcelas }}</td>
                         <td>{{ titulo.data_vencimento.strftime("%d/%m/%Y") if titulo.data_vencimento else "-" }}</td>
                         <td>{{ formatar_moeda_brl(titulo.valor_original) }}</td>
-                        <td><span class="badge badge-warning">{{ titulo.status }}</span></td>
+                        <td>{{ formatar_moeda_brl(titulo.valor_pago) }}</td>
+                        <td>{{ formatar_moeda_brl(titulo.saldo_aberto) }}</td>
+                        <td><span class="badge badge-warning">{{ titulo.status_exibicao() }}</span></td>
                         <td>{{ titulo.cartao_credito.identificacao_segura if titulo.cartao_credito else "-" }}</td>
                         <td>{{ titulo.fatura_cartao.competencia_formatada if titulo.fatura_cartao else "-" }}</td>
                         <td class="col-acoes"><a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.detalhes', titulo_id=titulo.id) }}">Ver titulo</a></td>
                     </tr>
                 {% else %}
-                    <tr><td class="empty-state" colspan="7">Nenhum titulo financeiro gerado para esta O.C.</td></tr>
+                    <tr><td class="empty-state" colspan="9">Nenhum titulo financeiro gerado para esta O.C.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
@@ -345,7 +349,7 @@
                         <td>{{ movimentacao.movimentado_em.strftime("%d/%m/%Y %H:%M") }}</td>
                     </tr>
                 {% else %}
-                    <tr><td class="empty-state" colspan="7">Nenhuma entrada de estoque gerada para esta ordem.</td></tr>
+                    <tr><td class="empty-state" colspan="9">Nenhuma entrada de estoque gerada para esta ordem.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
@@ -382,3 +386,4 @@
     </div>
 </section>
 {% endblock %}
+

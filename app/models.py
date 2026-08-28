@@ -1588,6 +1588,7 @@ class FinanceiroContaPagarTitulo(db.Model):
     fiscal_documento = db.relationship("FiscalDocumento", back_populates="titulos_financeiros")
     cartao_credito = db.relationship("FinanceiroCartaoCredito", back_populates="titulos")
     fatura_cartao = db.relationship("FinanceiroCartaoFatura", back_populates="titulos")
+    baixas = db.relationship("FinanceiroContaPagarBaixa", back_populates="titulo", order_by="FinanceiroContaPagarBaixa.data_pagamento.desc()")
     centro_custo = db.relationship("CentroCusto")
     sub_centro_custo_equipe = db.relationship("Equipe")
     sub_centro_custo_veiculo = db.relationship("OperacaoVeiculoEquipamento")
@@ -1630,6 +1631,11 @@ class FinanceiroContaPagarTitulo(db.Model):
             + (self.valor_juros_multa or 0)
         )
 
+    @property
+    def saldo_aberto(self):
+        saldo = (self.valor_liquido_previsto or 0) - (self.valor_pago or 0)
+        return saldo if saldo > 0 else 0
+
     def status_exibicao(self, hoje=None):
         from datetime import date
 
@@ -1641,6 +1647,72 @@ class FinanceiroContaPagarTitulo(db.Model):
 
     def __repr__(self):
         return f"<FinanceiroContaPagarTitulo {self.id} {self.fornecedor_nome_snapshot}>"
+
+
+class FinanceiroContaPagarBaixa(db.Model):
+    __tablename__ = "financeiro_contas_pagar_baixas"
+
+    id = db.Column(db.Integer, primary_key=True)
+    titulo_id = db.Column(
+        db.Integer,
+        db.ForeignKey("financeiro_contas_pagar_titulos.id"),
+        nullable=False,
+        index=True,
+    )
+    data_pagamento = db.Column(db.Date, nullable=False, index=True)
+    valor_pago = db.Column(db.Numeric(12, 2), nullable=False)
+    forma_pagamento = db.Column(db.String(30), nullable=False, index=True)
+    conta_pagamento_descricao = db.Column(db.String(180), nullable=True)
+    observacoes = db.Column(db.Text, nullable=True)
+    status = db.Column(db.String(20), nullable=False, default="Ativa", index=True)
+    comprovante_nome_original = db.Column(db.String(255), nullable=True)
+    comprovante_nome_armazenado = db.Column(db.String(255), nullable=True)
+    comprovante_path = db.Column(db.String(500), nullable=True)
+    comprovante_drive_file_id = db.Column(db.String(255), nullable=True)
+    comprovante_drive_link = db.Column(db.String(500), nullable=True)
+    comprovante_extensao = db.Column(db.String(10), nullable=True)
+    comprovante_tamanho = db.Column(db.Integer, nullable=True)
+    registrado_por_usuario_id = db.Column(
+        db.Integer,
+        db.ForeignKey("usuarios.id"),
+        nullable=True,
+        index=True,
+    )
+    cancelado_por_usuario_id = db.Column(
+        db.Integer,
+        db.ForeignKey("usuarios.id"),
+        nullable=True,
+        index=True,
+    )
+    cancelado_em = db.Column(db.DateTime, nullable=True)
+    motivo_cancelamento = db.Column(db.Text, nullable=True)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
+    atualizado_em = db.Column(
+        db.DateTime,
+        default=agora_brasil,
+        onupdate=agora_brasil,
+        nullable=False,
+    )
+
+    titulo = db.relationship("FinanceiroContaPagarTitulo", back_populates="baixas")
+    registrado_por = db.relationship("Usuario", foreign_keys=[registrado_por_usuario_id])
+    cancelado_por = db.relationship("Usuario", foreign_keys=[cancelado_por_usuario_id])
+
+    __table_args__ = (
+        db.CheckConstraint("valor_pago > 0", name="ck_fin_cp_baixa_valor_pago"),
+        db.CheckConstraint("status in ('Ativa', 'Cancelada', 'Estornada')", name="ck_fin_cp_baixa_status"),
+        db.CheckConstraint(
+            "forma_pagamento in ('Boleto', 'Pix', 'Transferencia', 'Deposito', 'Cartao de Credito', 'Outro')",
+            name="ck_fin_cp_baixa_forma_pagamento",
+        ),
+    )
+
+    @property
+    def comprovante_disponivel(self):
+        return bool(self.comprovante_path or self.comprovante_drive_file_id)
+
+    def __repr__(self):
+        return f"<FinanceiroContaPagarBaixa {self.id} titulo={self.titulo_id}>"
 
 class SuprimentosItem(db.Model):
     __tablename__ = "suprimentos_itens"
@@ -3016,3 +3088,4 @@ class SegurancaTrabalhoEntregaEpi(db.Model):
 
     def __repr__(self):
         return f"<SegurancaTrabalhoEntregaEpi colaborador={self.colaborador_id} item={self.item_id}>"
+
