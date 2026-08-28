@@ -7,11 +7,14 @@ from sqlalchemy import func
 
 from app.extensions import db
 from app.models import (
+    agora_brasil,
     CentroCusto,
     FinanceiroCartaoCredito,
     FinanceiroCartaoFatura,
     FinanceiroContaPagarTitulo,
+    FiscalDocumento,
     SuprimentosFornecedor,
+    SuprimentosOrdemCompra,
 )
 
 ORIGENS_LANCAMENTO = [
@@ -51,6 +54,17 @@ STATUS_ABERTOS = [
 STATUS_FINAIS = ["Pago", "Cancelado", "Estornado"]
 STATUS_FATURA = ["Aberta", "Fechada", "Agendada", "Paga", "Vencida", "Cancelada"]
 STATUS_FATURA_EDITAVEIS = ["Aberta", "Fechada", "Agendada"]
+STATUS_XML_FINANCEIRO = [
+    "Pendente de geracao",
+    "Pendente de conferencia",
+    "Aguardando conferencia",
+    "Titulos gerados",
+    "Parcialmente gerado",
+    "Ignorado",
+    "Divergente",
+    "Ja integrado via O.C.",
+    "Cancelado",
+]
 
 
 def _registrar_log(evento, mensagem):
@@ -305,6 +319,17 @@ def indicadores_dashboard(hoje=None):
             "ocs_pendencia_financeira": 0,
         }
 
+    try:
+        indicadores_xml = indicadores_financeiro_xml(hoje=hoje)
+    except Exception:
+        indicadores_xml = {
+            "xml_pendentes_geracao": 0,
+            "xml_aguardando_conferencia": 0,
+            "valor_xml_pendente": Decimal("0.00"),
+            "xml_integrados_mes": 0,
+            "xml_integrados_via_oc": 0,
+        }
+
     return {
         "total_aberto": total_aberto or Decimal("0.00"),
         "total_vencido": total_vencido or Decimal("0.00"),
@@ -325,8 +350,367 @@ def indicadores_dashboard(hoje=None):
         "valor_oc_integrado_mes": indicadores_oc["valor_oc_integrado_mes"],
         "ocs_prontas_gerar": indicadores_oc["ocs_prontas_gerar"],
         "ocs_pendencia_financeira": indicadores_oc["ocs_pendencia_financeira"],
+        "xml_pendentes_geracao": indicadores_xml["xml_pendentes_geracao"],
+        "xml_aguardando_conferencia": indicadores_xml["xml_aguardando_conferencia"],
+        "valor_xml_pendente": indicadores_xml["valor_xml_pendente"],
+        "xml_integrados_mes": indicadores_xml["xml_integrados_mes"],
+        "xml_integrados_via_oc": indicadores_xml["xml_integrados_via_oc"],
     }
 
+
+
+
+def _somar_meses_data(data_base, meses):
+    mes_zero = data_base.month - 1 + meses
+    ano = data_base.year + mes_zero // 12
+    mes = mes_zero % 12 + 1
+    return _data_com_dia_valido(ano, mes, data_base.day)
+
+
+def _calcular_parcelas(valor_total, quantidade_parcelas):
+    quantidade_parcelas = int(quantidade_parcelas or 1)
+    valor_total = Decimal(valor_total or 0).quantize(Decimal("0.01"))
+    if quantidade_parcelas <= 1:
+        return [valor_total]
+    valor_base = (valor_total / Decimal(quantidade_parcelas)).quantize(Decimal("0.01"))
+    parcelas = [valor_base for _ in range(quantidade_parcelas)]
+    diferenca = valor_total - sum(parcelas, Decimal("0.00"))
+    parcelas[-1] = (parcelas[-1] + diferenca).quantize(Decimal("0.01"))
+    return parcelas
+
+
+def buscar_documento_fiscal_por_id(documento_id):
+    return FiscalDocumento.query.get(documento_id)
+
+
+def titulos_ativos_documento_fiscal(documento):
+    if not documento or not documento.id:
+        return []
+    return (
+        FinanceiroContaPagarTitulo.query
+        .filter(
+            FinanceiroContaPagarTitulo.fiscal_documento_id == documento.id,
+            FinanceiroContaPagarTitulo.status.notin_(["Cancelado", "Estornado"]),
+        )
+        .order_by(FinanceiroContaPagarTitulo.parcela_numero.asc())
+        .all()
+    )
+
+
+def _titulos_ativos_ordem_xml(documento):
+    if not documento or not documento.ordem_compra_id:
+        return []
+    return (
+        FinanceiroContaPagarTitulo.query
+        .filter(
+            FinanceiroContaPagarTitulo.ordem_compra_id == documento.ordem_compra_id,
+            FinanceiroContaPagarTitulo.status.notin_(["Cancelado", "Estornado"]),
+        )
+        .order_by(FinanceiroContaPagarTitulo.parcela_numero.asc())
+        .all()
+    )
+
+
+def status_financeiro_xml(documento):
+    if not documento:
+        return "Nao localizado"
+    if documento.status == "Cancelada":
+        return "Cancelado"
+    if getattr(documento, "financeiro_ignorado", False):
+        return "Ignorado"
+    titulos_xml = titulos_ativos_documento_fiscal(documento)
+    if titulos_xml:
+        if any(titulo.status == "Aguardando conferencia" for titulo in titulos_xml):
+            return "Aguardando conferencia"
+        return "Titulos gerados"
+    titulos_ordem = _titulos_ativos_ordem_xml(documento)
+    if titulos_ordem:
+        return "Ja integrado via O.C."
+    if getattr(documento, "financeiro_integrado", False):
+        return documento.financeiro_status or "Titulos gerados"
+    if documento.ordem_compra_id:
+        return "Pendente de geracao"
+    return "Pendente de conferencia"
+
+
+def _documento_fiscal_apto_base(query):
+    return query.filter(
+        FiscalDocumento.tem_xml_completo.is_(True),
+        FiscalDocumento.chave_acesso.isnot(None),
+        FiscalDocumento.emitente_nome.isnot(None),
+        FiscalDocumento.emitente_cnpj.isnot(None),
+        FiscalDocumento.valor_total > 0,
+        FiscalDocumento.status != "Cancelada",
+    )
+
+
+def listar_agendamentos_xml_contas_pagar(filtros=None):
+    filtros = filtros or {}
+    query = _documento_fiscal_apto_base(FiscalDocumento.query)
+
+    fornecedor = normalizar_texto(filtros.get("fornecedor"), upper=False)
+    cnpj = normalizar_documento(filtros.get("cnpj"))
+    numero = normalizar_texto(filtros.get("numero_nfe"), upper=False)
+    chave = normalizar_documento(filtros.get("chave_acesso"))
+    status = normalizar_texto(filtros.get("status_financeiro"), upper=False)
+    vinculo_oc = normalizar_texto(filtros.get("vinculo_oc"), upper=False)
+
+    if fornecedor:
+        query = query.filter(FiscalDocumento.emitente_nome.ilike(f"%{fornecedor}%"))
+    if cnpj:
+        query = query.filter(FiscalDocumento.emitente_cnpj.ilike(f"%{cnpj}%"))
+    if numero:
+        query = query.filter(FiscalDocumento.numero.ilike(f"%{numero}%"))
+    if chave:
+        query = query.filter(FiscalDocumento.chave_acesso.ilike(f"%{chave}%"))
+    if vinculo_oc == "com_oc":
+        query = query.filter(FiscalDocumento.ordem_compra_id.isnot(None))
+    elif vinculo_oc == "sem_oc":
+        query = query.filter(FiscalDocumento.ordem_compra_id.is_(None))
+
+    try:
+        emissao_inicio = parse_data(filtros.get("emissao_inicio"), nome_campo="Emissao inicial")
+        emissao_fim = parse_data(filtros.get("emissao_fim"), nome_campo="Emissao final")
+    except ValueError:
+        emissao_inicio = None
+        emissao_fim = None
+    if emissao_inicio:
+        query = query.filter(FiscalDocumento.data_emissao >= emissao_inicio)
+    if emissao_fim:
+        query = query.filter(FiscalDocumento.data_emissao < emissao_fim + timedelta(days=1))
+
+    documentos = query.order_by(FiscalDocumento.data_emissao.desc().nullslast(), FiscalDocumento.id.desc()).all()
+    if status:
+        documentos = [doc for doc in documentos if status_financeiro_xml(doc).lower() == status.lower()]
+    if filtros.get("somente_pendentes"):
+        documentos = [doc for doc in documentos if status_financeiro_xml(doc) in ["Pendente de geracao", "Pendente de conferencia"]]
+    return documentos
+
+
+def opcoes_conferencia_xml(documento=None):
+    opcoes = buscar_opcoes_formulario()
+    try:
+        from app.services.suprimentos_service import CONDICOES_PAGAMENTO_FINANCEIRO_OC
+        opcoes["condicoes_pagamento"] = CONDICOES_PAGAMENTO_FINANCEIRO_OC
+    except Exception:
+        opcoes["condicoes_pagamento"] = ["A vista", "7 dias", "14 dias", "21 dias", "28 dias", "30 dias", "45 dias", "60 dias", "Parcelado", "Personalizado"]
+    return opcoes
+
+
+def dados_padrao_conferencia_xml(documento):
+    ordem = getattr(documento, "ordem_compra", None)
+    emissao = documento.data_emissao.date() if getattr(documento, "data_emissao", None) else date.today()
+    vencimento = getattr(ordem, "data_primeiro_vencimento_financeiro", None) or emissao
+    return {
+        "tipo_pagamento": getattr(ordem, "tipo_pagamento_financeiro", None) or "Faturado",
+        "forma_pagamento": getattr(ordem, "forma_pagamento_financeiro", None) or "Boleto",
+        "condicao_pagamento": getattr(ordem, "condicao_pagamento_financeiro", None) or "A vista",
+        "numero_parcelas": getattr(ordem, "numero_parcelas_financeiro", None) or 1,
+        "data_primeiro_vencimento": vencimento,
+        "cartao_credito_id": getattr(ordem, "cartao_credito_id", None),
+        "centro_custo_id": getattr(getattr(ordem, "requisicao", None), "centro_custo_id", None),
+        "sub_centro_custo_equipe_id": getattr(getattr(ordem, "requisicao", None), "sub_centro_custo_equipe_id", None),
+        "sub_centro_custo_veiculo_id": getattr(getattr(ordem, "requisicao", None), "sub_centro_custo_veiculo_id", None),
+        "observacoes": getattr(documento, "financeiro_observacoes", None) or "",
+    }
+
+
+def _validar_documento_fiscal_para_financeiro(documento):
+    if not documento:
+        return False, "Documento fiscal nao encontrado."
+    if documento.status == "Cancelada":
+        return False, "XML cancelado nao pode gerar Contas a Pagar."
+    if not documento.tem_xml_completo or not documento.chave_acesso:
+        return False, "XML completo e chave de acesso sao obrigatorios."
+    if not documento.emitente_nome or not documento.emitente_cnpj:
+        return False, "XML sem fornecedor identificado nao pode gerar Contas a Pagar."
+    if not documento.valor_total or Decimal(documento.valor_total or 0) <= 0:
+        return False, "XML sem valor total nao pode gerar Contas a Pagar."
+    return True, None
+
+
+def _duplicidade_documento_fiscal(documento):
+    titulos_xml = titulos_ativos_documento_fiscal(documento)
+    if titulos_xml:
+        return "Este XML ja possui titulos financeiros gerados.", titulos_xml
+    titulos_ordem = _titulos_ativos_ordem_xml(documento)
+    if titulos_ordem:
+        return "Este XML ja foi integrado via Ordem de Compra.", titulos_ordem
+    similares = FinanceiroContaPagarTitulo.query.filter(
+        FinanceiroContaPagarTitulo.status.notin_(["Cancelado", "Estornado"]),
+        FinanceiroContaPagarTitulo.chave_acesso_nfe == documento.chave_acesso,
+    ).all()
+    if similares:
+        return "Este XML ja possui titulos financeiros gerados ou ja foi integrado por meio da Ordem de Compra vinculada.", similares
+    return None, []
+
+
+def gerar_contas_pagar_xml(documento, dados, usuario=None):
+    sucesso, mensagem = _validar_documento_fiscal_para_financeiro(documento)
+    if not sucesso:
+        _registrar_log("financeiro_xml_validacao_falhou", f"{mensagem} Documento fiscal: {getattr(documento, 'id', None)}.")
+        return False, mensagem, []
+
+    mensagem_dup, titulos_dup = _duplicidade_documento_fiscal(documento)
+    if mensagem_dup:
+        _registrar_log("financeiro_xml_duplicidade", f"{mensagem_dup} Documento fiscal: {documento.id}.")
+        return False, mensagem_dup, titulos_dup
+
+    padrao = dados_padrao_conferencia_xml(documento)
+    dados = dados or {}
+    tipo = dados.get("tipo_pagamento") or padrao["tipo_pagamento"]
+    forma = dados.get("forma_pagamento") or padrao["forma_pagamento"]
+    condicao = dados.get("condicao_pagamento") or padrao["condicao_pagamento"]
+    parcelas = parse_int(str(dados.get("numero_parcelas") or padrao["numero_parcelas"]), nome_campo="Numero de parcelas")
+    primeiro_vencimento = parse_data(
+        dados.get("data_primeiro_vencimento") or (padrao["data_primeiro_vencimento"].strftime("%Y-%m-%d") if padrao["data_primeiro_vencimento"] else ""),
+        obrigatorio=True,
+        nome_campo="Data do primeiro vencimento",
+    )
+    cartao_credito_id = parse_int(str(dados.get("cartao_credito_id") or padrao["cartao_credito_id"] or ""), padrao=0, nome_campo="Cartao de credito") or None
+    centro_custo_id = parse_int(str(dados.get("centro_custo_id") or padrao["centro_custo_id"] or ""), padrao=0, nome_campo="Centro de custo") or None
+    observacoes = normalizar_texto(dados.get("observacoes") or padrao["observacoes"]) or None
+
+    if tipo not in TIPOS_PAGAMENTO:
+        return False, "Tipo de pagamento invalido.", []
+    if forma not in FORMAS_PAGAMENTO:
+        return False, "Forma de pagamento invalida.", []
+    if parcelas < 1:
+        return False, "Numero de parcelas deve ser no minimo 1.", []
+    if tipo == "Cartao de Credito":
+        if not cartao_credito_id:
+            return False, "Informe o cartao de credito para compras pagas com cartao.", []
+        cartao = FinanceiroCartaoCredito.query.get(cartao_credito_id)
+        if not cartao or not cartao.ativo:
+            return False, "Cartao de credito ativo nao encontrado.", []
+        forma = "Cartao de Credito"
+    else:
+        cartao_credito_id = None
+
+    ordem = getattr(documento, "ordem_compra", None)
+    valores = _calcular_parcelas(documento.valor_total, parcelas)
+    emissao = documento.data_emissao.date() if getattr(documento, "data_emissao", None) else date.today()
+    titulos = []
+    faturas_afetadas = set()
+
+    for indice, valor in enumerate(valores, start=1):
+        vencimento = _somar_meses_data(primeiro_vencimento, indice - 1)
+        titulo = FinanceiroContaPagarTitulo(
+            fornecedor_id=getattr(ordem, "fornecedor_id", None),
+            fornecedor_nome_snapshot=documento.emitente_nome,
+            fornecedor_cnpj_cpf_snapshot=normalizar_documento(documento.emitente_cnpj),
+            descricao=f"NF-e {documento.numero} - {documento.emitente_nome}",
+            numero_documento=f"{documento.numero}-{indice:02d}/{parcelas:02d}",
+            numero_nfe=documento.numero,
+            chave_acesso_nfe=documento.chave_acesso,
+            ordem_compra_id=documento.ordem_compra_id,
+            fiscal_documento_id=documento.id,
+            origem_lancamento="XML Fiscal",
+            tipo_pagamento=tipo,
+            forma_pagamento=forma,
+            competencia=vencimento.replace(day=1),
+            data_emissao=emissao,
+            data_vencimento=vencimento,
+            valor_original=valor,
+            valor_desconto=Decimal("0.00"),
+            valor_acrescimo=Decimal("0.00"),
+            valor_juros_multa=Decimal("0.00"),
+            valor_pago=Decimal("0.00"),
+            parcela_numero=indice,
+            total_parcelas=parcelas,
+            centro_custo_id=centro_custo_id,
+            sub_centro_custo_equipe_id=padrao["sub_centro_custo_equipe_id"],
+            sub_centro_custo_veiculo_id=padrao["sub_centro_custo_veiculo_id"],
+            status="Aguardando conferencia",
+            observacoes=observacoes,
+            criado_por_usuario_id=getattr(usuario, "id", None),
+            atualizado_por_usuario_id=getattr(usuario, "id", None),
+        )
+        if tipo == "Cartao de Credito":
+            titulo.cartao_credito_id = cartao_credito_id
+            titulo.data_compra_cartao = _somar_meses_data(emissao, indice - 1)
+        db.session.add(titulo)
+        db.session.flush()
+        if titulo.tipo_pagamento == "Cartao de Credito":
+            _, fatura = vincular_titulo_a_fatura_cartao(titulo, usuario=usuario)
+            if fatura:
+                titulo.data_vencimento = fatura.data_vencimento
+                titulo.competencia = fatura.competencia
+                faturas_afetadas.add(fatura.id)
+                _registrar_log("financeiro_xml_titulo_vinculado_fatura", f"Titulo {titulo.id} vinculado a fatura {fatura.id}. XML: {documento.id}.")
+        titulos.append(titulo)
+
+    for fatura_id in faturas_afetadas:
+        fatura = next((titulo.fatura_cartao for titulo in titulos if titulo.fatura_cartao_id == fatura_id), None)
+        recalcular_fatura(fatura)
+
+    documento.financeiro_status = "Aguardando conferencia"
+    documento.financeiro_integrado = True
+    documento.financeiro_integrado_em = agora_brasil()
+    documento.financeiro_integrado_por_usuario_id = getattr(usuario, "id", None)
+    documento.financeiro_ignorado = False
+    documento.financeiro_observacoes = observacoes
+    if ordem:
+        ordem.financeiro_integrado = True
+        ordem.financeiro_integrado_em = documento.financeiro_integrado_em
+        ordem.financeiro_integrado_por_usuario_id = getattr(usuario, "id", None)
+        if hasattr(ordem, "status_financeiro"):
+            ordem.status_financeiro = "Integrado ao Financeiro"
+
+    db.session.commit()
+    _registrar_log("financeiro_xml_titulos_gerados", f"Gerados {len(titulos)} titulos por XML fiscal. Documento fiscal: {documento.id}.")
+    return True, "Titulos financeiros gerados com sucesso a partir do XML.", titulos
+
+
+def ignorar_xml_financeiro(documento, usuario=None, observacoes=None):
+    sucesso, mensagem = _validar_documento_fiscal_para_financeiro(documento)
+    if not sucesso and mensagem != "XML sem valor total nao pode gerar Contas a Pagar.":
+        return False, mensagem
+    if titulos_ativos_documento_fiscal(documento):
+        return False, "XML com titulos ativos nao pode ser ignorado financeiramente."
+    documento.financeiro_ignorado = True
+    documento.financeiro_ignorado_em = agora_brasil()
+    documento.financeiro_ignorado_por_usuario_id = getattr(usuario, "id", None)
+    documento.financeiro_status = "Ignorado"
+    documento.financeiro_observacoes = normalizar_texto(observacoes) or documento.financeiro_observacoes
+    db.session.commit()
+    _registrar_log("financeiro_xml_ignorado", f"XML ignorado financeiramente. Documento fiscal: {documento.id}.")
+    return True, "XML ignorado financeiramente."
+
+
+def reativar_xml_financeiro(documento, usuario=None):
+    if not documento:
+        return False, "Documento fiscal nao encontrado."
+    documento.financeiro_ignorado = False
+    documento.financeiro_ignorado_em = None
+    documento.financeiro_ignorado_por_usuario_id = None
+    documento.financeiro_status = status_financeiro_xml(documento)
+    db.session.commit()
+    _registrar_log("financeiro_xml_reativado", f"XML reativado para processamento financeiro. Documento fiscal: {documento.id}.")
+    return True, "XML reativado para processamento financeiro."
+
+
+def indicadores_financeiro_xml(hoje=None):
+    hoje = hoje or date.today()
+    inicio_mes = hoje.replace(day=1)
+    inicio_proximo_mes = hoje.replace(year=hoje.year + 1, month=1, day=1) if hoje.month == 12 else hoje.replace(month=hoje.month + 1, day=1)
+    documentos = listar_agendamentos_xml_contas_pagar({})
+    pendentes = [doc for doc in documentos if status_financeiro_xml(doc) in ["Pendente de geracao", "Pendente de conferencia"]]
+    aguardando = [doc for doc in documentos if status_financeiro_xml(doc) == "Aguardando conferencia"]
+    via_oc = [doc for doc in documentos if status_financeiro_xml(doc) == "Ja integrado via O.C."]
+    integrados_mes = FiscalDocumento.query.filter(
+        FiscalDocumento.financeiro_integrado.is_(True),
+        FiscalDocumento.financeiro_integrado_em >= inicio_mes,
+        FiscalDocumento.financeiro_integrado_em < inicio_proximo_mes,
+    ).count()
+    valor_pendente = sum((Decimal(doc.valor_total or 0) for doc in pendentes), Decimal("0.00"))
+    return {
+        "xml_pendentes_geracao": len(pendentes),
+        "xml_aguardando_conferencia": len(aguardando),
+        "valor_xml_pendente": valor_pendente,
+        "xml_integrados_mes": integrados_mes,
+        "xml_integrados_via_oc": len(via_oc),
+    }
 
 def listar_cartoes(filtros=None):
     filtros = filtros or {}

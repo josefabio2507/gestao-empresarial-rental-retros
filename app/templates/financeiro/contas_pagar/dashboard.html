@@ -11,28 +11,44 @@
         {% include "financeiro/contas_pagar/_nav.html" %}
     </div>
 
+    {% set cards = [
+        ("Total em aberto", "R$ " ~ ("%.2f"|format(indicadores.total_aberto)|replace('.', ',')), "Soma dos titulos a pagar que ainda nao foram pagos, cancelados ou estornados."),
+        ("Total vencido", "R$ " ~ ("%.2f"|format(indicadores.total_vencido)|replace('.', ',')), "Soma dos titulos em aberto com vencimento anterior a data atual."),
+        ("A vencer em 7 dias", "R$ " ~ ("%.2f"|format(indicadores.total_7_dias)|replace('.', ',')), "Soma dos titulos em aberto com vencimento dentro dos proximos 7 dias."),
+        ("A pagar no mes", "R$ " ~ ("%.2f"|format(indicadores.total_mes)|replace('.', ',')), "Soma dos titulos com vencimento no mes atual."),
+        ("Aguardando conferencia", indicadores.qtd_aguardando_conferencia, "Quantidade de titulos que precisam ser conferidos pelo financeiro antes do pagamento."),
+        ("Cadastrados manualmente", indicadores.qtd_manuais, "Quantidade de titulos incluidos manualmente, sem origem automatica de O.C. ou XML."),
+        ("Faturas abertas", indicadores.qtd_faturas_abertas, "Quantidade de faturas de cartao ainda abertas para receber compras vinculadas."),
+        ("Total em faturas abertas", "R$ " ~ ("%.2f"|format(indicadores.total_faturas_abertas)|replace('.', ',')), "Soma dos valores dos titulos vinculados a faturas de cartao abertas."),
+        ("Faturas vencendo em 7 dias", indicadores.qtd_faturas_7_dias, "Quantidade de faturas de cartao com vencimento dentro dos proximos 7 dias."),
+        ("Cartoes ativos", indicadores.qtd_cartoes_ativos, "Quantidade de cartoes de credito ativos e disponiveis para novos lancamentos."),
+        ("Compras no cartao no mes", "R$ " ~ ("%.2f"|format(indicadores.compras_cartao_mes)|replace('.', ',')), "Soma dos titulos do tipo Cartao de Credito no mes atual."),
+        ("O.C. aguardando conferencia", indicadores.titulos_oc_conferencia, "Quantidade de titulos gerados por Ordem de Compra que ainda aguardam conferencia."),
+        ("Valor de O.C.s no mes", "R$ " ~ ("%.2f"|format(indicadores.valor_oc_integrado_mes)|replace('.', ',')), "Soma dos titulos originados de Ordem de Compra no mes atual."),
+        ("O.C.s prontas para gerar", indicadores.ocs_prontas_gerar, "Quantidade de Ordens de Compra com dados financeiros prontos para gerar Contas a Pagar."),
+        ("O.C.s com pendencia financeira", indicadores.ocs_pendencia_financeira, "Quantidade de Ordens de Compra com alguma informacao financeira pendente ou divergente."),
+        ("XMLs pendentes", indicadores.xml_pendentes_geracao, "Quantidade de XMLs fiscais completos que ainda podem gerar Contas a Pagar."),
+        ("XMLs aguardando conferencia", indicadores.xml_aguardando_conferencia, "Quantidade de XMLs fiscais que precisam de conferencia financeira antes da geracao dos titulos."),
+        ("Valor pendente de XML", "R$ " ~ ("%.2f"|format(indicadores.valor_xml_pendente)|replace('.', ',')), "Soma dos valores de XMLs fiscais pendentes de integracao financeira."),
+        ("XMLs integrados no mes", indicadores.xml_integrados_mes, "Quantidade de XMLs fiscais integrados ao financeiro durante o mes atual."),
+        ("XMLs integrados via O.C.", indicadores.xml_integrados_via_oc, "Quantidade de XMLs que ja possuem titulos financeiros por meio da Ordem de Compra vinculada.")
+    ] %}
+
     <div class="stat-grid">
-        <div class="stat-card"><span>Total em aberto</span><strong>R$ {{ "%.2f"|format(indicadores.total_aberto)|replace('.', ',') }}</strong></div>
-        <div class="stat-card"><span>Total vencido</span><strong>R$ {{ "%.2f"|format(indicadores.total_vencido)|replace('.', ',') }}</strong></div>
-        <div class="stat-card"><span>A vencer em 7 dias</span><strong>R$ {{ "%.2f"|format(indicadores.total_7_dias)|replace('.', ',') }}</strong></div>
-        <div class="stat-card"><span>A pagar no mes</span><strong>R$ {{ "%.2f"|format(indicadores.total_mes)|replace('.', ',') }}</strong></div>
-        <div class="stat-card"><span>Aguardando conferencia</span><strong>{{ indicadores.qtd_aguardando_conferencia }}</strong></div>
-        <div class="stat-card"><span>Cadastrados manualmente</span><strong>{{ indicadores.qtd_manuais }}</strong></div>
-        <div class="stat-card"><span>Faturas abertas</span><strong>{{ indicadores.qtd_faturas_abertas }}</strong></div>
-        <div class="stat-card"><span>Total em faturas abertas</span><strong>R$ {{ "%.2f"|format(indicadores.total_faturas_abertas)|replace('.', ',') }}</strong></div>
-        <div class="stat-card"><span>Faturas vencendo em 7 dias</span><strong>{{ indicadores.qtd_faturas_7_dias }}</strong></div>
-        <div class="stat-card"><span>Cartoes ativos</span><strong>{{ indicadores.qtd_cartoes_ativos }}</strong></div>
-        <div class="stat-card"><span>Compras no cartao no mes</span><strong>R$ {{ "%.2f"|format(indicadores.compras_cartao_mes)|replace('.', ',') }}</strong></div>
-        <div class="stat-card"><span>O.C. aguardando conferencia</span><strong>{{ indicadores.titulos_oc_conferencia }}</strong></div>
-        <div class="stat-card"><span>Valor de O.C.s no mes</span><strong>R$ {{ "%.2f"|format(indicadores.valor_oc_integrado_mes)|replace('.', ',') }}</strong></div>
-        <div class="stat-card"><span>O.C.s prontas para gerar</span><strong>{{ indicadores.ocs_prontas_gerar }}</strong></div>
-        <div class="stat-card"><span>O.C.s com pendencia financeira</span><strong>{{ indicadores.ocs_pendencia_financeira }}</strong></div>
+        {% for titulo, valor, ajuda in cards %}
+            <div class="stat-card stat-card-help" tabindex="0" aria-describedby="dashboard-card-help-{{ loop.index }}">
+                <span>{{ titulo }}</span>
+                <strong>{{ valor }}</strong>
+                <small id="dashboard-card-help-{{ loop.index }}" class="stat-help" role="tooltip">{{ ajuda }}</small>
+            </div>
+        {% endfor %}
     </div>
 
     <div class="page-actions">
         <a class="btn btn-primary" href="{{ url_for('financeiro_contas_pagar.novo') }}">Novo lancamento</a>
         <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.titulos') }}">Ver titulos</a>
         <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.agendamentos_oc') }}">Agendamentos O.C.</a>
+        <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.agendamentos_xml') }}">Agendamentos XML</a>
         <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.cartoes') }}">Ver cartoes</a>
         <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.faturas') }}">Ver faturas</a>
         <a class="btn btn-secondary" href="{{ url_for('departamentos.detalhe_departamento', slug_departamento='financeiro') }}">Voltar ao Financeiro</a>

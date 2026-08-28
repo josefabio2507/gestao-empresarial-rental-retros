@@ -20,6 +20,7 @@ from app.services.fiscal_service import (
     salvar_xml_documento,
 )
 from app.services.logs_service import registrar_log
+from app.services.financeiro_contas_pagar_service import status_financeiro_xml, titulos_ativos_documento_fiscal
 
 
 @fiscal_bp.route("/")
@@ -41,6 +42,8 @@ def documentos():
         controles_nsu=buscar_controles_nsu(),
         status_documentos=rotulos_status_documento(),
         eventos_manifestacao=eventos_manifestacao_disponiveis(),
+        status_financeiro_xml=status_financeiro_xml,
+        titulos_ativos_documento_fiscal=titulos_ativos_documento_fiscal,
     )
 
 

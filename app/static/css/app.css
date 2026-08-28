@@ -1039,6 +1039,54 @@ textarea:focus {
     font-size: 22px;
 }
 
+.stat-card-help {
+    position: relative;
+    cursor: help;
+    outline: none;
+}
+
+.stat-card-help:hover,
+.stat-card-help:focus-visible {
+    border-color: var(--rr-gold);
+    box-shadow: 0 10px 22px rgba(10, 47, 84, 0.14);
+}
+
+.stat-help {
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    bottom: calc(100% + 8px);
+    z-index: 20;
+    display: block;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: var(--rr-navy);
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.35;
+    opacity: 0;
+    pointer-events: none;
+    text-transform: none;
+    transform: translateY(6px);
+    transition: opacity 0.16s ease, transform 0.16s ease;
+}
+
+.stat-help::after {
+    content: "";
+    position: absolute;
+    left: 18px;
+    bottom: -6px;
+    border-width: 6px 6px 0 6px;
+    border-style: solid;
+    border-color: var(--rr-navy) transparent transparent transparent;
+}
+
+.stat-card-help:hover .stat-help,
+.stat-card-help:focus-visible .stat-help {
+    opacity: 1;
+    transform: translateY(0);
+}
 .audit-action-badge {
     display: inline-block;
     max-width: 240px;
@@ -1499,3 +1547,4 @@ textarea:focus {
 .financeiro-contas-pagar-table {
     min-width: 1800px;
 }
+

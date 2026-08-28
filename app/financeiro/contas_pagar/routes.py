@@ -8,20 +8,30 @@ from app.services.financeiro_contas_pagar_service import (
     ORIGENS_LANCAMENTO,
     STATUS_FATURA,
     STATUS_TITULO,
+    STATUS_XML_FINANCEIRO,
     TIPOS_PAGAMENTO,
     alterar_status_cartao,
     atualizar_status_fatura,
     buscar_cartao_por_id,
+    buscar_documento_fiscal_por_id,
     buscar_fatura_por_id,
     buscar_opcoes_formulario,
     buscar_titulo_por_id,
     cancelar_titulo,
+    dados_padrao_conferencia_xml,
+    gerar_contas_pagar_xml,
+    ignorar_xml_financeiro,
     indicadores_dashboard,
+    listar_agendamentos_xml_contas_pagar,
     listar_cartoes,
     listar_faturas,
     listar_titulos,
+    opcoes_conferencia_xml,
+    reativar_xml_financeiro,
     salvar_cartao,
     salvar_titulo,
+    status_financeiro_xml,
+    titulos_ativos_documento_fiscal,
 )
 from app.services.suprimentos_service import (
     buscar_agendamentos_oc_contas_pagar,
@@ -110,6 +120,69 @@ def gerar_agendamento_oc(ordem_id):
         registrar_log("financeiro_contas_pagar_oc_gerado", f"Contas a pagar gerado por O.C. ID: {ordem.id}. Titulos: {len(titulos)}.")
     flash(mensagem, "success" if sucesso else "danger")
     return redirect(url_for("financeiro_contas_pagar.agendamentos_oc"))
+
+
+@financeiro_contas_pagar_bp.route("/agendamentos-xml")
+@login_required
+@module_permission_required("financeiro", "contas_a_pagar", "visualizar")
+def agendamentos_xml():
+    return render_template(
+        "financeiro/contas_pagar/agendamentos_xml.html",
+        documentos=listar_agendamentos_xml_contas_pagar(request.args),
+        filtros=request.args,
+        status_xml=STATUS_XML_FINANCEIRO,
+        status_financeiro_xml=status_financeiro_xml,
+        titulos_ativos_documento_fiscal=titulos_ativos_documento_fiscal,
+        formatar_moeda_brl=formatar_moeda_brl,
+    )
+
+
+@financeiro_contas_pagar_bp.route("/agendamentos-xml/<int:documento_id>/conferir", methods=["GET", "POST"])
+@login_required
+@module_permission_required("financeiro", "contas_a_pagar", "criar")
+def conferir_xml(documento_id):
+    documento = buscar_documento_fiscal_por_id(documento_id)
+    if not documento:
+        flash("Documento fiscal nao encontrado.", "warning")
+        return redirect(url_for("financeiro_contas_pagar.agendamentos_xml"))
+
+    if request.method == "POST":
+        sucesso, mensagem, titulos = gerar_contas_pagar_xml(documento, request.form, usuario=current_user)
+        if sucesso:
+            registrar_log("financeiro_xml_contas_pagar_gerado", f"Contas a pagar gerado por XML. Documento fiscal ID: {documento.id}. Titulos: {len(titulos)}.")
+            flash(mensagem, "success")
+            return redirect(url_for("financeiro_contas_pagar.titulos", numero_nfe=documento.numero))
+        flash(mensagem, "danger")
+
+    return render_template(
+        "financeiro/contas_pagar/conferir_xml.html",
+        documento=documento,
+        padrao=dados_padrao_conferencia_xml(documento),
+        opcoes=opcoes_conferencia_xml(documento),
+        status_financeiro=status_financeiro_xml(documento),
+        titulos=titulos_ativos_documento_fiscal(documento),
+        formatar_moeda_brl=formatar_moeda_brl,
+    )
+
+
+@financeiro_contas_pagar_bp.route("/agendamentos-xml/<int:documento_id>/ignorar", methods=["POST"])
+@login_required
+@module_permission_required("financeiro", "contas_a_pagar", "excluir")
+def ignorar_agendamento_xml(documento_id):
+    documento = buscar_documento_fiscal_por_id(documento_id)
+    sucesso, mensagem = ignorar_xml_financeiro(documento, usuario=current_user, observacoes=request.form.get("observacoes"))
+    flash(mensagem, "success" if sucesso else "danger")
+    return redirect(url_for("financeiro_contas_pagar.agendamentos_xml"))
+
+
+@financeiro_contas_pagar_bp.route("/agendamentos-xml/<int:documento_id>/reativar", methods=["POST"])
+@login_required
+@module_permission_required("financeiro", "contas_a_pagar", "editar")
+def reativar_agendamento_xml(documento_id):
+    documento = buscar_documento_fiscal_por_id(documento_id)
+    sucesso, mensagem = reativar_xml_financeiro(documento, usuario=current_user)
+    flash(mensagem, "success" if sucesso else "danger")
+    return redirect(url_for("financeiro_contas_pagar.agendamentos_xml"))
 
 
 @financeiro_contas_pagar_bp.route("/cartoes")

@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Financeiro &gt; Contas a Pagar &gt; Agendamentos XML</span>
+            <h1>Agendamentos XML</h1>
+            <p>XMLs fiscais completos disponíveis para conferência financeira.</p>
+        </div>
+        {% include "financeiro/contas_pagar/_nav.html" %}
+    </div>
+
+    <form class="filter-card" method="GET">
+        <div class="form-grid">
+            <div class="form-group"><label for="fornecedor">Fornecedor</label><input id="fornecedor" name="fornecedor" value="{{ filtros.get('fornecedor', '') }}"></div>
+            <div class="form-group"><label for="cnpj">CNPJ</label><input id="cnpj" name="cnpj" value="{{ filtros.get('cnpj', '') }}"></div>
+            <div class="form-group"><label for="numero_nfe">Numero NF-e</label><input id="numero_nfe" name="numero_nfe" value="{{ filtros.get('numero_nfe', '') }}"></div>
+            <div class="form-group"><label for="chave_acesso">Chave de acesso</label><input id="chave_acesso" name="chave_acesso" value="{{ filtros.get('chave_acesso', '') }}"></div>
+            <div class="form-group"><label for="status_financeiro">Status financeiro</label><select id="status_financeiro" name="status_financeiro"><option value="">Todos</option>{% for status in status_xml %}<option value="{{ status }}" {{ "selected" if filtros.get('status_financeiro') == status else "" }}>{{ status }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="vinculo_oc">Vinculo O.C.</label><select id="vinculo_oc" name="vinculo_oc"><option value="">Todos</option><option value="com_oc" {{ "selected" if filtros.get('vinculo_oc') == 'com_oc' else "" }}>Com O.C.</option><option value="sem_oc" {{ "selected" if filtros.get('vinculo_oc') == 'sem_oc' else "" }}>Sem O.C.</option></select></div>
+            <div class="form-group"><label for="emissao_inicio">Emissao inicial</label><input id="emissao_inicio" name="emissao_inicio" type="date" value="{{ filtros.get('emissao_inicio', '') }}"></div>
+            <div class="form-group"><label for="emissao_fim">Emissao final</label><input id="emissao_fim" name="emissao_fim" type="date" value="{{ filtros.get('emissao_fim', '') }}"></div>
+        </div>
+        <div class="form-actions"><button class="btn btn-primary" type="submit">Filtrar</button><a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.agendamentos_xml') }}">Limpar</a></div>
+    </form>
+
+    <div class="table-card table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>NF-e</th><th>Serie</th><th>Chave</th><th>Emissao</th><th>Fornecedor</th><th>CNPJ</th><th>Valor</th><th>O.C.</th><th>Status XML</th><th>Status financeiro</th><th>Titulos</th><th>Acoes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for documento in documentos %}
+                    {% set status_fin = status_financeiro_xml(documento) %}
+                    {% set titulos = titulos_ativos_documento_fiscal(documento) %}
+                    <tr>
+                        <td>{{ documento.numero }}</td>
+                        <td>{{ documento.serie or "-" }}</td>
+                        <td>{{ documento.chave_acesso }}</td>
+                        <td>{{ documento.data_emissao.strftime("%d/%m/%Y") if documento.data_emissao else "-" }}</td>
+                        <td>{{ documento.emitente_nome }}</td>
+                        <td>{{ documento.emitente_cnpj }}</td>
+                        <td>{{ formatar_moeda_brl(documento.valor_total) }}</td>
+                        <td>{% if documento.ordem_compra %}<a href="{{ url_for('suprimentos_ordens_compra.detalhes', ordem_id=documento.ordem_compra_id) }}">{{ documento.ordem_compra.numero }}</a>{% else %}-{% endif %}</td>
+                        <td><span class="badge badge-secondary">{{ documento.status }}</span></td>
+                        <td><span class="badge {{ 'badge-success' if status_fin in ['Titulos gerados', 'Ja integrado via O.C.'] else 'badge-warning' if status_fin != 'Ignorado' else 'badge-secondary' }}">{{ status_fin }}</span></td>
+                        <td>{{ titulos|length }}</td>
+                        <td class="col-acoes">
+                            {% if documento.xml_path %}<a class="btn btn-secondary" href="{{ url_for('fiscal.baixar_xml', documento_id=documento.id) }}">XML</a>{% endif %}
+                            {% if documento.danfe_path %}<a class="btn btn-secondary" href="{{ url_for('fiscal.baixar_danfe', documento_id=documento.id) }}">DANFE</a>{% endif %}
+                            {% if titulos %}
+                                <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.titulos', numero_nfe=documento.numero) }}">Ver titulos</a>
+                            {% elif status_fin in ['Pendente de geracao', 'Pendente de conferencia'] %}
+                                <a class="btn btn-primary" href="{{ url_for('financeiro_contas_pagar.conferir_xml', documento_id=documento.id) }}">Gerar Contas a Pagar</a>
+                            {% endif %}
+                            {% if status_fin == 'Ignorado' %}
+                                <form class="inline-form" method="POST" action="{{ url_for('financeiro_contas_pagar.reativar_agendamento_xml', documento_id=documento.id) }}"><button class="btn btn-secondary" type="submit">Reativar</button></form>
+                            {% elif not titulos and status_fin not in ['Ja integrado via O.C.'] %}
+                                <form class="inline-form" method="POST" action="{{ url_for('financeiro_contas_pagar.ignorar_agendamento_xml', documento_id=documento.id) }}"><button class="btn btn-warning" type="submit">Ignorar</button></form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr><td class="empty-state" colspan="12">Nenhum XML fiscal aguardando acao financeira.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}
