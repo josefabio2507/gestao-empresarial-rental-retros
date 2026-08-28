@@ -46,7 +46,7 @@
     <div class="table-card table-responsive">
         <table class="table financeiro-contas-pagar-table">
             <thead>
-                <tr><th>Data da baixa</th><th>Valor pago</th><th>Forma</th><th>Conta/origem</th><th>Observacao</th><th>Comprovante</th><th>Usuario</th><th>Registro</th><th>Status</th><th>Acoes</th></tr>
+                <tr><th>Data da baixa</th><th>Valor pago</th><th>Forma</th><th>Conta/origem</th><th>Observacao</th><th>Comprovante</th><th>Usuario</th><th>Registro</th><th>Status</th><th>Lote</th><th>Acoes</th></tr>
             </thead>
             <tbody>
                 {% for baixa in titulo.baixas %}
@@ -60,6 +60,7 @@
                         <td>{{ baixa.registrado_por.nome if baixa.registrado_por else "-" }}</td>
                         <td>{{ baixa.criado_em.strftime("%d/%m/%Y %H:%M") if baixa.criado_em else "-" }}</td>
                         <td><span class="badge {{ 'badge-success' if baixa.status == 'Ativa' else 'badge-secondary' }}">{{ baixa.status }}</span></td>
+                        <td>{% if baixa.lote_baixa %}<a href="{{ url_for('financeiro_contas_pagar.detalhes_lote_baixa', lote_id=baixa.lote_baixa_id) }}">Lote #{{ baixa.lote_baixa_id }}</a>{% else %}-{% endif %}</td>
                         <td>
                             {% if baixa.status == 'Ativa' %}
                                 <form class="inline-form" method="POST" action="{{ url_for('financeiro_contas_pagar.estornar_pagamento', titulo_id=titulo.id, baixa_id=baixa.id) }}">
@@ -70,7 +71,7 @@
                         </td>
                     </tr>
                 {% else %}
-                    <tr><td class="empty-state" colspan="10">Nenhuma baixa registrada para este titulo.</td></tr>
+                    <tr><td class="empty-state" colspan="11">Nenhuma baixa registrada para este titulo.</td></tr>
                 {% endfor %}
             </tbody>
         </table>

@@ -1649,6 +1649,53 @@ class FinanceiroContaPagarTitulo(db.Model):
         return f"<FinanceiroContaPagarTitulo {self.id} {self.fornecedor_nome_snapshot}>"
 
 
+
+class FinanceiroContaPagarLoteBaixa(db.Model):
+    __tablename__ = "financeiro_contas_pagar_lotes_baixa"
+
+    id = db.Column(db.Integer, primary_key=True)
+    data_pagamento = db.Column(db.Date, nullable=False, index=True)
+    forma_pagamento = db.Column(db.String(30), nullable=False, index=True)
+    conta_pagamento_descricao = db.Column(db.String(180), nullable=True)
+    observacoes = db.Column(db.Text, nullable=True)
+    comprovante_nome_original = db.Column(db.String(255), nullable=True)
+    comprovante_nome_armazenado = db.Column(db.String(255), nullable=True)
+    comprovante_path = db.Column(db.String(500), nullable=True)
+    comprovante_drive_file_id = db.Column(db.String(255), nullable=True)
+    comprovante_drive_link = db.Column(db.String(500), nullable=True)
+    comprovante_extensao = db.Column(db.String(10), nullable=True)
+    comprovante_tamanho = db.Column(db.Integer, nullable=True)
+    total_titulos = db.Column(db.Integer, default=0, nullable=False)
+    valor_total_baixado = db.Column(db.Numeric(12, 2), default=0, nullable=False)
+    status = db.Column(db.String(20), nullable=False, default="Ativo", index=True)
+    criado_por_usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=True, index=True)
+    cancelado_por_usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=True, index=True)
+    cancelado_em = db.Column(db.DateTime, nullable=True)
+    motivo_cancelamento = db.Column(db.Text, nullable=True)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
+    atualizado_em = db.Column(db.DateTime, default=agora_brasil, onupdate=agora_brasil, nullable=False)
+
+    baixas = db.relationship("FinanceiroContaPagarBaixa", back_populates="lote_baixa")
+    criado_por = db.relationship("Usuario", foreign_keys=[criado_por_usuario_id])
+    cancelado_por = db.relationship("Usuario", foreign_keys=[cancelado_por_usuario_id])
+
+    __table_args__ = (
+        db.CheckConstraint("total_titulos >= 0", name="ck_fin_cp_lote_total_titulos"),
+        db.CheckConstraint("valor_total_baixado >= 0", name="ck_fin_cp_lote_valor_total"),
+        db.CheckConstraint("status in ('Ativo', 'Cancelado', 'Estornado')", name="ck_fin_cp_lote_status"),
+        db.CheckConstraint(
+            "forma_pagamento in ('Boleto', 'Pix', 'Transferencia', 'Deposito', 'Cartao de Credito', 'Outro')",
+            name="ck_fin_cp_lote_forma_pagamento",
+        ),
+    )
+
+    @property
+    def comprovante_disponivel(self):
+        return bool(self.comprovante_path or self.comprovante_drive_file_id)
+
+    def __repr__(self):
+        return f"<FinanceiroContaPagarLoteBaixa {self.id}>"
+
 class FinanceiroContaPagarBaixa(db.Model):
     __tablename__ = "financeiro_contas_pagar_baixas"
 
@@ -1659,6 +1706,7 @@ class FinanceiroContaPagarBaixa(db.Model):
         nullable=False,
         index=True,
     )
+    lote_baixa_id = db.Column(db.Integer, db.ForeignKey("financeiro_contas_pagar_lotes_baixa.id"), nullable=True, index=True)
     data_pagamento = db.Column(db.Date, nullable=False, index=True)
     valor_pago = db.Column(db.Numeric(12, 2), nullable=False)
     forma_pagamento = db.Column(db.String(30), nullable=False, index=True)
@@ -1695,6 +1743,7 @@ class FinanceiroContaPagarBaixa(db.Model):
     )
 
     titulo = db.relationship("FinanceiroContaPagarTitulo", back_populates="baixas")
+    lote_baixa = db.relationship("FinanceiroContaPagarLoteBaixa", back_populates="baixas")
     registrado_por = db.relationship("Usuario", foreign_keys=[registrado_por_usuario_id])
     cancelado_por = db.relationship("Usuario", foreign_keys=[cancelado_por_usuario_id])
 
@@ -3088,4 +3137,3 @@ class SegurancaTrabalhoEntregaEpi(db.Model):
 
     def __repr__(self):
         return f"<SegurancaTrabalhoEntregaEpi colaborador={self.colaborador_id} item={self.item_id}>"
-

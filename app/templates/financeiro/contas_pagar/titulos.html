@@ -35,16 +35,23 @@
         </div>
     </form>
 
+    <form id="baixa-massa-form" method="GET" action="{{ url_for('financeiro_contas_pagar.baixa_em_massa') }}">
+        <div class="form-actions">
+            <strong><span id="bulk-count">0</span> selecionado(s)</strong>
+            <span>Saldo selecionado: R$ <span id="bulk-total">0,00</span></span>
+            <button class="btn btn-primary" id="bulk-submit" type="submit" disabled>Registrar pagamento em massa</button>
+        </div>
     <div class="table-card table-responsive">
         <table class="table financeiro-contas-pagar-table">
             <thead>
                 <tr>
-                    <th>ID</th><th>Fornecedor</th><th>CNPJ/CPF</th><th>Descricao</th><th>Documento</th><th>NF-e</th><th>O.C.</th><th>Origem</th><th>Tipo</th><th>Forma</th><th>Cartao</th><th>Fatura</th><th>Vencimento</th><th>Valor original</th><th>Valor pago</th><th>Saldo</th><th>Status</th><th>Acoes</th>
+                    <th><input type="checkbox" id="selecionar-todos-baixa" aria-label="Selecionar todos os titulos elegiveis"></th><th>ID</th><th>Fornecedor</th><th>CNPJ/CPF</th><th>Descricao</th><th>Documento</th><th>NF-e</th><th>O.C.</th><th>Origem</th><th>Tipo</th><th>Forma</th><th>Cartao</th><th>Fatura</th><th>Vencimento</th><th>Valor original</th><th>Valor pago</th><th>Saldo</th><th>Status</th><th>Acoes</th>
                 </tr>
             </thead>
             <tbody>
                 {% for titulo in titulos %}
                     <tr>
+                        <td>{% if titulo_elegivel_baixa(titulo) %}<input class="bulk-titulo-checkbox" type="checkbox" name="titulos_ids" value="{{ titulo.id }}" data-saldo="{{ calcular_saldo_titulo(titulo) }}" aria-label="Selecionar titulo {{ titulo.id }}">{% else %}-{% endif %}</td>
                         <td>{{ titulo.id }}</td>
                         <td>{{ titulo.fornecedor_nome_snapshot }}</td>
                         <td>{{ titulo.fornecedor_cnpj_cpf_snapshot or "-" }}</td>
@@ -77,12 +84,41 @@
                         </td>
                     </tr>
                 {% else %}
-                    <tr><td class="empty-state" colspan="18">Nenhum titulo a pagar encontrado.</td></tr>
+                    <tr><td class="empty-state" colspan="19">Nenhum titulo a pagar encontrado.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
+    </form>
     <div class="page-actions"><a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.dashboard') }}">Voltar</a></div>
 </section>
+<script>
+(function () {
+    var checkboxes = Array.prototype.slice.call(document.querySelectorAll(".bulk-titulo-checkbox"));
+    var selecionarTodos = document.getElementById("selecionar-todos-baixa");
+    var count = document.getElementById("bulk-count");
+    var total = document.getElementById("bulk-total");
+    var submit = document.getElementById("bulk-submit");
+    function moeda(valor) { return valor.toFixed(2).replace(".", ","); }
+    function atualizar() {
+        var selecionados = checkboxes.filter(function (item) { return item.checked; });
+        var soma = selecionados.reduce(function (acc, item) { return acc + parseFloat(item.dataset.saldo || "0"); }, 0);
+        count.textContent = selecionados.length;
+        total.textContent = moeda(soma);
+        submit.disabled = selecionados.length === 0;
+        if (selecionarTodos) {
+            selecionarTodos.checked = checkboxes.length > 0 && selecionados.length === checkboxes.length;
+        }
+    }
+    checkboxes.forEach(function (item) { item.addEventListener("change", atualizar); });
+    if (selecionarTodos) {
+        selecionarTodos.addEventListener("change", function () {
+            checkboxes.forEach(function (item) { item.checked = selecionarTodos.checked; });
+            atualizar();
+        });
+    }
+    atualizar();
+}());
+</script>
 {% endblock %}
 

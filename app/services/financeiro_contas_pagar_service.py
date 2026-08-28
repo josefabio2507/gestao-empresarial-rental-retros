@@ -15,6 +15,7 @@ from app.models import (
     FinanceiroCartaoCredito,
     FinanceiroCartaoFatura,
     FinanceiroContaPagarBaixa,
+    FinanceiroContaPagarLoteBaixa,
     FinanceiroContaPagarTitulo,
     FiscalDocumento,
     SuprimentosFornecedor,
@@ -203,6 +204,9 @@ def buscar_cartao_por_id(cartao_id):
 def buscar_fatura_por_id(fatura_id):
     return FinanceiroCartaoFatura.query.get(fatura_id)
 
+def buscar_lote_baixa_por_id(lote_id):
+    return FinanceiroContaPagarLoteBaixa.query.get(lote_id)
+
 
 
 def buscar_baixa_por_id(baixa_id):
@@ -390,6 +394,177 @@ def caminho_comprovante_baixa(baixa):
     if not baixa or baixa.status != "Ativa" or not baixa.comprovante_path:
         return None
     caminho = os.path.abspath(baixa.comprovante_path)
+    pasta_base = os.path.abspath(os.path.join(current_app.instance_path, "financeiro", "comprovantes"))
+    if not caminho.startswith(pasta_base):
+        return None
+    if not os.path.exists(caminho):
+        return None
+    return caminho
+
+
+def titulo_elegivel_baixa(titulo):
+    if not titulo:
+        return False
+    if titulo.status in ("Pago", "Cancelado", "Estornado"):
+        return False
+    return calcular_saldo_titulo(titulo) > 0
+
+
+def titulos_para_baixa_em_massa(ids):
+    ids_validos = []
+    for item in ids or []:
+        try:
+            ids_validos.append(int(item))
+        except (TypeError, ValueError):
+            continue
+    if not ids_validos:
+        return []
+    return FinanceiroContaPagarTitulo.query.filter(
+        FinanceiroContaPagarTitulo.id.in_(ids_validos)
+    ).order_by(FinanceiroContaPagarTitulo.data_vencimento.asc()).all()
+
+
+def _salvar_comprovante_lote(lote, arquivo):
+    if not arquivo or not arquivo.filename:
+        return
+
+    extensao = _extensao_comprovante(arquivo)
+    if extensao not in EXTENSOES_COMPROVANTE:
+        raise ValueError("Formato de comprovante invalido. Use PDF, JPG, JPEG, PNG ou WEBP.")
+    tamanho = _tamanho_arquivo(arquivo)
+    if tamanho > MAX_COMPROVANTE_BYTES:
+        raise ValueError("Comprovante maior que 10 MB.")
+
+    pasta = os.path.join(current_app.instance_path, "financeiro", "comprovantes")
+    os.makedirs(pasta, exist_ok=True)
+    data_nome = agora_brasil().strftime("%Y%m%d-%H%M%S")
+    nome_armazenado = f"CP-LOTE-{lote.id}_{data_nome}.{extensao}"
+    caminho = os.path.join(pasta, nome_armazenado)
+    arquivo.stream.seek(0)
+    arquivo.save(caminho)
+
+    lote.comprovante_nome_original = arquivo.filename
+    lote.comprovante_nome_armazenado = nome_armazenado
+    lote.comprovante_path = caminho
+    lote.comprovante_extensao = extensao
+    lote.comprovante_tamanho = tamanho
+    _registrar_log("financeiro_lote_baixa_comprovante_upload", f"Comprovante anexado ao lote de baixa. Lote: {lote.id}.")
+
+
+def registrar_baixa_em_massa(dados, arquivo=None, usuario=None):
+    ids = dados.getlist("titulos_ids") if hasattr(dados, "getlist") else dados.get("titulos_ids", [])
+    titulos = titulos_para_baixa_em_massa(ids)
+    if not titulos:
+        return False, "Nenhum titulo selecionado.", None
+
+    try:
+        data_pagamento = parse_data(dados.get("data_pagamento"), obrigatorio=True, nome_campo="Data do pagamento")
+        forma_pagamento = dados.get("forma_pagamento") or ""
+        if forma_pagamento not in FORMAS_PAGAMENTO:
+            raise ValueError("Forma de pagamento invalida.")
+
+        itens = []
+        valor_total = Decimal("0.00")
+        for titulo in titulos:
+            if not titulo_elegivel_baixa(titulo):
+                _registrar_log("financeiro_lote_baixa_titulo_rejeitado", f"Titulo rejeitado no lote por inelegibilidade. Titulo: {titulo.id}.")
+                raise ValueError("Um ou mais titulos nao estao elegiveis para baixa.")
+            valor = parse_decimal(dados.get(f"valor_baixa_{titulo.id}"), obrigatorio=True, nome_campo="Valor a baixar")
+            if valor <= 0:
+                raise ValueError("Valor a baixar deve ser maior que zero.")
+            saldo = calcular_saldo_titulo(titulo)
+            if valor > saldo:
+                raise ValueError("O valor informado excede o saldo de um dos titulos.")
+            itens.append((titulo, valor))
+            valor_total += valor
+
+        lote = FinanceiroContaPagarLoteBaixa(
+            data_pagamento=data_pagamento,
+            forma_pagamento=forma_pagamento,
+            conta_pagamento_descricao=normalizar_texto(dados.get("conta_pagamento_descricao"), upper=False) or None,
+            observacoes=normalizar_texto(dados.get("observacoes"), upper=False) or None,
+            total_titulos=len(itens),
+            valor_total_baixado=valor_total,
+            status="Ativo",
+            criado_por_usuario_id=getattr(usuario, "id", None),
+        )
+        db.session.add(lote)
+        db.session.flush()
+        _salvar_comprovante_lote(lote, arquivo)
+
+        faturas_afetadas = set()
+        baixas = []
+        for titulo, valor in itens:
+            baixa = FinanceiroContaPagarBaixa(
+                titulo_id=titulo.id,
+                lote_baixa_id=lote.id,
+                data_pagamento=data_pagamento,
+                valor_pago=valor,
+                forma_pagamento=forma_pagamento,
+                conta_pagamento_descricao=lote.conta_pagamento_descricao,
+                observacoes=lote.observacoes,
+                status="Ativa",
+                comprovante_nome_original=lote.comprovante_nome_original,
+                comprovante_nome_armazenado=lote.comprovante_nome_armazenado,
+                comprovante_path=lote.comprovante_path,
+                comprovante_drive_file_id=lote.comprovante_drive_file_id,
+                comprovante_drive_link=lote.comprovante_drive_link,
+                comprovante_extensao=lote.comprovante_extensao,
+                comprovante_tamanho=lote.comprovante_tamanho,
+                registrado_por_usuario_id=getattr(usuario, "id", None),
+            )
+            db.session.add(baixa)
+            baixas.append(baixa)
+            db.session.flush()
+            recalcular_pagamento_titulo(titulo, usuario=usuario)
+            if titulo.fatura_cartao_id:
+                faturas_afetadas.add(titulo.fatura_cartao)
+            _registrar_log("financeiro_lote_baixa_titulo_incluido", f"Titulo incluido em lote de baixa. Lote: {lote.id}. Titulo: {titulo.id}. Valor: {valor}.")
+
+        for fatura in faturas_afetadas:
+            recalcular_fatura(fatura)
+        db.session.commit()
+        _registrar_log("financeiro_lote_baixa_criado", f"Lote de baixa criado. ID: {lote.id}. Titulos: {lote.total_titulos}. Valor: {lote.valor_total_baixado}.")
+        return True, "Baixa em massa registrada com sucesso.", lote
+    except ValueError as exc:
+        db.session.rollback()
+        return False, str(exc), None
+
+
+def estornar_lote_baixa(lote, motivo, usuario=None):
+    if not lote:
+        return False, "Lote de baixa nao encontrado."
+    if lote.status != "Ativo":
+        return False, "Lote ja foi cancelado ou estornado."
+    motivo = normalizar_texto(motivo, upper=False)
+    if not motivo:
+        return False, "Informe o motivo do estorno."
+
+    lote.status = "Estornado"
+    lote.cancelado_por_usuario_id = getattr(usuario, "id", None)
+    lote.cancelado_em = agora_brasil()
+    lote.motivo_cancelamento = motivo
+    faturas_afetadas = set()
+    for baixa in lote.baixas:
+        if baixa.status == "Ativa":
+            baixa.status = "Estornada"
+            baixa.cancelado_por_usuario_id = getattr(usuario, "id", None)
+            baixa.cancelado_em = lote.cancelado_em
+            baixa.motivo_cancelamento = motivo
+            recalcular_pagamento_titulo(baixa.titulo, usuario=usuario)
+            if baixa.titulo and baixa.titulo.fatura_cartao_id:
+                faturas_afetadas.add(baixa.titulo.fatura_cartao)
+    for fatura in faturas_afetadas:
+        recalcular_fatura(fatura)
+    db.session.commit()
+    _registrar_log("financeiro_lote_baixa_estornado", f"Lote de baixa estornado. ID: {lote.id}.")
+    return True, "Lote de baixa estornado com sucesso."
+
+
+def caminho_comprovante_lote(lote):
+    if not lote or lote.status != "Ativo" or not lote.comprovante_path:
+        return None
+    caminho = os.path.abspath(lote.comprovante_path)
     pasta_base = os.path.abspath(os.path.join(current_app.instance_path, "financeiro", "comprovantes"))
     if not caminho.startswith(pasta_base):
         return None
@@ -1292,9 +1467,3 @@ def atualizar_status_fatura(fatura, novo_status, usuario=None):
     recalcular_fatura(fatura)
     db.session.commit()
     return True, "Fatura atualizada com sucesso."
-
-
-
-
-
-

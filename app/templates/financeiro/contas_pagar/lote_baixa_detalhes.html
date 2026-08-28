@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Financeiro &gt; Contas a Pagar &gt; Lote de Baixa</span>
+            <h1>Lote de Baixa #{{ lote.id }}</h1>
+            <p>{{ lote.total_titulos }} titulo(s) baixado(s)</p>
+        </div>
+        {% include "financeiro/contas_pagar/_nav.html" %}
+    </div>
+
+    <div class="details-card">
+        <p><strong>Data do pagamento:</strong> {{ lote.data_pagamento.strftime("%d/%m/%Y") }}</p>
+        <p><strong>Forma de pagamento:</strong> {{ lote.forma_pagamento }}</p>
+        <p><strong>Conta de pagamento:</strong> {{ lote.conta_pagamento_descricao or "-" }}</p>
+        <p><strong>Valor total baixado:</strong> R$ {{ "%.2f"|format(lote.valor_total_baixado)|replace('.', ',') }}</p>
+        <p><strong>Quantidade de titulos:</strong> {{ lote.total_titulos }}</p>
+        <p><strong>Usuario:</strong> {{ lote.criado_por.nome if lote.criado_por else "-" }}</p>
+        <p><strong>Registro:</strong> {{ lote.criado_em.strftime("%d/%m/%Y %H:%M") if lote.criado_em else "-" }}</p>
+        <p><strong>Status:</strong> <span class="badge {{ 'badge-success' if lote.status == 'Ativo' else 'badge-secondary' }}">{{ lote.status }}</span></p>
+        <p><strong>Observacoes:</strong> {{ lote.observacoes or lote.motivo_cancelamento or "-" }}</p>
+        <p><strong>Comprovante:</strong> {% if lote.comprovante_disponivel and lote.status == 'Ativo' %}<a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.baixar_comprovante_lote', lote_id=lote.id) }}">Baixar comprovante</a>{% else %}<span class="badge badge-warning">Sem comprovante</span>{% endif %}</p>
+    </div>
+
+    <div class="table-card table-responsive">
+        <table class="table financeiro-contas-pagar-table">
+            <thead><tr><th>Titulo</th><th>Fornecedor</th><th>Documento</th><th>Vencimento</th><th>Valor baixado</th><th>Status da baixa</th><th>Status do titulo</th><th>Acoes</th></tr></thead>
+            <tbody>
+                {% for baixa in lote.baixas %}
+                    <tr>
+                        <td>#{{ baixa.titulo_id }}</td>
+                        <td>{{ baixa.titulo.fornecedor_nome_snapshot if baixa.titulo else "-" }}</td>
+                        <td>{{ baixa.titulo.numero_documento if baixa.titulo else "-" }}</td>
+                        <td>{{ baixa.titulo.data_vencimento.strftime("%d/%m/%Y") if baixa.titulo and baixa.titulo.data_vencimento else "-" }}</td>
+                        <td>R$ {{ "%.2f"|format(baixa.valor_pago)|replace('.', ',') }}</td>
+                        <td>{{ baixa.status }}</td>
+                        <td>{{ baixa.titulo.status_exibicao() if baixa.titulo else "-" }}</td>
+                        <td>{% if baixa.titulo %}<a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.detalhes', titulo_id=baixa.titulo_id) }}">Ver titulo</a>{% else %}-{% endif %}</td>
+                    </tr>
+                {% else %}
+                    <tr><td class="empty-state" colspan="8">Nenhuma baixa vinculada a este lote.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="page-actions">
+        {% if lote.status == 'Ativo' %}
+            <form class="inline-form" method="POST" action="{{ url_for('financeiro_contas_pagar.estornar_lote', lote_id=lote.id) }}">
+                <input name="motivo_cancelamento" placeholder="Motivo do estorno" required>
+                <button class="btn btn-warning" type="submit">Estornar lote</button>
+            </form>
+        {% endif %}
+        <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.titulos') }}">Voltar</a>
+    </div>
+</section>
+{% endblock %}
