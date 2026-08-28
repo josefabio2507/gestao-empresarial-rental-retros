@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Financeiro &gt; Contas a Pagar &gt; Registrar Pagamento</span>
+            <h1>Registrar Pagamento</h1>
+            <p>{{ titulo.fornecedor_nome_snapshot }} - {{ titulo.descricao }}</p>
+        </div>
+        {% include "financeiro/contas_pagar/_nav.html" %}
+    </div>
+
+    <div class="details-card">
+        <p><strong>Titulo:</strong> #{{ titulo.id }}</p>
+        <p><strong>Fornecedor:</strong> {{ titulo.fornecedor_nome_snapshot }}</p>
+        <p><strong>Documento:</strong> {{ titulo.numero_documento or titulo.numero_nfe or "-" }}</p>
+        <p><strong>Valor original:</strong> R$ {{ "%.2f"|format(titulo.valor_original)|replace('.', ',') }}</p>
+        <p><strong>Valor liquido:</strong> R$ {{ "%.2f"|format(titulo.valor_liquido_previsto)|replace('.', ',') }}</p>
+        <p><strong>Valor ja pago:</strong> R$ {{ "%.2f"|format(titulo.valor_pago)|replace('.', ',') }}</p>
+        <p><strong>Saldo em aberto:</strong> R$ {{ "%.2f"|format(saldo)|replace('.', ',') }}</p>
+    </div>
+
+    <form class="form-card" method="POST" enctype="multipart/form-data">
+        <div class="form-grid">
+            <div class="form-group"><label for="data_pagamento">Data do pagamento</label><input id="data_pagamento" name="data_pagamento" type="date" required></div>
+            <div class="form-group"><label for="valor_pago">Valor pago</label><input id="valor_pago" name="valor_pago" required placeholder="0,00"></div>
+            <div class="form-group"><label for="forma_pagamento">Forma de pagamento</label><select id="forma_pagamento" name="forma_pagamento" required><option value="">Selecione</option>{% for forma in formas_pagamento %}<option value="{{ forma }}" {{ "selected" if forma == titulo.forma_pagamento else "" }}>{{ forma }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="conta_pagamento_descricao">Conta de pagamento</label><input id="conta_pagamento_descricao" name="conta_pagamento_descricao" placeholder="Ex.: Banco, caixa ou origem do pagamento"></div>
+            <div class="form-group full-span"><label for="comprovante">Comprovante</label><input id="comprovante" name="comprovante" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp"><small>PDF, JPG, JPEG, PNG ou WEBP ate 10 MB.</small></div>
+            <div class="form-group full-span"><label for="observacoes">Observacoes</label><textarea id="observacoes" name="observacoes" rows="3"></textarea></div>
+        </div>
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Registrar pagamento</button>
+            <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.detalhes', titulo_id=titulo.id) }}">Voltar</a>
+        </div>
+    </form>
+</section>
+{% endblock %}

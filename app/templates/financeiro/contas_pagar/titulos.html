@@ -25,6 +25,9 @@
             <div class="form-group"><label for="numero_nfe">Numero da NF-e</label><input id="numero_nfe" name="numero_nfe" value="{{ filtros.get('numero_nfe', '') }}"></div>
             <div class="form-group"><label for="ordem_compra">Ordem de Compra</label><input id="ordem_compra" name="ordem_compra" value="{{ filtros.get('ordem_compra', '') }}"></div>
             <div class="form-group"><label for="centro_custo_id">Centro de custo</label><select id="centro_custo_id" name="centro_custo_id"><option value="">Todos</option>{% for centro in opcoes.centros_custo %}<option value="{{ centro.id }}" {{ "selected" if filtros.get('centro_custo_id') == centro.id|string else "" }}>{{ centro.codigo or "-" }} - {{ centro.nome }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="status_pagamento">Pagamento</label><select id="status_pagamento" name="status_pagamento"><option value="">Todos</option><option value="em_aberto" {{ "selected" if filtros.get('status_pagamento') == 'em_aberto' else "" }}>Em aberto</option><option value="parcial" {{ "selected" if filtros.get('status_pagamento') == 'parcial' else "" }}>Pago parcialmente</option><option value="pago" {{ "selected" if filtros.get('status_pagamento') == 'pago' else "" }}>Pago</option></select></div>
+            <div class="form-group"><label for="pagamento_inicio">Pagamento inicial</label><input id="pagamento_inicio" name="pagamento_inicio" type="date" value="{{ filtros.get('pagamento_inicio', '') }}"></div>
+            <div class="form-group"><label for="pagamento_fim">Pagamento final</label><input id="pagamento_fim" name="pagamento_fim" type="date" value="{{ filtros.get('pagamento_fim', '') }}"></div>
         </div>
         <div class="form-actions">
             <button class="btn btn-primary" type="submit">Pesquisar</button>
@@ -32,16 +35,23 @@
         </div>
     </form>
 
+    <form id="baixa-massa-form" method="GET" action="{{ url_for('financeiro_contas_pagar.baixa_em_massa') }}">
+        <div class="form-actions">
+            <strong><span id="bulk-count">0</span> selecionado(s)</strong>
+            <span>Saldo selecionado: R$ <span id="bulk-total">0,00</span></span>
+            <button class="btn btn-primary" id="bulk-submit" type="submit" disabled>Registrar pagamento em massa</button>
+        </div>
     <div class="table-card table-responsive">
         <table class="table financeiro-contas-pagar-table">
             <thead>
                 <tr>
-                    <th>ID</th><th>Fornecedor</th><th>CNPJ/CPF</th><th>Descricao</th><th>Documento</th><th>NF-e</th><th>O.C.</th><th>Origem</th><th>Tipo</th><th>Forma</th><th>Cartao</th><th>Fatura</th><th>Vencimento</th><th>Valor original</th><th>Valor pago</th><th>Status</th><th>Acoes</th>
+                    <th><input type="checkbox" id="selecionar-todos-baixa" aria-label="Selecionar todos os titulos elegiveis"></th><th>ID</th><th>Fornecedor</th><th>CNPJ/CPF</th><th>Descricao</th><th>Documento</th><th>NF-e</th><th>O.C.</th><th>Origem</th><th>Tipo</th><th>Forma</th><th>Cartao</th><th>Fatura</th><th>Vencimento</th><th>Valor original</th><th>Valor pago</th><th>Saldo</th><th>Status</th><th>Acoes</th>
                 </tr>
             </thead>
             <tbody>
                 {% for titulo in titulos %}
                     <tr>
+                        <td>{% if titulo_elegivel_baixa(titulo) %}<input class="bulk-titulo-checkbox" type="checkbox" name="titulos_ids" value="{{ titulo.id }}" data-saldo="{{ calcular_saldo_titulo(titulo) }}" aria-label="Selecionar titulo {{ titulo.id }}">{% else %}-{% endif %}</td>
                         <td>{{ titulo.id }}</td>
                         <td>{{ titulo.fornecedor_nome_snapshot }}</td>
                         <td>{{ titulo.fornecedor_cnpj_cpf_snapshot or "-" }}</td>
@@ -57,6 +67,7 @@
                         <td>{{ titulo.data_vencimento.strftime("%d/%m/%Y") }}</td>
                         <td>R$ {{ "%.2f"|format(titulo.valor_original)|replace('.', ',') }}</td>
                         <td>R$ {{ "%.2f"|format(titulo.valor_pago)|replace('.', ',') }}</td>
+                        <td>R$ {{ "%.2f"|format(titulo.saldo_aberto)|replace('.', ',') }}</td>
                         {% set status_view = titulo.status_exibicao() %}
                         <td><span class="badge {{ 'badge-danger' if status_view in ['Vencido', 'Cancelado'] else 'badge-success' if status_view == 'Pago' else 'badge-warning' }}">{{ status_view }}</span></td>
                         <td class="col-acoes">
@@ -64,6 +75,7 @@
                                 <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.detalhes', titulo_id=titulo.id) }}">Ver</a>
                                 <a class="btn btn-primary" href="{{ url_for('financeiro_contas_pagar.editar', titulo_id=titulo.id) }}">Editar</a>
                                 {% if titulo.status not in ['Pago', 'Cancelado', 'Estornado'] %}
+                                    <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.registrar_pagamento', titulo_id=titulo.id) }}">Pagar</a>
                                     <form class="inline-form" method="POST" action="{{ url_for('financeiro_contas_pagar.cancelar', titulo_id=titulo.id) }}">
                                         <button class="btn btn-warning" type="submit">Cancelar</button>
                                     </form>
@@ -72,11 +84,41 @@
                         </td>
                     </tr>
                 {% else %}
-                    <tr><td class="empty-state" colspan="17">Nenhum titulo a pagar encontrado.</td></tr>
+                    <tr><td class="empty-state" colspan="19">Nenhum titulo a pagar encontrado.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
+    </form>
     <div class="page-actions"><a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.dashboard') }}">Voltar</a></div>
 </section>
+<script>
+(function () {
+    var checkboxes = Array.prototype.slice.call(document.querySelectorAll(".bulk-titulo-checkbox"));
+    var selecionarTodos = document.getElementById("selecionar-todos-baixa");
+    var count = document.getElementById("bulk-count");
+    var total = document.getElementById("bulk-total");
+    var submit = document.getElementById("bulk-submit");
+    function moeda(valor) { return valor.toFixed(2).replace(".", ","); }
+    function atualizar() {
+        var selecionados = checkboxes.filter(function (item) { return item.checked; });
+        var soma = selecionados.reduce(function (acc, item) { return acc + parseFloat(item.dataset.saldo || "0"); }, 0);
+        count.textContent = selecionados.length;
+        total.textContent = moeda(soma);
+        submit.disabled = selecionados.length === 0;
+        if (selecionarTodos) {
+            selecionarTodos.checked = checkboxes.length > 0 && selecionados.length === checkboxes.length;
+        }
+    }
+    checkboxes.forEach(function (item) { item.addEventListener("change", atualizar); });
+    if (selecionarTodos) {
+        selecionarTodos.addEventListener("change", function () {
+            checkboxes.forEach(function (item) { item.checked = selecionarTodos.checked; });
+            atualizar();
+        });
+    }
+    atualizar();
+}());
+</script>
 {% endblock %}
+

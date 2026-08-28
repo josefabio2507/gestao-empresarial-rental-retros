@@ -1,9 +1,12 @@
 from calendar import monthrange
 from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
+import os
 import re
 
+from flask import current_app
 from sqlalchemy import func
+from werkzeug.utils import secure_filename
 
 from app.extensions import db
 from app.models import (
@@ -11,6 +14,8 @@ from app.models import (
     CentroCusto,
     FinanceiroCartaoCredito,
     FinanceiroCartaoFatura,
+    FinanceiroContaPagarBaixa,
+    FinanceiroContaPagarLoteBaixa,
     FinanceiroContaPagarTitulo,
     FiscalDocumento,
     SuprimentosFornecedor,
@@ -54,6 +59,9 @@ STATUS_ABERTOS = [
 STATUS_FINAIS = ["Pago", "Cancelado", "Estornado"]
 STATUS_FATURA = ["Aberta", "Fechada", "Agendada", "Paga", "Vencida", "Cancelada"]
 STATUS_FATURA_EDITAVEIS = ["Aberta", "Fechada", "Agendada"]
+STATUS_BAIXA = ["Ativa", "Cancelada", "Estornada"]
+EXTENSOES_COMPROVANTE = {"pdf", "jpg", "jpeg", "png", "webp"}
+MAX_COMPROVANTE_BYTES = 10 * 1024 * 1024
 STATUS_XML_FINANCEIRO = [
     "Pendente de geracao",
     "Pendente de conferencia",
@@ -196,6 +204,373 @@ def buscar_cartao_por_id(cartao_id):
 def buscar_fatura_por_id(fatura_id):
     return FinanceiroCartaoFatura.query.get(fatura_id)
 
+def buscar_lote_baixa_por_id(lote_id):
+    return FinanceiroContaPagarLoteBaixa.query.get(lote_id)
+
+
+
+def buscar_baixa_por_id(baixa_id):
+    return FinanceiroContaPagarBaixa.query.get(baixa_id)
+
+
+def valor_decimal(valor):
+    if isinstance(valor, Decimal):
+        return valor
+    return Decimal(str(valor or "0")).quantize(Decimal("0.01"))
+
+
+def calcular_saldo_titulo(titulo):
+    if not titulo:
+        return Decimal("0.00")
+    saldo = valor_decimal(titulo.valor_liquido_previsto) - valor_decimal(titulo.valor_pago)
+    return saldo if saldo > 0 else Decimal("0.00")
+
+
+def _somar_baixas_ativas(titulo):
+    if not titulo or not titulo.id:
+        return Decimal("0.00")
+    total = FinanceiroContaPagarBaixa.query.filter(
+        FinanceiroContaPagarBaixa.titulo_id == titulo.id,
+        FinanceiroContaPagarBaixa.status == "Ativa",
+    ).with_entities(func.coalesce(func.sum(FinanceiroContaPagarBaixa.valor_pago), 0)).scalar()
+    return valor_decimal(total)
+
+
+def _ultima_data_pagamento_ativa(titulo):
+    return FinanceiroContaPagarBaixa.query.filter(
+        FinanceiroContaPagarBaixa.titulo_id == titulo.id,
+        FinanceiroContaPagarBaixa.status == "Ativa",
+    ).with_entities(func.max(FinanceiroContaPagarBaixa.data_pagamento)).scalar()
+
+
+def _status_aberto_por_vencimento(titulo, hoje=None):
+    hoje = hoje or date.today()
+    if titulo.status == "Aguardando conferencia":
+        return "Aguardando conferencia"
+    if titulo.data_vencimento and titulo.data_vencimento < hoje:
+        return "Vencido"
+    return "A vencer"
+
+
+def recalcular_pagamento_titulo(titulo, usuario=None):
+    if not titulo:
+        return
+    if titulo.status in ("Cancelado", "Estornado"):
+        return
+
+    total_pago = _somar_baixas_ativas(titulo)
+    valor_liquido = valor_decimal(titulo.valor_liquido_previsto)
+    status_anterior = titulo.status
+
+    titulo.valor_pago = total_pago
+    titulo.data_pagamento = _ultima_data_pagamento_ativa(titulo) if total_pago > 0 else None
+    if total_pago <= 0:
+        titulo.status = _status_aberto_por_vencimento(titulo)
+    elif total_pago >= valor_liquido:
+        titulo.status = "Pago"
+    else:
+        titulo.status = "Pago parcialmente"
+    titulo.atualizado_por_usuario_id = getattr(usuario, "id", None)
+
+    if status_anterior != titulo.status:
+        _registrar_log(
+            "financeiro_contas_pagar_status_alterado",
+            f"Status do titulo a pagar alterado por baixa. ID: {titulo.id}. {status_anterior} -> {titulo.status}.",
+        )
+
+
+def _extensao_comprovante(arquivo):
+    nome = secure_filename(arquivo.filename or "")
+    if "." not in nome:
+        return None
+    return nome.rsplit(".", 1)[1].lower()
+
+
+def _tamanho_arquivo(arquivo):
+    posicao = arquivo.stream.tell()
+    arquivo.stream.seek(0, os.SEEK_END)
+    tamanho = arquivo.stream.tell()
+    arquivo.stream.seek(posicao)
+    return tamanho
+
+
+def _salvar_comprovante(baixa, arquivo):
+    if not arquivo or not arquivo.filename:
+        return
+
+    extensao = _extensao_comprovante(arquivo)
+    if extensao not in EXTENSOES_COMPROVANTE:
+        raise ValueError("Formato de comprovante invalido. Use PDF, JPG, JPEG, PNG ou WEBP.")
+
+    tamanho = _tamanho_arquivo(arquivo)
+    if tamanho > MAX_COMPROVANTE_BYTES:
+        raise ValueError("Comprovante maior que 10 MB.")
+
+    pasta = os.path.join(current_app.instance_path, "financeiro", "comprovantes")
+    os.makedirs(pasta, exist_ok=True)
+    data_nome = agora_brasil().strftime("%Y%m%d-%H%M%S")
+    nome_armazenado = f"CP-{baixa.titulo_id}_BAIXA-{baixa.id}_{data_nome}.{extensao}"
+    caminho = os.path.join(pasta, nome_armazenado)
+    arquivo.stream.seek(0)
+    arquivo.save(caminho)
+
+    baixa.comprovante_nome_original = arquivo.filename
+    baixa.comprovante_nome_armazenado = nome_armazenado
+    baixa.comprovante_path = caminho
+    baixa.comprovante_extensao = extensao
+    baixa.comprovante_tamanho = tamanho
+    _registrar_log("financeiro_comprovante_upload", f"Comprovante anexado. Baixa: {baixa.id}. Titulo: {baixa.titulo_id}.")
+
+
+def registrar_baixa_titulo(titulo, dados, arquivo=None, usuario=None):
+    if not titulo:
+        return False, "Titulo nao encontrado.", None
+    if titulo.status in ("Cancelado", "Estornado"):
+        return False, "Titulo cancelado nao pode receber baixa.", None
+
+    try:
+        data_pagamento = parse_data(dados.get("data_pagamento"), obrigatorio=True, nome_campo="Data do pagamento")
+        valor_pago = parse_decimal(dados.get("valor_pago"), obrigatorio=True, nome_campo="Valor pago")
+        if valor_pago <= 0:
+            raise ValueError("Valor pago deve ser maior que zero.")
+        forma_pagamento = dados.get("forma_pagamento") or ""
+        if forma_pagamento not in FORMAS_PAGAMENTO:
+            raise ValueError("Forma de pagamento invalida.")
+
+        recalcular_pagamento_titulo(titulo, usuario=usuario)
+        saldo = calcular_saldo_titulo(titulo)
+        if valor_pago > saldo:
+            raise ValueError("O valor informado excede o saldo em aberto.")
+
+        baixa = FinanceiroContaPagarBaixa(
+            titulo_id=titulo.id,
+            data_pagamento=data_pagamento,
+            valor_pago=valor_pago,
+            forma_pagamento=forma_pagamento,
+            conta_pagamento_descricao=normalizar_texto(dados.get("conta_pagamento_descricao"), upper=False) or None,
+            observacoes=normalizar_texto(dados.get("observacoes"), upper=False) or None,
+            status="Ativa",
+            registrado_por_usuario_id=getattr(usuario, "id", None),
+        )
+        db.session.add(baixa)
+        db.session.flush()
+        _salvar_comprovante(baixa, arquivo)
+        recalcular_pagamento_titulo(titulo, usuario=usuario)
+        if titulo.fatura_cartao:
+            recalcular_fatura(titulo.fatura_cartao)
+        db.session.commit()
+
+        mensagem = "Titulo quitado com sucesso." if titulo.status == "Pago" else "Pagamento parcial registrado com sucesso."
+        _registrar_log("financeiro_baixa_registrada", f"Baixa registrada. ID: {baixa.id}. Titulo: {titulo.id}. Valor: {valor_pago}.")
+        return True, mensagem, baixa
+    except ValueError as exc:
+        db.session.rollback()
+        return False, str(exc), None
+
+
+def cancelar_baixa_titulo(baixa, motivo, usuario=None):
+    if not baixa:
+        return False, "Baixa nao encontrada."
+    if baixa.status != "Ativa":
+        return False, "Baixa ja foi cancelada ou estornada."
+    motivo = normalizar_texto(motivo, upper=False)
+    if not motivo:
+        return False, "Informe o motivo do estorno."
+
+    titulo = baixa.titulo
+    baixa.status = "Estornada"
+    baixa.cancelado_por_usuario_id = getattr(usuario, "id", None)
+    baixa.cancelado_em = agora_brasil()
+    baixa.motivo_cancelamento = motivo
+    recalcular_pagamento_titulo(titulo, usuario=usuario)
+    if titulo and titulo.fatura_cartao:
+        recalcular_fatura(titulo.fatura_cartao)
+    db.session.commit()
+    _registrar_log("financeiro_baixa_estornada", f"Baixa estornada. ID: {baixa.id}. Titulo: {baixa.titulo_id}.")
+    return True, "Baixa cancelada/estornada com sucesso. O saldo do titulo foi recalculado."
+
+
+def caminho_comprovante_baixa(baixa):
+    if not baixa or baixa.status != "Ativa" or not baixa.comprovante_path:
+        return None
+    caminho = os.path.abspath(baixa.comprovante_path)
+    pasta_base = os.path.abspath(os.path.join(current_app.instance_path, "financeiro", "comprovantes"))
+    if not caminho.startswith(pasta_base):
+        return None
+    if not os.path.exists(caminho):
+        return None
+    return caminho
+
+
+def titulo_elegivel_baixa(titulo):
+    if not titulo:
+        return False
+    if titulo.status in ("Pago", "Cancelado", "Estornado"):
+        return False
+    return calcular_saldo_titulo(titulo) > 0
+
+
+def titulos_para_baixa_em_massa(ids):
+    ids_validos = []
+    for item in ids or []:
+        try:
+            ids_validos.append(int(item))
+        except (TypeError, ValueError):
+            continue
+    if not ids_validos:
+        return []
+    return FinanceiroContaPagarTitulo.query.filter(
+        FinanceiroContaPagarTitulo.id.in_(ids_validos)
+    ).order_by(FinanceiroContaPagarTitulo.data_vencimento.asc()).all()
+
+
+def _salvar_comprovante_lote(lote, arquivo):
+    if not arquivo or not arquivo.filename:
+        return
+
+    extensao = _extensao_comprovante(arquivo)
+    if extensao not in EXTENSOES_COMPROVANTE:
+        raise ValueError("Formato de comprovante invalido. Use PDF, JPG, JPEG, PNG ou WEBP.")
+    tamanho = _tamanho_arquivo(arquivo)
+    if tamanho > MAX_COMPROVANTE_BYTES:
+        raise ValueError("Comprovante maior que 10 MB.")
+
+    pasta = os.path.join(current_app.instance_path, "financeiro", "comprovantes")
+    os.makedirs(pasta, exist_ok=True)
+    data_nome = agora_brasil().strftime("%Y%m%d-%H%M%S")
+    nome_armazenado = f"CP-LOTE-{lote.id}_{data_nome}.{extensao}"
+    caminho = os.path.join(pasta, nome_armazenado)
+    arquivo.stream.seek(0)
+    arquivo.save(caminho)
+
+    lote.comprovante_nome_original = arquivo.filename
+    lote.comprovante_nome_armazenado = nome_armazenado
+    lote.comprovante_path = caminho
+    lote.comprovante_extensao = extensao
+    lote.comprovante_tamanho = tamanho
+    _registrar_log("financeiro_lote_baixa_comprovante_upload", f"Comprovante anexado ao lote de baixa. Lote: {lote.id}.")
+
+
+def registrar_baixa_em_massa(dados, arquivo=None, usuario=None):
+    ids = dados.getlist("titulos_ids") if hasattr(dados, "getlist") else dados.get("titulos_ids", [])
+    titulos = titulos_para_baixa_em_massa(ids)
+    if not titulos:
+        return False, "Nenhum titulo selecionado.", None
+
+    try:
+        data_pagamento = parse_data(dados.get("data_pagamento"), obrigatorio=True, nome_campo="Data do pagamento")
+        forma_pagamento = dados.get("forma_pagamento") or ""
+        if forma_pagamento not in FORMAS_PAGAMENTO:
+            raise ValueError("Forma de pagamento invalida.")
+
+        itens = []
+        valor_total = Decimal("0.00")
+        for titulo in titulos:
+            if not titulo_elegivel_baixa(titulo):
+                _registrar_log("financeiro_lote_baixa_titulo_rejeitado", f"Titulo rejeitado no lote por inelegibilidade. Titulo: {titulo.id}.")
+                raise ValueError("Um ou mais titulos nao estao elegiveis para baixa.")
+            valor = parse_decimal(dados.get(f"valor_baixa_{titulo.id}"), obrigatorio=True, nome_campo="Valor a baixar")
+            if valor <= 0:
+                raise ValueError("Valor a baixar deve ser maior que zero.")
+            saldo = calcular_saldo_titulo(titulo)
+            if valor > saldo:
+                raise ValueError("O valor informado excede o saldo de um dos titulos.")
+            itens.append((titulo, valor))
+            valor_total += valor
+
+        lote = FinanceiroContaPagarLoteBaixa(
+            data_pagamento=data_pagamento,
+            forma_pagamento=forma_pagamento,
+            conta_pagamento_descricao=normalizar_texto(dados.get("conta_pagamento_descricao"), upper=False) or None,
+            observacoes=normalizar_texto(dados.get("observacoes"), upper=False) or None,
+            total_titulos=len(itens),
+            valor_total_baixado=valor_total,
+            status="Ativo",
+            criado_por_usuario_id=getattr(usuario, "id", None),
+        )
+        db.session.add(lote)
+        db.session.flush()
+        _salvar_comprovante_lote(lote, arquivo)
+
+        faturas_afetadas = set()
+        baixas = []
+        for titulo, valor in itens:
+            baixa = FinanceiroContaPagarBaixa(
+                titulo_id=titulo.id,
+                lote_baixa_id=lote.id,
+                data_pagamento=data_pagamento,
+                valor_pago=valor,
+                forma_pagamento=forma_pagamento,
+                conta_pagamento_descricao=lote.conta_pagamento_descricao,
+                observacoes=lote.observacoes,
+                status="Ativa",
+                comprovante_nome_original=lote.comprovante_nome_original,
+                comprovante_nome_armazenado=lote.comprovante_nome_armazenado,
+                comprovante_path=lote.comprovante_path,
+                comprovante_drive_file_id=lote.comprovante_drive_file_id,
+                comprovante_drive_link=lote.comprovante_drive_link,
+                comprovante_extensao=lote.comprovante_extensao,
+                comprovante_tamanho=lote.comprovante_tamanho,
+                registrado_por_usuario_id=getattr(usuario, "id", None),
+            )
+            db.session.add(baixa)
+            baixas.append(baixa)
+            db.session.flush()
+            recalcular_pagamento_titulo(titulo, usuario=usuario)
+            if titulo.fatura_cartao_id:
+                faturas_afetadas.add(titulo.fatura_cartao)
+            _registrar_log("financeiro_lote_baixa_titulo_incluido", f"Titulo incluido em lote de baixa. Lote: {lote.id}. Titulo: {titulo.id}. Valor: {valor}.")
+
+        for fatura in faturas_afetadas:
+            recalcular_fatura(fatura)
+        db.session.commit()
+        _registrar_log("financeiro_lote_baixa_criado", f"Lote de baixa criado. ID: {lote.id}. Titulos: {lote.total_titulos}. Valor: {lote.valor_total_baixado}.")
+        return True, "Baixa em massa registrada com sucesso.", lote
+    except ValueError as exc:
+        db.session.rollback()
+        return False, str(exc), None
+
+
+def estornar_lote_baixa(lote, motivo, usuario=None):
+    if not lote:
+        return False, "Lote de baixa nao encontrado."
+    if lote.status != "Ativo":
+        return False, "Lote ja foi cancelado ou estornado."
+    motivo = normalizar_texto(motivo, upper=False)
+    if not motivo:
+        return False, "Informe o motivo do estorno."
+
+    lote.status = "Estornado"
+    lote.cancelado_por_usuario_id = getattr(usuario, "id", None)
+    lote.cancelado_em = agora_brasil()
+    lote.motivo_cancelamento = motivo
+    faturas_afetadas = set()
+    for baixa in lote.baixas:
+        if baixa.status == "Ativa":
+            baixa.status = "Estornada"
+            baixa.cancelado_por_usuario_id = getattr(usuario, "id", None)
+            baixa.cancelado_em = lote.cancelado_em
+            baixa.motivo_cancelamento = motivo
+            recalcular_pagamento_titulo(baixa.titulo, usuario=usuario)
+            if baixa.titulo and baixa.titulo.fatura_cartao_id:
+                faturas_afetadas.add(baixa.titulo.fatura_cartao)
+    for fatura in faturas_afetadas:
+        recalcular_fatura(fatura)
+    db.session.commit()
+    _registrar_log("financeiro_lote_baixa_estornado", f"Lote de baixa estornado. ID: {lote.id}.")
+    return True, "Lote de baixa estornado com sucesso."
+
+
+def caminho_comprovante_lote(lote):
+    if not lote or lote.status != "Ativo" or not lote.comprovante_path:
+        return None
+    caminho = os.path.abspath(lote.comprovante_path)
+    pasta_base = os.path.abspath(os.path.join(current_app.instance_path, "financeiro", "comprovantes"))
+    if not caminho.startswith(pasta_base):
+        return None
+    if not os.path.exists(caminho):
+        return None
+    return caminho
 
 def _aplicar_filtros(query, filtros):
     fornecedor = (filtros.get("fornecedor") or "").strip()
@@ -208,6 +583,7 @@ def _aplicar_filtros(query, filtros):
     numero_nfe = (filtros.get("numero_nfe") or "").strip()
     ordem_compra = (filtros.get("ordem_compra") or "").strip()
     centro_custo_id = (filtros.get("centro_custo_id") or "").strip()
+    status_pagamento = (filtros.get("status_pagamento") or "").strip()
 
     if fornecedor:
         query = query.filter(FinanceiroContaPagarTitulo.fornecedor_nome_snapshot.ilike(f"%{fornecedor}%"))
@@ -229,18 +605,29 @@ def _aplicar_filtros(query, filtros):
         query = query.filter(FinanceiroContaPagarTitulo.ordem_compra_id == int(ordem_compra))
     if centro_custo_id.isdigit():
         query = query.filter(FinanceiroContaPagarTitulo.centro_custo_id == int(centro_custo_id))
+    if status_pagamento == "em_aberto":
+        query = query.filter(FinanceiroContaPagarTitulo.status.notin_(["Pago", "Cancelado", "Estornado"]))
+    elif status_pagamento == "pago":
+        query = query.filter(FinanceiroContaPagarTitulo.status == "Pago")
+    elif status_pagamento == "parcial":
+        query = query.filter(FinanceiroContaPagarTitulo.status == "Pago parcialmente")
 
     try:
         vencimento_inicio = parse_data(filtros.get("vencimento_inicio"), nome_campo="Vencimento inicial")
         vencimento_fim = parse_data(filtros.get("vencimento_fim"), nome_campo="Vencimento final")
+        pagamento_inicio = parse_data(filtros.get("pagamento_inicio"), nome_campo="Pagamento inicial")
+        pagamento_fim = parse_data(filtros.get("pagamento_fim"), nome_campo="Pagamento final")
     except ValueError:
-        vencimento_inicio = None
-        vencimento_fim = None
+        vencimento_inicio = vencimento_fim = pagamento_inicio = pagamento_fim = None
 
     if vencimento_inicio:
         query = query.filter(FinanceiroContaPagarTitulo.data_vencimento >= vencimento_inicio)
     if vencimento_fim:
         query = query.filter(FinanceiroContaPagarTitulo.data_vencimento <= vencimento_fim)
+    if pagamento_inicio:
+        query = query.filter(FinanceiroContaPagarTitulo.data_pagamento >= pagamento_inicio)
+    if pagamento_fim:
+        query = query.filter(FinanceiroContaPagarTitulo.data_pagamento <= pagamento_fim)
 
     return query
 
@@ -307,6 +694,35 @@ def indicadores_dashboard(hoje=None):
         func.coalesce(func.sum(FinanceiroContaPagarTitulo.valor_original), 0)
     ).scalar()
 
+    total_pago_mes = FinanceiroContaPagarBaixa.query.filter(
+        FinanceiroContaPagarBaixa.status == "Ativa",
+        FinanceiroContaPagarBaixa.data_pagamento >= inicio_mes,
+        FinanceiroContaPagarBaixa.data_pagamento < inicio_proximo_mes,
+    ).with_entities(func.coalesce(func.sum(FinanceiroContaPagarBaixa.valor_pago), 0)).scalar()
+    titulos_pagos_mes = FinanceiroContaPagarTitulo.query.filter(
+        FinanceiroContaPagarTitulo.status == "Pago",
+        FinanceiroContaPagarTitulo.data_pagamento >= inicio_mes,
+        FinanceiroContaPagarTitulo.data_pagamento < inicio_proximo_mes,
+    ).count()
+    total_parcialmente_pago = FinanceiroContaPagarTitulo.query.filter(
+        FinanceiroContaPagarTitulo.status == "Pago parcialmente",
+    ).with_entities(func.coalesce(func.sum(FinanceiroContaPagarTitulo.valor_pago), 0)).scalar()
+    titulos_sem_comprovante = FinanceiroContaPagarTitulo.query.filter(
+        FinanceiroContaPagarTitulo.valor_pago > 0,
+        ~FinanceiroContaPagarTitulo.baixas.any(
+            (FinanceiroContaPagarBaixa.status == "Ativa")
+            & (FinanceiroContaPagarBaixa.comprovante_path.isnot(None))
+        ),
+    ).count()
+    pago_por_forma = FinanceiroContaPagarBaixa.query.filter(
+        FinanceiroContaPagarBaixa.status == "Ativa",
+        FinanceiroContaPagarBaixa.data_pagamento >= inicio_mes,
+        FinanceiroContaPagarBaixa.data_pagamento < inicio_proximo_mes,
+    ).with_entities(
+        FinanceiroContaPagarBaixa.forma_pagamento,
+        func.coalesce(func.sum(FinanceiroContaPagarBaixa.valor_pago), 0),
+    ).group_by(FinanceiroContaPagarBaixa.forma_pagamento).all()
+
     try:
         from app.services.suprimentos_service import indicadores_financeiro_ordens_compra
 
@@ -346,6 +762,11 @@ def indicadores_dashboard(hoje=None):
         "qtd_faturas_7_dias": faturas_7_dias,
         "qtd_cartoes_ativos": FinanceiroCartaoCredito.query.filter_by(ativo=True).count(),
         "compras_cartao_mes": compras_cartao_mes or Decimal("0.00"),
+        "total_pago_mes": total_pago_mes or Decimal("0.00"),
+        "total_parcialmente_pago": total_parcialmente_pago or Decimal("0.00"),
+        "titulos_pagos_mes": titulos_pagos_mes,
+        "titulos_sem_comprovante": titulos_sem_comprovante,
+        "pago_por_forma": {forma: valor_decimal(total) for forma, total in pago_por_forma},
         "titulos_oc_conferencia": indicadores_oc["titulos_oc_conferencia"],
         "valor_oc_integrado_mes": indicadores_oc["valor_oc_integrado_mes"],
         "ocs_prontas_gerar": indicadores_oc["ocs_prontas_gerar"],
@@ -815,11 +1236,21 @@ def _buscar_ou_criar_fatura(cartao, competencia, data_fechamento, data_venciment
 def recalcular_fatura(fatura):
     if not fatura:
         return
-    total = FinanceiroContaPagarTitulo.query.filter(
+    titulos = FinanceiroContaPagarTitulo.query.filter(
         FinanceiroContaPagarTitulo.fatura_cartao_id == fatura.id,
         FinanceiroContaPagarTitulo.status.notin_(["Cancelado", "Estornado"]),
-    ).with_entities(func.coalesce(func.sum(FinanceiroContaPagarTitulo.valor_original), 0)).scalar()
-    fatura.valor_total = total or Decimal("0.00")
+    ).all()
+    fatura.valor_total = sum((valor_decimal(titulo.valor_original) for titulo in titulos), Decimal("0.00"))
+    fatura.valor_pago = sum((valor_decimal(titulo.valor_pago) for titulo in titulos), Decimal("0.00"))
+    if fatura.valor_pago <= 0:
+        fatura.data_pagamento = None
+    else:
+        fatura.data_pagamento = max((titulo.data_pagamento for titulo in titulos if titulo.data_pagamento), default=None)
+    if fatura.status != "Cancelada" and fatura.valor_total > 0:
+        if fatura.valor_pago >= fatura.valor_total:
+            fatura.status = "Paga"
+        elif fatura.status == "Paga":
+            fatura.status = "Fechada"
 
 
 def _desvincular_fatura_anterior(titulo):
@@ -940,7 +1371,10 @@ def salvar_titulo(dados, titulo=None, usuario=None):
         titulo.valor_desconto = parse_decimal(dados.get("valor_desconto"), nome_campo="Valor de desconto")
         titulo.valor_acrescimo = parse_decimal(dados.get("valor_acrescimo"), nome_campo="Valor de acrescimo")
         titulo.valor_juros_multa = parse_decimal(dados.get("valor_juros_multa"), nome_campo="Valor de juros/multa")
-        titulo.valor_pago = parse_decimal(dados.get("valor_pago"), nome_campo="Valor pago")
+        if not titulo.id:
+            titulo.valor_pago = Decimal("0.00")
+        else:
+            recalcular_pagamento_titulo(titulo, usuario=usuario)
         titulo.parcela_numero = parcela_numero
         titulo.total_parcelas = total_parcelas
         titulo.centro_custo_id = parse_int(dados.get("centro_custo_id"), padrao=0, nome_campo="Centro de custo") or None

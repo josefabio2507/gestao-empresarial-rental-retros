@@ -4,7 +4,7 @@
 <section class="page">
     <div class="top-bar">
         <div>
-            <span class="page-kicker">Financeiro &gt; Contas a Pagar &gt; Titulo</span>
+            <span class="page-kicker">Financeiro &gt; Contas a Pagar &gt; Titulo &gt; Pagamentos</span>
             <h1>Titulo a Pagar #{{ titulo.id }}</h1>
             <p>{{ titulo.fornecedor_nome_snapshot }} - {{ titulo.descricao }}</p>
         </div>
@@ -13,7 +13,7 @@
 
     <div class="details-card">
         {% set status_view = titulo.status_exibicao() %}
-        <p><strong>Status:</strong> <span class="badge {{ 'badge-danger' if status_view in ['Vencido', 'Cancelado'] else 'badge-success' if status_view == 'Pago' else 'badge-warning' }}">{{ status_view }}</span></p>
+        <p><strong>Status:</strong> <span class="badge {{ 'badge-danger' if status_view in ['Vencido', 'Cancelado', 'Estornado'] else 'badge-success' if status_view == 'Pago' else 'badge-warning' }}">{{ status_view }}</span></p>
         <p><strong>Fornecedor:</strong> {{ titulo.fornecedor_nome_snapshot }}</p>
         <p><strong>CNPJ/CPF:</strong> {{ titulo.fornecedor_cnpj_cpf_snapshot or "-" }}</p>
         <p><strong>Descricao:</strong> {{ titulo.descricao }}</p>
@@ -35,15 +35,53 @@
         <p><strong>Parcela:</strong> {{ titulo.parcela_numero }}/{{ titulo.total_parcelas }}</p>
         <p><strong>Centro de custo:</strong> {{ titulo.centro_custo.nome if titulo.centro_custo else "-" }}</p>
         <p><strong>Valor original:</strong> R$ {{ "%.2f"|format(titulo.valor_original)|replace('.', ',') }}</p>
-        <p><strong>Desconto:</strong> R$ {{ "%.2f"|format(titulo.valor_desconto)|replace('.', ',') }}</p>
-        <p><strong>Acrescimo:</strong> R$ {{ "%.2f"|format(titulo.valor_acrescimo)|replace('.', ',') }}</p>
-        <p><strong>Juros/multa:</strong> R$ {{ "%.2f"|format(titulo.valor_juros_multa)|replace('.', ',') }}</p>
+        <p><strong>Valor liquido:</strong> R$ {{ "%.2f"|format(titulo.valor_liquido_previsto)|replace('.', ',') }}</p>
         <p><strong>Valor pago:</strong> R$ {{ "%.2f"|format(titulo.valor_pago)|replace('.', ',') }}</p>
+        <p><strong>Saldo em aberto:</strong> R$ {{ "%.2f"|format(saldo)|replace('.', ',') }}</p>
+        <p><strong>Data de pagamento:</strong> {{ titulo.data_pagamento.strftime("%d/%m/%Y") if titulo.data_pagamento else "-" }}</p>
         <p><strong>Observacoes:</strong> {{ titulo.observacoes or "-" }}</p>
     </div>
 
+    <h2>Pagamentos / Baixas</h2>
+    <div class="table-card table-responsive">
+        <table class="table financeiro-contas-pagar-table">
+            <thead>
+                <tr><th>Data da baixa</th><th>Valor pago</th><th>Forma</th><th>Conta/origem</th><th>Observacao</th><th>Comprovante</th><th>Usuario</th><th>Registro</th><th>Status</th><th>Lote</th><th>Acoes</th></tr>
+            </thead>
+            <tbody>
+                {% for baixa in titulo.baixas %}
+                    <tr>
+                        <td>{{ baixa.data_pagamento.strftime("%d/%m/%Y") }}</td>
+                        <td>R$ {{ "%.2f"|format(baixa.valor_pago)|replace('.', ',') }}</td>
+                        <td>{{ baixa.forma_pagamento }}</td>
+                        <td>{{ baixa.conta_pagamento_descricao or "-" }}</td>
+                        <td>{{ baixa.observacoes or baixa.motivo_cancelamento or "-" }}</td>
+                        <td>{% if baixa.comprovante_disponivel and baixa.status == 'Ativa' %}<a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.baixar_comprovante', baixa_id=baixa.id) }}">Baixar</a>{% else %}<span class="badge badge-warning">Sem comprovante</span>{% endif %}</td>
+                        <td>{{ baixa.registrado_por.nome if baixa.registrado_por else "-" }}</td>
+                        <td>{{ baixa.criado_em.strftime("%d/%m/%Y %H:%M") if baixa.criado_em else "-" }}</td>
+                        <td><span class="badge {{ 'badge-success' if baixa.status == 'Ativa' else 'badge-secondary' }}">{{ baixa.status }}</span></td>
+                        <td>{% if baixa.lote_baixa %}<a href="{{ url_for('financeiro_contas_pagar.detalhes_lote_baixa', lote_id=baixa.lote_baixa_id) }}">Lote #{{ baixa.lote_baixa_id }}</a>{% else %}-{% endif %}</td>
+                        <td>
+                            {% if baixa.status == 'Ativa' %}
+                                <form class="inline-form" method="POST" action="{{ url_for('financeiro_contas_pagar.estornar_pagamento', titulo_id=titulo.id, baixa_id=baixa.id) }}">
+                                    <input name="motivo_cancelamento" placeholder="Motivo" required>
+                                    <button class="btn btn-warning" type="submit">Estornar</button>
+                                </form>
+                            {% else %}-{% endif %}
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr><td class="empty-state" colspan="11">Nenhuma baixa registrada para este titulo.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
     <div class="page-actions">
-        <a class="btn btn-primary" href="{{ url_for('financeiro_contas_pagar.editar', titulo_id=titulo.id) }}">Editar</a>
+        {% if titulo.status not in ['Pago', 'Cancelado', 'Estornado'] %}
+            <a class="btn btn-primary" href="{{ url_for('financeiro_contas_pagar.registrar_pagamento', titulo_id=titulo.id) }}">Registrar pagamento</a>
+        {% endif %}
+        <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.editar', titulo_id=titulo.id) }}">Editar</a>
         <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.titulos') }}">Voltar</a>
         {% if titulo.status not in ['Pago', 'Cancelado', 'Estornado'] %}
             <form class="inline-form" method="POST" action="{{ url_for('financeiro_contas_pagar.cancelar', titulo_id=titulo.id) }}">

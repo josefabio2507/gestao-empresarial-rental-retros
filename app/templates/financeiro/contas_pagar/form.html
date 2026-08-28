@@ -44,7 +44,7 @@
             <div class="form-group"><label for="valor_desconto">Valor de desconto</label><input id="valor_desconto" name="valor_desconto" value="{{ '%.2f'|format(titulo.valor_desconto)|replace('.', ',') if titulo else '0,00' }}"></div>
             <div class="form-group"><label for="valor_acrescimo">Valor de acrescimo</label><input id="valor_acrescimo" name="valor_acrescimo" value="{{ '%.2f'|format(titulo.valor_acrescimo)|replace('.', ',') if titulo else '0,00' }}"></div>
             <div class="form-group"><label for="valor_juros_multa">Valor de juros/multa</label><input id="valor_juros_multa" name="valor_juros_multa" value="{{ '%.2f'|format(titulo.valor_juros_multa)|replace('.', ',') if titulo else '0,00' }}"></div>
-            <div class="form-group"><label for="valor_pago">Valor pago</label><input id="valor_pago" name="valor_pago" value="{{ '%.2f'|format(titulo.valor_pago)|replace('.', ',') if titulo else '0,00' }}"></div>
+            <div class="form-group"><label for="valor_pago">Valor pago</label><input id="valor_pago" name="valor_pago" value="{{ '%.2f'|format(titulo.valor_pago)|replace('.', ',') if titulo else '0,00' }}" readonly><small>Atualizado automaticamente pelas baixas.</small></div>
         </div>
 
         <h2>Classificacao</h2>
@@ -105,3 +105,4 @@
 })();
 </script>
 {% endblock %}
+

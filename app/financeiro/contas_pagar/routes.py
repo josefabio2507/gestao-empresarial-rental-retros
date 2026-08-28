@@ -1,4 +1,4 @@
-from flask import flash, redirect, render_template, request, url_for
+from flask import abort, flash, redirect, render_template, request, send_file, url_for
 from flask_login import current_user, login_required
 
 from app.decorators import module_permission_required
@@ -10,10 +10,16 @@ from app.services.financeiro_contas_pagar_service import (
     STATUS_TITULO,
     STATUS_XML_FINANCEIRO,
     TIPOS_PAGAMENTO,
+    buscar_baixa_por_id,
+    calcular_saldo_titulo,
+    cancelar_baixa_titulo,
+    caminho_comprovante_baixa,
+    caminho_comprovante_lote,
     alterar_status_cartao,
     atualizar_status_fatura,
     buscar_cartao_por_id,
     buscar_documento_fiscal_por_id,
+    buscar_lote_baixa_por_id,
     buscar_fatura_por_id,
     buscar_opcoes_formulario,
     buscar_titulo_por_id,
@@ -28,7 +34,12 @@ from app.services.financeiro_contas_pagar_service import (
     listar_titulos,
     opcoes_conferencia_xml,
     reativar_xml_financeiro,
+    registrar_baixa_em_massa,
+    registrar_baixa_titulo,
+    estornar_lote_baixa,
     salvar_cartao,
+    titulos_para_baixa_em_massa,
+    titulo_elegivel_baixa,
     salvar_titulo,
     status_financeiro_xml,
     titulos_ativos_documento_fiscal,
@@ -55,6 +66,73 @@ def dashboard():
     )
 
 
+
+@financeiro_contas_pagar_bp.route("/titulos/baixa-em-massa", methods=["GET", "POST"])
+@login_required
+@module_permission_required("financeiro", "contas_a_pagar", "editar")
+def baixa_em_massa():
+    if request.method == "POST":
+        arquivo = request.files.get("comprovante")
+        sucesso, mensagem, lote = registrar_baixa_em_massa(request.form, arquivo=arquivo, usuario=current_user)
+        if sucesso:
+            registrar_log("financeiro_lote_baixa_confirmado", f"Baixa em massa confirmada. Lote: {lote.id}.")
+            flash(mensagem, "success")
+            return redirect(url_for("financeiro_contas_pagar.detalhes_lote_baixa", lote_id=lote.id))
+        flash(mensagem, "danger")
+
+    ids = request.args.getlist("titulos_ids") or request.form.getlist("titulos_ids")
+    titulos = [titulo for titulo in titulos_para_baixa_em_massa(ids) if titulo_elegivel_baixa(titulo)]
+    if not titulos:
+        flash("Nenhum titulo selecionado.", "warning")
+        return redirect(url_for("financeiro_contas_pagar.titulos"))
+    total_saldo = sum((calcular_saldo_titulo(titulo) for titulo in titulos), start=0)
+    return render_template(
+        "financeiro/contas_pagar/baixa_em_massa.html",
+        titulos=titulos,
+        total_saldo=total_saldo,
+        formas_pagamento=FORMAS_PAGAMENTO,
+        calcular_saldo_titulo=calcular_saldo_titulo,
+    )
+
+
+@financeiro_contas_pagar_bp.route("/lotes-baixa/<int:lote_id>")
+@login_required
+@module_permission_required("financeiro", "contas_a_pagar", "visualizar")
+def detalhes_lote_baixa(lote_id):
+    lote = buscar_lote_baixa_por_id(lote_id)
+    if not lote:
+        flash("Lote de baixa nao encontrado.", "warning")
+        return redirect(url_for("financeiro_contas_pagar.titulos"))
+    return render_template("financeiro/contas_pagar/lote_baixa_detalhes.html", lote=lote)
+
+
+@financeiro_contas_pagar_bp.route("/lotes-baixa/<int:lote_id>/estornar", methods=["POST"])
+@login_required
+@module_permission_required("financeiro", "contas_a_pagar", "excluir")
+def estornar_lote(lote_id):
+    lote = buscar_lote_baixa_por_id(lote_id)
+    sucesso, mensagem = estornar_lote_baixa(lote, request.form.get("motivo_cancelamento"), usuario=current_user)
+    if sucesso:
+        registrar_log("financeiro_lote_baixa_estornado", f"Lote de baixa estornado. ID: {lote.id}.")
+    flash(mensagem, "success" if sucesso else "danger")
+    return redirect(url_for("financeiro_contas_pagar.detalhes_lote_baixa", lote_id=lote_id))
+
+
+@financeiro_contas_pagar_bp.route("/lotes-baixa/<int:lote_id>/comprovante")
+@login_required
+@module_permission_required("financeiro", "contas_a_pagar", "visualizar")
+def baixar_comprovante_lote(lote_id):
+    lote = buscar_lote_baixa_por_id(lote_id)
+    caminho = caminho_comprovante_lote(lote)
+    if not caminho:
+        abort(404)
+    registrar_log("financeiro_lote_baixa_comprovante_download", f"Download de comprovante do lote. Lote: {lote.id}.")
+    return send_file(
+        caminho,
+        as_attachment=True,
+        download_name=lote.comprovante_nome_original or lote.comprovante_nome_armazenado,
+    )
+
 @financeiro_contas_pagar_bp.route("/titulos")
 @login_required
 @module_permission_required("financeiro", "contas_a_pagar", "visualizar")
@@ -69,6 +147,8 @@ def titulos():
         tipos_pagamento=TIPOS_PAGAMENTO,
         formas_pagamento=FORMAS_PAGAMENTO,
         status_titulo=STATUS_TITULO,
+        titulo_elegivel_baixa=titulo_elegivel_baixa,
+        calcular_saldo_titulo=calcular_saldo_titulo,
     )
 
 
@@ -279,7 +359,7 @@ def detalhes_fatura(fatura_id):
     if not fatura:
         flash("Fatura nao encontrada.", "warning")
         return redirect(url_for("financeiro_contas_pagar.faturas"))
-    return render_template("financeiro/contas_pagar/fatura_detalhes.html", fatura=fatura)
+    return render_template("financeiro/contas_pagar/fatura_detalhes.html", fatura=fatura, calcular_saldo_titulo=calcular_saldo_titulo)
 
 
 @financeiro_contas_pagar_bp.route("/faturas/<int:fatura_id>/fechar", methods=["POST"])
@@ -327,8 +407,66 @@ def detalhes(titulo_id):
         flash("Titulo nao encontrado.", "warning")
         return redirect(url_for("financeiro_contas_pagar.titulos"))
 
-    return render_template("financeiro/contas_pagar/detalhes.html", titulo=titulo)
+    return render_template("financeiro/contas_pagar/detalhes.html", titulo=titulo, saldo=calcular_saldo_titulo(titulo))
 
+
+
+@financeiro_contas_pagar_bp.route("/<int:titulo_id>/pagamentos/novo", methods=["GET", "POST"])
+@login_required
+@module_permission_required("financeiro", "contas_a_pagar", "editar")
+def registrar_pagamento(titulo_id):
+    titulo = buscar_titulo_por_id(titulo_id)
+    if not titulo:
+        flash("Titulo nao encontrado.", "warning")
+        return redirect(url_for("financeiro_contas_pagar.titulos"))
+
+    if request.method == "POST":
+        arquivo = request.files.get("comprovante")
+        sucesso, mensagem, baixa = registrar_baixa_titulo(titulo, request.form, arquivo=arquivo, usuario=current_user)
+        if sucesso:
+            registrar_log("financeiro_baixa_registrada", f"Pagamento registrado. Titulo: {titulo.id}. Baixa: {baixa.id}.")
+            flash(mensagem, "success")
+            return redirect(url_for("financeiro_contas_pagar.detalhes", titulo_id=titulo.id))
+        flash(mensagem, "danger")
+
+    return render_template(
+        "financeiro/contas_pagar/pagamento_form.html",
+        titulo=titulo,
+        saldo=calcular_saldo_titulo(titulo),
+        formas_pagamento=FORMAS_PAGAMENTO,
+    )
+
+
+@financeiro_contas_pagar_bp.route("/<int:titulo_id>/pagamentos/<int:baixa_id>/estornar", methods=["POST"])
+@login_required
+@module_permission_required("financeiro", "contas_a_pagar", "excluir")
+def estornar_pagamento(titulo_id, baixa_id):
+    titulo = buscar_titulo_por_id(titulo_id)
+    baixa = buscar_baixa_por_id(baixa_id)
+    if not titulo or not baixa or baixa.titulo_id != titulo.id:
+        flash("Baixa nao encontrada.", "warning")
+        return redirect(url_for("financeiro_contas_pagar.titulos"))
+    sucesso, mensagem = cancelar_baixa_titulo(baixa, request.form.get("motivo_cancelamento"), usuario=current_user)
+    if sucesso:
+        registrar_log("financeiro_baixa_estornada", f"Baixa estornada. Titulo: {titulo.id}. Baixa: {baixa.id}.")
+    flash(mensagem, "success" if sucesso else "danger")
+    return redirect(url_for("financeiro_contas_pagar.detalhes", titulo_id=titulo.id))
+
+
+@financeiro_contas_pagar_bp.route("/baixas/<int:baixa_id>/comprovante")
+@login_required
+@module_permission_required("financeiro", "contas_a_pagar", "visualizar")
+def baixar_comprovante(baixa_id):
+    baixa = buscar_baixa_por_id(baixa_id)
+    caminho = caminho_comprovante_baixa(baixa)
+    if not caminho:
+        abort(404)
+    registrar_log("financeiro_comprovante_download", f"Download de comprovante. Baixa: {baixa.id}. Titulo: {baixa.titulo_id}.")
+    return send_file(
+        caminho,
+        as_attachment=True,
+        download_name=baixa.comprovante_nome_original or baixa.comprovante_nome_armazenado,
+    )
 
 @financeiro_contas_pagar_bp.route("/<int:titulo_id>/editar", methods=["GET", "POST"])
 @login_required
