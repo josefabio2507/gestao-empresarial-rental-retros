@@ -1,0 +1,11 @@
+<link rel="stylesheet" href="{{ url_for('static', filename='css/contas_receber.css') }}">
+<nav class="submodule-tabs" aria-label="Menu do Contas a Receber">
+    <a class="submodule-tab {{ 'active' if aba_ativa == 'dashboard' else '' }}" href="{{ url_for('financeiro_contas_receber.dashboard') }}">Dashboard</a>
+    <a class="submodule-tab {{ 'active' if aba_ativa == 'titulos' else '' }}" href="{{ url_for('financeiro_contas_receber.titulos') }}">Títulos a Receber</a>
+    {% if pode_criar %}
+        <a class="submodule-tab {{ 'active' if aba_ativa == 'novo' else '' }}" href="{{ url_for('financeiro_contas_receber.novo') }}">Novo Lançamento</a>
+    {% endif %}
+    <span class="submodule-tab disabled" title="Recebimentos será implementado em missão futura.">Recebimentos</span>
+    <span class="submodule-tab disabled" title="Inadimplência será implementada em missão futura.">Inadimplência</span>
+    <span class="submodule-tab disabled" title="Relatórios serão implementados em missão futura.">Relatórios</span>
+</nav>

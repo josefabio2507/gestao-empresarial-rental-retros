@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% set aba_ativa = "titulos" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Financeiro &gt; Contas a Receber &gt; Detalhe do Título</span>
+            <h1>Título #{{ titulo.id }}</h1>
+            <p>{{ titulo.cliente_nome_snapshot }} · {{ titulo.descricao }}</p>
+        </div>
+        <div class="actions">
+            <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_receber.titulos') }}">Voltar</a>
+            {% if pode_editar %}<a class="btn btn-primary" href="{{ url_for('financeiro_contas_receber.editar', titulo_id=titulo.id) }}">Editar</a>{% endif %}
+            <button class="btn btn-secondary" type="button" disabled title="Registro de recebimento será implementado em missão futura.">Registrar Recebimento</button>
+        </div>
+    </div>
+
+    {% include "financeiro/contas_receber/_menu.html" %}
+
+    <div class="details-card">
+        <div class="detail-grid">
+            <section>
+                <h3>Dados do cliente</h3>
+                <p><strong>Cliente:</strong> {{ titulo.cliente_nome_snapshot }}</p>
+                <p><strong>CNPJ/CPF:</strong> {{ titulo.cliente_cnpj_cpf_snapshot or '-' }}</p>
+                <p><strong>E-mail financeiro:</strong> {{ titulo.cliente_email_financeiro_snapshot or '-' }}</p>
+                <p><strong>Telefone:</strong> {{ titulo.cliente_telefone_snapshot or '-' }}</p>
+            </section>
+            <section>
+                <h3>Dados do documento</h3>
+                <p><strong>Descrição:</strong> {{ titulo.descricao }}</p>
+                <p><strong>Número do documento:</strong> {{ titulo.numero_documento or '-' }}</p>
+                <p><strong>Origem:</strong> {{ titulo.origem_lancamento }}</p>
+                <p><strong>Status:</strong> <span class="badge {{ 'badge-danger' if titulo.status_visual() == 'Vencido' else 'badge-success' }}">{{ titulo.status_visual() }}</span></p>
+            </section>
+            <section>
+                <h3>Dados fiscais</h3>
+                <p><strong>Número da nota fiscal:</strong> {{ titulo.numero_nota_fiscal or '-' }}</p>
+                <p><strong>Chave NF-e/NFS-e:</strong> {{ titulo.chave_acesso_nfe_nfse or '-' }}</p>
+            </section>
+            <section>
+                <h3>Contrato e medição</h3>
+                <p><strong>Contrato vinculado:</strong> {{ titulo.contrato_id or '-' }}</p>
+                <p><strong>Medição vinculada:</strong> {{ titulo.medicao_id or '-' }}</p>
+            </section>
+            <section>
+                <h3>Valores</h3>
+                <p><strong>Valor original:</strong> {{ formatar_moeda_brl(titulo.valor_original) }}</p>
+                <p><strong>Desconto:</strong> {{ formatar_moeda_brl(titulo.valor_desconto) }}</p>
+                <p><strong>Acréscimo:</strong> {{ formatar_moeda_brl(titulo.valor_acrescimo) }}</p>
+                <p><strong>Juros/multa:</strong> {{ formatar_moeda_brl(titulo.valor_juros_multa) }}</p>
+                <p><strong>Valor líquido:</strong> {{ formatar_moeda_brl(titulo.valor_liquido) }}</p>
+                <p><strong>Valor recebido:</strong> {{ formatar_moeda_brl(titulo.valor_recebido) }}</p>
+                <p><strong>Saldo em aberto:</strong> {{ formatar_moeda_brl(titulo.saldo_aberto) }}</p>
+            </section>
+            <section>
+                <h3>Datas e classificação</h3>
+                <p><strong>Competência:</strong> {{ titulo.competencia or '-' }}</p>
+                <p><strong>Emissão:</strong> {{ formatar_data_brasil(titulo.data_emissao) }}</p>
+                <p><strong>Vencimento:</strong> {{ formatar_data_brasil(titulo.data_vencimento) }}</p>
+                <p><strong>Recebimento:</strong> {{ formatar_data_brasil(titulo.data_recebimento) }}</p>
+                <p><strong>Parcela:</strong> {{ titulo.parcela_numero }} de {{ titulo.total_parcelas }}</p>
+                <p><strong>Centro de custo:</strong> {{ (titulo.centro_custo.codigo ~ ' - ' if titulo.centro_custo and titulo.centro_custo.codigo else '') ~ titulo.centro_custo.nome if titulo.centro_custo else '-' }}</p>
+                <p><strong>Subcentro/equipe:</strong> {{ titulo.sub_centro_custo_equipe.nome if titulo.sub_centro_custo_equipe else '-' }}</p>
+                <p><strong>Subcentro/veículo:</strong> {{ titulo.sub_centro_custo_veiculo_id or '-' }}</p>
+            </section>
+        </div>
+
+        <h3>Observações</h3>
+        <p>{{ titulo.observacoes or 'Sem observações.' }}</p>
+    </div>
+
+    <section class="table-card">
+        <h2>Histórico do título</h2>
+        <div class="listbox-10-linhas contas-receber-listbox">
+            <table class="table contas-receber-table-mini">
+                <thead><tr><th>Evento</th><th>Usuário</th><th>Data</th><th>Observação</th></tr></thead>
+                <tbody>
+                    <tr><td>Criação</td><td>{{ titulo.criado_por.nome if titulo.criado_por else '-' }}</td><td>{{ titulo.criado_em.strftime('%d/%m/%Y %H:%M') if titulo.criado_em else '-' }}</td><td>Título cadastrado.</td></tr>
+                    {% if titulo.atualizado_por %}<tr><td>Última atualização</td><td>{{ titulo.atualizado_por.nome }}</td><td>{{ titulo.atualizado_em.strftime('%d/%m/%Y %H:%M') if titulo.atualizado_em else '-' }}</td><td>Dados revisados.</td></tr>{% endif %}
+                    {% if titulo.cancelado_em %}<tr><td>Cancelamento</td><td>{{ titulo.cancelado_por.nome if titulo.cancelado_por else '-' }}</td><td>{{ titulo.cancelado_em.strftime('%d/%m/%Y %H:%M') }}</td><td>{{ titulo.motivo_cancelamento or '-' }}</td></tr>{% endif %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    {% if pode_cancelar and titulo.status not in ['Cancelado', 'Estornado', 'Recebido'] %}
+        <form class="form-card" method="POST" action="{{ url_for('financeiro_contas_receber.cancelar', titulo_id=titulo.id) }}">
+            <h2>Cancelar título</h2>
+            <div class="form-group">
+                <label for="motivo_cancelamento">Motivo do cancelamento</label>
+                <textarea id="motivo_cancelamento" name="motivo_cancelamento" rows="3" data-uppercase></textarea>
+            </div>
+            <div class="form-actions">
+                <button class="btn btn-danger" type="submit">Cancelar título</button>
+            </div>
+        </form>
+    {% endif %}
+</section>
+{% endblock %}

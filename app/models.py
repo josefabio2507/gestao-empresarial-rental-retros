@@ -727,6 +727,140 @@ class LogAcesso(db.Model):
         return f"<LogAcesso {self.acao}>"
 
 
+class FinanceiroContaReceberTitulo(db.Model):
+    __tablename__ = "financeiro_contas_receber_titulos"
+
+    id = db.Column(db.Integer, primary_key=True)
+    cliente_nome_snapshot = db.Column(db.String(180), nullable=False, index=True)
+    cliente_cnpj_cpf_snapshot = db.Column(db.String(20), nullable=True, index=True)
+    cliente_email_financeiro_snapshot = db.Column(db.String(150), nullable=True)
+    cliente_telefone_snapshot = db.Column(db.String(20), nullable=True)
+    descricao = db.Column(db.String(255), nullable=False)
+    numero_documento = db.Column(db.String(80), nullable=True, index=True)
+    numero_nota_fiscal = db.Column(db.String(80), nullable=True, index=True)
+    chave_acesso_nfe_nfse = db.Column(db.String(80), nullable=True)
+    contrato_id = db.Column(db.Integer, nullable=True, index=True)
+    medicao_id = db.Column(db.Integer, nullable=True, index=True)
+    origem_lancamento = db.Column(db.String(40), nullable=False, index=True)
+    competencia = db.Column(db.String(7), nullable=True, index=True)
+    data_emissao = db.Column(db.Date, nullable=True, index=True)
+    data_vencimento = db.Column(db.Date, nullable=False, index=True)
+    data_recebimento = db.Column(db.Date, nullable=True)
+    valor_original = db.Column(db.Numeric(12, 2), nullable=False)
+    valor_desconto = db.Column(db.Numeric(12, 2), default=0, nullable=False)
+    valor_acrescimo = db.Column(db.Numeric(12, 2), default=0, nullable=False)
+    valor_juros_multa = db.Column(db.Numeric(12, 2), default=0, nullable=False)
+    valor_recebido = db.Column(db.Numeric(12, 2), default=0, nullable=False)
+    parcela_numero = db.Column(db.Integer, default=1, nullable=False)
+    total_parcelas = db.Column(db.Integer, default=1, nullable=False)
+    centro_custo_id = db.Column(
+        db.Integer,
+        db.ForeignKey("centros_custo.id"),
+        nullable=True,
+        index=True,
+    )
+    sub_centro_custo_equipe_id = db.Column(
+        db.Integer,
+        db.ForeignKey("equipes.id"),
+        nullable=True,
+        index=True,
+    )
+    sub_centro_custo_veiculo_id = db.Column(db.Integer, nullable=True, index=True)
+    status = db.Column(db.String(40), nullable=False, index=True)
+    observacoes = db.Column(db.Text, nullable=True)
+    criado_por_usuario_id = db.Column(
+        db.Integer,
+        db.ForeignKey("usuarios.id"),
+        nullable=True,
+        index=True,
+    )
+    atualizado_por_usuario_id = db.Column(
+        db.Integer,
+        db.ForeignKey("usuarios.id"),
+        nullable=True,
+        index=True,
+    )
+    cancelado_por_usuario_id = db.Column(
+        db.Integer,
+        db.ForeignKey("usuarios.id"),
+        nullable=True,
+        index=True,
+    )
+    cancelado_em = db.Column(db.DateTime, nullable=True)
+    motivo_cancelamento = db.Column(db.Text, nullable=True)
+
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
+    atualizado_em = db.Column(
+        db.DateTime,
+        default=agora_brasil,
+        onupdate=agora_brasil,
+        nullable=False,
+    )
+
+    centro_custo = db.relationship("CentroCusto")
+    sub_centro_custo_equipe = db.relationship("Equipe")
+    criado_por = db.relationship("Usuario", foreign_keys=[criado_por_usuario_id])
+    atualizado_por = db.relationship("Usuario", foreign_keys=[atualizado_por_usuario_id])
+    cancelado_por = db.relationship("Usuario", foreign_keys=[cancelado_por_usuario_id])
+
+    __table_args__ = (
+        db.CheckConstraint("valor_original > 0", name="ck_fin_cr_titulos_valor_original"),
+        db.CheckConstraint("valor_desconto >= 0", name="ck_fin_cr_titulos_valor_desconto"),
+        db.CheckConstraint("valor_acrescimo >= 0", name="ck_fin_cr_titulos_valor_acrescimo"),
+        db.CheckConstraint("valor_juros_multa >= 0", name="ck_fin_cr_titulos_valor_juros"),
+        db.CheckConstraint("valor_recebido >= 0", name="ck_fin_cr_titulos_valor_recebido"),
+        db.CheckConstraint("parcela_numero >= 1", name="ck_fin_cr_titulos_parcela_numero"),
+        db.CheckConstraint("total_parcelas >= 1", name="ck_fin_cr_titulos_total_parcelas"),
+        db.CheckConstraint(
+            "status in ('Rascunho', 'Aguardando faturamento', 'Faturado', 'Agendado', "
+            "'A vencer', 'Vencido', 'Recebido', 'Recebido parcialmente', 'Cancelado', "
+            "'Estornado', 'Inadimplente')",
+            name="ck_fin_cr_titulos_status",
+        ),
+        db.CheckConstraint(
+            "origem_lancamento in ('Manual', 'Nota Fiscal Emitida', 'Medição', "
+            "'Contrato', 'Reembolso', 'Outro')",
+            name="ck_fin_cr_titulos_origem",
+        ),
+    )
+
+    @property
+    def valor_liquido(self):
+        return (
+            self.valor_original
+            + self.valor_acrescimo
+            + self.valor_juros_multa
+            - self.valor_desconto
+        )
+
+    @property
+    def saldo_aberto(self):
+        saldo = self.valor_liquido - self.valor_recebido
+        return saldo if saldo > 0 else 0
+
+    @property
+    def esta_cancelado_ou_estornado(self):
+        return self.status in ["Cancelado", "Estornado"]
+
+    @property
+    def esta_recebido(self):
+        return self.status == "Recebido"
+
+    def status_visual(self, hoje=None):
+        if self.status in ["Cancelado", "Estornado", "Recebido"]:
+            return self.status
+
+        hoje = hoje or agora_brasil().date()
+
+        if self.saldo_aberto > 0 and self.data_vencimento < hoje:
+            return "Vencido"
+
+        return self.status
+
+    def __repr__(self):
+        return f"<FinanceiroContaReceberTitulo {self.id} {self.cliente_nome_snapshot}>"
+
+
 class TokenRecuperacaoSenha(db.Model):
     __tablename__ = "tokens_recuperacao_senha"
 

@@ -22,6 +22,17 @@
         </a>
         {% endif %}
 
+
+        {% if pode_ver_contas_receber %}
+        <a class="module-card module-card-link" href="{{ url_for('financeiro_contas_receber.dashboard') }}">
+            <span class="module-card-icon">R</span>
+            <h2>Contas a Receber</h2>
+            <p>Dashboard, titulos a receber e lancamentos manuais.</p>
+            <span class="badge badge-success">Base implantada</span>
+            <span class="module-status">Acessar submodulo</span>
+        </a>
+        {% endif %}
+
         {% if pode_ver_relatorios %}
         <a class="module-card module-card-link" href="{{ url_for('financeiro.relatorios') }}">
             <span class="module-card-icon">R</span>

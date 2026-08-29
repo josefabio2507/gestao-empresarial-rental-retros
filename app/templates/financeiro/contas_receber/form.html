@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% set aba_ativa = "novo" if modo == "novo" else "titulos" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Financeiro &gt; Contas a Receber &gt; {{ 'Novo Lançamento' if modo == 'novo' else 'Editar Título' }}</span>
+            <h1>{{ 'Novo Lançamento Manual' if modo == 'novo' else 'Editar Título a Receber' }}</h1>
+            <p>Cadastro manual de título a receber com campos preparados para integrações futuras.</p>
+        </div>
+    </div>
+
+    {% include "financeiro/contas_receber/_menu.html" %}
+
+    <form class="form-card" method="POST">
+        <div class="form-grid">
+            <div class="form-group"><label for="cliente_nome_snapshot">Cliente</label><input id="cliente_nome_snapshot" name="cliente_nome_snapshot" maxlength="180" required data-uppercase value="{{ titulo.cliente_nome_snapshot if titulo else '' }}"></div>
+            <div class="form-group"><label for="cliente_cnpj_cpf_snapshot">CNPJ/CPF do cliente</label><input id="cliente_cnpj_cpf_snapshot" name="cliente_cnpj_cpf_snapshot" maxlength="20" value="{{ titulo.cliente_cnpj_cpf_snapshot if titulo else '' }}"></div>
+            <div class="form-group"><label for="cliente_email_financeiro_snapshot">E-mail financeiro</label><input id="cliente_email_financeiro_snapshot" name="cliente_email_financeiro_snapshot" type="email" maxlength="150" value="{{ titulo.cliente_email_financeiro_snapshot if titulo else '' }}"></div>
+            <div class="form-group"><label for="cliente_telefone_snapshot">Telefone</label><input id="cliente_telefone_snapshot" name="cliente_telefone_snapshot" maxlength="20" value="{{ titulo.cliente_telefone_snapshot if titulo else '' }}"></div>
+            <div class="form-group"><label for="descricao">Descrição</label><input id="descricao" name="descricao" maxlength="255" required data-uppercase value="{{ titulo.descricao if titulo else '' }}"></div>
+            <div class="form-group"><label for="numero_documento">Número do documento</label><input id="numero_documento" name="numero_documento" maxlength="80" data-uppercase value="{{ titulo.numero_documento if titulo else '' }}"></div>
+            <div class="form-group"><label for="numero_nota_fiscal">Número da nota fiscal</label><input id="numero_nota_fiscal" name="numero_nota_fiscal" maxlength="80" data-uppercase value="{{ titulo.numero_nota_fiscal if titulo else '' }}"></div>
+            <div class="form-group"><label for="chave_acesso_nfe_nfse">Chave de acesso NF-e/NFS-e</label><input id="chave_acesso_nfe_nfse" name="chave_acesso_nfe_nfse" maxlength="80" data-uppercase value="{{ titulo.chave_acesso_nfe_nfse if titulo else '' }}"></div>
+            <div class="form-group"><label for="contrato_id">Contrato vinculado</label><input id="contrato_id" name="contrato_id" type="number" min="1" value="{{ titulo.contrato_id if titulo and titulo.contrato_id else '' }}"></div>
+            <div class="form-group"><label for="medicao_id">Medição vinculada</label><input id="medicao_id" name="medicao_id" type="number" min="1" value="{{ titulo.medicao_id if titulo and titulo.medicao_id else '' }}"></div>
+            <div class="form-group"><label for="origem_lancamento">Origem do lançamento</label><select id="origem_lancamento" name="origem_lancamento">{% for origem in origens_lancamento %}<option value="{{ origem }}" {{ 'selected' if (titulo and titulo.origem_lancamento == origem) or (not titulo and origem == 'Manual') else '' }}>{{ origem }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="competencia">Competência</label><input id="competencia" name="competencia" type="month" value="{{ titulo.competencia if titulo else '' }}"></div>
+            <div class="form-group"><label for="data_emissao">Data de emissão</label><input id="data_emissao" name="data_emissao" type="date" value="{{ titulo.data_emissao.isoformat() if titulo and titulo.data_emissao else '' }}"></div>
+            <div class="form-group"><label for="data_vencimento">Data de vencimento</label><input id="data_vencimento" name="data_vencimento" type="date" required value="{{ titulo.data_vencimento.isoformat() if titulo and titulo.data_vencimento else '' }}"></div>
+            <div class="form-group"><label for="valor_original">Valor original</label><input id="valor_original" name="valor_original" type="number" step="0.01" min="0.01" required value="{{ titulo.valor_original if titulo else '' }}"></div>
+            <div class="form-group"><label for="valor_desconto">Desconto</label><input id="valor_desconto" name="valor_desconto" type="number" step="0.01" min="0" value="{{ titulo.valor_desconto if titulo else '0.00' }}"></div>
+            <div class="form-group"><label for="valor_acrescimo">Acréscimo</label><input id="valor_acrescimo" name="valor_acrescimo" type="number" step="0.01" min="0" value="{{ titulo.valor_acrescimo if titulo else '0.00' }}"></div>
+            <div class="form-group"><label for="valor_juros_multa">Juros/multa</label><input id="valor_juros_multa" name="valor_juros_multa" type="number" step="0.01" min="0" value="{{ titulo.valor_juros_multa if titulo else '0.00' }}"></div>
+            <div class="form-group"><label for="valor_recebido">Valor recebido</label><input id="valor_recebido" name="valor_recebido" type="number" step="0.01" min="0" value="{{ titulo.valor_recebido if titulo else '0.00' }}"></div>
+            <div class="form-group"><label for="parcela_numero">Número da parcela</label><input id="parcela_numero" name="parcela_numero" type="number" min="1" value="{{ titulo.parcela_numero if titulo else '1' }}"></div>
+            <div class="form-group"><label for="total_parcelas">Total de parcelas</label><input id="total_parcelas" name="total_parcelas" type="number" min="1" value="{{ titulo.total_parcelas if titulo else '1' }}"></div>
+            <div class="form-group"><label for="centro_custo_id">Centro de custo</label><select id="centro_custo_id" name="centro_custo_id"><option value="">Não informado</option>{% for centro in centros_custo %}<option value="{{ centro.id }}" {{ 'selected' if titulo and titulo.centro_custo_id == centro.id else '' }}>{{ centro.codigo or '-' }} - {{ centro.nome }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="sub_centro_custo_equipe_id">Subcentro/equipe</label><select id="sub_centro_custo_equipe_id" name="sub_centro_custo_equipe_id"><option value="">Não informado</option>{% for equipe in equipes %}<option value="{{ equipe.id }}" {{ 'selected' if titulo and titulo.sub_centro_custo_equipe_id == equipe.id else '' }}>{{ equipe.nome }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="sub_centro_custo_veiculo_id">Subcentro/veículo</label><input id="sub_centro_custo_veiculo_id" name="sub_centro_custo_veiculo_id" type="number" min="1" value="{{ titulo.sub_centro_custo_veiculo_id if titulo and titulo.sub_centro_custo_veiculo_id else '' }}"></div>
+            <div class="form-group"><label for="status">Status</label><select id="status" name="status">{% for status in status_titulos %}<option value="{{ status }}" {{ 'selected' if (titulo and titulo.status == status) or (not titulo and status == 'A vencer') else '' }}>{{ status }}</option>{% endfor %}</select></div>
+        </div>
+        <div class="form-group"><label for="observacoes">Observações</label><textarea id="observacoes" name="observacoes" rows="4" data-uppercase>{{ titulo.observacoes if titulo else '' }}</textarea></div>
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Salvar</button>
+            <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_receber.titulos') }}">Cancelar</a>
+        </div>
+    </form>
+</section>
+{% endblock %}

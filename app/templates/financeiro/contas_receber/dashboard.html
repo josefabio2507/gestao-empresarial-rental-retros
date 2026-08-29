@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% set aba_ativa = "dashboard" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Financeiro &gt; Contas a Receber &gt; Dashboard</span>
+            <h1>Contas a Receber</h1>
+            <p>Resumo operacional dos títulos a receber da Rental Retros.</p>
+        </div>
+        <div class="actions">
+            <a class="btn btn-secondary" href="{{ url_for('departamentos.detalhe_departamento', slug_departamento='financeiro') }}">Voltar ao Financeiro</a>
+            {% if pode_criar %}
+                <a class="btn btn-primary" href="{{ url_for('financeiro_contas_receber.novo') }}">+ Novo Lançamento</a>
+            {% endif %}
+        </div>
+    </div>
+
+    {% include "financeiro/contas_receber/_menu.html" %}
+
+    <form class="filter-card" method="GET">
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="mes">Mês de referência</label>
+                <input id="mes" name="mes" type="month" value="{{ dados.mes_ref }}">
+            </div>
+        </div>
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Atualizar</button>
+            <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_receber.dashboard') }}">Limpar</a>
+        </div>
+    </form>
+
+    <div class="financeiro-dashboard-grid">
+        <article class="stat-card dashboard-info-card" title="Soma dos títulos com vencimento dentro do mês selecionado, exceto cancelados e estornados.">
+            <span>Total a receber no mês</span>
+            <strong>{{ formatar_moeda_brl(dados.cards.total_mes) }}</strong>
+        </article>
+        <article class="stat-card dashboard-info-card" title="Soma dos saldos em aberto dos títulos ainda não recebidos.">
+            <span>Total em aberto</span>
+            <strong>{{ formatar_moeda_brl(dados.cards.total_aberto) }}</strong>
+        </article>
+        <article class="stat-card dashboard-info-card" title="Soma dos títulos com vencimento anterior à data atual e saldo em aberto.">
+            <span>Total vencido</span>
+            <strong>{{ formatar_moeda_brl(dados.cards.total_vencido) }}</strong>
+        </article>
+        <article class="stat-card dashboard-info-card" title="Soma dos títulos em aberto com vencimento nos próximos 7 dias.">
+            <span>Próximos 7 dias</span>
+            <strong>{{ formatar_moeda_brl(dados.cards.total_7_dias) }}</strong>
+        </article>
+        <article class="stat-card dashboard-info-card" title="Soma dos títulos em aberto com vencimento nos próximos 30 dias.">
+            <span>Próximos 30 dias</span>
+            <strong>{{ formatar_moeda_brl(dados.cards.total_30_dias) }}</strong>
+        </article>
+        <article class="stat-card dashboard-info-card" title="Títulos cadastrados que ainda aguardam emissão ou confirmação de nota fiscal.">
+            <span>Aguardando faturamento</span>
+            <strong>{{ formatar_moeda_brl(dados.cards.total_aguardando_faturamento) }}</strong>
+        </article>
+        <article class="stat-card dashboard-info-card" title="Títulos com status faturado ou nota fiscal informada.">
+            <span>Total faturado</span>
+            <strong>{{ formatar_moeda_brl(dados.cards.total_faturado) }}</strong>
+        </article>
+        <article class="stat-card dashboard-info-card" title="Quantidade de títulos com saldo em aberto e status ativo.">
+            <span>Títulos em aberto</span>
+            <strong>{{ dados.cards.quantidade_abertos }}</strong>
+        </article>
+        <article class="stat-card dashboard-info-card" title="Quantidade de títulos vencidos com saldo em aberto.">
+            <span>Títulos vencidos</span>
+            <strong>{{ dados.cards.quantidade_vencidos }}</strong>
+        </article>
+        <article class="stat-card dashboard-info-card" title="Saldo geral em aberto, desconsiderando títulos cancelados, estornados e recebidos.">
+            <span>Saldo geral em aberto</span>
+            <strong>{{ formatar_moeda_brl(dados.cards.saldo_geral_aberto) }}</strong>
+        </article>
+    </div>
+
+    <div class="dashboard-tables-grid">
+        {% set tabelas = [
+            ('Próximos vencimentos', dados.proximos_vencimentos),
+            ('Recebíveis vencidos', dados.recebiveis_vencidos),
+            ('Maiores valores em aberto', dados.maiores_abertos),
+            ('Recebimentos recentes', dados.recebimentos_recentes)
+        ] %}
+        {% for titulo_tabela, itens in tabelas %}
+            <section class="table-card">
+                <h2>{{ titulo_tabela }}</h2>
+                <div class="listbox-10-linhas contas-receber-listbox">
+                    <table class="table contas-receber-table-mini">
+                        <thead><tr><th>ID</th><th>Cliente</th><th>Vencimento</th><th>Saldo</th><th>Status</th></tr></thead>
+                        <tbody>
+                            {% for titulo in itens %}
+                                <tr>
+                                    <td>#{{ titulo.id }}</td>
+                                    <td>{{ titulo.cliente_nome_snapshot }}</td>
+                                    <td>{{ formatar_data_brasil(titulo.data_vencimento) }}</td>
+                                    <td>{{ formatar_moeda_brl(titulo.saldo_aberto) }}</td>
+                                    <td><span class="badge {{ 'badge-danger' if titulo.status_visual() == 'Vencido' else 'badge-success' }}">{{ titulo.status_visual() }}</span></td>
+                                </tr>
+                            {% else %}
+                                <tr><td class="empty-state" colspan="5">Nenhum título encontrado.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        {% endfor %}
+
+        <section class="table-card">
+            <h2>Clientes com maior saldo em aberto</h2>
+            <div class="listbox-10-linhas contas-receber-listbox">
+                <table class="table contas-receber-table-mini">
+                    <thead><tr><th>Cliente</th><th>Saldo</th></tr></thead>
+                    <tbody>
+                        {% for item in dados.clientes_saldo %}
+                            <tr><td>{{ item.cliente }}</td><td>{{ formatar_moeda_brl(item.saldo) }}</td></tr>
+                        {% else %}
+                            <tr><td class="empty-state" colspan="2">Nenhum saldo em aberto.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+</section>
+{% endblock %}

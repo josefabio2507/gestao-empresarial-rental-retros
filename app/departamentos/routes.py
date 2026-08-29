@@ -40,6 +40,9 @@ def detalhe_departamento(slug_departamento):
         flash("Você não possui módulos liberados neste departamento.", "danger")
         return redirect(url_for("main.acesso_negado"))
 
+    if slug_departamento == "financeiro":
+        return redirect(url_for("financeiro.index"))
+
     return render_template(
         "departamentos/detalhe.html",
         departamento=departamento,
