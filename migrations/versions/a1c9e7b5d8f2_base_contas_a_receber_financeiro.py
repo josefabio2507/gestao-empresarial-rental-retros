@@ -57,7 +57,7 @@ def _garantir_submodulo_contas_receber(bind):
                 UPDATE modulos
                    SET nome = :nome,
                        descricao = :descricao,
-                       ativo = 1,
+                       ativo = :ativo,
                        atualizado_em = CURRENT_TIMESTAMP
                  WHERE id = :id
                 """
@@ -66,6 +66,7 @@ def _garantir_submodulo_contas_receber(bind):
                 "id": modulo.id,
                 "nome": "Contas a Receber",
                 "descricao": "Clientes, títulos a receber e acompanhamento de recebíveis.",
+                "ativo": True,
             },
         )
         return
@@ -76,7 +77,7 @@ def _garantir_submodulo_contas_receber(bind):
             INSERT INTO modulos
                 (departamento_id, nome, slug, descricao, icone, ativo, ordem, criado_em, atualizado_em)
             VALUES
-                (:departamento_id, :nome, :slug, :descricao, :icone, 1, :ordem, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                (:departamento_id, :nome, :slug, :descricao, :icone, :ativo, :ordem, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
             """
         ),
         {
@@ -85,6 +86,7 @@ def _garantir_submodulo_contas_receber(bind):
             "slug": "contas_a_receber",
             "descricao": "Clientes, títulos a receber e acompanhamento de recebíveis.",
             "icone": "receber",
+            "ativo": True,
             "ordem": 2,
         },
     )
@@ -188,5 +190,3 @@ def downgrade():
             if nome in indices:
                 op.drop_index(nome, table_name="financeiro_contas_receber_titulos")
         op.drop_table("financeiro_contas_receber_titulos")
-
-
