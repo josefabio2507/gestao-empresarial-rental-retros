@@ -5,14 +5,14 @@
 <section class="page">
     <div class="top-bar">
         <div>
-            <span class="page-kicker">Financeiro &gt; Contas a Receber &gt; Detalhe do Título</span>
+            <span class="page-kicker">Financeiro &gt; Contas a Receber &gt; Títulos a Receber &gt; Detalhe &gt; Recebimentos</span>
             <h1>Título #{{ titulo.id }}</h1>
             <p>{{ titulo.cliente_nome_snapshot }} · {{ titulo.descricao }}</p>
         </div>
         <div class="actions">
             <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_receber.titulos') }}">Voltar</a>
             {% if pode_editar %}<a class="btn btn-primary" href="{{ url_for('financeiro_contas_receber.editar', titulo_id=titulo.id) }}">Editar</a>{% endif %}
-            <button class="btn btn-secondary" type="button" disabled title="Registro de recebimento será implementado em missão futura.">Registrar Recebimento</button>
+            {% if pode_registrar_recebimento and titulo.status not in ['Cancelado', 'Estornado', 'Recebido'] and titulo.saldo_aberto > 0 %}<a class="btn btn-primary" href="{{ url_for('financeiro_contas_receber.registrar_recebimento', titulo_id=titulo.id) }}">Registrar Recebimento</a>{% endif %}
         </div>
     </div>
 
@@ -72,13 +72,50 @@
     </div>
 
     <section class="table-card">
+        <div class="section-header">
+            <div>
+                <h2>Recebimentos / Baixas</h2>
+                <p>Histórico financeiro preservado; recebimentos cancelados ou estornados não entram no saldo recebido.</p>
+            </div>
+            {% if pode_registrar_recebimento and titulo.status not in ['Cancelado', 'Estornado', 'Recebido'] and titulo.saldo_aberto > 0 %}<a class="btn btn-primary" href="{{ url_for('financeiro_contas_receber.registrar_recebimento', titulo_id=titulo.id) }}">Registrar recebimento</a>{% endif %}
+        </div>
+        {% if pode_ver_recebimentos %}
+            <div class="listbox-10-linhas contas-receber-listbox">
+                <table class="table contas-receber-baixas-table">
+                    <thead><tr><th>Data</th><th>Valor recebido</th><th>Forma</th><th>Conta/descrição</th><th>Observação</th><th>Comprovante</th><th>Usuário</th><th>Registro</th><th>Status</th><th>Ações</th></tr></thead>
+                    <tbody>
+                        {% for baixa in titulo.baixas %}
+                            <tr>
+                                <td>{{ formatar_data_brasil(baixa.data_recebimento) }}</td>
+                                <td>{{ formatar_moeda_brl(baixa.valor_recebido) }}</td>
+                                <td>{{ baixa.forma_recebimento }}</td>
+                                <td>{{ baixa.conta_recebimento_descricao or '-' }}</td>
+                                <td>{{ baixa.observacoes or baixa.motivo_cancelamento or '-' }}</td>
+                                <td>{% if baixa.comprovante_disponivel and baixa.status == 'Ativa' and pode_baixar_comprovante %}<a class="btn btn-secondary" href="{{ url_for('financeiro_contas_receber.baixar_comprovante', baixa_id=baixa.id) }}">Baixar</a>{% else %}<span class="badge badge-warning">Sem comprovante</span>{% endif %}</td>
+                                <td>{{ baixa.registrado_por.nome if baixa.registrado_por else '-' }}</td>
+                                <td>{{ baixa.criado_em.strftime('%d/%m/%Y %H:%M') if baixa.criado_em else '-' }}</td>
+                                <td><span class="badge {{ 'badge-success' if baixa.status == 'Ativa' else 'badge-secondary' }}">{{ baixa.status }}</span></td>
+                                <td>{% if baixa.status == 'Ativa' and pode_estornar_recebimento %}<form class="inline-form" method="POST" action="{{ url_for('financeiro_contas_receber.estornar_recebimento', titulo_id=titulo.id, baixa_id=baixa.id) }}"><input name="motivo_cancelamento" placeholder="Motivo" required><button class="btn btn-warning" type="submit">Estornar</button></form>{% else %}-{% endif %}</td>
+                            </tr>
+                        {% else %}
+                            <tr><td class="empty-state" colspan="10">Nenhum recebimento registrado para este título.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="alert-info">Você não possui permissão para visualizar recebimentos.</p>
+        {% endif %}
+    </section>
+
+    <section class="table-card">
         <h2>Histórico do título</h2>
         <div class="listbox-10-linhas contas-receber-listbox">
             <table class="table contas-receber-table-mini">
                 <thead><tr><th>Evento</th><th>Usuário</th><th>Data</th><th>Observação</th></tr></thead>
                 <tbody>
                     <tr><td>Criação</td><td>{{ titulo.criado_por.nome if titulo.criado_por else '-' }}</td><td>{{ titulo.criado_em.strftime('%d/%m/%Y %H:%M') if titulo.criado_em else '-' }}</td><td>Título cadastrado.</td></tr>
-                    {% if titulo.atualizado_por %}<tr><td>Última atualização</td><td>{{ titulo.atualizado_por.nome }}</td><td>{{ titulo.atualizado_em.strftime('%d/%m/%Y %H:%M') if titulo.atualizado_em else '-' }}</td><td>Dados revisados.</td></tr>{% endif %}
+                    {% if titulo.atualizado_por %}<tr><td>Última atualização</td><td>{{ titulo.atualizado_por.nome }}</td><td>{{ titulo.atualizado_em.strftime('%d/%m/%Y %H:%M') if titulo.atualizado_em else '-' }}</td><td>Dados revisados ou saldo recalculado.</td></tr>{% endif %}
                     {% if titulo.cancelado_em %}<tr><td>Cancelamento</td><td>{{ titulo.cancelado_por.nome if titulo.cancelado_por else '-' }}</td><td>{{ titulo.cancelado_em.strftime('%d/%m/%Y %H:%M') }}</td><td>{{ titulo.motivo_cancelamento or '-' }}</td></tr>{% endif %}
                 </tbody>
             </table>

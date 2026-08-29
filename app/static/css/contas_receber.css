@@ -105,3 +105,11 @@
         grid-template-columns: 1fr;
     }
 }
+
+.contas-receber-baixas-table {
+    min-width: 1500px;
+}
+
+.contas-receber-table .acoes-botoes {
+    min-width: 230px;
+}
