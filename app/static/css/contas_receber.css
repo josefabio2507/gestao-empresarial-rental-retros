@@ -1,0 +1,107 @@
+/* Mission 18.1: Financeiro / Contas a Receber */
+.page-wide {
+    width: min(1480px, 100%);
+}
+
+.submodule-tabs {
+    display: flex;
+    gap: 8px;
+    margin-top: 18px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+}
+
+.submodule-tab {
+    align-items: center;
+    background: #ffffff;
+    border: 1px solid var(--rr-border);
+    border-radius: 9px;
+    color: var(--rr-navy);
+    display: inline-flex;
+    font-weight: 800;
+    min-height: 40px;
+    padding: 9px 12px;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.submodule-tab.active {
+    background: var(--rr-blue);
+    border-color: var(--rr-blue);
+    color: #ffffff;
+}
+
+.submodule-tab.disabled {
+    color: var(--rr-muted);
+    cursor: not-allowed;
+    opacity: 0.72;
+}
+
+.financeiro-dashboard-grid {
+    display: grid;
+    gap: 14px;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    margin-top: 24px;
+}
+
+.dashboard-info-card {
+    min-height: 118px;
+}
+
+.dashboard-info-card strong {
+    overflow-wrap: anywhere;
+}
+
+.dashboard-tables-grid {
+    display: grid;
+    gap: 18px;
+    grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+    margin-top: 24px;
+}
+
+.listbox-10-linhas {
+    max-height: 520px;
+    overflow: auto;
+}
+
+.listbox-10-linhas .table thead th {
+    background: #eef2f7;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.contas-receber-listbox {
+    border: 1px solid var(--rr-border);
+    border-radius: 10px;
+}
+
+.contas-receber-table {
+    min-width: 1780px;
+}
+
+.contas-receber-table-mini {
+    min-width: 720px;
+}
+
+.detail-grid {
+    display: grid;
+    gap: 18px;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.detail-grid section {
+    border: 1px solid var(--rr-border);
+    border-radius: 10px;
+    padding: 14px;
+}
+
+.detail-grid p {
+    margin: 8px 0;
+}
+
+@media (max-width: 640px) {
+    .dashboard-tables-grid {
+        grid-template-columns: 1fr;
+    }
+}

@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% set aba_ativa = "titulos" %}
+
+{% block content %}
+<section class="page page-wide">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Financeiro &gt; Contas a Receber &gt; Títulos a Receber</span>
+            <h1>Títulos a Receber</h1>
+            <p>Consulta, filtros e controle básico dos recebíveis cadastrados.</p>
+        </div>
+        <div class="actions">
+            <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_receber.dashboard') }}">Dashboard</a>
+            {% if pode_criar %}<a class="btn btn-primary" href="{{ url_for('financeiro_contas_receber.novo') }}">+ Novo Lançamento</a>{% endif %}
+        </div>
+    </div>
+
+    {% include "financeiro/contas_receber/_menu.html" %}
+
+    <form class="filter-card" method="GET">
+        <div class="form-grid">
+            <div class="form-group"><label for="cliente">Cliente</label><input id="cliente" name="cliente" value="{{ filtros.get('cliente', '') }}"></div>
+            <div class="form-group"><label for="cnpj_cpf">CNPJ/CPF</label><input id="cnpj_cpf" name="cnpj_cpf" value="{{ filtros.get('cnpj_cpf', '') }}"></div>
+            <div class="form-group"><label for="status">Status</label><select id="status" name="status"><option value="">Todos</option>{% for status in status_titulos %}<option value="{{ status }}" {{ 'selected' if filtros.get('status') == status else '' }}>{{ status }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="origem">Origem</label><select id="origem" name="origem"><option value="">Todas</option>{% for origem in origens_lancamento %}<option value="{{ origem }}" {{ 'selected' if filtros.get('origem') == origem else '' }}>{{ origem }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="emissao_inicio">Emissão inicial</label><input id="emissao_inicio" name="emissao_inicio" type="date" value="{{ filtros.get('emissao_inicio', '') }}"></div>
+            <div class="form-group"><label for="emissao_fim">Emissão final</label><input id="emissao_fim" name="emissao_fim" type="date" value="{{ filtros.get('emissao_fim', '') }}"></div>
+            <div class="form-group"><label for="vencimento_inicio">Vencimento inicial</label><input id="vencimento_inicio" name="vencimento_inicio" type="date" value="{{ filtros.get('vencimento_inicio', '') }}"></div>
+            <div class="form-group"><label for="vencimento_fim">Vencimento final</label><input id="vencimento_fim" name="vencimento_fim" type="date" value="{{ filtros.get('vencimento_fim', '') }}"></div>
+            <div class="form-group"><label for="competencia">Competência</label><input id="competencia" name="competencia" type="month" value="{{ filtros.get('competencia', '') }}"></div>
+            <div class="form-group"><label for="numero_documento">Número do documento</label><input id="numero_documento" name="numero_documento" value="{{ filtros.get('numero_documento', '') }}"></div>
+            <div class="form-group"><label for="numero_nota_fiscal">Número da nota fiscal</label><input id="numero_nota_fiscal" name="numero_nota_fiscal" value="{{ filtros.get('numero_nota_fiscal', '') }}"></div>
+            <div class="form-group"><label for="contrato_id">Contrato</label><input id="contrato_id" name="contrato_id" type="number" min="1" value="{{ filtros.get('contrato_id', '') }}"></div>
+            <div class="form-group"><label for="centro_custo_id">Centro de custo</label><select id="centro_custo_id" name="centro_custo_id"><option value="">Todos</option>{% for centro in centros_custo %}<option value="{{ centro.id }}" {{ 'selected' if filtros.get('centro_custo_id') == centro.id|string else '' }}>{{ centro.codigo or '-' }} - {{ centro.nome }}</option>{% endfor %}</select></div>
+            <div class="form-group checkbox-group"><label><input type="checkbox" name="vencidos" value="1" {{ 'checked' if filtros.get('vencidos') else '' }}> Títulos vencidos</label></div>
+            <div class="form-group checkbox-group"><label><input type="checkbox" name="a_vencer" value="1" {{ 'checked' if filtros.get('a_vencer') else '' }}> Títulos a vencer</label></div>
+        </div>
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Pesquisar</button>
+            <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_receber.titulos') }}">Limpar</a>
+        </div>
+    </form>
+
+    <div class="table-card">
+        <div class="listbox-10-linhas contas-receber-listbox">
+            <table class="table contas-receber-table">
+                <thead><tr><th>ID</th><th>Cliente</th><th>CNPJ/CPF</th><th>Descrição</th><th>Documento</th><th>Nota fiscal</th><th>Origem</th><th>Competência</th><th>Emissão</th><th>Vencimento</th><th>Valor original</th><th>Valor recebido</th><th>Saldo em aberto</th><th>Status</th><th class="col-acoes">Ações</th></tr></thead>
+                <tbody>
+                    {% for titulo in titulos %}
+                        <tr>
+                            <td>#{{ titulo.id }}</td>
+                            <td>{{ titulo.cliente_nome_snapshot }}</td>
+                            <td>{{ titulo.cliente_cnpj_cpf_snapshot or '-' }}</td>
+                            <td>{{ titulo.descricao }}</td>
+                            <td>{{ titulo.numero_documento or '-' }}</td>
+                            <td>{{ titulo.numero_nota_fiscal or '-' }}</td>
+                            <td>{{ titulo.origem_lancamento }}</td>
+                            <td>{{ titulo.competencia or '-' }}</td>
+                            <td>{{ formatar_data_brasil(titulo.data_emissao) }}</td>
+                            <td>{{ formatar_data_brasil(titulo.data_vencimento) }}</td>
+                            <td>{{ formatar_moeda_brl(titulo.valor_original) }}</td>
+                            <td>{{ formatar_moeda_brl(titulo.valor_recebido) }}</td>
+                            <td>{{ formatar_moeda_brl(titulo.saldo_aberto) }}</td>
+                            <td><span class="badge {{ 'badge-danger' if titulo.status_visual() == 'Vencido' else 'badge-success' }}">{{ titulo.status_visual() }}</span></td>
+                            <td class="col-acoes"><div class="acoes-botoes"><a class="btn btn-secondary" href="{{ url_for('financeiro_contas_receber.detalhe', titulo_id=titulo.id) }}">Detalhe</a>{% if pode_editar %}<a class="btn btn-primary" href="{{ url_for('financeiro_contas_receber.editar', titulo_id=titulo.id) }}">Editar</a>{% endif %}</div></td>
+                        </tr>
+                    {% else %}
+                        <tr><td class="empty-state" colspan="15">Nenhum título encontrado para os filtros informados.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+{% endblock %}

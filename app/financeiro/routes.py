@@ -24,6 +24,7 @@ def index():
     return render_template(
         "financeiro/index.html",
         pode_ver_contas_pagar=usuario_tem_permissao(current_user, "financeiro", "contas_a_pagar", "visualizar"),
+        pode_ver_contas_receber=usuario_tem_permissao(current_user, "financeiro", "contas_a_receber", "visualizar"),
         pode_ver_relatorios=usuario_tem_permissao(current_user, "financeiro", "relatorios", "visualizar"),
     )
 
