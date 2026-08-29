@@ -1,10 +1,11 @@
 import re
+from decimal import Decimal, ROUND_HALF_UP
 from datetime import date, datetime
 
 from flask import current_app
 
 from app.extensions import db
-from app.models import OperacaoAbastecimento, OperacaoVeiculoEquipamento, OperacaoVeiculoResponsavel
+from app.models import OperacaoAbastecimento, OperacaoAbastecimentoCustoExtra, OperacaoVeiculoEquipamento, OperacaoVeiculoResponsavel
 from app.services.google_drive_service import (
     GOOGLE_DRIVE_UPLOAD_SCOPES,
     GoogleDriveConfiguracaoErro,
@@ -19,6 +20,9 @@ from app.services.suprimentos_service import _normalizar_imagem_para_jpg
 from app.utils.datas import agora_brasil
 
 TIPOS_COMBUSTIVEL = ["Diesel S10", "Etanol", "Etanol aditivado", "Gasolina comum", "Gasolina aditivada", "Gasolina Premium"]
+CATEGORIAS_CUSTO_EXTRA = ["Arla", "Óleo/Lubrificante", "Lavagem", "Produto de Conveniência", "Acessório", "Alimentação", "Serviço", "Outros"]
+STATUS_CUSTO_EXTRA_ATIVO = "Ativo"
+STATUS_CUSTO_EXTRA_CANCELADO = "Cancelado"
 MIME_CUPOM_ABASTECIMENTO = "image/jpeg"
 
 
@@ -133,6 +137,117 @@ def _upload_cupom(arquivo, veiculo, data_abastecimento, drive_service=None):
     }, None
 
 
+
+
+def _lista_form(form_data, campo):
+    if hasattr(form_data, "getlist"):
+        return form_data.getlist(campo)
+    valor = form_data.get(campo) if form_data else None
+    if valor is None:
+        return []
+    return valor if isinstance(valor, list) else [valor]
+
+
+def _moeda(valor):
+    valor = valor or Decimal("0.00")
+    return Decimal(valor).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+
+def _calcular_valor_total_extra(quantidade, valor_unitario):
+    return _moeda(quantidade * valor_unitario)
+
+
+def _registrar_log_abastecimento(evento, mensagem):
+    try:
+        from app.services.logs_service import registrar_log
+
+        registrar_log(evento, mensagem)
+    except Exception:
+        current_app.logger.exception("Falha ao registrar log de abastecimento.")
+
+
+def _sincronizar_custos_extras(abastecimento, form_data, usuario):
+    categorias = _lista_form(form_data, "custo_extra_categoria")
+    descricoes = _lista_form(form_data, "custo_extra_descricao")
+    quantidades = _lista_form(form_data, "custo_extra_quantidade")
+    valores_unitarios = _lista_form(form_data, "custo_extra_valor_unitario")
+    observacoes = _lista_form(form_data, "custo_extra_observacoes")
+    ids = _lista_form(form_data, "custo_extra_id")
+
+    if not any(categorias + descricoes + quantidades + valores_unitarios + observacoes):
+        return True, None
+
+    extras_por_id = {str(extra.id): extra for extra in abastecimento.custos_extras}
+    total_linhas = max(len(categorias), len(descricoes), len(quantidades), len(valores_unitarios), len(observacoes), len(ids))
+
+    for indice in range(total_linhas):
+        categoria = texto(categorias[indice] if indice < len(categorias) else None)
+        descricao = texto(descricoes[indice] if indice < len(descricoes) else None)
+        quantidade = decimal_ou_none(quantidades[indice] if indice < len(quantidades) else None)
+        valor_unitario = decimal_ou_none(valores_unitarios[indice] if indice < len(valores_unitarios) else None)
+        observacao = texto(observacoes[indice] if indice < len(observacoes) else None)
+        custo_id = texto(ids[indice] if indice < len(ids) else None)
+
+        if not any([categoria, descricao, quantidade, valor_unitario, observacao, custo_id]):
+            continue
+        if categoria not in CATEGORIAS_CUSTO_EXTRA:
+            return False, "Categoria do custo extra e obrigatoria."
+        if not descricao:
+            return False, "Descricao do custo extra e obrigatoria."
+        if quantidade is None or quantidade <= 0:
+            return False, "Quantidade do custo extra deve ser maior que zero."
+        if valor_unitario is None or valor_unitario < 0:
+            return False, "Valor unitario do custo extra deve ser maior ou igual a zero."
+
+        custo = extras_por_id.get(custo_id)
+        novo = custo is None
+        if novo:
+            custo = OperacaoAbastecimentoCustoExtra(
+                abastecimento=abastecimento,
+                criado_por_usuario_id=getattr(usuario, "id", None),
+                status=STATUS_CUSTO_EXTRA_ATIVO,
+            )
+            db.session.add(custo)
+
+        if custo.status != STATUS_CUSTO_EXTRA_ATIVO:
+            continue
+
+        custo.categoria = categoria
+        custo.descricao = descricao
+        custo.quantidade = quantidade
+        custo.valor_unitario = _moeda(valor_unitario)
+        custo.valor_total = _calcular_valor_total_extra(quantidade, custo.valor_unitario)
+        custo.observacoes = observacao or None
+        custo.atualizado_por_usuario_id = getattr(usuario, "id", None)
+
+        if novo:
+            _registrar_log_abastecimento("operacao_abastecimento_custo_extra_criado", "Custo extra criado em abastecimento.")
+        else:
+            _registrar_log_abastecimento("operacao_abastecimento_custo_extra_atualizado", f"Custo extra atualizado. ID: {custo.id}.")
+
+    return True, None
+
+
+def cancelar_custo_extra_abastecimento(custo_extra_id, usuario, motivo):
+    custo = OperacaoAbastecimentoCustoExtra.query.get(custo_extra_id)
+    if not custo:
+        return False, "Custo extra nao encontrado.", None
+    if custo.status != STATUS_CUSTO_EXTRA_ATIVO:
+        return False, "Custo extra ja esta cancelado.", custo
+    motivo = texto(motivo)
+    if not motivo:
+        return False, "Informe o motivo do cancelamento.", custo
+
+    custo.status = STATUS_CUSTO_EXTRA_CANCELADO
+    custo.cancelado_por_usuario_id = getattr(usuario, "id", None)
+    custo.cancelado_em = agora_brasil()
+    custo.motivo_cancelamento = motivo
+    custo.atualizado_por_usuario_id = getattr(usuario, "id", None)
+    db.session.commit()
+    _registrar_log_abastecimento("operacao_abastecimento_custo_extra_cancelado", f"Custo extra cancelado. ID: {custo.id}. Abastecimento: {custo.abastecimento_id}.")
+    return True, "Custo extra cancelado com sucesso.", custo
+
+
 def salvar_abastecimento(form_data, files_data, usuario, veiculo=None, abastecimento=None, drive_service=None):
     veiculo_id = veiculo.id if veiculo else getattr(abastecimento, "veiculo_id", None)
     vinculo = vinculo_ativo_usuario_veiculo(usuario, veiculo_id)
@@ -147,6 +262,9 @@ def salvar_abastecimento(form_data, files_data, usuario, veiculo=None, abastecim
     qtd_litros = decimal_ou_none(form_data.get("qtd_litros"))
     preco = decimal_ou_none(form_data.get("preco"))
     arquivo_cupom = files_data.get("cupom_fiscal") if files_data else None
+    valor_total_nota_fiscal = decimal_ou_none(form_data.get("valor_total_nota_fiscal"))
+    numero_nota_fiscal = texto(form_data.get("numero_nota_fiscal"))
+    chave_acesso_nfe = re.sub(r"\D+", "", texto(form_data.get("chave_acesso_nfe")) or "")
 
     if not data_abastecimento:
         return False, "Data do abastecimento e obrigatoria.", abastecimento
@@ -158,6 +276,10 @@ def salvar_abastecimento(form_data, files_data, usuario, veiculo=None, abastecim
         return False, "Preco e obrigatorio.", abastecimento
     if not abastecimento and not (arquivo_cupom and texto(arquivo_cupom.filename)):
         return False, "Foto do cupom fiscal e obrigatoria.", abastecimento
+    if valor_total_nota_fiscal is not None and valor_total_nota_fiscal < 0:
+        return False, "Valor total da nota fiscal deve ser maior ou igual a zero.", abastecimento
+    if chave_acesso_nfe and len(chave_acesso_nfe) != 44:
+        return False, "Chave de acesso da NF-e deve conter 44 digitos.", abastecimento
 
     upload = None
     if arquivo_cupom and texto(arquivo_cupom.filename):
@@ -179,6 +301,10 @@ def salvar_abastecimento(form_data, files_data, usuario, veiculo=None, abastecim
     abastecimento.tipo_combustivel = tipo_combustivel
     abastecimento.qtd_litros = qtd_litros
     abastecimento.preco = preco
+    abastecimento.numero_nota_fiscal = numero_nota_fiscal or None
+    abastecimento.chave_acesso_nfe = chave_acesso_nfe or None
+    abastecimento.valor_total_nota_fiscal = _moeda(valor_total_nota_fiscal) if valor_total_nota_fiscal is not None else None
+    abastecimento.observacoes_conferencia = texto(form_data.get("observacoes_conferencia")) or None
     abastecimento.observacoes = texto(form_data.get("observacoes")) or None
     abastecimento.vinculo_id = vinculo.id
     abastecimento.equipe_id = equipe.id if equipe else None
@@ -187,6 +313,18 @@ def salvar_abastecimento(form_data, files_data, usuario, veiculo=None, abastecim
         abastecimento.cupom_drive_file_id = upload["id"]
         abastecimento.cupom_nome_arquivo = upload["nome"]
         abastecimento.cupom_link = upload["link"]
+
+    sucesso_extras, erro_extras = _sincronizar_custos_extras(abastecimento, form_data, usuario)
+    if not sucesso_extras:
+        db.session.rollback()
+        return False, erro_extras, abastecimento
+
+    db.session.flush()
+    if abastecimento.valor_total_nota_fiscal is not None:
+        if abastecimento.status_conferencia_nota_fiscal == "Conferido":
+            _registrar_log_abastecimento("operacao_abastecimento_nf_conferida", f"Valor da NF confere. Abastecimento: {abastecimento.id}.")
+        else:
+            _registrar_log_abastecimento("operacao_abastecimento_nf_divergente", f"Divergencia na NF. Abastecimento: {abastecimento.id}. Diferenca: {abastecimento.diferenca_nota_fiscal}.")
 
     db.session.commit()
     return True, "Abastecimento salvo com sucesso.", abastecimento

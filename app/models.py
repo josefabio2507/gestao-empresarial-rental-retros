@@ -392,6 +392,11 @@ class OperacaoAbastecimento(db.Model):
     cupom_drive_file_id = db.Column(db.String(255), nullable=True)
     cupom_nome_arquivo = db.Column(db.String(255), nullable=True)
     cupom_link = db.Column(db.String(500), nullable=True)
+    numero_nota_fiscal = db.Column(db.String(80), nullable=True)
+    chave_acesso_nfe = db.Column(db.String(44), nullable=True)
+    fiscal_documento_id = db.Column(db.Integer, db.ForeignKey("fiscal_documentos.id"), nullable=True, index=True)
+    valor_total_nota_fiscal = db.Column(db.Numeric(12, 2), nullable=True)
+    observacoes_conferencia = db.Column(db.Text, nullable=True)
     observacoes = db.Column(db.Text, nullable=True)
     criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
     atualizado_em = db.Column(db.DateTime, default=agora_brasil, onupdate=agora_brasil, nullable=False)
@@ -401,6 +406,40 @@ class OperacaoAbastecimento(db.Model):
     colaborador = db.relationship("Colaborador")
     equipe = db.relationship("Equipe")
     usuario = db.relationship("Usuario")
+    fiscal_documento = db.relationship("FiscalDocumento")
+    custos_extras = db.relationship(
+        "OperacaoAbastecimentoCustoExtra",
+        back_populates="abastecimento",
+        order_by="OperacaoAbastecimentoCustoExtra.id.asc()",
+    )
+
+    @property
+    def valor_total_combustivel(self):
+        return self.preco or 0
+
+    @property
+    def custos_extras_ativos(self):
+        return [custo for custo in self.custos_extras if custo.status == "Ativo"]
+
+    @property
+    def valor_total_custos_extras(self):
+        return sum((custo.valor_total or 0 for custo in self.custos_extras_ativos), start=0)
+
+    @property
+    def valor_total_geral(self):
+        return (self.valor_total_combustivel or 0) + (self.valor_total_custos_extras or 0)
+
+    @property
+    def diferenca_nota_fiscal(self):
+        if self.valor_total_nota_fiscal is None:
+            return None
+        return self.valor_total_nota_fiscal - self.valor_total_geral
+
+    @property
+    def status_conferencia_nota_fiscal(self):
+        if self.valor_total_nota_fiscal is None:
+            return "Sem valor da NF"
+        return "Conferido" if self.diferenca_nota_fiscal == 0 else "Divergente"
 
     __table_args__ = (
         db.CheckConstraint(
@@ -413,6 +452,41 @@ class OperacaoAbastecimento(db.Model):
 
     def __repr__(self):
         return f"<OperacaoAbastecimento veiculo={self.veiculo_id} data={self.data_abastecimento}>"
+
+class OperacaoAbastecimentoCustoExtra(db.Model):
+    __tablename__ = "operacao_abastecimento_custos_extras"
+
+    id = db.Column(db.Integer, primary_key=True)
+    abastecimento_id = db.Column(db.Integer, db.ForeignKey("operacao_abastecimentos.id"), nullable=False, index=True)
+    categoria = db.Column(db.String(80), nullable=False, index=True)
+    descricao = db.Column(db.String(255), nullable=False)
+    quantidade = db.Column(db.Numeric(12, 3), nullable=False)
+    valor_unitario = db.Column(db.Numeric(12, 2), nullable=False)
+    valor_total = db.Column(db.Numeric(12, 2), nullable=False)
+    observacoes = db.Column(db.Text, nullable=True)
+    status = db.Column(db.String(20), default="Ativo", nullable=False, index=True)
+    criado_por_usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=True)
+    atualizado_por_usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=True)
+    cancelado_por_usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=True)
+    cancelado_em = db.Column(db.DateTime, nullable=True)
+    motivo_cancelamento = db.Column(db.Text, nullable=True)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False, index=True)
+    atualizado_em = db.Column(db.DateTime, default=agora_brasil, onupdate=agora_brasil, nullable=False)
+
+    abastecimento = db.relationship("OperacaoAbastecimento", back_populates="custos_extras")
+    criado_por = db.relationship("Usuario", foreign_keys=[criado_por_usuario_id])
+    atualizado_por = db.relationship("Usuario", foreign_keys=[atualizado_por_usuario_id])
+    cancelado_por = db.relationship("Usuario", foreign_keys=[cancelado_por_usuario_id])
+
+    __table_args__ = (
+        db.CheckConstraint("quantidade > 0", name="ck_operacao_abast_extra_quantidade"),
+        db.CheckConstraint("valor_unitario >= 0", name="ck_operacao_abast_extra_unitario"),
+        db.CheckConstraint("valor_total >= 0", name="ck_operacao_abast_extra_total"),
+        db.CheckConstraint("status in ('Ativo', 'Cancelado')", name="ck_operacao_abast_extra_status"),
+    )
+
+    def __repr__(self):
+        return f"<OperacaoAbastecimentoCustoExtra abastecimento={self.abastecimento_id} categoria={self.categoria}>"
 
 class OperacaoMultaTransito(db.Model):
     __tablename__ = "operacao_multas_transito"

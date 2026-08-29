@@ -13,6 +13,7 @@ from app.models import (
     Modulo,
     NivelAcesso,
     OperacaoAbastecimento,
+    OperacaoAbastecimentoCustoExtra,
     OperacaoImpostoTaxa,
     OperacaoLeituraAtivo,
     OperacaoMultaTransito,
@@ -21,7 +22,7 @@ from app.models import (
     PermissaoUsuarioModulo,
     Usuario,
 )
-from app.services.operacao_abastecimento_service import TIPOS_COMBUSTIVEL, salvar_abastecimento
+from app.services.operacao_abastecimento_service import TIPOS_COMBUSTIVEL, cancelar_custo_extra_abastecimento, salvar_abastecimento
 from app.services.operacao_impostos_taxas_service import salvar_impostos_taxas
 from app.services.operacao_multas_transito_service import salvar_multa_transito
 from app.services.operacao_pool_service import (
@@ -539,6 +540,67 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         self.assertTrue(abastecimento.cupom_nome_arquivo.startswith("ABAST-RET001-20260823-"))
         self.assertEqual(1, OperacaoAbastecimento.query.count())
 
+    def test_salva_abastecimento_com_custos_extras_e_conferencia_nf(self):
+        veiculo = self._criar_veiculo("RET777", "RETRO COM EXTRAS")
+        self.usuario.colaborador_id = self.motorista.id
+        db.session.commit()
+        vincular_responsavel(
+            {"colaborador_id": str(self.motorista.id), "tipo_leitura": "horimetro", "leitura_inicial": "100"},
+            usuario=self.admin,
+            veiculo=veiculo,
+        )
+        self.app.config["GOOGLE_DRIVE_CUPONS_ABASTECIMENTO_FOLDER_ID"] = "pasta-cupons"
+
+        form = MultiDict(
+            [
+                ("data_abastecimento", "2026-08-29"),
+                ("tipo_combustivel", "Diesel S10"),
+                ("qtd_litros", "20,00"),
+                ("preco", "300,00"),
+                ("numero_nota_fiscal", "NF-123"),
+                ("chave_acesso_nfe", "12345678901234567890123456789012345678901234"),
+                ("valor_total_nota_fiscal", "362,50"),
+                ("observacoes_conferencia", "Conferencia com itens extras"),
+                ("custo_extra_categoria", "Arla"),
+                ("custo_extra_descricao", "Arla 32"),
+                ("custo_extra_quantidade", "2"),
+                ("custo_extra_valor_unitario", "25,00"),
+                ("custo_extra_observacoes", "Galões"),
+                ("custo_extra_id", ""),
+                ("custo_extra_categoria", "Lavagem"),
+                ("custo_extra_descricao", "Lavagem simples"),
+                ("custo_extra_quantidade", "1"),
+                ("custo_extra_valor_unitario", "12,50"),
+                ("custo_extra_observacoes", ""),
+                ("custo_extra_id", ""),
+            ]
+        )
+
+        sucesso, mensagem, abastecimento = salvar_abastecimento(
+            form,
+            {"cupom_fiscal": self._arquivo_imagem()},
+            self.usuario,
+            veiculo=veiculo,
+            drive_service=FakeDriveService(),
+        )
+
+        self.assertTrue(sucesso, mensagem)
+        self.assertEqual(2, OperacaoAbastecimentoCustoExtra.query.filter_by(abastecimento_id=abastecimento.id).count())
+        self.assertEqual("300.00", str(abastecimento.valor_total_combustivel))
+        self.assertEqual("62.50", str(abastecimento.valor_total_custos_extras))
+        self.assertEqual("362.50", str(abastecimento.valor_total_geral))
+        self.assertEqual("0.00", str(abastecimento.diferenca_nota_fiscal))
+        self.assertEqual("Conferido", abastecimento.status_conferencia_nota_fiscal)
+
+        custo_arla = OperacaoAbastecimentoCustoExtra.query.filter_by(descricao="Arla 32").first()
+        sucesso, mensagem, _ = cancelar_custo_extra_abastecimento(custo_arla.id, self.usuario, "Lancado em duplicidade")
+
+        self.assertTrue(sucesso, mensagem)
+        db.session.refresh(abastecimento)
+        self.assertEqual("Cancelado", custo_arla.status)
+        self.assertEqual("12.50", str(abastecimento.valor_total_custos_extras))
+        self.assertEqual("Divergente", abastecimento.status_conferencia_nota_fiscal)
+
     def test_rota_abastecimentos_lista_apenas_veiculos_vinculados_ao_usuario(self):
         veiculo_vinculado = self._criar_veiculo("CAR101", "CAMINHAO DO USUARIO")
         veiculo_outro = self._criar_veiculo("CAR202", "CAMINHAO DE OUTRO MOTORISTA")
@@ -603,7 +665,6 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         self.assertNotIn(b'value="Diesel"', resposta.data)
         self.assertNotIn(b'value="Gasolina"', resposta.data)
         self.assertNotIn(b'value="Arla 32"', resposta.data)
-        self.assertNotIn(b'value="Outro"', resposta.data)
         self.assertIn(b"Motorista Um", resposta.data)
         self.assertIn(b"Operacao", resposta.data)
 

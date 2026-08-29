@@ -2,7 +2,7 @@ from flask import Blueprint, flash, jsonify, redirect, render_template, request,
 from flask_login import current_user, login_required
 
 from app.decorators import module_permission_required
-from app.models import OperacaoAbastecimento, OperacaoMultaTransito, OperacaoVeiculoEquipamento, OperacaoVeiculoResponsavel
+from app.models import OperacaoAbastecimento, OperacaoAbastecimentoCustoExtra, OperacaoMultaTransito, OperacaoVeiculoEquipamento, OperacaoVeiculoResponsavel
 from app.services.logs_service import registrar_log
 from app.services.operacao_central_custos_service import (
     STATUS_CENTRAL_CUSTOS,
@@ -11,8 +11,10 @@ from app.services.operacao_central_custos_service import (
     periodo_filtros,
 )
 from app.services.operacao_abastecimento_service import (
+    CATEGORIAS_CUSTO_EXTRA,
     TIPOS_COMBUSTIVEL,
     buscar_abastecimento_usuario,
+    cancelar_custo_extra_abastecimento,
     colaborador_do_usuario,
     data_padrao_form,
     listar_abastecimentos_usuario,
@@ -68,6 +70,7 @@ from app.services.operacao_permissoes_service import (
     MODULO_VEICULOS_EQUIPAMENTOS,
     permissoes_cards_gestao,
     usuario_tem_algum_submodulo_gestao,
+    usuario_tem_permissao_operacao,
 )
 from app.services.suprimentos_service import formatar_moeda_brl
 
@@ -192,6 +195,7 @@ def abastecimentos():
         veiculos=listar_veiculos_abastecimento_usuario(current_user),
         abastecimentos=listar_abastecimentos_usuario(current_user),
         eh_admin=current_user.is_admin,
+        formatar_moeda_brl=formatar_moeda_brl,
     )
 
 
@@ -221,6 +225,7 @@ def novo_abastecimento(veiculo_id):
         colaborador=vinculo.colaborador,
         equipe=vinculo.equipe or vinculo.colaborador.equipe,
         tipos_combustivel=TIPOS_COMBUSTIVEL,
+        categorias_custo_extra=CATEGORIAS_CUSTO_EXTRA,
         data_padrao=data_padrao_form(),
         modo="novo",
     )
@@ -239,6 +244,8 @@ def ver_abastecimento(abastecimento_id):
         "operacao/abastecimento_detalhes.html",
         abastecimento=abastecimento,
         formatar_moeda_brl=formatar_moeda_brl,
+        pode_editar_extra=usuario_tem_permissao_operacao(current_user, MODULO_ABASTECIMENTO, "editar"),
+        pode_cancelar_extra=usuario_tem_permissao_operacao(current_user, MODULO_ABASTECIMENTO, "excluir"),
     )
 
 @operacao_bp.route("/abastecimentos/<int:abastecimento_id>/editar", methods=["GET", "POST"])
@@ -276,9 +283,29 @@ def editar_abastecimento(abastecimento_id):
         colaborador=abastecimento.colaborador,
         equipe=abastecimento.equipe,
         tipos_combustivel=TIPOS_COMBUSTIVEL,
+        categorias_custo_extra=CATEGORIAS_CUSTO_EXTRA,
         data_padrao=abastecimento.data_abastecimento.isoformat(),
         modo="editar",
     )
+
+
+@operacao_bp.route("/abastecimentos/custos-extras/<int:custo_extra_id>/cancelar", methods=["POST"])
+@login_required
+@module_permission_required("operacao", MODULO_ABASTECIMENTO, "excluir")
+def cancelar_custo_extra_abastecimento_route(custo_extra_id):
+    custo = OperacaoAbastecimentoCustoExtra.query.get(custo_extra_id)
+    if not custo:
+        flash("Custo extra nao encontrado.", "warning")
+        return redirect(url_for("operacao.abastecimentos"))
+
+    abastecimento = buscar_abastecimento_usuario(custo.abastecimento_id, current_user)
+    if not abastecimento:
+        flash("Abastecimento nao encontrado para o usuario logado.", "danger")
+        return redirect(url_for("operacao.abastecimentos"))
+
+    sucesso, mensagem, custo = cancelar_custo_extra_abastecimento(custo_extra_id, current_user, request.form.get("motivo_cancelamento"))
+    flash(mensagem, "success" if sucesso else "danger")
+    return redirect(url_for("operacao.ver_abastecimento", abastecimento_id=abastecimento.id))
 
 @operacao_bp.route("/multas-transito")
 @login_required
