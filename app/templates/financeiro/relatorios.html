@@ -41,12 +41,22 @@
         </div>
     </form>
 
+    {% set cards_resumo = [
+        ("Registros", relatorio.totais.quantidade, "Quantidade de registros retornados pelo relatorio com os filtros aplicados.", false),
+        ("Valor original", relatorio.totais.valor_original, "Soma dos valores originais dos titulos exibidos no relatorio.", true),
+        ("Valor pago", relatorio.totais.valor_pago, "Soma dos pagamentos ativos considerados no relatorio.", true),
+        ("Saldo em aberto", relatorio.totais.saldo_aberto, "Valor ainda pendente de pagamento nos titulos listados.", true),
+        ("Valor vencido", relatorio.totais.valor_vencido, "Saldo dos titulos vencidos que ainda nao foram quitados.", true)
+    ] %}
+
     <div class="stat-grid">
-        <div class="stat-card"><span>Registros</span><strong>{{ relatorio.totais.quantidade }}</strong></div>
-        <div class="stat-card"><span>Valor original</span><strong>{{ valor_coluna(relatorio.totais, 'valor_original') }}</strong></div>
-        <div class="stat-card"><span>Valor pago</span><strong>{{ valor_coluna(relatorio.totais, 'valor_pago') }}</strong></div>
-        <div class="stat-card"><span>Saldo em aberto</span><strong>{{ valor_coluna(relatorio.totais, 'saldo_aberto') }}</strong></div>
-        <div class="stat-card"><span>Valor vencido</span><strong>{{ valor_coluna(relatorio.totais, 'valor_vencido') }}</strong></div>
+        {% for titulo, valor, ajuda, monetario in cards_resumo %}
+            <div class="stat-card stat-card-help" tabindex="0">
+                <span>{{ titulo }}</span>
+                <strong>{{ valor_coluna({"valor": valor}, "valor") if monetario else valor }}</strong>
+                <small class="stat-help" role="tooltip">{{ ajuda }}</small>
+            </div>
+        {% endfor %}
     </div>
 
     <div class="table-card table-responsive listbox-5-linhas">
