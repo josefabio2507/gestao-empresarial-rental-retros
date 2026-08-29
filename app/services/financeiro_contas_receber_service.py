@@ -8,7 +8,7 @@ from sqlalchemy import func, or_
 from sqlalchemy.orm import joinedload
 
 from app.extensions import db
-from app.models import CentroCusto, Equipe, FinanceiroContaReceberBaixa, FinanceiroContaReceberTitulo
+from app.models import CentroCusto, Equipe, FinanceiroContaReceberBaixa, FinanceiroContaReceberLoteBaixa, FinanceiroContaReceberTitulo
 from app.utils.datas import agora_brasil
 
 
@@ -43,6 +43,10 @@ STATUS_BAIXA_ATIVA = "Ativa"
 STATUS_BAIXA_CANCELADA = "Cancelada"
 STATUS_BAIXA_ESTORNADA = "Estornada"
 STATUS_BAIXAS_RECEBER = [STATUS_BAIXA_ATIVA, STATUS_BAIXA_CANCELADA, STATUS_BAIXA_ESTORNADA]
+STATUS_LOTE_ATIVO = "Ativo"
+STATUS_LOTE_CANCELADO = "Cancelado"
+STATUS_LOTE_ESTORNADO = "Estornado"
+STATUS_LOTES_RECEBER = [STATUS_LOTE_ATIVO, STATUS_LOTE_CANCELADO, STATUS_LOTE_ESTORNADO]
 FORMAS_RECEBIMENTO = ["Pix", "Transferência", "Depósito", "Boleto", "Dinheiro", "Cartão", "Outro"]
 EXTENSOES_COMPROVANTE = {"pdf", "jpg", "jpeg", "png", "webp"}
 MAX_COMPROVANTE_BYTES = 10 * 1024 * 1024
@@ -332,26 +336,23 @@ def listar_titulos_receber(filtros=None):
             FinanceiroContaReceberBaixa.titulo_id == FinanceiroContaReceberTitulo.id,
             FinanceiroContaReceberBaixa.status == STATUS_BAIXA_ATIVA,
         )
-        if comprovante == "com":
-            query = query.filter(
-                baixas_ativas.filter(
+        baixa_com_comprovante = baixas_ativas.filter(
+            or_(
+                FinanceiroContaReceberBaixa.comprovante_path.isnot(None),
+                FinanceiroContaReceberBaixa.comprovante_drive_file_id.isnot(None),
+                FinanceiroContaReceberLoteBaixa.query.filter(
+                    FinanceiroContaReceberLoteBaixa.id == FinanceiroContaReceberBaixa.lote_baixa_id,
                     or_(
-                        FinanceiroContaReceberBaixa.comprovante_path.isnot(None),
-                        FinanceiroContaReceberBaixa.comprovante_drive_file_id.isnot(None),
-                    )
-                ).exists()
-            )
-        else:
-            query = query.filter(
-                baixas_ativas.exists(),
-                ~baixas_ativas.filter(
-                    or_(
-                        FinanceiroContaReceberBaixa.comprovante_path.isnot(None),
-                        FinanceiroContaReceberBaixa.comprovante_drive_file_id.isnot(None),
-                    )
+                        FinanceiroContaReceberLoteBaixa.comprovante_path.isnot(None),
+                        FinanceiroContaReceberLoteBaixa.comprovante_drive_file_id.isnot(None),
+                    ),
                 ).exists(),
             )
-
+        )
+        if comprovante == "com":
+            query = query.filter(baixa_com_comprovante.exists())
+        else:
+            query = query.filter(baixas_ativas.exists(), ~baixa_com_comprovante.exists())
     return query.order_by(
         FinanceiroContaReceberTitulo.data_vencimento.asc(),
         FinanceiroContaReceberTitulo.id.desc(),
@@ -696,6 +697,198 @@ def caminho_comprovante_recebimento(baixa):
     if not baixa or baixa.status != STATUS_BAIXA_ATIVA or not baixa.comprovante_path:
         return None
     caminho = os.path.abspath(baixa.comprovante_path)
+    pasta_base = os.path.abspath(os.path.join(current_app.instance_path, "financeiro", "recebimentos"))
+    if not caminho.startswith(pasta_base):
+        return None
+    if not os.path.exists(caminho):
+        return None
+    return caminho
+
+def titulo_elegivel_recebimento(titulo):
+    if not titulo:
+        return False
+    recalcular_recebimento_titulo(titulo)
+    return titulo.status not in STATUS_INATIVOS | STATUS_RECEBIDOS and titulo.saldo_aberto > 0
+
+
+def buscar_titulos_elegiveis_por_ids(ids):
+    ids_limpos = []
+    for item in ids or []:
+        valor = inteiro_ou_none(item)
+        if valor and valor not in ids_limpos:
+            ids_limpos.append(valor)
+    if not ids_limpos:
+        return []
+    titulos = FinanceiroContaReceberTitulo.query.filter(FinanceiroContaReceberTitulo.id.in_(ids_limpos)).all()
+    ordenados = {titulo.id: titulo for titulo in titulos}
+    return [ordenados[item] for item in ids_limpos if item in ordenados and titulo_elegivel_recebimento(ordenados[item])]
+
+
+def preparar_baixa_em_massa(ids):
+    titulos = buscar_titulos_elegiveis_por_ids(ids)
+    total = sum((Decimal(titulo.saldo_aberto).quantize(Decimal("0.01")) for titulo in titulos), Decimal("0.00"))
+    return titulos, total.quantize(Decimal("0.01"))
+
+
+def _salvar_comprovante_lote_recebimento(lote, arquivo):
+    if not arquivo or not arquivo.filename:
+        return
+
+    extensao = _extensao_comprovante(arquivo)
+    if extensao not in EXTENSOES_COMPROVANTE:
+        raise ValueError("Formato de comprovante inválido. Use PDF, JPG, JPEG, PNG ou WEBP.")
+
+    tamanho = _tamanho_arquivo(arquivo)
+    if tamanho > MAX_COMPROVANTE_BYTES:
+        raise ValueError("Comprovante maior que 10 MB.")
+
+    pasta = os.path.join(current_app.instance_path, "financeiro", "recebimentos")
+    os.makedirs(pasta, exist_ok=True)
+    data_nome = agora_brasil().strftime("%Y%m%d-%H%M%S")
+    nome_armazenado = f"CR-LOTE-{lote.id}_RECEBIMENTO_{data_nome}.{extensao}"
+    caminho = os.path.abspath(os.path.join(pasta, nome_armazenado))
+    pasta_base = os.path.abspath(pasta)
+    if not caminho.startswith(pasta_base):
+        raise ValueError("Caminho de comprovante inválido.")
+
+    arquivo.stream.seek(0)
+    arquivo.save(caminho)
+
+    lote.comprovante_nome_original = arquivo.filename
+    lote.comprovante_nome_armazenado = nome_armazenado
+    lote.comprovante_path = caminho
+    lote.comprovante_extensao = extensao
+    lote.comprovante_tamanho = tamanho
+    _registrar_log("financeiro_contas_receber_lote_comprovante_upload", f"Comprovante de lote anexado. Lote: {lote.id}.")
+
+
+def registrar_recebimento_em_massa(dados, arquivo=None, usuario=None):
+    ids = dados.getlist("titulos_ids") if hasattr(dados, "getlist") else dados.get("titulos_ids", [])
+    if isinstance(ids, str):
+        ids = [ids]
+    ids_limpos = [inteiro_ou_none(item) for item in ids]
+    ids_limpos = [item for item in ids_limpos if item]
+    if not ids_limpos:
+        return False, "Nenhum título selecionado.", None
+
+    data_recebimento = data_ou_none(dados.get("data_recebimento"))
+    if not data_recebimento:
+        return False, "Informe a data do recebimento.", None
+
+    forma_recebimento = texto(dados.get("forma_recebimento"))
+    if not forma_recebimento:
+        return False, "Informe a forma de recebimento.", None
+    if forma_recebimento not in FORMAS_RECEBIMENTO:
+        return False, "Forma de recebimento inválida.", None
+
+    titulos = FinanceiroContaReceberTitulo.query.filter(FinanceiroContaReceberTitulo.id.in_(ids_limpos)).all()
+    titulos_por_id = {titulo.id: titulo for titulo in titulos}
+    if len(titulos_por_id) != len(set(ids_limpos)):
+        return False, "Um ou mais títulos não estão elegíveis para recebimento.", None
+
+    itens = []
+    valor_total = Decimal("0.00")
+    for titulo_id in ids_limpos:
+        titulo = titulos_por_id.get(titulo_id)
+        if not titulo or not titulo_elegivel_recebimento(titulo):
+            _registrar_log("financeiro_contas_receber_lote_titulo_rejeitado", f"Titulo rejeitado na baixa em massa. ID: {titulo_id}.")
+            return False, "Um ou mais títulos não estão elegíveis para recebimento.", None
+        valor = decimal_ou_zero(dados.get(f"valor_receber_{titulo_id}"))
+        if valor is None or valor <= 0:
+            return False, "Informe o valor recebido.", None
+        saldo = Decimal(titulo.saldo_aberto).quantize(Decimal("0.01"))
+        if valor > saldo:
+            return False, "O valor informado excede o saldo de um dos títulos.", None
+        itens.append((titulo, valor))
+        valor_total += valor
+
+    if not itens:
+        return False, "Nenhum título selecionado.", None
+
+    try:
+        lote = FinanceiroContaReceberLoteBaixa(
+            data_recebimento=data_recebimento,
+            forma_recebimento=forma_recebimento,
+            conta_recebimento_descricao=texto(dados.get("conta_recebimento_descricao")) or None,
+            observacoes=texto(dados.get("observacoes")) or None,
+            total_titulos=len(itens),
+            valor_total_recebido=valor_total.quantize(Decimal("0.01")),
+            status=STATUS_LOTE_ATIVO,
+            criado_por_usuario_id=getattr(usuario, "id", None),
+        )
+        db.session.add(lote)
+        db.session.flush()
+        _salvar_comprovante_lote_recebimento(lote, arquivo)
+
+        for titulo, valor in itens:
+            baixa = FinanceiroContaReceberBaixa(
+                titulo_id=titulo.id,
+                lote_baixa_id=lote.id,
+                data_recebimento=data_recebimento,
+                valor_recebido=valor,
+                forma_recebimento=forma_recebimento,
+                conta_recebimento_descricao=lote.conta_recebimento_descricao,
+                observacoes=lote.observacoes,
+                status=STATUS_BAIXA_ATIVA,
+                registrado_por_usuario_id=getattr(usuario, "id", None),
+            )
+            db.session.add(baixa)
+            db.session.flush()
+            recalcular_recebimento_titulo(titulo, usuario=usuario)
+            _registrar_log("financeiro_contas_receber_lote_titulo_incluido", f"Titulo {titulo.id} incluido no lote {lote.id}.")
+
+        db.session.commit()
+        _registrar_log("financeiro_contas_receber_lote_criado", f"Lote de recebimento criado. ID: {lote.id}. Valor: {lote.valor_total_recebido}.")
+        _registrar_log("financeiro_contas_receber_baixa_em_massa_confirmada", f"Baixa em massa confirmada. Lote: {lote.id}.")
+        return True, "Recebimento em massa registrado com sucesso.", lote
+    except ValueError as exc:
+        db.session.rollback()
+        return False, str(exc), None
+
+
+def listar_lotes_recebimento():
+    return FinanceiroContaReceberLoteBaixa.query.options(
+        joinedload(FinanceiroContaReceberLoteBaixa.criado_por),
+    ).order_by(FinanceiroContaReceberLoteBaixa.data_recebimento.desc(), FinanceiroContaReceberLoteBaixa.id.desc()).all()
+
+
+def buscar_lote_recebimento_por_id(lote_id):
+    return FinanceiroContaReceberLoteBaixa.query.options(
+        joinedload(FinanceiroContaReceberLoteBaixa.criado_por),
+        joinedload(FinanceiroContaReceberLoteBaixa.cancelado_por),
+        joinedload(FinanceiroContaReceberLoteBaixa.baixas).joinedload(FinanceiroContaReceberBaixa.titulo),
+    ).get(lote_id)
+
+
+def cancelar_lote_recebimento(lote, motivo, usuario=None):
+    if not lote:
+        return False, "Lote de recebimento não encontrado."
+    if lote.status != STATUS_LOTE_ATIVO:
+        return False, "Lote de recebimento já foi cancelado ou estornado."
+    motivo = texto(motivo)
+    if not motivo:
+        return False, "Informe o motivo do estorno."
+
+    lote.status = STATUS_LOTE_ESTORNADO
+    lote.cancelado_por_usuario_id = getattr(usuario, "id", None)
+    lote.cancelado_em = agora_brasil()
+    lote.motivo_cancelamento = motivo
+    for baixa in lote.baixas:
+        if baixa.status == STATUS_BAIXA_ATIVA:
+            baixa.status = STATUS_BAIXA_ESTORNADA
+            baixa.cancelado_por_usuario_id = getattr(usuario, "id", None)
+            baixa.cancelado_em = agora_brasil()
+            baixa.motivo_cancelamento = motivo
+            recalcular_recebimento_titulo(baixa.titulo, usuario=usuario)
+    db.session.commit()
+    _registrar_log("financeiro_contas_receber_lote_estornado", f"Lote de recebimento estornado. ID: {lote.id}.")
+    return True, "Lote de recebimento estornado com sucesso."
+
+
+def caminho_comprovante_lote_recebimento(lote):
+    if not lote or lote.status != STATUS_LOTE_ATIVO or not lote.comprovante_path:
+        return None
+    caminho = os.path.abspath(lote.comprovante_path)
     pasta_base = os.path.abspath(os.path.join(current_app.instance_path, "financeiro", "recebimentos"))
     if not caminho.startswith(pasta_base):
         return None

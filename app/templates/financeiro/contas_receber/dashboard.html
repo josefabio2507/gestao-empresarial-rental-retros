@@ -32,6 +32,8 @@
 
     <div class="financeiro-dashboard-grid">
         <article class="stat-card dashboard-info-card" title="Soma dos recebimentos ativos registrados dentro do mês selecionado."><span>Total recebido no mês</span><strong>{{ formatar_moeda_brl(dados.cards.total_recebido_mes) }}</strong></article>
+        <article class="stat-card dashboard-info-card" title="Soma das baixas ativas vinculadas a lotes de recebimento no período selecionado."><span>Total recebido por baixa em massa</span><strong>{{ formatar_moeda_brl(dados.cards.total_recebido_massa_mes) }}</strong></article>
+        <article class="stat-card dashboard-info-card" title="Quantidade de operações de recebimento em massa registradas no período."><span>Lotes de recebimento no mês</span><strong>{{ dados.cards.quantidade_lotes_mes }}</strong></article>
         <article class="stat-card dashboard-info-card" title="Soma dos valores já recebidos em títulos que ainda possuem saldo em aberto."><span>Total recebido parcialmente</span><strong>{{ formatar_moeda_brl(dados.cards.total_recebido_parcialmente) }}</strong></article>
         <article class="stat-card dashboard-info-card" title="Soma dos títulos com vencimento dentro do mês selecionado, exceto cancelados e estornados."><span>Total a receber no mês</span><strong>{{ formatar_moeda_brl(dados.cards.total_mes) }}</strong></article>
         <article class="stat-card dashboard-info-card" title="Soma dos saldos ainda não recebidos dos títulos ativos."><span>Total em aberto</span><strong>{{ formatar_moeda_brl(dados.cards.total_aberto) }}</strong></article>

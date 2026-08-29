@@ -82,7 +82,7 @@
         {% if pode_ver_recebimentos %}
             <div class="listbox-10-linhas contas-receber-listbox">
                 <table class="table contas-receber-baixas-table">
-                    <thead><tr><th>Data</th><th>Valor recebido</th><th>Forma</th><th>Conta/descrição</th><th>Observação</th><th>Comprovante</th><th>Usuário</th><th>Registro</th><th>Status</th><th>Ações</th></tr></thead>
+                    <thead><tr><th>Data</th><th>Valor recebido</th><th>Forma</th><th>Conta/descrição</th><th>Observação</th><th>Lote</th><th>Comprovante</th><th>Usuário</th><th>Registro</th><th>Status</th><th>Ações</th></tr></thead>
                     <tbody>
                         {% for baixa in titulo.baixas %}
                             <tr>
@@ -91,14 +91,14 @@
                                 <td>{{ baixa.forma_recebimento }}</td>
                                 <td>{{ baixa.conta_recebimento_descricao or '-' }}</td>
                                 <td>{{ baixa.observacoes or baixa.motivo_cancelamento or '-' }}</td>
-                                <td>{% if baixa.comprovante_disponivel and baixa.status == 'Ativa' and pode_baixar_comprovante %}<a class="btn btn-secondary" href="{{ url_for('financeiro_contas_receber.baixar_comprovante', baixa_id=baixa.id) }}">Baixar</a>{% else %}<span class="badge badge-warning">Sem comprovante</span>{% endif %}</td>
+                                <td>{% if baixa.lote_baixa %}<a class="btn btn-secondary" href="{{ url_for('financeiro_contas_receber.lote_detalhe', lote_id=baixa.lote_baixa.id) }}">Lote #{{ baixa.lote_baixa.id }}</a>{% else %}-{% endif %}</td><td>{% if baixa.comprovante_disponivel and baixa.status == 'Ativa' and pode_baixar_comprovante %}<a class="btn btn-secondary" href="{{ url_for('financeiro_contas_receber.baixar_comprovante', baixa_id=baixa.id) }}">Baixar</a>{% else %}<span class="badge badge-warning">Sem comprovante</span>{% endif %}</td>
                                 <td>{{ baixa.registrado_por.nome if baixa.registrado_por else '-' }}</td>
                                 <td>{{ baixa.criado_em.strftime('%d/%m/%Y %H:%M') if baixa.criado_em else '-' }}</td>
                                 <td><span class="badge {{ 'badge-success' if baixa.status == 'Ativa' else 'badge-secondary' }}">{{ baixa.status }}</span></td>
                                 <td>{% if baixa.status == 'Ativa' and pode_estornar_recebimento %}<form class="inline-form" method="POST" action="{{ url_for('financeiro_contas_receber.estornar_recebimento', titulo_id=titulo.id, baixa_id=baixa.id) }}"><input name="motivo_cancelamento" placeholder="Motivo" required><button class="btn btn-warning" type="submit">Estornar</button></form>{% else %}-{% endif %}</td>
                             </tr>
                         {% else %}
-                            <tr><td class="empty-state" colspan="10">Nenhum recebimento registrado para este título.</td></tr>
+                            <tr><td class="empty-state" colspan="11">Nenhum recebimento registrado para este título.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>

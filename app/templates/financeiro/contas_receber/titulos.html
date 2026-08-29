@@ -11,6 +11,7 @@
         </div>
         <div class="actions">
             <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_receber.dashboard') }}">Dashboard</a>
+            <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_receber.lotes') }}">Lotes</a>
             {% if pode_criar %}<a class="btn btn-primary" href="{{ url_for('financeiro_contas_receber.novo') }}">+ Novo Lançamento</a>{% endif %}
         </div>
     </div>
@@ -44,13 +45,23 @@
         </div>
     </form>
 
-    <div class="table-card">
+    <form method="POST" action="{{ url_for('financeiro_contas_receber.baixa_em_massa') }}" class="table-card" id="form-baixa-massa">
+        {% if pode_baixa_em_massa %}
+            <div class="bulk-actions-bar">
+                <label><input type="checkbox" id="selecionar-todos-baixa"> Selecionar todos elegíveis</label>
+                <span><strong id="contador-selecionados">0</strong> selecionados</span>
+                <span>Total selecionado: <strong id="total-selecionado">R$ 0,00</strong></span>
+                <button class="btn btn-primary" type="submit">Registrar recebimento em massa</button>
+            </div>
+        {% endif %}
         <div class="listbox-10-linhas contas-receber-listbox">
-            <table class="table contas-receber-table">
-                <thead><tr><th>ID</th><th>Cliente</th><th>CNPJ/CPF</th><th>Descrição</th><th>Documento</th><th>Nota fiscal</th><th>Origem</th><th>Competência</th><th>Emissão</th><th>Vencimento</th><th>Valor original</th><th>Valor recebido</th><th>Saldo em aberto</th><th>Status</th><th class="col-acoes">Ações</th></tr></thead>
+            <table class="table contas-receber-table contas-receber-table-massa">
+                <thead><tr>{% if pode_baixa_em_massa %}<th>Selecionar</th>{% endif %}<th>ID</th><th>Cliente</th><th>CNPJ/CPF</th><th>Descrição</th><th>Documento</th><th>Nota fiscal</th><th>Origem</th><th>Competência</th><th>Emissão</th><th>Vencimento</th><th>Valor original</th><th>Valor recebido</th><th>Saldo em aberto</th><th>Status</th><th class="col-acoes">Ações</th></tr></thead>
                 <tbody>
                     {% for titulo in titulos %}
+                        {% set elegivel = titulo_elegivel_recebimento(titulo) %}
                         <tr>
+                            {% if pode_baixa_em_massa %}<td>{% if elegivel %}<input class="titulo-selecao" type="checkbox" name="titulos_ids" value="{{ titulo.id }}" data-saldo="{{ '%.2f'|format(titulo.saldo_aberto) }}">{% else %}-{% endif %}</td>{% endif %}
                             <td>#{{ titulo.id }}</td>
                             <td>{{ titulo.cliente_nome_snapshot }}</td>
                             <td>{{ titulo.cliente_cnpj_cpf_snapshot or '-' }}</td>
@@ -65,14 +76,33 @@
                             <td>{{ formatar_moeda_brl(titulo.valor_recebido) }}</td>
                             <td>{{ formatar_moeda_brl(titulo.saldo_aberto) }}</td>
                             <td><span class="badge {{ 'badge-danger' if titulo.status_visual() == 'Vencido' else 'badge-success' }}">{{ titulo.status_visual() }}</span></td>
-                            <td class="col-acoes"><div class="acoes-botoes"><a class="btn btn-secondary" href="{{ url_for('financeiro_contas_receber.detalhe', titulo_id=titulo.id) }}">Detalhe</a>{% if pode_registrar_recebimento and titulo.status not in ['Cancelado', 'Estornado', 'Recebido'] and titulo.saldo_aberto > 0 %}<a class="btn btn-primary" href="{{ url_for('financeiro_contas_receber.registrar_recebimento', titulo_id=titulo.id) }}">Receber</a>{% endif %}{% if pode_editar %}<a class="btn btn-primary" href="{{ url_for('financeiro_contas_receber.editar', titulo_id=titulo.id) }}">Editar</a>{% endif %}</div></td>
+                            <td class="col-acoes"><div class="acoes-botoes"><a class="btn btn-secondary" href="{{ url_for('financeiro_contas_receber.detalhe', titulo_id=titulo.id) }}">Detalhe</a>{% if pode_registrar_recebimento and elegivel %}<a class="btn btn-primary" href="{{ url_for('financeiro_contas_receber.registrar_recebimento', titulo_id=titulo.id) }}">Receber</a>{% endif %}{% if pode_editar %}<a class="btn btn-primary" href="{{ url_for('financeiro_contas_receber.editar', titulo_id=titulo.id) }}">Editar</a>{% endif %}</div></td>
                         </tr>
                     {% else %}
-                        <tr><td class="empty-state" colspan="15">Nenhum título encontrado para os filtros informados.</td></tr>
+                        <tr><td class="empty-state" colspan="{{ 16 if pode_baixa_em_massa else 15 }}">Nenhum título encontrado para os filtros informados.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
-    </div>
+    </form>
 </section>
+<script>
+(function () {
+    const checkboxes = Array.from(document.querySelectorAll('.titulo-selecao'));
+    const selecionarTodos = document.getElementById('selecionar-todos-baixa');
+    const contador = document.getElementById('contador-selecionados');
+    const total = document.getElementById('total-selecionado');
+    function moeda(valor) { return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
+    function atualizar() {
+        const marcados = checkboxes.filter((item) => item.checked);
+        const soma = marcados.reduce((acc, item) => acc + Number(item.dataset.saldo || 0), 0);
+        if (contador) contador.textContent = String(marcados.length);
+        if (total) total.textContent = moeda(soma);
+        if (selecionarTodos) selecionarTodos.checked = checkboxes.length > 0 && marcados.length === checkboxes.length;
+    }
+    if (selecionarTodos) selecionarTodos.addEventListener('change', () => { checkboxes.forEach((item) => { item.checked = selecionarTodos.checked; }); atualizar(); });
+    checkboxes.forEach((item) => item.addEventListener('change', atualizar));
+    atualizar();
+})();
+</script>
 {% endblock %}

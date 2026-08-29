@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% set aba_ativa = "titulos" %}
+
+{% block content %}
+<section class="page page-wide">
+    <div class="top-bar">
+        <div><span class="page-kicker">Financeiro &gt; Contas a Receber &gt; Lote de Recebimento</span><h1>Lote de Recebimento #{{ lote.id }}</h1><p>Baixas individuais vinculadas à operação em massa.</p></div>
+        <div class="actions"><a class="btn btn-secondary" href="{{ url_for('financeiro_contas_receber.lotes') }}">Voltar</a>{% if lote.comprovante_disponivel and pode_baixar_comprovante and lote.status == 'Ativo' %}<a class="btn btn-secondary" href="{{ url_for('financeiro_contas_receber.lote_comprovante', lote_id=lote.id) }}">Baixar comprovante</a>{% endif %}</div>
+    </div>
+    {% include "financeiro/contas_receber/_menu.html" %}
+    <div class="detail-grid"><section><h2>Dados do lote</h2><p><strong>Data:</strong> {{ formatar_data_brasil(lote.data_recebimento) }}</p><p><strong>Forma:</strong> {{ lote.forma_recebimento }}</p><p><strong>Conta:</strong> {{ lote.conta_recebimento_descricao or '-' }}</p><p><strong>Valor total:</strong> {{ formatar_moeda_brl(lote.valor_total_recebido) }}</p><p><strong>Quantidade:</strong> {{ lote.total_titulos }}</p></section><section><h2>Auditoria</h2><p><strong>Status:</strong> {{ lote.status }}</p><p><strong>Usuário:</strong> {{ lote.criado_por.nome if lote.criado_por else '-' }}</p><p><strong>Criado em:</strong> {{ lote.criado_em.strftime('%d/%m/%Y %H:%M') if lote.criado_em else '-' }}</p><p><strong>Comprovante:</strong> {{ lote.comprovante_nome_original or 'Sem comprovante' }}</p></section></div>
+    <div class="table-card"><h2>Títulos vinculados ao lote</h2><div class="listbox-10-linhas contas-receber-listbox"><table class="table contas-receber-lotes-table"><thead><tr><th>Título</th><th>Cliente</th><th>Documento</th><th>Valor recebido</th><th>Status da baixa</th><th>Status do título</th><th>Ações</th></tr></thead><tbody>{% for baixa in lote.baixas %}<tr><td>#{{ baixa.titulo.id }}</td><td>{{ baixa.titulo.cliente_nome_snapshot }}</td><td>{{ baixa.titulo.numero_documento or '-' }}</td><td>{{ formatar_moeda_brl(baixa.valor_recebido) }}</td><td>{{ baixa.status }}</td><td>{{ baixa.titulo.status_visual() }}</td><td><a class="btn btn-secondary" href="{{ url_for('financeiro_contas_receber.detalhe', titulo_id=baixa.titulo.id) }}">Ver título</a></td></tr>{% else %}<tr><td class="empty-state" colspan="7">Nenhuma baixa vinculada ao lote.</td></tr>{% endfor %}</tbody></table></div></div>
+    {% if pode_estornar and lote.status == 'Ativo' %}<form class="form-card" method="POST" action="{{ url_for('financeiro_contas_receber.lote_estornar', lote_id=lote.id) }}"><h2>Estornar lote</h2><div class="form-group"><label for="motivo_cancelamento">Motivo</label><textarea id="motivo_cancelamento" name="motivo_cancelamento" rows="3" required></textarea></div><div class="form-actions"><button class="btn btn-warning" type="submit">Estornar lote</button></div></form>{% endif %}
+</section>
+{% endblock %}
