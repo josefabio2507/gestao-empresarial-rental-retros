@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Financeiro &gt; Relatorios &gt; Contas a Pagar</span>
+            <h1>{{ relatorio.titulo }}</h1>
+            <p>Relatorios operacionais e gerenciais do Contas a Pagar.</p>
+        </div>
+        <a class="btn btn-secondary" href="{{ url_for('departamentos.detalhe_departamento', slug_departamento='financeiro') }}">Voltar ao Financeiro</a>
+    </div>
+
+    <form class="filter-card" method="GET">
+        <div class="filter-grid">
+            <div class="form-group"><label for="tipo_relatorio">Relatorio</label><select id="tipo_relatorio" name="tipo_relatorio">{% for valor, label in opcoes_relatorios.tipos_relatorio %}<option value="{{ valor }}" {{ "selected" if filtros.tipo_relatorio == valor else "" }}>{{ label }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="tipo_data">Tipo de data</label><select id="tipo_data" name="tipo_data">{% for valor, label in opcoes_relatorios.tipos_data %}<option value="{{ valor }}" {{ "selected" if filtros.tipo_data == valor else "" }}>{{ label }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="data_inicio">Data inicial</label><input id="data_inicio" name="data_inicio" type="date" value="{{ filtros.data_inicio }}"></div>
+            <div class="form-group"><label for="data_fim">Data final</label><input id="data_fim" name="data_fim" type="date" value="{{ filtros.data_fim }}"></div>
+            <div class="form-group"><label for="fornecedor">Fornecedor</label><input id="fornecedor" name="fornecedor" value="{{ filtros.fornecedor }}"></div>
+            <div class="form-group"><label for="cnpj_cpf">CNPJ/CPF</label><input id="cnpj_cpf" name="cnpj_cpf" value="{{ filtros.cnpj_cpf }}" data-documento-br></div>
+            <div class="form-group"><label for="status">Status do titulo</label><select id="status" name="status"><option value="">Todos</option>{% for item in opcoes_relatorios.status_titulo %}<option value="{{ item }}" {{ "selected" if filtros.status == item else "" }}>{{ item }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="status_baixa">Status da baixa</label><select id="status_baixa" name="status_baixa"><option value="">Ativas</option>{% for item in opcoes_relatorios.status_baixa %}<option value="{{ item }}" {{ "selected" if filtros.status_baixa == item else "" }}>{{ item }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="origem_lancamento">Origem</label><select id="origem_lancamento" name="origem_lancamento"><option value="">Todas</option>{% for item in opcoes_relatorios.origens %}<option value="{{ item }}" {{ "selected" if filtros.origem_lancamento == item else "" }}>{{ item }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="tipo_pagamento">Tipo de pagamento</label><select id="tipo_pagamento" name="tipo_pagamento"><option value="">Todos</option>{% for item in opcoes_relatorios.tipos_pagamento %}<option value="{{ item }}" {{ "selected" if filtros.tipo_pagamento == item else "" }}>{{ item }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="forma_pagamento">Forma de pagamento</label><select id="forma_pagamento" name="forma_pagamento"><option value="">Todas</option>{% for item in opcoes_relatorios.formas_pagamento %}<option value="{{ item }}" {{ "selected" if filtros.forma_pagamento == item else "" }}>{{ item }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="centro_custo_id">Centro de custo</label><select id="centro_custo_id" name="centro_custo_id"><option value="">Todos</option>{% for centro in opcoes_relatorios.centros_custo %}<option value="{{ centro.id }}" {{ "selected" if filtros.centro_custo_id == centro.id else "" }}>{{ centro.codigo or '-' }} - {{ centro.nome }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="cartao_credito_id">Cartao</label><select id="cartao_credito_id" name="cartao_credito_id"><option value="">Todos</option>{% for cartao in opcoes_relatorios.cartoes %}<option value="{{ cartao.id }}" {{ "selected" if filtros.cartao_credito_id == cartao.id else "" }}>{{ cartao.identificacao_segura }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="fatura_cartao_id">Fatura</label><select id="fatura_cartao_id" name="fatura_cartao_id"><option value="">Todas</option>{% for fatura in opcoes_relatorios.faturas %}<option value="{{ fatura.id }}" {{ "selected" if filtros.fatura_cartao_id == fatura.id else "" }}>{{ fatura.cartao_credito.nome if fatura.cartao_credito else 'Cartao' }} - {{ fatura.competencia_formatada }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="ordem_compra">O.C.</label><input id="ordem_compra" name="ordem_compra" value="{{ filtros.ordem_compra }}"></div>
+            <div class="form-group"><label for="numero_nfe">NF-e</label><input id="numero_nfe" name="numero_nfe" value="{{ filtros.numero_nfe }}"></div>
+            <div class="form-group"><label for="chave_acesso">Chave de acesso</label><input id="chave_acesso" name="chave_acesso" value="{{ filtros.chave_acesso }}"></div>
+            <div class="form-group"><label for="comprovante">Comprovante</label><select id="comprovante" name="comprovante"><option value="" {{ "selected" if not filtros.comprovante else "" }}>Todos</option><option value="com" {{ "selected" if filtros.comprovante == 'com' else "" }}>Com comprovante</option><option value="sem" {{ "selected" if filtros.comprovante == 'sem' else "" }}>Sem comprovante</option></select></div>
+            <div class="form-group"><label for="dias_a_vencer">Dias a vencer</label><select id="dias_a_vencer" name="dias_a_vencer">{% for dias in opcoes_relatorios.dias_a_vencer %}<option value="{{ dias }}" {{ "selected" if filtros.dias_a_vencer == dias else "" }}>{{ dias }} dias</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="agrupamento_previsao">Previsao</label><select id="agrupamento_previsao" name="agrupamento_previsao">{% for valor, label in opcoes_relatorios.agrupamentos_previsao %}<option value="{{ valor }}" {{ "selected" if filtros.agrupamento_previsao == valor else "" }}>{{ label }}</option>{% endfor %}</select></div>
+        </div>
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Gerar relatorio</button>
+            <a class="btn btn-secondary" href="{{ url_for('financeiro.relatorios') }}">Limpar</a>
+            <button class="btn btn-secondary" type="submit" formaction="{{ url_for('financeiro.exportar_relatorio') }}">Exportar CSV</button>
+        </div>
+    </form>
+
+    <div class="stat-grid">
+        <div class="stat-card"><span>Registros</span><strong>{{ relatorio.totais.quantidade }}</strong></div>
+        <div class="stat-card"><span>Valor original</span><strong>{{ valor_coluna(relatorio.totais, 'valor_original') }}</strong></div>
+        <div class="stat-card"><span>Valor pago</span><strong>{{ valor_coluna(relatorio.totais, 'valor_pago') }}</strong></div>
+        <div class="stat-card"><span>Saldo em aberto</span><strong>{{ valor_coluna(relatorio.totais, 'saldo_aberto') }}</strong></div>
+        <div class="stat-card"><span>Valor vencido</span><strong>{{ valor_coluna(relatorio.totais, 'valor_vencido') }}</strong></div>
+    </div>
+
+    <div class="table-card table-responsive listbox-5-linhas">
+        <table class="table financeiro-contas-pagar-table">
+            <thead>
+                <tr>
+                    {% for coluna in relatorio.colunas %}<th>{{ coluna|replace('_', ' ')|title }}</th>{% endfor %}
+                    <th>Acoes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for linha in relatorio.linhas %}
+                    <tr>
+                        {% for coluna in relatorio.colunas %}<td>{{ valor_coluna(linha, coluna) }}</td>{% endfor %}
+                        <td class="col-acoes">
+                            <div class="acoes-botoes">
+                                {% if linha.titulo_id %}<a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.detalhes', titulo_id=linha.titulo_id) }}">Titulo</a>{% elif linha.id and relatorio.tipo in ['periodo', 'vencidas', 'a_vencer', 'sem_comprovante'] %}<a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.detalhes', titulo_id=linha.id) }}">Titulo</a>{% endif %}
+                                {% if linha.fatura_cartao_id %}<a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.detalhes_fatura', fatura_id=linha.fatura_cartao_id) }}">Fatura</a>{% endif %}
+                                {% if linha.lote_id %}<a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.detalhes_lote_baixa', lote_id=linha.lote_id) }}">Lote</a>{% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr><td class="empty-state" colspan="{{ relatorio.colunas|length + 1 }}">Nenhum registro encontrado para os filtros informados.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="page-actions">
+        <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.dashboard') }}">Voltar ao dashboard</a>
+    </div>
+</section>
+{% endblock %}

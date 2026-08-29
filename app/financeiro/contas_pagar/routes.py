@@ -44,6 +44,14 @@ from app.services.financeiro_contas_pagar_service import (
     status_financeiro_xml,
     titulos_ativos_documento_fiscal,
 )
+from app.services.financeiro_relatorios_service import (
+    dashboard_avancado,
+    filtros_padrao,
+    filtros_para_template,
+    opcoes_relatorios,
+    periodo_valido,
+    valor_coluna,
+)
 from app.services.suprimentos_service import (
     buscar_agendamentos_oc_contas_pagar,
     buscar_por_id,
@@ -60,12 +68,30 @@ from app.financeiro.contas_pagar import financeiro_contas_pagar_bp
 @login_required
 @module_permission_required("financeiro", "contas_a_pagar", "visualizar")
 def dashboard():
+    filtros = filtros_padrao(request.args)
+    if not periodo_valido(filtros):
+        flash("A data inicial nao pode ser maior que a data final.", "warning")
+        filtros = filtros_padrao({})
     return render_template(
         "financeiro/contas_pagar/dashboard.html",
         indicadores=indicadores_dashboard(),
+        dashboard_avancado=dashboard_avancado(filtros),
+        filtros=filtros_para_template(filtros),
+        opcoes_relatorios=opcoes_relatorios(),
+        valor_coluna=valor_coluna,
     )
 
 
+@financeiro_contas_pagar_bp.route("/relatorios")
+@login_required
+def relatorios():
+    return redirect(url_for("financeiro.relatorios", **request.args))
+
+
+@financeiro_contas_pagar_bp.route("/relatorios/exportar")
+@login_required
+def exportar_relatorio():
+    return redirect(url_for("financeiro.exportar_relatorio", **request.args))
 
 @financeiro_contas_pagar_bp.route("/titulos/baixa-em-massa", methods=["GET", "POST"])
 @login_required

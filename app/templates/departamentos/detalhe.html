@@ -173,6 +173,15 @@
                         <span class="badge badge-success">Liberado</span>
                         <span class="module-status">Acessar Contas a Pagar</span>
                     </a>
+
+                {% elif departamento.slug == "financeiro" and modulo_slug == "relatorios" %}
+                    <a class="module-card module-card-link" href="{{ url_for('financeiro.relatorios') }}">
+                        <span class="module-card-icon">R</span>
+                        <h2>{{ modulo.nome }}</h2>
+                        <p>{{ modulo.descricao or "Indicadores e relatorios financeiros." }}</p>
+                        <span class="badge badge-success">Liberado</span>
+                        <span class="module-status">Acessar Relatorios</span>
+                    </a>
                 {% elif departamento.slug == "fiscal" and modulo_slug == "documentos_fiscais" %}
                     <a class="module-card module-card-link" href="{{ url_for('fiscal.documentos') }}">
                         <span class="module-card-icon">F</span>
@@ -243,4 +252,3 @@
     {% endif %}
 </section>
 {% endblock %}
-

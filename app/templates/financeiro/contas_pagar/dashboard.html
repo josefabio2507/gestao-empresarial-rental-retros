@@ -6,44 +6,115 @@
         <div>
             <span class="page-kicker">Financeiro &gt; Contas a Pagar &gt; Dashboard</span>
             <h1>Contas a Pagar</h1>
-            <p>Base operacional de titulos, cartoes e faturas a pagar.</p>
+            <p>Visao operacional e gerencial de titulos, pagamentos, cartoes, O.C.s e XMLs fiscais.</p>
         </div>
         {% include "financeiro/contas_pagar/_nav.html" %}
     </div>
 
+    <form class="filter-card" method="GET">
+        <div class="filter-grid">
+            <div class="form-group"><label for="data_inicio">Data inicial</label><input id="data_inicio" name="data_inicio" type="date" value="{{ filtros.data_inicio }}"></div>
+            <div class="form-group"><label for="data_fim">Data final</label><input id="data_fim" name="data_fim" type="date" value="{{ filtros.data_fim }}"></div>
+            <div class="form-group"><label for="tipo_data">Tipo de data</label><select id="tipo_data" name="tipo_data">{% for valor, label in opcoes_relatorios.tipos_data %}<option value="{{ valor }}" {{ "selected" if filtros.tipo_data == valor else "" }}>{{ label }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="fornecedor">Fornecedor</label><input id="fornecedor" name="fornecedor" value="{{ filtros.fornecedor }}"></div>
+            <div class="form-group"><label for="status">Status</label><select id="status" name="status"><option value="">Todos</option>{% for item in opcoes_relatorios.status_titulo %}<option value="{{ item }}" {{ "selected" if filtros.status == item else "" }}>{{ item }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="origem_lancamento">Origem</label><select id="origem_lancamento" name="origem_lancamento"><option value="">Todas</option>{% for item in opcoes_relatorios.origens %}<option value="{{ item }}" {{ "selected" if filtros.origem_lancamento == item else "" }}>{{ item }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="forma_pagamento">Forma</label><select id="forma_pagamento" name="forma_pagamento"><option value="">Todas</option>{% for item in opcoes_relatorios.formas_pagamento %}<option value="{{ item }}" {{ "selected" if filtros.forma_pagamento == item else "" }}>{{ item }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="cartao_credito_id">Cartao</label><select id="cartao_credito_id" name="cartao_credito_id"><option value="">Todos</option>{% for cartao in opcoes_relatorios.cartoes %}<option value="{{ cartao.id }}" {{ "selected" if filtros.cartao_credito_id == cartao.id else "" }}>{{ cartao.identificacao_segura }}</option>{% endfor %}</select></div>
+        </div>
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Aplicar filtros</button>
+            <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.dashboard') }}">Limpar</a>
+        </div>
+    </form>
+
     {% set cards = [
-        ("Total em aberto", "R$ " ~ ("%.2f"|format(indicadores.total_aberto)|replace('.', ',')), "Soma dos titulos a pagar que ainda nao foram pagos, cancelados ou estornados."),
-        ("Total vencido", "R$ " ~ ("%.2f"|format(indicadores.total_vencido)|replace('.', ',')), "Soma dos titulos em aberto com vencimento anterior a data atual."),
-        ("A vencer em 7 dias", "R$ " ~ ("%.2f"|format(indicadores.total_7_dias)|replace('.', ',')), "Soma dos titulos em aberto com vencimento dentro dos proximos 7 dias."),
-        ("A pagar no mes", "R$ " ~ ("%.2f"|format(indicadores.total_mes)|replace('.', ',')), "Soma dos titulos com vencimento no mes atual."),
-        ("Total pago no mes", "R$ " ~ ("%.2f"|format(indicadores.total_pago_mes)|replace('.', ',')), "Soma das baixas ativas registradas no mes atual."),
-        ("Total parcialmente pago", "R$ " ~ ("%.2f"|format(indicadores.total_parcialmente_pago)|replace('.', ',')), "Soma dos valores ja pagos em titulos que ainda possuem saldo em aberto."),
-        ("Titulos pagos no mes", indicadores.titulos_pagos_mes, "Quantidade de titulos quitados com data de pagamento no mes atual."),
-        ("Titulos sem comprovante", indicadores.titulos_sem_comprovante, "Quantidade de titulos com pagamento registrado sem comprovante ativo anexado."),
-        ("Aguardando conferencia", indicadores.qtd_aguardando_conferencia, "Quantidade de titulos que precisam ser conferidos pelo financeiro antes do pagamento."),
-        ("Cadastrados manualmente", indicadores.qtd_manuais, "Quantidade de titulos incluidos manualmente, sem origem automatica de O.C. ou XML."),
-        ("Faturas abertas", indicadores.qtd_faturas_abertas, "Quantidade de faturas de cartao ainda abertas para receber compras vinculadas."),
-        ("Total em faturas abertas", "R$ " ~ ("%.2f"|format(indicadores.total_faturas_abertas)|replace('.', ',')), "Soma dos valores dos titulos vinculados a faturas de cartao abertas."),
-        ("Faturas vencendo em 7 dias", indicadores.qtd_faturas_7_dias, "Quantidade de faturas de cartao com vencimento dentro dos proximos 7 dias."),
-        ("Cartoes ativos", indicadores.qtd_cartoes_ativos, "Quantidade de cartoes de credito ativos e disponiveis para novos lancamentos."),
-        ("Compras no cartao no mes", "R$ " ~ ("%.2f"|format(indicadores.compras_cartao_mes)|replace('.', ',')), "Soma dos titulos do tipo Cartao de Credito no mes atual."),
-        ("O.C. aguardando conferencia", indicadores.titulos_oc_conferencia, "Quantidade de titulos gerados por Ordem de Compra que ainda aguardam conferencia."),
-        ("Valor de O.C.s no mes", "R$ " ~ ("%.2f"|format(indicadores.valor_oc_integrado_mes)|replace('.', ',')), "Soma dos titulos originados de Ordem de Compra no mes atual."),
-        ("O.C.s prontas para gerar", indicadores.ocs_prontas_gerar, "Quantidade de Ordens de Compra com dados financeiros prontos para gerar Contas a Pagar."),
-        ("O.C.s com pendencia financeira", indicadores.ocs_pendencia_financeira, "Quantidade de Ordens de Compra com alguma informacao financeira pendente ou divergente."),
-        ("XMLs pendentes", indicadores.xml_pendentes_geracao, "Quantidade de XMLs fiscais completos que ainda podem gerar Contas a Pagar."),
-        ("XMLs aguardando conferencia", indicadores.xml_aguardando_conferencia, "Quantidade de XMLs fiscais que precisam de conferencia financeira antes da geracao dos titulos."),
-        ("Valor pendente de XML", "R$ " ~ ("%.2f"|format(indicadores.valor_xml_pendente)|replace('.', ',')), "Soma dos valores de XMLs fiscais pendentes de integracao financeira."),
-        ("XMLs integrados no mes", indicadores.xml_integrados_mes, "Quantidade de XMLs fiscais integrados ao financeiro durante o mes atual."),
-        ("XMLs integrados via O.C.", indicadores.xml_integrados_via_oc, "Quantidade de XMLs que ja possuem titulos financeiros por meio da Ordem de Compra vinculada.")
+        ("Total em aberto", dashboard_avancado.cards.total_aberto, "Soma do saldo dos titulos ainda nao quitados no periodo filtrado."),
+        ("Total vencido", dashboard_avancado.cards.total_vencido, "Saldo dos titulos vencidos e ainda em aberto."),
+        ("Vence hoje", dashboard_avancado.cards.total_vence_hoje, "Saldo dos titulos com vencimento na data atual."),
+        ("Vence em 7 dias", dashboard_avancado.cards.total_vence_7, "Saldo previsto para vencer nos proximos 7 dias."),
+        ("Vence em 30 dias", dashboard_avancado.cards.total_vence_30, "Saldo previsto para vencer nos proximos 30 dias."),
+        ("Pago no periodo", dashboard_avancado.cards.total_pago_periodo, "Soma das baixas ativas registradas no periodo filtrado."),
+        ("Pago parcialmente", dashboard_avancado.cards.total_pago_parcial, "Valor ja pago em titulos que ainda possuem saldo."),
+        ("Aguardando conferencia", dashboard_avancado.cards.total_aguardando_conferencia, "Saldo dos titulos pendentes de conferencia financeira."),
+        ("Titulos em aberto", dashboard_avancado.cards.qtd_abertos, "Quantidade de titulos com saldo em aberto."),
+        ("Titulos pagos", dashboard_avancado.cards.qtd_pagos, "Quantidade de titulos quitados no filtro aplicado."),
+        ("Titulos vencidos", dashboard_avancado.cards.qtd_vencidos, "Quantidade de titulos vencidos com saldo em aberto."),
+        ("Sem comprovante", dashboard_avancado.cards.qtd_sem_comprovante, "Titulos pagos ou parciais sem comprovante ativo."),
+        ("Previsao do periodo", dashboard_avancado.cards.previsao_periodo, "Saldo previsto de desembolso no periodo filtrado."),
+        ("Cartoes/faturas abertas", dashboard_avancado.cards.valor_cartoes_abertos, "Saldo das faturas de cartao abertas, fechadas ou agendadas."),
+        ("Valor por O.C.", dashboard_avancado.cards.valor_oc_integrada, "Valor de titulos originados de Ordem de Compra no filtro."),
+        ("Valor por XML", dashboard_avancado.cards.valor_xml_integrado, "Valor de titulos originados de XML Fiscal no filtro.")
     ] %}
 
     <div class="stat-grid">
         {% for titulo, valor, ajuda in cards %}
-            <div class="stat-card stat-card-help" tabindex="0" aria-describedby="dashboard-card-help-{{ loop.index }}">
+            <div class="stat-card stat-card-help" tabindex="0">
                 <span>{{ titulo }}</span>
-                <strong>{{ valor }}</strong>
-                <small id="dashboard-card-help-{{ loop.index }}" class="stat-help" role="tooltip">{{ ajuda }}</small>
+                <strong>{{ valor_coluna({"valor": valor}, "valor") }}</strong>
+                <small class="stat-help" role="tooltip">{{ ajuda }}</small>
+            </div>
+        {% endfor %}
+    </div>
+
+    <div class="dashboard-grid">
+        {% for titulo_tabela, chave in [("Proximos vencimentos", "proximos_vencimentos"), ("Vencidos mais antigos", "vencidos_antigos"), ("Maiores valores em aberto", "maiores_abertos")] %}
+            <div class="table-card table-responsive listbox-10-linhas">
+                <h2>{{ titulo_tabela }}</h2>
+                <table class="table">
+                    <thead><tr><th>Titulo</th><th>Fornecedor</th><th>Vencimento</th><th>Saldo</th><th>Status</th></tr></thead>
+                    <tbody>
+                        {% for linha in dashboard_avancado.tabelas[chave] %}
+                            <tr>
+                                <td><a href="{{ url_for('financeiro_contas_pagar.detalhes', titulo_id=linha.titulo_id) }}">#{{ linha.titulo_id }}</a></td>
+                                <td>{{ linha.fornecedor }}</td>
+                                <td>{{ valor_coluna(linha, 'vencimento') }}</td>
+                                <td>{{ valor_coluna(linha, 'saldo_aberto') }}</td>
+                                <td>{{ linha.status }}</td>
+                            </tr>
+                        {% else %}
+                            <tr><td class="empty-state" colspan="5">Nenhum registro encontrado para os filtros informados.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% endfor %}
+
+        <div class="table-card table-responsive listbox-10-linhas">
+            <h2>Faturas proximas do vencimento</h2>
+            <table class="table">
+                <thead><tr><th>Cartao</th><th>Competencia</th><th>Vencimento</th><th>Saldo</th><th>Status</th></tr></thead>
+                <tbody>
+                    {% for linha in dashboard_avancado.tabelas.faturas_proximas %}
+                        <tr>
+                            <td>{{ linha.cartao }}</td>
+                            <td>{% if linha.fatura_cartao_id %}<a href="{{ url_for('financeiro_contas_pagar.detalhes_fatura', fatura_id=linha.fatura_cartao_id) }}">{{ linha.competencia }}</a>{% else %}{{ linha.competencia }}{% endif %}</td>
+                            <td>{{ valor_coluna(linha, 'vencimento') }}</td>
+                            <td>{{ valor_coluna(linha, 'saldo_aberto') }}</td>
+                            <td>{{ linha.status }}</td>
+                        </tr>
+                    {% else %}
+                        <tr><td class="empty-state" colspan="5">Nenhuma fatura encontrada para os filtros informados.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="dashboard-grid">
+        {% for titulo_tabela, chave in [("Valor por status", "por_status"), ("Valor por fornecedor", "por_fornecedor"), ("Valor por centro de custo", "por_centro_custo"), ("Valor por origem", "por_origem"), ("Valor por forma de pagamento", "por_forma")] %}
+            <div class="table-card table-responsive listbox-10-linhas">
+                <h2>{{ titulo_tabela }}</h2>
+                <table class="table">
+                    <thead><tr><th>Grupo</th><th>Qtd.</th><th>Valor original</th><th>Pago</th><th>Saldo</th></tr></thead>
+                    <tbody>
+                        {% for linha in dashboard_avancado.resumos[chave] %}
+                            <tr><td>{{ linha.grupo }}</td><td>{{ linha.quantidade }}</td><td>{{ valor_coluna(linha, 'valor_original') }}</td><td>{{ valor_coluna(linha, 'valor_pago') }}</td><td>{{ valor_coluna(linha, 'saldo_aberto') }}</td></tr>
+                        {% else %}
+                            <tr><td class="empty-state" colspan="5">Nenhum resumo encontrado.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
         {% endfor %}
     </div>
@@ -51,12 +122,7 @@
     <div class="page-actions">
         <a class="btn btn-primary" href="{{ url_for('financeiro_contas_pagar.novo') }}">Novo lancamento</a>
         <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.titulos') }}">Ver titulos</a>
-        <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.agendamentos_oc') }}">Agendamentos O.C.</a>
-        <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.agendamentos_xml') }}">Agendamentos XML</a>
-        <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.cartoes') }}">Ver cartoes</a>
-        <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.faturas') }}">Ver faturas</a>
         <a class="btn btn-secondary" href="{{ url_for('departamentos.detalhe_departamento', slug_departamento='financeiro') }}">Voltar ao Financeiro</a>
     </div>
 </section>
 {% endblock %}
-

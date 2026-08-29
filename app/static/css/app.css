@@ -65,6 +65,41 @@
     overflow-x: auto;
 }
 
+
+.listbox-5-linhas,
+.listbox-10-linhas {
+    --listbox-header-height: 46px;
+    --listbox-row-height: 54px;
+    overflow: auto;
+    scrollbar-gutter: stable both-edges;
+}
+
+.listbox-5-linhas {
+    max-height: calc(var(--listbox-header-height) + (5 * var(--listbox-row-height)) + 48px);
+}
+
+.listbox-10-linhas {
+    max-height: calc(var(--listbox-header-height) + (10 * var(--listbox-row-height)) + 48px);
+}
+
+.listbox-5-linhas .table,
+.listbox-10-linhas .table {
+    min-width: 900px;
+}
+
+.listbox-5-linhas .table thead th,
+.listbox-10-linhas .table thead th {
+    background: #ffffff;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
+
+.listbox-5-linhas .table tbody tr,
+.listbox-10-linhas .table tbody tr {
+    min-height: var(--listbox-row-height);
+}
+
 .requisicoes-listbox {
     --listbox-header-height: 45px;
     --listbox-row-height: 52px;
@@ -1547,4 +1582,3 @@ textarea:focus {
 .financeiro-contas-pagar-table {
     min-width: 1800px;
 }
-
