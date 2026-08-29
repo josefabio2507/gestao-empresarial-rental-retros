@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% set aba_ativa = "titulos" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Financeiro &gt; Contas a Receber &gt; Registrar Recebimento</span>
+            <h1>Registrar Recebimento</h1>
+            <p>{{ titulo.cliente_nome_snapshot }} · {{ titulo.descricao }}</p>
+        </div>
+        <div class="actions">
+            <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_receber.detalhe', titulo_id=titulo.id) }}">Voltar</a>
+        </div>
+    </div>
+
+    {% include "financeiro/contas_receber/_menu.html" %}
+
+    <div class="details-card">
+        <div class="detail-grid">
+            <section>
+                <h3>Título</h3>
+                <p><strong>Título a receber:</strong> #{{ titulo.id }}</p>
+                <p><strong>Cliente:</strong> {{ titulo.cliente_nome_snapshot }}</p>
+                <p><strong>CNPJ/CPF:</strong> {{ titulo.cliente_cnpj_cpf_snapshot or '-' }}</p>
+                <p><strong>Documento:</strong> {{ titulo.numero_documento or '-' }}</p>
+                <p><strong>Nota fiscal:</strong> {{ titulo.numero_nota_fiscal or '-' }}</p>
+            </section>
+            <section>
+                <h3>Valores e status</h3>
+                <p><strong>Valor original:</strong> {{ formatar_moeda_brl(titulo.valor_original) }}</p>
+                <p><strong>Valor líquido:</strong> {{ formatar_moeda_brl(titulo.valor_liquido) }}</p>
+                <p><strong>Valor já recebido:</strong> {{ formatar_moeda_brl(titulo.valor_recebido) }}</p>
+                <p><strong>Saldo em aberto:</strong> {{ formatar_moeda_brl(titulo.saldo_aberto) }}</p>
+                <p><strong>Vencimento:</strong> {{ formatar_data_brasil(titulo.data_vencimento) }}</p>
+                <p><strong>Status atual:</strong> <span class="badge {{ 'badge-danger' if titulo.status_visual() == 'Vencido' else 'badge-success' }}">{{ titulo.status_visual() }}</span></p>
+            </section>
+        </div>
+    </div>
+
+    <form class="form-card" method="POST" enctype="multipart/form-data">
+        <div class="form-grid">
+            <div class="form-group"><label for="data_recebimento">Data do recebimento</label><input id="data_recebimento" name="data_recebimento" type="date" required></div>
+            <div class="form-group"><label for="valor_recebido">Valor recebido</label><input id="valor_recebido" name="valor_recebido" required placeholder="0,00"></div>
+            <div class="form-group"><label for="forma_recebimento">Forma de recebimento</label><select id="forma_recebimento" name="forma_recebimento" required><option value="">Selecione</option>{% for forma in formas_recebimento %}<option value="{{ forma }}">{{ forma }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="conta_recebimento_descricao">Conta/descrição do recebimento</label><input id="conta_recebimento_descricao" name="conta_recebimento_descricao" placeholder="Ex.: Banco, caixa ou identificação da conta"></div>
+            <div class="form-group full-span"><label for="comprovante">Comprovante de recebimento</label><input id="comprovante" name="comprovante" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp"><small>PDF, JPG, JPEG, PNG ou WEBP até 10 MB. Pode ser anexado depois em fase futura.</small></div>
+            <div class="form-group full-span"><label for="observacoes">Observações</label><textarea id="observacoes" name="observacoes" rows="3"></textarea></div>
+        </div>
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Registrar recebimento</button>
+            <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_receber.detalhe', titulo_id=titulo.id) }}">Voltar</a>
+        </div>
+    </form>
+</section>
+{% endblock %}

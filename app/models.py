@@ -802,6 +802,7 @@ class FinanceiroContaReceberTitulo(db.Model):
     criado_por = db.relationship("Usuario", foreign_keys=[criado_por_usuario_id])
     atualizado_por = db.relationship("Usuario", foreign_keys=[atualizado_por_usuario_id])
     cancelado_por = db.relationship("Usuario", foreign_keys=[cancelado_por_usuario_id])
+    baixas = db.relationship("FinanceiroContaReceberBaixa", back_populates="titulo", order_by="FinanceiroContaReceberBaixa.data_recebimento.desc(), FinanceiroContaReceberBaixa.id.desc()")
 
     __table_args__ = (
         db.CheckConstraint("valor_original > 0", name="ck_fin_cr_titulos_valor_original"),
@@ -860,6 +861,57 @@ class FinanceiroContaReceberTitulo(db.Model):
     def __repr__(self):
         return f"<FinanceiroContaReceberTitulo {self.id} {self.cliente_nome_snapshot}>"
 
+
+
+class FinanceiroContaReceberBaixa(db.Model):
+    __tablename__ = "financeiro_contas_receber_baixas"
+
+    id = db.Column(db.Integer, primary_key=True)
+    titulo_id = db.Column(
+        db.Integer,
+        db.ForeignKey("financeiro_contas_receber_titulos.id"),
+        nullable=False,
+        index=True,
+    )
+    data_recebimento = db.Column(db.Date, nullable=False, index=True)
+    valor_recebido = db.Column(db.Numeric(12, 2), nullable=False)
+    forma_recebimento = db.Column(db.String(30), nullable=False, index=True)
+    conta_recebimento_descricao = db.Column(db.String(180), nullable=True)
+    observacoes = db.Column(db.Text, nullable=True)
+    status = db.Column(db.String(20), nullable=False, default="Ativa", index=True)
+    comprovante_nome_original = db.Column(db.String(255), nullable=True)
+    comprovante_nome_armazenado = db.Column(db.String(255), nullable=True)
+    comprovante_path = db.Column(db.String(500), nullable=True)
+    comprovante_drive_file_id = db.Column(db.String(255), nullable=True)
+    comprovante_drive_link = db.Column(db.String(500), nullable=True)
+    comprovante_extensao = db.Column(db.String(10), nullable=True)
+    comprovante_tamanho = db.Column(db.Integer, nullable=True)
+    registrado_por_usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=True, index=True)
+    cancelado_por_usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=True, index=True)
+    cancelado_em = db.Column(db.DateTime, nullable=True)
+    motivo_cancelamento = db.Column(db.Text, nullable=True)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
+    atualizado_em = db.Column(db.DateTime, default=agora_brasil, onupdate=agora_brasil, nullable=False)
+
+    titulo = db.relationship("FinanceiroContaReceberTitulo", back_populates="baixas")
+    registrado_por = db.relationship("Usuario", foreign_keys=[registrado_por_usuario_id])
+    cancelado_por = db.relationship("Usuario", foreign_keys=[cancelado_por_usuario_id])
+
+    __table_args__ = (
+        db.CheckConstraint("valor_recebido > 0", name="ck_fin_cr_baixa_valor_recebido"),
+        db.CheckConstraint("status in ('Ativa', 'Cancelada', 'Estornada')", name="ck_fin_cr_baixa_status"),
+        db.CheckConstraint(
+            "forma_recebimento in ('Pix', 'Transferência', 'Depósito', 'Boleto', 'Dinheiro', 'Cartão', 'Outro')",
+            name="ck_fin_cr_baixa_forma_recebimento",
+        ),
+    )
+
+    @property
+    def comprovante_disponivel(self):
+        return bool(self.comprovante_path or self.comprovante_drive_file_id)
+
+    def __repr__(self):
+        return f"<FinanceiroContaReceberBaixa {self.id} titulo={self.titulo_id}>"
 
 class TokenRecuperacaoSenha(db.Model):
     __tablename__ = "tokens_recuperacao_senha"

@@ -1,17 +1,23 @@
-from flask import flash, redirect, render_template, request, url_for
+from flask import abort, flash, redirect, render_template, request, send_file, url_for
 from flask_login import current_user, login_required
 
 from app.services.financeiro_contas_receber_service import (
+    FORMAS_RECEBIMENTO,
     ORIGENS_LANCAMENTO,
     STATUS_TITULOS_RECEBER,
+    buscar_baixa_recebimento_por_id,
     buscar_centros_custo_ativos,
     buscar_equipes_ativas,
     buscar_titulo_por_id,
+    cancelar_recebimento_titulo,
     cancelar_titulo_receber,
+    caminho_comprovante_recebimento,
     formatar_data_brasil,
     formatar_moeda_brl,
     gerar_dashboard,
     listar_titulos_receber,
+    recalcular_recebimento_titulo,
+    registrar_recebimento_titulo,
     salvar_titulo_receber,
 )
 from app.services.logs_service import registrar_log
@@ -84,6 +90,7 @@ def titulos():
         pode_criar=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "criar"),
         pode_editar=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "editar"),
         pode_cancelar=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "excluir"),
+        pode_registrar_recebimento=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "editar"),
     )
 
 
@@ -135,6 +142,10 @@ def detalhe(titulo_id):
         formatar_data_brasil=formatar_data_brasil,
         pode_editar=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "editar"),
         pode_cancelar=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "excluir"),
+        pode_registrar_recebimento=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "editar"),
+        pode_ver_recebimentos=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "visualizar"),
+        pode_baixar_comprovante=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "visualizar"),
+        pode_estornar_recebimento=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "excluir"),
     )
 
 
@@ -194,3 +205,81 @@ def cancelar(titulo_id):
 
     flash(mensagem, "success" if sucesso else "danger")
     return redirect(url_for("financeiro_contas_receber.detalhe", titulo_id=titulo.id))
+
+
+@financeiro_contas_receber_bp.route("/<int:titulo_id>/recebimentos/novo", methods=["GET", "POST"])
+@login_required
+def registrar_recebimento(titulo_id):
+    if not _permitido("editar"):
+        flash("Você não possui permissão para registrar recebimentos.", "danger")
+        return redirect(url_for("main.acesso_negado"))
+
+    titulo = buscar_titulo_por_id(titulo_id)
+    if not titulo:
+        flash("Título a receber não encontrado.", "warning")
+        return redirect(url_for("financeiro_contas_receber.titulos"))
+
+    recalcular_recebimento_titulo(titulo, usuario=current_user)
+    if request.method == "POST":
+        arquivo = request.files.get("comprovante")
+        sucesso, mensagem, baixa = registrar_recebimento_titulo(
+            titulo,
+            request.form,
+            arquivo=arquivo,
+            usuario=current_user,
+        )
+        if sucesso:
+            registrar_log("financeiro_contas_receber_recebimento_registrado", f"Recebimento registrado. Titulo: {titulo.id}. Baixa: {baixa.id}.")
+            flash(mensagem, "success")
+            return redirect(url_for("financeiro_contas_receber.detalhe", titulo_id=titulo.id))
+        flash(mensagem, "danger")
+
+    return render_template(
+        "financeiro/contas_receber/recebimento_form.html",
+        titulo=titulo,
+        formas_recebimento=FORMAS_RECEBIMENTO,
+        formatar_moeda_brl=formatar_moeda_brl,
+        formatar_data_brasil=formatar_data_brasil,
+    )
+
+
+@financeiro_contas_receber_bp.route("/<int:titulo_id>/recebimentos/<int:baixa_id>/estornar", methods=["POST"])
+@login_required
+def estornar_recebimento(titulo_id, baixa_id):
+    if not _permitido("excluir"):
+        return redirect(url_for("main.acesso_negado"))
+
+    titulo = buscar_titulo_por_id(titulo_id)
+    baixa = buscar_baixa_recebimento_por_id(baixa_id)
+    if not titulo or not baixa or baixa.titulo_id != titulo.id:
+        flash("Recebimento não encontrado.", "warning")
+        return redirect(url_for("financeiro_contas_receber.titulos"))
+
+    sucesso, mensagem = cancelar_recebimento_titulo(
+        baixa,
+        request.form.get("motivo_cancelamento"),
+        usuario=current_user,
+    )
+    if sucesso:
+        registrar_log("financeiro_contas_receber_recebimento_estornado", f"Recebimento estornado. Titulo: {titulo.id}. Baixa: {baixa.id}.")
+    flash(mensagem, "success" if sucesso else "danger")
+    return redirect(url_for("financeiro_contas_receber.detalhe", titulo_id=titulo.id))
+
+
+@financeiro_contas_receber_bp.route("/baixas/<int:baixa_id>/comprovante")
+@login_required
+def baixar_comprovante(baixa_id):
+    if not _permitido("visualizar"):
+        return redirect(url_for("main.acesso_negado"))
+
+    baixa = buscar_baixa_recebimento_por_id(baixa_id)
+    caminho = caminho_comprovante_recebimento(baixa)
+    if not caminho:
+        abort(404)
+
+    registrar_log("financeiro_contas_receber_comprovante_download", f"Download de comprovante. Baixa: {baixa.id}. Titulo: {baixa.titulo_id}.")
+    return send_file(
+        caminho,
+        as_attachment=True,
+        download_name=baixa.comprovante_nome_original or baixa.comprovante_nome_armazenado,
+    )

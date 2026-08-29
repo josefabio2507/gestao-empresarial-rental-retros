@@ -1,12 +1,14 @@
 from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
+import os
 import re
 
+from flask import current_app
 from sqlalchemy import func, or_
 from sqlalchemy.orm import joinedload
 
 from app.extensions import db
-from app.models import CentroCusto, Equipe, FinanceiroContaReceberTitulo
+from app.models import CentroCusto, Equipe, FinanceiroContaReceberBaixa, FinanceiroContaReceberTitulo
 from app.utils.datas import agora_brasil
 
 
@@ -37,6 +39,13 @@ STATUS_TITULOS_RECEBER = [
 ]
 STATUS_INATIVOS = {STATUS_CANCELADO, STATUS_ESTORNADO}
 STATUS_RECEBIDOS = {STATUS_RECEBIDO}
+STATUS_BAIXA_ATIVA = "Ativa"
+STATUS_BAIXA_CANCELADA = "Cancelada"
+STATUS_BAIXA_ESTORNADA = "Estornada"
+STATUS_BAIXAS_RECEBER = [STATUS_BAIXA_ATIVA, STATUS_BAIXA_CANCELADA, STATUS_BAIXA_ESTORNADA]
+FORMAS_RECEBIMENTO = ["Pix", "Transferência", "Depósito", "Boleto", "Dinheiro", "Cartão", "Outro"]
+EXTENSOES_COMPROVANTE = {"pdf", "jpg", "jpeg", "png", "webp"}
+MAX_COMPROVANTE_BYTES = 10 * 1024 * 1024
 
 ORIGEM_MANUAL = "Manual"
 ORIGENS_LANCAMENTO = [
@@ -222,6 +231,8 @@ def buscar_titulo_por_id(titulo_id):
         joinedload(FinanceiroContaReceberTitulo.criado_por),
         joinedload(FinanceiroContaReceberTitulo.atualizado_por),
         joinedload(FinanceiroContaReceberTitulo.cancelado_por),
+        joinedload(FinanceiroContaReceberTitulo.baixas).joinedload(FinanceiroContaReceberBaixa.registrado_por),
+        joinedload(FinanceiroContaReceberTitulo.baixas).joinedload(FinanceiroContaReceberBaixa.cancelado_por),
     ).get(titulo_id)
 
 
@@ -240,7 +251,9 @@ def listar_titulos_receber(filtros=None):
         query = query.filter(FinanceiroContaReceberTitulo.cliente_cnpj_cpf_snapshot.ilike(f"%{cnpj_cpf}%"))
 
     status = texto(filtros.get("status"))
-    if status:
+    if status == "em_aberto":
+        query = query.filter(~FinanceiroContaReceberTitulo.status.in_(STATUS_INATIVOS | STATUS_RECEBIDOS), _saldo_expr() > 0)
+    elif status:
         query = query.filter(FinanceiroContaReceberTitulo.status == status)
 
     origem = texto(filtros.get("origem"))
@@ -305,6 +318,39 @@ def listar_titulos_receber(filtros=None):
                 - FinanceiroContaReceberTitulo.valor_desconto
             ),
         )
+
+    recebimento_inicio = data_ou_none(filtros.get("recebimento_inicio"))
+    recebimento_fim = data_ou_none(filtros.get("recebimento_fim"))
+    if recebimento_inicio:
+        query = query.filter(FinanceiroContaReceberTitulo.data_recebimento >= recebimento_inicio)
+    if recebimento_fim:
+        query = query.filter(FinanceiroContaReceberTitulo.data_recebimento <= recebimento_fim)
+
+    comprovante = texto(filtros.get("comprovante"))
+    if comprovante in {"com", "sem"}:
+        baixas_ativas = FinanceiroContaReceberBaixa.query.filter(
+            FinanceiroContaReceberBaixa.titulo_id == FinanceiroContaReceberTitulo.id,
+            FinanceiroContaReceberBaixa.status == STATUS_BAIXA_ATIVA,
+        )
+        if comprovante == "com":
+            query = query.filter(
+                baixas_ativas.filter(
+                    or_(
+                        FinanceiroContaReceberBaixa.comprovante_path.isnot(None),
+                        FinanceiroContaReceberBaixa.comprovante_drive_file_id.isnot(None),
+                    )
+                ).exists()
+            )
+        else:
+            query = query.filter(
+                baixas_ativas.exists(),
+                ~baixas_ativas.filter(
+                    or_(
+                        FinanceiroContaReceberBaixa.comprovante_path.isnot(None),
+                        FinanceiroContaReceberBaixa.comprovante_drive_file_id.isnot(None),
+                    )
+                ).exists(),
+            )
 
     return query.order_by(
         FinanceiroContaReceberTitulo.data_vencimento.asc(),
@@ -383,7 +429,38 @@ def gerar_dashboard(filtros=None):
         )
     )
 
+    recebimentos_mes = FinanceiroContaReceberBaixa.query.filter(
+        FinanceiroContaReceberBaixa.status == STATUS_BAIXA_ATIVA,
+        FinanceiroContaReceberBaixa.data_recebimento >= inicio_mes,
+        FinanceiroContaReceberBaixa.data_recebimento < inicio_proximo_mes,
+    )
+    total_recebido_mes = Decimal(recebimentos_mes.with_entities(func.coalesce(func.sum(FinanceiroContaReceberBaixa.valor_recebido), 0)).scalar() or 0).quantize(Decimal("0.01"))
+    titulos_recebidos_mes = ativos.filter(
+        FinanceiroContaReceberTitulo.status == STATUS_RECEBIDO,
+        FinanceiroContaReceberTitulo.data_recebimento >= inicio_mes,
+        FinanceiroContaReceberTitulo.data_recebimento < inicio_proximo_mes,
+    )
+    titulos_sem_comprovante = ativos.filter(
+        FinanceiroContaReceberTitulo.valor_recebido > 0,
+        FinanceiroContaReceberBaixa.query.filter(
+            FinanceiroContaReceberBaixa.titulo_id == FinanceiroContaReceberTitulo.id,
+            FinanceiroContaReceberBaixa.status == STATUS_BAIXA_ATIVA,
+        ).exists(),
+        ~FinanceiroContaReceberBaixa.query.filter(
+            FinanceiroContaReceberBaixa.titulo_id == FinanceiroContaReceberTitulo.id,
+            FinanceiroContaReceberBaixa.status == STATUS_BAIXA_ATIVA,
+            or_(
+                FinanceiroContaReceberBaixa.comprovante_path.isnot(None),
+                FinanceiroContaReceberBaixa.comprovante_drive_file_id.isnot(None),
+            ),
+        ).exists(),
+    )
+
     cards = {
+        "total_recebido_mes": total_recebido_mes,
+        "total_recebido_parcialmente": Decimal(ativos.filter(FinanceiroContaReceberTitulo.status == STATUS_RECEBIDO_PARCIALMENTE).with_entities(func.coalesce(func.sum(FinanceiroContaReceberTitulo.valor_recebido), 0)).scalar() or 0).quantize(Decimal("0.01")),
+        "titulos_recebidos_mes": titulos_recebidos_mes.count(),
+        "titulos_sem_comprovante": titulos_sem_comprovante.count(),
         "total_mes": _somar_saldo(mes_query),
         "total_aberto": _somar_saldo(abertos),
         "total_vencido": _somar_saldo(vencidos),
@@ -407,6 +484,11 @@ def gerar_dashboard(filtros=None):
         FinanceiroContaReceberTitulo.data_recebimento.desc().nullslast(),
         FinanceiroContaReceberTitulo.atualizado_em.desc(),
     ).limit(50).all()
+    recebidos_por_forma = recebimentos_mes.with_entities(
+        FinanceiroContaReceberBaixa.forma_recebimento.label("forma"),
+        func.coalesce(func.sum(FinanceiroContaReceberBaixa.valor_recebido), 0).label("total"),
+    ).group_by(FinanceiroContaReceberBaixa.forma_recebimento).order_by(func.coalesce(func.sum(FinanceiroContaReceberBaixa.valor_recebido), 0).desc()).all()
+
     clientes_saldo = abertos.with_entities(
         FinanceiroContaReceberTitulo.cliente_nome_snapshot.label("cliente"),
         func.coalesce(func.sum(_saldo_expr()), 0).label("saldo"),
@@ -422,5 +504,201 @@ def gerar_dashboard(filtros=None):
         "maiores_abertos": maiores_abertos,
         "recebimentos_recentes": recebimentos_recentes,
         "clientes_saldo": clientes_saldo,
+        "recebidos_por_forma": recebidos_por_forma,
     }
 
+
+
+def _registrar_log(acao, descricao):
+    try:
+        from app.services.logs_service import registrar_log
+
+        registrar_log(acao, descricao)
+    except Exception:
+        current_app.logger.exception("Falha ao registrar log de Contas a Receber.")
+
+
+def _total_baixas_ativas(titulo):
+    if not titulo or not titulo.id:
+        return Decimal("0.00")
+    total = FinanceiroContaReceberBaixa.query.filter_by(
+        titulo_id=titulo.id,
+        status=STATUS_BAIXA_ATIVA,
+    ).with_entities(func.coalesce(func.sum(FinanceiroContaReceberBaixa.valor_recebido), 0)).scalar()
+    return Decimal(total or 0).quantize(Decimal("0.01"))
+
+
+def recalcular_recebimento_titulo(titulo, usuario=None):
+    if not titulo:
+        return None
+
+    total = _total_baixas_ativas(titulo)
+    status_anterior = titulo.status
+    titulo.valor_recebido = total
+    titulo.data_recebimento = None
+
+    ultima_baixa = FinanceiroContaReceberBaixa.query.filter_by(
+        titulo_id=titulo.id,
+        status=STATUS_BAIXA_ATIVA,
+    ).order_by(FinanceiroContaReceberBaixa.data_recebimento.desc(), FinanceiroContaReceberBaixa.id.desc()).first()
+    if ultima_baixa:
+        titulo.data_recebimento = ultima_baixa.data_recebimento
+
+    if titulo.status not in STATUS_INATIVOS:
+        if total >= titulo.valor_liquido:
+            titulo.status = STATUS_RECEBIDO
+        elif total > 0:
+            titulo.status = STATUS_RECEBIDO_PARCIALMENTE
+        elif titulo.status in {STATUS_RECEBIDO, STATUS_RECEBIDO_PARCIALMENTE}:
+            titulo.status = STATUS_FATURADO if titulo.numero_nota_fiscal else STATUS_A_VENCER
+
+    titulo.atualizado_por_usuario_id = getattr(usuario, "id", None)
+    if status_anterior != titulo.status:
+        _registrar_log(
+            "financeiro_contas_receber_status_alterado",
+            f"Status do titulo a receber alterado automaticamente. ID: {titulo.id}. {status_anterior} -> {titulo.status}.",
+        )
+    return titulo
+
+
+def _extensao_comprovante(arquivo):
+    nome = arquivo.filename or ""
+    if "." not in nome:
+        return ""
+    return nome.rsplit(".", 1)[1].lower()
+
+
+def _tamanho_arquivo(arquivo):
+    posicao = arquivo.stream.tell()
+    arquivo.stream.seek(0, os.SEEK_END)
+    tamanho = arquivo.stream.tell()
+    arquivo.stream.seek(posicao)
+    return tamanho
+
+
+def _salvar_comprovante_recebimento(baixa, arquivo):
+    if not arquivo or not arquivo.filename:
+        return
+
+    extensao = _extensao_comprovante(arquivo)
+    if extensao not in EXTENSOES_COMPROVANTE:
+        raise ValueError("Formato de comprovante inválido. Use PDF, JPG, JPEG, PNG ou WEBP.")
+
+    tamanho = _tamanho_arquivo(arquivo)
+    if tamanho > MAX_COMPROVANTE_BYTES:
+        raise ValueError("Comprovante maior que 10 MB.")
+
+    pasta = os.path.join(current_app.instance_path, "financeiro", "recebimentos")
+    os.makedirs(pasta, exist_ok=True)
+    data_nome = agora_brasil().strftime("%Y%m%d-%H%M%S")
+    nome_armazenado = f"CR-{baixa.titulo_id}_RECEBIMENTO-{baixa.id}_{data_nome}.{extensao}"
+    caminho = os.path.abspath(os.path.join(pasta, nome_armazenado))
+    pasta_base = os.path.abspath(pasta)
+    if not caminho.startswith(pasta_base):
+        raise ValueError("Caminho de comprovante inválido.")
+
+    arquivo.stream.seek(0)
+    arquivo.save(caminho)
+
+    baixa.comprovante_nome_original = arquivo.filename
+    baixa.comprovante_nome_armazenado = nome_armazenado
+    baixa.comprovante_path = caminho
+    baixa.comprovante_extensao = extensao
+    baixa.comprovante_tamanho = tamanho
+    _registrar_log("financeiro_contas_receber_comprovante_upload", f"Comprovante anexado. Baixa: {baixa.id}. Titulo: {baixa.titulo_id}.")
+
+
+def registrar_recebimento_titulo(titulo, dados, arquivo=None, usuario=None):
+    if not titulo:
+        return False, "Título a receber não encontrado.", None
+    if titulo.status == STATUS_CANCELADO:
+        return False, "Título cancelado não pode receber baixa.", None
+    if titulo.status == STATUS_ESTORNADO:
+        return False, "Título estornado não pode receber baixa.", None
+
+    try:
+        recalcular_recebimento_titulo(titulo, usuario=usuario)
+        saldo = Decimal(titulo.saldo_aberto).quantize(Decimal("0.01"))
+        if saldo <= 0 or titulo.status == STATUS_RECEBIDO:
+            raise ValueError("Título já está totalmente recebido.")
+
+        data_recebimento = data_ou_none(dados.get("data_recebimento"))
+        if not data_recebimento:
+            raise ValueError("Informe a data do recebimento.")
+
+        valor_recebido = decimal_ou_zero(dados.get("valor_recebido"))
+        if valor_recebido is None or valor_recebido <= 0:
+            raise ValueError("Informe o valor recebido.")
+        if valor_recebido > saldo:
+            raise ValueError("O valor informado excede o saldo em aberto.")
+
+        forma_recebimento = texto(dados.get("forma_recebimento"))
+        if not forma_recebimento:
+            raise ValueError("Informe a forma de recebimento.")
+        if forma_recebimento not in FORMAS_RECEBIMENTO:
+            raise ValueError("Forma de recebimento inválida.")
+
+        baixa = FinanceiroContaReceberBaixa(
+            titulo_id=titulo.id,
+            data_recebimento=data_recebimento,
+            valor_recebido=valor_recebido,
+            forma_recebimento=forma_recebimento,
+            conta_recebimento_descricao=texto(dados.get("conta_recebimento_descricao")) or None,
+            observacoes=texto(dados.get("observacoes")) or None,
+            status=STATUS_BAIXA_ATIVA,
+            registrado_por_usuario_id=getattr(usuario, "id", None),
+        )
+        db.session.add(baixa)
+        db.session.flush()
+        _salvar_comprovante_recebimento(baixa, arquivo)
+        recalcular_recebimento_titulo(titulo, usuario=usuario)
+        db.session.commit()
+
+        acao = "financeiro_contas_receber_recebimento_total" if titulo.status == STATUS_RECEBIDO else "financeiro_contas_receber_recebimento_parcial"
+        mensagem = "Título recebido com sucesso." if titulo.status == STATUS_RECEBIDO else "Recebimento parcial registrado com sucesso."
+        _registrar_log(acao, f"Recebimento registrado. Baixa: {baixa.id}. Titulo: {titulo.id}. Valor: {valor_recebido}.")
+        return True, mensagem, baixa
+    except ValueError as exc:
+        db.session.rollback()
+        return False, str(exc), None
+
+
+def buscar_baixa_recebimento_por_id(baixa_id):
+    return FinanceiroContaReceberBaixa.query.options(
+        joinedload(FinanceiroContaReceberBaixa.titulo),
+        joinedload(FinanceiroContaReceberBaixa.registrado_por),
+        joinedload(FinanceiroContaReceberBaixa.cancelado_por),
+    ).get(baixa_id)
+
+
+def cancelar_recebimento_titulo(baixa, motivo, usuario=None):
+    if not baixa:
+        return False, "Recebimento não encontrado."
+    if baixa.status != STATUS_BAIXA_ATIVA:
+        return False, "Recebimento já foi cancelado ou estornado."
+
+    motivo = texto(motivo)
+    if not motivo:
+        return False, "Informe o motivo do estorno."
+
+    titulo = baixa.titulo
+    baixa.status = STATUS_BAIXA_ESTORNADA
+    baixa.cancelado_por_usuario_id = getattr(usuario, "id", None)
+    baixa.cancelado_em = agora_brasil()
+    baixa.motivo_cancelamento = motivo
+    recalcular_recebimento_titulo(titulo, usuario=usuario)
+    db.session.commit()
+    _registrar_log("financeiro_contas_receber_recebimento_estornado", f"Recebimento estornado. Baixa: {baixa.id}. Titulo: {baixa.titulo_id}.")
+    return True, "Recebimento cancelado/estornado com sucesso. O saldo do título foi recalculado."
+
+
+def caminho_comprovante_recebimento(baixa):
+    if not baixa or baixa.status != STATUS_BAIXA_ATIVA or not baixa.comprovante_path:
+        return None
+    caminho = os.path.abspath(baixa.comprovante_path)
+    pasta_base = os.path.abspath(os.path.join(current_app.instance_path, "financeiro", "recebimentos"))
+    if not caminho.startswith(pasta_base):
+        return None
+    if not os.path.exists(caminho):
+        return None
+    return caminho
