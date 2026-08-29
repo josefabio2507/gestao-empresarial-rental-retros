@@ -8,7 +8,12 @@
             <h1>Detalhes do abastecimento</h1>
             <p>{{ abastecimento.veiculo.identificacao if abastecimento.veiculo else '-' }} - {{ abastecimento.veiculo.descricao if abastecimento.veiculo else '-' }}</p>
         </div>
-        <a class="btn btn-secondary" href="{{ url_for('operacao.central_custos_veiculo', veiculo_id=abastecimento.veiculo_id) }}">Voltar</a>
+        <div class="acoes-botoes">
+            {% if pode_editar_extra %}
+                <a class="btn btn-secondary" href="{{ url_for('operacao.editar_abastecimento', abastecimento_id=abastecimento.id) }}">Editar</a>
+            {% endif %}
+            <a class="btn btn-secondary" href="{{ url_for('operacao.central_custos_veiculo', veiculo_id=abastecimento.veiculo_id) }}">Voltar</a>
+        </div>
     </div>
 
     <div class="details-card">
@@ -17,7 +22,9 @@
         <p><strong>Equipe:</strong> {{ abastecimento.equipe.nome if abastecimento.equipe else '-' }}</p>
         <p><strong>Tipo de combustível:</strong> {{ abastecimento.tipo_combustivel }}</p>
         <p><strong>Qtd Litros:</strong> {{ (abastecimento.qtd_litros|string).replace('.', ',') }}</p>
-        <p><strong>Preço:</strong> {{ formatar_moeda_brl(abastecimento.preco) }}</p>
+        <p><strong>Total combustível:</strong> {{ formatar_moeda_brl(abastecimento.valor_total_combustivel) }}</p>
+        <p><strong>Número NF:</strong> {{ abastecimento.numero_nota_fiscal or '-' }}</p>
+        <p><strong>Chave NF-e:</strong> {{ abastecimento.chave_acesso_nfe or '-' }}</p>
         <p><strong>Observações:</strong> {{ abastecimento.observacoes or '-' }}</p>
         <p>
             <strong>Cupom fiscal:</strong>
@@ -27,6 +34,67 @@
                 -
             {% endif %}
         </p>
+    </div>
+
+    <div class="stat-grid">
+        <div class="stat-card"><span>Total combustível</span><strong>{{ formatar_moeda_brl(abastecimento.valor_total_combustivel) }}</strong></div>
+        <div class="stat-card"><span>Total custos extras</span><strong>{{ formatar_moeda_brl(abastecimento.valor_total_custos_extras) }}</strong></div>
+        <div class="stat-card"><span>Total geral</span><strong>{{ formatar_moeda_brl(abastecimento.valor_total_geral) }}</strong></div>
+        <div class="stat-card"><span>Valor total NF</span><strong>{{ formatar_moeda_brl(abastecimento.valor_total_nota_fiscal) if abastecimento.valor_total_nota_fiscal is not none else '-' }}</strong></div>
+        <div class="stat-card"><span>Diferença NF</span><strong>{{ formatar_moeda_brl(abastecimento.diferenca_nota_fiscal) if abastecimento.diferenca_nota_fiscal is not none else '-' }}</strong></div>
+        <div class="stat-card"><span>Status conferência</span><strong>{{ abastecimento.status_conferencia_nota_fiscal }}</strong></div>
+    </div>
+
+    {% if abastecimento.valor_total_nota_fiscal is not none %}
+        {% if abastecimento.status_conferencia_nota_fiscal == 'Conferido' %}
+            <div class="alert alert-success">Valor da nota fiscal confere com o total registrado.</div>
+        {% else %}
+            <div class="alert alert-warning">Atenção: valor da nota fiscal divergente do total registrado.</div>
+        {% endif %}
+    {% endif %}
+
+    <div class="details-card">
+        <h2>Custos Extras do Abastecimento</h2>
+        <div class="table-card table-responsive listbox-5-linhas">
+            <table class="table abastecimento-custos-extras-table">
+                <thead>
+                    <tr>
+                        <th>Categoria</th>
+                        <th>Descrição</th>
+                        <th>Quantidade</th>
+                        <th>Valor unitário</th>
+                        <th>Valor total</th>
+                        <th>Status</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for custo in abastecimento.custos_extras %}
+                        <tr>
+                            <td>{{ custo.categoria }}</td>
+                            <td>{{ custo.descricao }}</td>
+                            <td>{{ (custo.quantidade|string).replace('.', ',') }}</td>
+                            <td>{{ formatar_moeda_brl(custo.valor_unitario) }}</td>
+                            <td>{{ formatar_moeda_brl(custo.valor_total) }}</td>
+                            <td>{{ custo.status }}</td>
+                            <td class="col-acoes">
+                                {% if custo.status == 'Ativo' and pode_cancelar_extra %}
+                                    <form method="POST" action="{{ url_for('operacao.cancelar_custo_extra_abastecimento_route', custo_extra_id=custo.id) }}" class="inline-form">
+                                        <input name="motivo_cancelamento" placeholder="Motivo" required>
+                                        <button class="btn btn-secondary" type="submit">Cancelar</button>
+                                    </form>
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr><td class="empty-state" colspan="7">Nenhum custo extra registrado.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <p><strong>Observações de conferência:</strong> {{ abastecimento.observacoes_conferencia or '-' }}</p>
     </div>
 </section>
 {% endblock %}

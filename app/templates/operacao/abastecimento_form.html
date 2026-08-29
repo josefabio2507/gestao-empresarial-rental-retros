@@ -12,6 +12,7 @@
     </div>
 
     <form class="form-card" method="POST" enctype="multipart/form-data">
+        <h2>Dados do Abastecimento</h2>
         <div class="form-grid">
             <div class="form-group">
                 <label for="data_abastecimento">Data</label>
@@ -39,7 +40,7 @@
                 <input id="qtd_litros" name="qtd_litros" required inputmode="decimal" placeholder="0,00" value="{{ (abastecimento.qtd_litros|string).replace('.', ',') if abastecimento else '' }}">
             </div>
             <div class="form-group">
-                <label for="preco">Preço (R$)</label>
+                <label for="preco">Total combustível (R$)</label>
                 <input id="preco" name="preco" required inputmode="decimal" placeholder="R$ 0,00" value="{{ (abastecimento.preco|string).replace('.', ',') if abastecimento else '' }}">
             </div>
             <div class="form-group">
@@ -54,10 +55,127 @@
                 <textarea id="observacoes" name="observacoes">{{ abastecimento.observacoes if abastecimento and abastecimento.observacoes else '' }}</textarea>
             </div>
         </div>
+
+        <h2>Custos Extras do Abastecimento</h2>
+        <div class="table-card table-responsive listbox-5-linhas">
+            <table class="table abastecimento-custos-extras-table" id="custos-extras-table">
+                <thead>
+                    <tr>
+                        <th>Categoria</th>
+                        <th>Descrição</th>
+                        <th>Quantidade</th>
+                        <th>Valor unitário</th>
+                        <th>Total calculado</th>
+                        <th>Observações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% set extras_ativos = abastecimento.custos_extras_ativos if abastecimento else [] %}
+                    {% for custo in extras_ativos %}
+                        <tr class="custo-extra-row">
+                            <td>
+                                <input type="hidden" name="custo_extra_id" value="{{ custo.id }}">
+                                <select name="custo_extra_categoria">
+                                    <option value="">Selecione</option>
+                                    {% for categoria in categorias_custo_extra %}
+                                        <option value="{{ categoria }}" {% if custo.categoria == categoria %}selected{% endif %}>{{ categoria }}</option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                            <td><input name="custo_extra_descricao" value="{{ custo.descricao }}"></td>
+                            <td><input class="js-extra-quantidade" name="custo_extra_quantidade" inputmode="decimal" value="{{ (custo.quantidade|string).replace('.', ',') }}"></td>
+                            <td><input class="js-extra-unitario" name="custo_extra_valor_unitario" inputmode="decimal" value="{{ (custo.valor_unitario|string).replace('.', ',') }}"></td>
+                            <td><input class="js-extra-total" value="{{ (custo.valor_total|string).replace('.', ',') }}" readonly></td>
+                            <td><input name="custo_extra_observacoes" value="{{ custo.observacoes or '' }}"></td>
+                        </tr>
+                    {% endfor %}
+                    {% for _ in range(3) %}
+                        <tr class="custo-extra-row">
+                            <td>
+                                <input type="hidden" name="custo_extra_id" value="">
+                                <select name="custo_extra_categoria">
+                                    <option value="">Selecione</option>
+                                    {% for categoria in categorias_custo_extra %}
+                                        <option value="{{ categoria }}">{{ categoria }}</option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                            <td><input name="custo_extra_descricao"></td>
+                            <td><input class="js-extra-quantidade" name="custo_extra_quantidade" inputmode="decimal" placeholder="0,00"></td>
+                            <td><input class="js-extra-unitario" name="custo_extra_valor_unitario" inputmode="decimal" placeholder="R$ 0,00"></td>
+                            <td><input class="js-extra-total" readonly></td>
+                            <td><input name="custo_extra_observacoes"></td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="form-actions compact-actions">
+            <button class="btn btn-secondary" type="button" id="adicionar-custo-extra">Adicionar custo extra</button>
+        </div>
+
+        <h2>Conferência da Nota Fiscal</h2>
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="numero_nota_fiscal">Número NF</label>
+                <input id="numero_nota_fiscal" name="numero_nota_fiscal" value="{{ abastecimento.numero_nota_fiscal if abastecimento and abastecimento.numero_nota_fiscal else '' }}">
+            </div>
+            <div class="form-group">
+                <label for="chave_acesso_nfe">Chave de acesso NF-e</label>
+                <input id="chave_acesso_nfe" name="chave_acesso_nfe" value="{{ abastecimento.chave_acesso_nfe if abastecimento and abastecimento.chave_acesso_nfe else '' }}" inputmode="numeric">
+            </div>
+            <div class="form-group">
+                <label for="valor_total_nota_fiscal">Valor total NF</label>
+                <input id="valor_total_nota_fiscal" name="valor_total_nota_fiscal" inputmode="decimal" placeholder="R$ 0,00" value="{{ (abastecimento.valor_total_nota_fiscal|string).replace('.', ',') if abastecimento and abastecimento.valor_total_nota_fiscal is not none else '' }}">
+            </div>
+            <div class="form-group">
+                <label for="observacoes_conferencia">Observações de conferência</label>
+                <textarea id="observacoes_conferencia" name="observacoes_conferencia">{{ abastecimento.observacoes_conferencia if abastecimento and abastecimento.observacoes_conferencia else '' }}</textarea>
+            </div>
+        </div>
+
         <div class="form-actions">
             <button class="btn btn-primary" type="submit">Salvar</button>
             <a class="btn btn-secondary" href="{{ url_for('operacao.abastecimentos') }}">Cancelar</a>
         </div>
     </form>
 </section>
+
+<script>
+(function () {
+    const table = document.getElementById('custos-extras-table');
+    const addButton = document.getElementById('adicionar-custo-extra');
+    if (!table || !addButton) return;
+
+    function parseMoney(value) {
+        const normalized = String(value || '').replace(/[^0-9,.-]/g, '').replace('.', '').replace(',', '.');
+        const number = Number(normalized);
+        return Number.isFinite(number) ? number : 0;
+    }
+
+    function formatMoney(value) {
+        return value ? value.toFixed(2).replace('.', ',') : '';
+    }
+
+    function updateRow(row) {
+        const quantidade = parseMoney(row.querySelector('.js-extra-quantidade')?.value);
+        const unitario = parseMoney(row.querySelector('.js-extra-unitario')?.value);
+        const total = row.querySelector('.js-extra-total');
+        if (total) total.value = formatMoney(quantidade * unitario);
+    }
+
+    table.addEventListener('input', function (event) {
+        const row = event.target.closest('.custo-extra-row');
+        if (row) updateRow(row);
+    });
+
+    addButton.addEventListener('click', function () {
+        const rows = table.querySelectorAll('.custo-extra-row');
+        const clone = rows[rows.length - 1].cloneNode(true);
+        clone.querySelectorAll('input').forEach(function (input) { input.value = ''; });
+        clone.querySelectorAll('select').forEach(function (select) { select.selectedIndex = 0; });
+        table.querySelector('tbody').appendChild(clone);
+    });
+})();
+</script>
 {% endblock %}
