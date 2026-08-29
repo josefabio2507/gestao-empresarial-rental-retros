@@ -12,6 +12,7 @@
     </div>
 
     <div class="modules-grid">
+        {% if pode_ver_contas_pagar %}
         <a class="module-card module-card-link" href="{{ url_for('financeiro_contas_pagar.dashboard') }}">
             <span class="module-card-icon">P</span>
             <h2>Contas a Pagar</h2>
@@ -19,6 +20,17 @@
             <span class="badge badge-success">Ativo</span>
             <span class="module-status">Acessar submodulo</span>
         </a>
+        {% endif %}
+
+        {% if pode_ver_relatorios %}
+        <a class="module-card module-card-link" href="{{ url_for('financeiro.relatorios') }}">
+            <span class="module-card-icon">R</span>
+            <h2>Relatorios</h2>
+            <p>Indicadores, filtros e exportacoes do Contas a Pagar.</p>
+            <span class="badge badge-success">Ativo</span>
+            <span class="module-status">Acessar relatorios</span>
+        </a>
+        {% endif %}
     </div>
 </section>
 {% endblock %}

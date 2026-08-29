@@ -3045,6 +3045,34 @@ def buscar_cotacao_por_token_aprovacao_publica(token):
     return cotacao, None
 
 
+def _ordem_financeira_cotacao(cotacao):
+    if not cotacao or not cotacao.id:
+        return None
+    return (
+        SuprimentosOrdemCompra.query.filter_by(cotacao_id=cotacao.id)
+        .order_by(SuprimentosOrdemCompra.id.desc())
+        .first()
+    )
+
+
+def linhas_pagamento_whatsapp_aprovacao_cotacao(cotacao):
+    ordem = _ordem_financeira_cotacao(cotacao)
+    tipo_pagamento = getattr(ordem, "tipo_pagamento_financeiro", None) or "nao informado"
+    forma_pagamento = getattr(ordem, "forma_pagamento_financeiro", None) or "nao informada"
+    linhas = [
+        f"Tipo de pagamento: {tipo_pagamento}",
+        f"Forma de pagamento: {forma_pagamento}",
+    ]
+
+    pagamento_cartao = tipo_pagamento == "Cartao de Credito" or forma_pagamento == "Cartao de Credito"
+    if pagamento_cartao:
+        cartao = getattr(ordem, "cartao_credito", None) if ordem else None
+        if cartao:
+            linhas.append(f"Cartao: {cartao.identificacao_segura}")
+        else:
+            linhas.append("Cartao: nao informado")
+
+    return linhas
 def gerar_mensagem_whatsapp_aprovacao_cotacao(cotacao):
     token = gerar_token_aprovacao_publica_cotacao(cotacao)
     selecionadas = [proposta for proposta in cotacao.propostas if proposta.selecionada]
@@ -3066,6 +3094,7 @@ def gerar_mensagem_whatsapp_aprovacao_cotacao(cotacao):
         f"Equipe: {nome_subcentro_equipe_requisicao(cotacao.requisicao if cotacao else None)}",
         f"Placa do veiculo: {nome_subcentro_veiculo_requisicao(cotacao.requisicao if cotacao else None)}",
         f"Solicitante: {cotacao.requisicao.solicitante.nome if cotacao.requisicao and cotacao.requisicao.solicitante else '-'}",
+        *linhas_pagamento_whatsapp_aprovacao_cotacao(cotacao),
         f"Aprovador: {cotacao.aprovador.nome if cotacao.aprovador else '-'}",
         "",
         "*Fornecedores selecionados:*",

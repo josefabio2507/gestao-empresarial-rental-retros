@@ -8,7 +8,7 @@
             <h1>{{ relatorio.titulo }}</h1>
             <p>Relatorios operacionais e gerenciais do Contas a Pagar.</p>
         </div>
-        <a class="btn btn-secondary" href="{{ url_for('financeiro.index') }}">Voltar ao Financeiro</a>
+        <a class="btn btn-secondary" href="{{ url_for('departamentos.detalhe_departamento', slug_departamento='financeiro') }}">Voltar ao Financeiro</a>
     </div>
 
     <form class="filter-card" method="GET">

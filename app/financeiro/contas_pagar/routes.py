@@ -1,4 +1,4 @@
-from flask import Response, abort, flash, redirect, render_template, request, send_file, url_for
+from flask import abort, flash, redirect, render_template, request, send_file, url_for
 from flask_login import current_user, login_required
 
 from app.decorators import module_permission_required
@@ -48,9 +48,6 @@ from app.services.financeiro_relatorios_service import (
     dashboard_avancado,
     filtros_padrao,
     filtros_para_template,
-    gerar_csv_relatorio,
-    montar_relatorio,
-    nome_arquivo_relatorio,
     opcoes_relatorios,
     periodo_valido,
     valor_coluna,
@@ -87,41 +84,14 @@ def dashboard():
 
 @financeiro_contas_pagar_bp.route("/relatorios")
 @login_required
-@module_permission_required("financeiro", "contas_a_pagar", "visualizar")
 def relatorios():
-    filtros = filtros_padrao(request.args)
-    if not periodo_valido(filtros):
-        flash("A data inicial nao pode ser maior que a data final.", "warning")
-        filtros = filtros_padrao({})
-    relatorio = montar_relatorio(filtros["tipo_relatorio"], filtros)
-    registrar_log("financeiro_relatorio_visualizado", "Relatorio visualizado: {}.".format(relatorio["tipo"]))
-    return render_template(
-        "financeiro/contas_pagar/relatorios.html",
-        relatorio=relatorio,
-        filtros=filtros_para_template(filtros),
-        opcoes_relatorios=opcoes_relatorios(),
-        valor_coluna=valor_coluna,
-    )
+    return redirect(url_for("financeiro.relatorios", **request.args))
 
 
 @financeiro_contas_pagar_bp.route("/relatorios/exportar")
 @login_required
-@module_permission_required("financeiro", "contas_a_pagar", "exportar")
 def exportar_relatorio():
-    filtros = filtros_padrao(request.args)
-    if not periodo_valido(filtros):
-        flash("Informe um periodo valido.", "warning")
-        return redirect(url_for("financeiro_contas_pagar.relatorios"))
-    relatorio = montar_relatorio(filtros["tipo_relatorio"], filtros)
-    conteudo = gerar_csv_relatorio(relatorio)
-    registrar_log("financeiro_relatorio_exportado", "Relatorio exportado: {}.".format(relatorio["tipo"]))
-    return Response(
-        conteudo,
-        mimetype="text/csv; charset=utf-8",
-        headers={"Content-Disposition": "attachment; filename={}".format(nome_arquivo_relatorio(relatorio["tipo"]))},
-    )
-
-
+    return redirect(url_for("financeiro.exportar_relatorio", **request.args))
 
 @financeiro_contas_pagar_bp.route("/titulos/baixa-em-massa", methods=["GET", "POST"])
 @login_required

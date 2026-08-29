@@ -25,7 +25,6 @@
         <div class="form-actions">
             <button class="btn btn-primary" type="submit">Aplicar filtros</button>
             <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.dashboard') }}">Limpar</a>
-            <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.relatorios') }}">Abrir relatorios</a>
         </div>
     </form>
 
@@ -60,7 +59,7 @@
 
     <div class="dashboard-grid">
         {% for titulo_tabela, chave in [("Proximos vencimentos", "proximos_vencimentos"), ("Vencidos mais antigos", "vencidos_antigos"), ("Maiores valores em aberto", "maiores_abertos")] %}
-            <div class="table-card table-responsive">
+            <div class="table-card table-responsive listbox-10-linhas">
                 <h2>{{ titulo_tabela }}</h2>
                 <table class="table">
                     <thead><tr><th>Titulo</th><th>Fornecedor</th><th>Vencimento</th><th>Saldo</th><th>Status</th></tr></thead>
@@ -81,7 +80,7 @@
             </div>
         {% endfor %}
 
-        <div class="table-card table-responsive">
+        <div class="table-card table-responsive listbox-10-linhas">
             <h2>Faturas proximas do vencimento</h2>
             <table class="table">
                 <thead><tr><th>Cartao</th><th>Competencia</th><th>Vencimento</th><th>Saldo</th><th>Status</th></tr></thead>
@@ -104,7 +103,7 @@
 
     <div class="dashboard-grid">
         {% for titulo_tabela, chave in [("Valor por status", "por_status"), ("Valor por fornecedor", "por_fornecedor"), ("Valor por centro de custo", "por_centro_custo"), ("Valor por origem", "por_origem"), ("Valor por forma de pagamento", "por_forma")] %}
-            <div class="table-card table-responsive">
+            <div class="table-card table-responsive listbox-10-linhas">
                 <h2>{{ titulo_tabela }}</h2>
                 <table class="table">
                     <thead><tr><th>Grupo</th><th>Qtd.</th><th>Valor original</th><th>Pago</th><th>Saldo</th></tr></thead>
@@ -123,9 +122,7 @@
     <div class="page-actions">
         <a class="btn btn-primary" href="{{ url_for('financeiro_contas_pagar.novo') }}">Novo lancamento</a>
         <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.titulos') }}">Ver titulos</a>
-        <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.relatorios') }}">Relatorios</a>
         <a class="btn btn-secondary" href="{{ url_for('departamentos.detalhe_departamento', slug_departamento='financeiro') }}">Voltar ao Financeiro</a>
     </div>
 </section>
 {% endblock %}
-

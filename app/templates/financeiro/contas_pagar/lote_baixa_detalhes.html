@@ -24,7 +24,7 @@
         <p><strong>Comprovante:</strong> {% if lote.comprovante_disponivel and lote.status == 'Ativo' %}<a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.baixar_comprovante_lote', lote_id=lote.id) }}">Baixar comprovante</a>{% else %}<span class="badge badge-warning">Sem comprovante</span>{% endif %}</p>
     </div>
 
-    <div class="table-card table-responsive">
+    <div class="table-card table-responsive listbox-5-linhas">
         <table class="table financeiro-contas-pagar-table">
             <thead><tr><th>Titulo</th><th>Fornecedor</th><th>Documento</th><th>Vencimento</th><th>Valor baixado</th><th>Status da baixa</th><th>Status do titulo</th><th>Acoes</th></tr></thead>
             <tbody>

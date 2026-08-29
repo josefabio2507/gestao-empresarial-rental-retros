@@ -23,7 +23,7 @@
     </div>
 
     {% if titulos %}
-        <div class="table-card table-responsive">
+        <div class="table-card table-responsive listbox-5-linhas">
             <h2>Titulos ja gerados</h2>
             <table class="table"><thead><tr><th>Parcela</th><th>Vencimento</th><th>Valor</th><th>Status</th><th>Acoes</th></tr></thead><tbody>
                 {% for titulo in titulos %}<tr><td>{{ titulo.parcela_numero }}/{{ titulo.total_parcelas }}</td><td>{{ titulo.data_vencimento.strftime("%d/%m/%Y") }}</td><td>{{ formatar_moeda_brl(titulo.valor_original) }}</td><td>{{ titulo.status }}</td><td><a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.detalhes', titulo_id=titulo.id) }}">Ver titulo</a></td></tr>{% endfor %}

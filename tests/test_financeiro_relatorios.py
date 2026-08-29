@@ -71,6 +71,7 @@ class FinanceiroRelatoriosContasPagarTestCase(unittest.TestCase):
         db.session.add_all([self.usuario, self.departamento])
         db.session.flush()
         self.modulo = Modulo(departamento_id=self.departamento.id, nome="Contas a Pagar", slug="contas_a_pagar", ativo=True, ordem=1)
+        self.modulo_relatorios = Modulo(departamento_id=self.departamento.id, nome="Relatorios", slug="relatorios", ativo=True, ordem=2)
         self.centro = CentroCusto(codigo="FIN-01", nome="Administrativo", ativo=True)
         self.fornecedor = SuprimentosFornecedor(
             razao_social="FORNECEDOR RELATORIOS LTDA",
@@ -89,7 +90,7 @@ class FinanceiroRelatoriosContasPagarTestCase(unittest.TestCase):
             limite=Decimal("5000.00"),
             ativo=True,
         )
-        db.session.add_all([self.modulo, self.centro, self.fornecedor, self.cartao])
+        db.session.add_all([self.modulo, self.modulo_relatorios, self.centro, self.fornecedor, self.cartao])
         db.session.commit()
         self.client = self.app.test_client()
 
@@ -110,7 +111,7 @@ class FinanceiroRelatoriosContasPagarTestCase(unittest.TestCase):
     def _liberar(self, visualizar=True, exportar=False):
         permissao = PermissaoUsuarioModulo(
             usuario_id=self.usuario.id,
-            modulo_id=self.modulo.id,
+            modulo_id=self.modulo_relatorios.id,
             pode_visualizar=visualizar,
             pode_criar=True,
             pode_editar=True,
@@ -233,20 +234,25 @@ class FinanceiroRelatoriosContasPagarTestCase(unittest.TestCase):
         self._autenticar()
         self._liberar(exportar=False)
 
-        resposta = self.client.get("/financeiro/contas-a-pagar/relatorios")
+        resposta = self.client.get("/financeiro/relatorios")
         self.assertEqual(resposta.status_code, 200)
         self.assertIn(b"Relatorios operacionais", resposta.data)
+        self.assertIn(b"Financeiro &gt; Relatorios", resposta.data)
 
-        bloqueado = self.client.get("/financeiro/contas-a-pagar/relatorios/exportar")
+        bloqueado = self.client.get("/financeiro/relatorios/exportar")
         self.assertIn(b"Redirecting", bloqueado.data)
 
-        PermissaoUsuarioModulo.query.filter_by(usuario_id=self.usuario.id, modulo_id=self.modulo.id).update({"pode_exportar": True})
+        PermissaoUsuarioModulo.query.filter_by(usuario_id=self.usuario.id, modulo_id=self.modulo_relatorios.id).update({"pode_exportar": True})
         db.session.commit()
-        exportacao = self.client.get("/financeiro/contas-a-pagar/relatorios/exportar?tipo_relatorio=periodo")
+        exportacao = self.client.get("/financeiro/relatorios/exportar?tipo_relatorio=periodo")
         self.assertEqual(exportacao.status_code, 200)
         self.assertIn("text/csv", exportacao.headers["Content-Type"])
         self.assertIn("contas_a_pagar_periodo", exportacao.headers["Content-Disposition"])
         self.assertIn("Contas a pagar por periodo", exportacao.data.decode("utf-8"))
+
+        legado = self.client.get("/financeiro/contas-a-pagar/relatorios?tipo_relatorio=vencidas", follow_redirects=False)
+        self.assertEqual(legado.status_code, 302)
+        self.assertIn("/financeiro/relatorios", legado.headers["Location"])
 
         relatorio = montar_relatorio("periodo", filtros_padrao({"sem_periodo": "1"}))
         csv = gerar_csv_relatorio(relatorio)
@@ -255,6 +261,3 @@ class FinanceiroRelatoriosContasPagarTestCase(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
-
-
