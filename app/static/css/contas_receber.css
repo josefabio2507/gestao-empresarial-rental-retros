@@ -113,3 +113,19 @@
 .contas-receber-table .acoes-botoes {
     min-width: 230px;
 }
+.bulk-actions-bar {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.contas-receber-table-massa {
+    min-width: 1980px;
+}
+
+.contas-receber-lotes-table {
+    min-width: 1040px;
+}

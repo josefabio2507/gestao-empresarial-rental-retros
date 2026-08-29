@@ -863,6 +863,53 @@ class FinanceiroContaReceberTitulo(db.Model):
 
 
 
+class FinanceiroContaReceberLoteBaixa(db.Model):
+    __tablename__ = "financeiro_contas_receber_lotes_baixa"
+
+    id = db.Column(db.Integer, primary_key=True)
+    data_recebimento = db.Column(db.Date, nullable=False, index=True)
+    forma_recebimento = db.Column(db.String(30), nullable=False, index=True)
+    conta_recebimento_descricao = db.Column(db.String(180), nullable=True)
+    observacoes = db.Column(db.Text, nullable=True)
+    comprovante_nome_original = db.Column(db.String(255), nullable=True)
+    comprovante_nome_armazenado = db.Column(db.String(255), nullable=True)
+    comprovante_path = db.Column(db.String(500), nullable=True)
+    comprovante_drive_file_id = db.Column(db.String(255), nullable=True)
+    comprovante_drive_link = db.Column(db.String(500), nullable=True)
+    comprovante_extensao = db.Column(db.String(10), nullable=True)
+    comprovante_tamanho = db.Column(db.Integer, nullable=True)
+    total_titulos = db.Column(db.Integer, nullable=False, default=0)
+    valor_total_recebido = db.Column(db.Numeric(12, 2), nullable=False, default=0)
+    status = db.Column(db.String(20), nullable=False, default="Ativo", index=True)
+    criado_por_usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=True, index=True)
+    cancelado_por_usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=True, index=True)
+    cancelado_em = db.Column(db.DateTime, nullable=True)
+    motivo_cancelamento = db.Column(db.Text, nullable=True)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
+    atualizado_em = db.Column(db.DateTime, default=agora_brasil, onupdate=agora_brasil, nullable=False)
+
+    baixas = db.relationship("FinanceiroContaReceberBaixa", back_populates="lote_baixa", order_by="FinanceiroContaReceberBaixa.id.asc()")
+    criado_por = db.relationship("Usuario", foreign_keys=[criado_por_usuario_id])
+    cancelado_por = db.relationship("Usuario", foreign_keys=[cancelado_por_usuario_id])
+
+    __table_args__ = (
+        db.CheckConstraint("total_titulos >= 0", name="ck_fin_cr_lote_total_titulos"),
+        db.CheckConstraint("valor_total_recebido >= 0", name="ck_fin_cr_lote_valor_total"),
+        db.CheckConstraint("status in ('Ativo', 'Cancelado', 'Estornado')", name="ck_fin_cr_lote_status"),
+        db.CheckConstraint(
+            "forma_recebimento in ('Pix', 'Transferência', 'Depósito', 'Boleto', 'Dinheiro', 'Cartão', 'Outro')",
+            name="ck_fin_cr_lote_forma_recebimento",
+        ),
+    )
+
+    @property
+    def comprovante_disponivel(self):
+        return bool(self.comprovante_path or self.comprovante_drive_file_id)
+
+    def __repr__(self):
+        return f"<FinanceiroContaReceberLoteBaixa {self.id}>"
+
+
 class FinanceiroContaReceberBaixa(db.Model):
     __tablename__ = "financeiro_contas_receber_baixas"
 
@@ -873,6 +920,7 @@ class FinanceiroContaReceberBaixa(db.Model):
         nullable=False,
         index=True,
     )
+    lote_baixa_id = db.Column(db.Integer, db.ForeignKey("financeiro_contas_receber_lotes_baixa.id"), nullable=True, index=True)
     data_recebimento = db.Column(db.Date, nullable=False, index=True)
     valor_recebido = db.Column(db.Numeric(12, 2), nullable=False)
     forma_recebimento = db.Column(db.String(30), nullable=False, index=True)
@@ -894,6 +942,7 @@ class FinanceiroContaReceberBaixa(db.Model):
     atualizado_em = db.Column(db.DateTime, default=agora_brasil, onupdate=agora_brasil, nullable=False)
 
     titulo = db.relationship("FinanceiroContaReceberTitulo", back_populates="baixas")
+    lote_baixa = db.relationship("FinanceiroContaReceberLoteBaixa", back_populates="baixas")
     registrado_por = db.relationship("Usuario", foreign_keys=[registrado_por_usuario_id])
     cancelado_por = db.relationship("Usuario", foreign_keys=[cancelado_por_usuario_id])
 
@@ -908,7 +957,11 @@ class FinanceiroContaReceberBaixa(db.Model):
 
     @property
     def comprovante_disponivel(self):
-        return bool(self.comprovante_path or self.comprovante_drive_file_id)
+        return bool(
+            self.comprovante_path
+            or self.comprovante_drive_file_id
+            or (self.lote_baixa and self.lote_baixa.comprovante_disponivel)
+        )
 
     def __repr__(self):
         return f"<FinanceiroContaReceberBaixa {self.id} titulo={self.titulo_id}>"

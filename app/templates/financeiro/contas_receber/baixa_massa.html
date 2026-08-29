@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% set aba_ativa = "titulos" %}
+
+{% block content %}
+<section class="page page-wide">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Financeiro &gt; Contas a Receber &gt; Títulos a Receber &gt; Baixa em Massa</span>
+            <h1>Baixa em Massa</h1>
+            <p>Conferência dos títulos selecionados antes de registrar o recebimento.</p>
+        </div>
+        <div class="actions"><a class="btn btn-secondary" href="{{ url_for('financeiro_contas_receber.titulos') }}">Voltar</a></div>
+    </div>
+    {% include "financeiro/contas_receber/_menu.html" %}
+
+    <form class="form-card" method="POST" enctype="multipart/form-data" action="{{ url_for('financeiro_contas_receber.baixa_em_massa') }}">
+        <input type="hidden" name="confirmar" value="1">
+        <div class="form-grid">
+            <div class="form-group"><label for="data_recebimento">Data do recebimento</label><input id="data_recebimento" name="data_recebimento" type="date" required></div>
+            <div class="form-group"><label for="forma_recebimento">Forma de recebimento</label><select id="forma_recebimento" name="forma_recebimento" required><option value="">Selecione</option>{% for forma in formas_recebimento %}<option value="{{ forma }}">{{ forma }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="conta_recebimento_descricao">Conta/descrição do recebimento</label><input id="conta_recebimento_descricao" name="conta_recebimento_descricao" placeholder="Ex.: Banco ou caixa"></div>
+            <div class="form-group"><label for="comprovante">Comprovante único</label><input id="comprovante" name="comprovante" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp"></div>
+            <div class="form-group full-span"><label for="observacoes">Observação geral</label><textarea id="observacoes" name="observacoes" rows="3"></textarea></div>
+        </div>
+        <div class="bulk-actions-bar"><span>{{ titulos|length }} títulos selecionados</span><span>Total sugerido: <strong>{{ formatar_moeda_brl(total) }}</strong></span><button class="btn btn-secondary" type="button" id="preencher-saldos">Preencher todos com saldo em aberto</button></div>
+        <div class="listbox-10-linhas contas-receber-listbox">
+            <table class="table contas-receber-table contas-receber-table-massa">
+                <thead><tr><th>ID</th><th>Cliente</th><th>CNPJ/CPF</th><th>Documento</th><th>Nota fiscal</th><th>Vencimento</th><th>Valor original</th><th>Valor já recebido</th><th>Saldo em aberto</th><th>Valor a receber</th><th>Status atual</th><th>Ação</th></tr></thead>
+                <tbody>
+                    {% for titulo in titulos %}
+                    <tr data-linha-titulo>
+                        <td>#{{ titulo.id }}<input type="hidden" name="titulos_ids" value="{{ titulo.id }}"></td>
+                        <td>{{ titulo.cliente_nome_snapshot }}</td>
+                        <td>{{ titulo.cliente_cnpj_cpf_snapshot or '-' }}</td>
+                        <td>{{ titulo.numero_documento or '-' }}</td>
+                        <td>{{ titulo.numero_nota_fiscal or '-' }}</td>
+                        <td>{{ formatar_data_brasil(titulo.data_vencimento) }}</td>
+                        <td>{{ formatar_moeda_brl(titulo.valor_original) }}</td>
+                        <td>{{ formatar_moeda_brl(titulo.valor_recebido) }}</td>
+                        <td>{{ formatar_moeda_brl(titulo.saldo_aberto) }}</td>
+                        <td><input class="valor-receber-massa" name="valor_receber_{{ titulo.id }}" type="number" min="0.01" step="0.01" max="{{ '%.2f'|format(titulo.saldo_aberto) }}" value="{{ '%.2f'|format(titulo.saldo_aberto) }}" data-saldo="{{ '%.2f'|format(titulo.saldo_aberto) }}" required></td>
+                        <td>{{ titulo.status_visual() }}</td>
+                        <td><button class="btn btn-warning remover-linha" type="button">Remover</button></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="form-actions"><button class="btn btn-primary" type="submit">Confirmar baixa em massa</button><a class="btn btn-secondary" href="{{ url_for('financeiro_contas_receber.titulos') }}">Cancelar</a></div>
+    </form>
+</section>
+<script>
+(function () {
+    document.getElementById('preencher-saldos')?.addEventListener('click', () => {
+        document.querySelectorAll('.valor-receber-massa').forEach((input) => { input.value = input.dataset.saldo || input.value; });
+    });
+    document.querySelectorAll('.remover-linha').forEach((botao) => {
+        botao.addEventListener('click', () => botao.closest('[data-linha-titulo]')?.remove());
+    });
+})();
+</script>
+{% endblock %}

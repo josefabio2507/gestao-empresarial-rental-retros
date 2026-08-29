@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% set aba_ativa = "titulos" %}
+
+{% block content %}
+<section class="page page-wide">
+    <div class="top-bar">
+        <div><span class="page-kicker">Financeiro &gt; Contas a Receber &gt; Lotes de Recebimento</span><h1>Lotes de Recebimento</h1><p>Histórico das operações de baixa em massa.</p></div>
+        <div class="actions"><a class="btn btn-secondary" href="{{ url_for('financeiro_contas_receber.titulos') }}">Títulos a Receber</a></div>
+    </div>
+    {% include "financeiro/contas_receber/_menu.html" %}
+    <div class="table-card"><div class="listbox-10-linhas contas-receber-listbox"><table class="table contas-receber-lotes-table"><thead><tr><th>ID</th><th>Data</th><th>Forma</th><th>Quantidade</th><th>Valor total</th><th>Status</th><th>Usuário</th><th>Ações</th></tr></thead><tbody>{% for lote in lotes %}<tr><td>#{{ lote.id }}</td><td>{{ formatar_data_brasil(lote.data_recebimento) }}</td><td>{{ lote.forma_recebimento }}</td><td>{{ lote.total_titulos }}</td><td>{{ formatar_moeda_brl(lote.valor_total_recebido) }}</td><td><span class="badge {{ 'badge-success' if lote.status == 'Ativo' else 'badge-warning' }}">{{ lote.status }}</span></td><td>{{ lote.criado_por.nome if lote.criado_por else '-' }}</td><td><a class="btn btn-secondary" href="{{ url_for('financeiro_contas_receber.lote_detalhe', lote_id=lote.id) }}">Detalhe</a></td></tr>{% else %}<tr><td class="empty-state" colspan="8">Nenhum lote de recebimento encontrado.</td></tr>{% endfor %}</tbody></table></div></div>
+</section>
+{% endblock %}

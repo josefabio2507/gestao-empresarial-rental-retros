@@ -8,6 +8,7 @@ from app.extensions import db
 from app.models import (
     Departamento,
     FinanceiroContaReceberBaixa,
+    FinanceiroContaReceberLoteBaixa,
     FinanceiroContaReceberTitulo,
     LogAcesso,
     Modulo,
@@ -19,6 +20,7 @@ from app.services.financeiro_contas_receber_service import (
     cancelar_recebimento_titulo,
     gerar_dashboard,
     listar_titulos_receber,
+    registrar_recebimento_em_massa,
     registrar_recebimento_titulo,
     salvar_titulo_receber,
 )
@@ -343,6 +345,7 @@ class FinanceiroContasReceberTestCase(unittest.TestCase):
         self.assertEqual(200, download.status_code)
         self.assertEqual(b"comprovante teste", download.data)
 
+
         dashboard = self.client.get("/financeiro/contas-a-receber/dashboard?mes=2026-08")
         self.assertEqual(200, dashboard.status_code)
         self.assertIn("Soma dos recebimentos ativos registrados dentro do mês selecionado.".encode(), dashboard.data)
@@ -369,5 +372,95 @@ class FinanceiroContasReceberTestCase(unittest.TestCase):
         self.assertEqual(302, resposta.status_code)
         self.assertIn("/acesso-negado", resposta.headers["Location"])
 
+
+    def test_baixa_em_massa_cria_lote_baixas_e_recalcula_status(self):
+        salvar_titulo_receber(self._dados_titulo(valor_recebido="0", numero_documento="DOC-M1", valor_original="1000.00", valor_desconto="0", valor_acrescimo="0", valor_juros_multa="0"), usuario=self.admin)
+        salvar_titulo_receber(self._dados_titulo(valor_recebido="0", numero_documento="DOC-M2", valor_original="800.00", valor_desconto="0", valor_acrescimo="0", valor_juros_multa="0"), usuario=self.admin)
+        titulos = FinanceiroContaReceberTitulo.query.order_by(FinanceiroContaReceberTitulo.id).all()
+
+        sucesso, mensagem, lote = registrar_recebimento_em_massa(
+            {
+                "titulos_ids": [str(titulos[0].id), str(titulos[1].id)],
+                "data_recebimento": "2026-08-29",
+                "forma_recebimento": "Pix",
+                "conta_recebimento_descricao": "Banco teste",
+                "observacoes": "Lote teste",
+                f"valor_receber_{titulos[0].id}": "1000.00",
+                f"valor_receber_{titulos[1].id}": "300.00",
+            },
+            usuario=self.admin,
+        )
+
+        self.assertTrue(sucesso)
+        self.assertEqual("Recebimento em massa registrado com sucesso.", mensagem)
+        self.assertEqual(2, lote.total_titulos)
+        self.assertEqual(Decimal("1300.00"), lote.valor_total_recebido)
+        self.assertEqual(2, FinanceiroContaReceberBaixa.query.filter_by(lote_baixa_id=lote.id).count())
+        self.assertEqual("Recebido", titulos[0].status)
+        self.assertEqual("Recebido parcialmente", titulos[1].status)
+        self.assertEqual(Decimal("500.00"), titulos[1].saldo_aberto)
+
+    def test_baixa_em_massa_bloqueia_inelegivel_e_valor_acima_do_saldo(self):
+        salvar_titulo_receber(self._dados_titulo(valor_recebido="0", numero_documento="DOC-M1", valor_original="1000.00", valor_desconto="0", valor_acrescimo="0", valor_juros_multa="0"), usuario=self.admin)
+        salvar_titulo_receber(self._dados_titulo(valor_recebido="0", numero_documento="DOC-M2", status="Cancelado", valor_original="800.00", valor_desconto="0", valor_acrescimo="0", valor_juros_multa="0"), usuario=self.admin)
+        titulos = FinanceiroContaReceberTitulo.query.order_by(FinanceiroContaReceberTitulo.id).all()
+
+        sucesso, mensagem, _ = registrar_recebimento_em_massa({"titulos_ids": [str(titulos[1].id)], "data_recebimento": "2026-08-29", "forma_recebimento": "Pix", f"valor_receber_{titulos[1].id}": "100.00"}, usuario=self.admin)
+        self.assertFalse(sucesso)
+        self.assertEqual("Um ou mais títulos não estão elegíveis para recebimento.", mensagem)
+
+        sucesso, mensagem, _ = registrar_recebimento_em_massa({"titulos_ids": [str(titulos[0].id)], "data_recebimento": "2026-08-29", "forma_recebimento": "Pix", f"valor_receber_{titulos[0].id}": "1000.01"}, usuario=self.admin)
+        self.assertFalse(sucesso)
+        self.assertEqual("O valor informado excede o saldo de um dos títulos.", mensagem)
+
+    def test_rotas_baixa_em_massa_lote_comprovante_e_estorno(self):
+        self._autenticar(self.admin)
+        salvar_titulo_receber(self._dados_titulo(valor_recebido="0", numero_documento="DOC-M1", valor_original="1000.00", valor_desconto="0", valor_acrescimo="0", valor_juros_multa="0"), usuario=self.admin)
+        salvar_titulo_receber(self._dados_titulo(valor_recebido="0", numero_documento="DOC-M2", valor_original="800.00", valor_desconto="0", valor_acrescimo="0", valor_juros_multa="0"), usuario=self.admin)
+        titulos = FinanceiroContaReceberTitulo.query.order_by(FinanceiroContaReceberTitulo.id).all()
+
+        selecao = self.client.post("/financeiro/contas-a-receber/baixa-em-massa", data={"titulos_ids": [str(titulos[0].id), str(titulos[1].id)]})
+        self.assertEqual(200, selecao.status_code)
+        self.assertIn(b"Baixa em Massa", selecao.data)
+        self.assertIn(b"listbox-10-linhas", selecao.data)
+
+        resposta = self.client.post(
+            "/financeiro/contas-a-receber/baixa-em-massa",
+            data={
+                "confirmar": "1",
+                "titulos_ids": [str(titulos[0].id), str(titulos[1].id)],
+                "data_recebimento": "2026-08-29",
+                "forma_recebimento": "Pix",
+                "conta_recebimento_descricao": "Banco teste",
+                "observacoes": "Lote rota",
+                f"valor_receber_{titulos[0].id}": "1000.00",
+                f"valor_receber_{titulos[1].id}": "300.00",
+                "comprovante": (io.BytesIO(b"comprovante lote"), "lote.pdf"),
+            },
+            content_type="multipart/form-data",
+            follow_redirects=True,
+        )
+        self.assertEqual(200, resposta.status_code)
+        self.assertIn("Recebimento em massa registrado com sucesso.".encode(), resposta.data)
+        self.assertIn("Títulos vinculados ao lote".encode(), resposta.data)
+        self.assertIn(b"listbox-10-linhas", resposta.data)
+        lote = FinanceiroContaReceberLoteBaixa.query.one()
+        download = self.client.get(f"/financeiro/contas-a-receber/lotes/{lote.id}/comprovante")
+        self.assertEqual(200, download.status_code)
+        self.assertEqual(b"comprovante lote", download.data)
+
+        com_comprovante = self.client.get("/financeiro/contas-a-receber/titulos?comprovante=com")
+        self.assertEqual(200, com_comprovante.status_code)
+        self.assertIn(b"DOC-M1", com_comprovante.data)
+
+        dashboard = self.client.get("/financeiro/contas-a-receber/dashboard?mes=2026-08")
+        self.assertIn("Soma das baixas ativas vinculadas a lotes de recebimento".encode(), dashboard.data)
+        self.assertIn(b"Lotes de recebimento no", dashboard.data)
+
+        estorno = self.client.post(f"/financeiro/contas-a-receber/lotes/{lote.id}/estornar", data={"motivo_cancelamento": "Erro no lote"}, follow_redirects=True)
+        self.assertEqual(200, estorno.status_code)
+        self.assertIn("Lote de recebimento estornado com sucesso.".encode(), estorno.data)
+        self.assertEqual("Estornado", FinanceiroContaReceberLoteBaixa.query.get(lote.id).status)
+        self.assertEqual(2, FinanceiroContaReceberBaixa.query.filter_by(status="Estornada").count())
 if __name__ == "__main__":
     unittest.main()

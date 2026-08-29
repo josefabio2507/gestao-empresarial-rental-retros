@@ -6,19 +6,26 @@ from app.services.financeiro_contas_receber_service import (
     ORIGENS_LANCAMENTO,
     STATUS_TITULOS_RECEBER,
     buscar_baixa_recebimento_por_id,
+    buscar_lote_recebimento_por_id,
     buscar_centros_custo_ativos,
     buscar_equipes_ativas,
     buscar_titulo_por_id,
+    cancelar_lote_recebimento,
     cancelar_recebimento_titulo,
     cancelar_titulo_receber,
+    caminho_comprovante_lote_recebimento,
     caminho_comprovante_recebimento,
     formatar_data_brasil,
     formatar_moeda_brl,
     gerar_dashboard,
+    listar_lotes_recebimento,
     listar_titulos_receber,
+    preparar_baixa_em_massa,
     recalcular_recebimento_titulo,
+    registrar_recebimento_em_massa,
     registrar_recebimento_titulo,
     salvar_titulo_receber,
+    titulo_elegivel_recebimento,
 )
 from app.services.logs_service import registrar_log
 from app.services.permissoes_service import usuario_tem_permissao
@@ -91,6 +98,8 @@ def titulos():
         pode_editar=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "editar"),
         pode_cancelar=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "excluir"),
         pode_registrar_recebimento=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "editar"),
+        pode_baixa_em_massa=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "editar"),
+        titulo_elegivel_recebimento=titulo_elegivel_recebimento,
     )
 
 
@@ -143,6 +152,8 @@ def detalhe(titulo_id):
         pode_editar=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "editar"),
         pode_cancelar=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "excluir"),
         pode_registrar_recebimento=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "editar"),
+        pode_baixa_em_massa=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "editar"),
+        titulo_elegivel_recebimento=titulo_elegivel_recebimento,
         pode_ver_recebimentos=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "visualizar"),
         pode_baixar_comprovante=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "visualizar"),
         pode_estornar_recebimento=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "excluir"),
@@ -207,6 +218,100 @@ def cancelar(titulo_id):
     return redirect(url_for("financeiro_contas_receber.detalhe", titulo_id=titulo.id))
 
 
+
+
+@financeiro_contas_receber_bp.route("/baixa-em-massa", methods=["GET", "POST"])
+@login_required
+def baixa_em_massa():
+    if not _permitido("editar"):
+        flash("Você não possui permissão para registrar recebimento em massa.", "danger")
+        return redirect(url_for("main.acesso_negado"))
+
+    if request.method == "POST" and request.form.get("confirmar") == "1":
+        arquivo = request.files.get("comprovante")
+        sucesso, mensagem, lote = registrar_recebimento_em_massa(request.form, arquivo=arquivo, usuario=current_user)
+        flash(mensagem, "success" if sucesso else "danger")
+        if sucesso:
+            registrar_log("financeiro_contas_receber_baixa_em_massa_confirmada", f"Baixa em massa registrada. Lote: {lote.id}.")
+            return redirect(url_for("financeiro_contas_receber.lote_detalhe", lote_id=lote.id))
+
+    ids = request.form.getlist("titulos_ids") if request.method == "POST" else request.args.getlist("titulos_ids")
+    if not ids and request.args.get("ids"):
+        ids = [item for item in request.args.get("ids", "").split(",") if item]
+
+    titulos, total = preparar_baixa_em_massa(ids)
+    if not titulos:
+        flash("Nenhum título selecionado.", "warning")
+        return redirect(url_for("financeiro_contas_receber.titulos"))
+
+    return render_template(
+        "financeiro/contas_receber/baixa_massa.html",
+        titulos=titulos,
+        total=total,
+        formas_recebimento=FORMAS_RECEBIMENTO,
+        formatar_moeda_brl=formatar_moeda_brl,
+        formatar_data_brasil=formatar_data_brasil,
+    )
+
+
+@financeiro_contas_receber_bp.route("/lotes")
+@login_required
+def lotes():
+    if not _permitido("visualizar"):
+        return redirect(url_for("main.acesso_negado"))
+    return render_template(
+        "financeiro/contas_receber/lotes.html",
+        lotes=listar_lotes_recebimento(),
+        formatar_moeda_brl=formatar_moeda_brl,
+        formatar_data_brasil=formatar_data_brasil,
+    )
+
+
+@financeiro_contas_receber_bp.route("/lotes/<int:lote_id>")
+@login_required
+def lote_detalhe(lote_id):
+    if not _permitido("visualizar"):
+        return redirect(url_for("main.acesso_negado"))
+    lote = buscar_lote_recebimento_por_id(lote_id)
+    if not lote:
+        flash("Lote de recebimento não encontrado.", "warning")
+        return redirect(url_for("financeiro_contas_receber.lotes"))
+    return render_template(
+        "financeiro/contas_receber/lote_detalhe.html",
+        lote=lote,
+        formatar_moeda_brl=formatar_moeda_brl,
+        formatar_data_brasil=formatar_data_brasil,
+        pode_estornar=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "excluir"),
+        pode_baixar_comprovante=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "visualizar"),
+    )
+
+
+@financeiro_contas_receber_bp.route("/lotes/<int:lote_id>/estornar", methods=["POST"])
+@login_required
+def lote_estornar(lote_id):
+    if not _permitido("excluir"):
+        return redirect(url_for("main.acesso_negado"))
+    lote = buscar_lote_recebimento_por_id(lote_id)
+    sucesso, mensagem = cancelar_lote_recebimento(lote, request.form.get("motivo_cancelamento"), usuario=current_user)
+    flash(mensagem, "success" if sucesso else "danger")
+    return redirect(url_for("financeiro_contas_receber.lote_detalhe", lote_id=lote_id) if lote else url_for("financeiro_contas_receber.lotes"))
+
+
+@financeiro_contas_receber_bp.route("/lotes/<int:lote_id>/comprovante")
+@login_required
+def lote_comprovante(lote_id):
+    if not _permitido("visualizar"):
+        return redirect(url_for("main.acesso_negado"))
+    lote = buscar_lote_recebimento_por_id(lote_id)
+    caminho = caminho_comprovante_lote_recebimento(lote)
+    if not caminho:
+        abort(404)
+    registrar_log("financeiro_contas_receber_lote_comprovante_download", f"Download de comprovante do lote. Lote: {lote.id}.")
+    return send_file(
+        caminho,
+        as_attachment=True,
+        download_name=lote.comprovante_nome_original or lote.comprovante_nome_armazenado,
+    )
 @financeiro_contas_receber_bp.route("/<int:titulo_id>/recebimentos/novo", methods=["GET", "POST"])
 @login_required
 def registrar_recebimento(titulo_id):
@@ -281,5 +386,5 @@ def baixar_comprovante(baixa_id):
     return send_file(
         caminho,
         as_attachment=True,
-        download_name=baixa.comprovante_nome_original or baixa.comprovante_nome_armazenado,
+        download_name=baixa.comprovante_nome_original or baixa.comprovante_nome_armazenado or (baixa.lote_baixa.comprovante_nome_original if baixa.lote_baixa else None) or (baixa.lote_baixa.comprovante_nome_armazenado if baixa.lote_baixa else None),
     )
