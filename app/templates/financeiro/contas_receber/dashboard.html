@@ -38,12 +38,17 @@
         <article class="stat-card dashboard-info-card" title="Soma dos títulos com vencimento dentro do mês selecionado, exceto cancelados e estornados."><span>Total a receber no mês</span><strong>{{ formatar_moeda_brl(dados.cards.total_mes) }}</strong></article>
         <article class="stat-card dashboard-info-card" title="Soma dos saldos ainda não recebidos dos títulos ativos."><span>Total em aberto</span><strong>{{ formatar_moeda_brl(dados.cards.total_aberto) }}</strong></article>
         <article class="stat-card dashboard-info-card" title="Soma dos títulos com vencimento anterior à data atual e saldo em aberto."><span>Total vencido</span><strong>{{ formatar_moeda_brl(dados.cards.total_vencido) }}</strong></article>
+        <article class="stat-card dashboard-info-card" title="Soma dos títulos vencidos classificados como inadimplentes ou com cobrança em aberto."><span>Total inadimplente</span><strong>{{ formatar_moeda_brl(dados.cards.total_inadimplente) }}</strong></article>
+        <article class="stat-card dashboard-info-card" title="Soma dos títulos em aberto com vencimento na data atual."><span>Total a vencer hoje</span><strong>{{ formatar_moeda_brl(dados.cards.total_vence_hoje) }}</strong></article>
         <article class="stat-card dashboard-info-card" title="Soma dos títulos em aberto com vencimento nos próximos 7 dias."><span>Próximos 7 dias</span><strong>{{ formatar_moeda_brl(dados.cards.total_7_dias) }}</strong></article>
         <article class="stat-card dashboard-info-card" title="Soma dos títulos em aberto com vencimento nos próximos 30 dias."><span>Próximos 30 dias</span><strong>{{ formatar_moeda_brl(dados.cards.total_30_dias) }}</strong></article>
         <article class="stat-card dashboard-info-card" title="Títulos cadastrados que ainda aguardam emissão ou confirmação de nota fiscal."><span>Aguardando faturamento</span><strong>{{ formatar_moeda_brl(dados.cards.total_aguardando_faturamento) }}</strong></article>
         <article class="stat-card dashboard-info-card" title="Títulos com status faturado ou nota fiscal informada."><span>Total faturado</span><strong>{{ formatar_moeda_brl(dados.cards.total_faturado) }}</strong></article>
         <article class="stat-card dashboard-info-card" title="Quantidade de títulos com saldo em aberto e status ativo."><span>Títulos em aberto</span><strong>{{ dados.cards.quantidade_abertos }}</strong></article>
+        <article class="stat-card dashboard-info-card" title="Quantidade de títulos totalmente recebidos, desconsiderando cancelados e estornados."><span>Títulos recebidos</span><strong>{{ dados.cards.quantidade_recebidos }}</strong></article>
+        <article class="stat-card dashboard-info-card" title="Quantidade de títulos totalmente recebidos, desconsiderando cancelados e estornados."><span>Títulos recebidos</span><strong>{{ dados.cards.quantidade_recebidos }}</strong></article>
         <article class="stat-card dashboard-info-card" title="Quantidade de títulos vencidos com saldo em aberto."><span>Títulos vencidos</span><strong>{{ dados.cards.quantidade_vencidos }}</strong></article>
+        <article class="stat-card dashboard-info-card" title="Quantidade de títulos vencidos com saldo em aberto acompanhados na inadimplência."><span>Títulos inadimplentes</span><strong>{{ dados.cards.quantidade_inadimplentes }}</strong></article>
         <article class="stat-card dashboard-info-card" title="Quantidade de títulos totalmente recebidos dentro do mês selecionado."><span>Títulos recebidos no mês</span><strong>{{ dados.cards.titulos_recebidos_mes }}</strong></article>
         <article class="stat-card dashboard-info-card" title="Títulos com recebimento registrado, mas sem comprovante anexado."><span>Títulos sem comprovante</span><strong>{{ dados.cards.titulos_sem_comprovante }}</strong></article>
         <article class="stat-card dashboard-info-card" title="Saldo geral em aberto, desconsiderando títulos cancelados, estornados e recebidos."><span>Saldo geral em aberto</span><strong>{{ formatar_moeda_brl(dados.cards.saldo_geral_aberto) }}</strong></article>
@@ -53,6 +58,12 @@
         <article class="stat-card dashboard-info-card" title="Soma do valor das notas emitidas que ainda não geraram Contas a Receber."><span>Valor sem título financeiro</span><strong>{{ formatar_moeda_brl(dados.cards.valor_notas_sem_titulo) }}</strong></article>
         <article class="stat-card dashboard-info-card" title="Quantidade de notas emitidas já vinculadas a títulos a receber."><span>Notas vinculadas</span><strong>{{ dados.cards.notas_vinculadas }}</strong></article>
         <article class="stat-card dashboard-info-card" title="Quantidade de títulos a receber originados de notas fiscais emitidas."><span>Títulos por nota emitida</span><strong>{{ dados.cards.titulos_gerados_por_nota }}</strong></article>
+        <article class="stat-card dashboard-info-card" title="Soma dos títulos a receber gerados ou vinculados a notas fiscais emitidas."><span>Valor originado de notas</span><strong>{{ formatar_moeda_brl(dados.cards.valor_originado_notas) }}</strong></article>
+        <article class="stat-card dashboard-info-card" title="Soma dos títulos a receber vinculados a contratos de clientes."><span>Valor originado de contratos</span><strong>{{ formatar_moeda_brl(dados.cards.valor_originado_contratos) }}</strong></article>
+        <article class="stat-card dashboard-info-card" title="Soma dos títulos a receber gerados a partir de medições de contratos."><span>Valor originado de medições</span><strong>{{ formatar_moeda_brl(dados.cards.valor_originado_medicoes) }}</strong></article>
+        <article class="stat-card dashboard-info-card" title="Soma dos títulos a receber gerados ou vinculados a notas fiscais emitidas."><span>Valor originado de notas</span><strong>{{ formatar_moeda_brl(dados.cards.valor_originado_notas) }}</strong></article>
+        <article class="stat-card dashboard-info-card" title="Soma dos títulos a receber vinculados a contratos de clientes."><span>Valor originado de contratos</span><strong>{{ formatar_moeda_brl(dados.cards.valor_originado_contratos) }}</strong></article>
+        <article class="stat-card dashboard-info-card" title="Soma dos títulos a receber gerados a partir de medições de contratos."><span>Valor originado de medições</span><strong>{{ formatar_moeda_brl(dados.cards.valor_originado_medicoes) }}</strong></article>
         <article class="stat-card dashboard-info-card" title="Quantidade de contratos de clientes com status ativo."><span>Contratos ativos</span><strong>{{ dados.cards.contratos_ativos }}</strong></article>
         <article class="stat-card dashboard-info-card" title="Soma do valor contratual dos contratos ativos cadastrados."><span>Valor contratual ativo</span><strong>{{ formatar_moeda_brl(dados.cards.valor_contratual_ativo) }}</strong></article>
         <article class="stat-card dashboard-info-card" title="Quantidade de medições ainda pendentes de geração financeira ou somente vinculadas à nota emitida."><span>Medições pendentes</span><strong>{{ dados.cards.medicoes_pendentes }}</strong></article>
@@ -68,7 +79,8 @@
             ('Próximos vencimentos', dados.proximos_vencimentos),
             ('Recebíveis vencidos', dados.recebiveis_vencidos),
             ('Maiores valores em aberto', dados.maiores_abertos),
-            ('Recebimentos recentes', dados.recebimentos_recentes)
+            ('Recebimentos recentes', dados.recebimentos_recentes),
+            ('Títulos inadimplentes', dados.titulos_inadimplentes)
         ] %}
         {% for titulo_tabela, itens in tabelas %}
             <section class="table-card">
@@ -152,6 +164,39 @@
                             <tr><td>{{ medicao.numero_medicao }}</td><td>{{ medicao.contrato.numero_contrato }}</td><td>{{ medicao.contrato.cliente_nome_snapshot }}</td><td>{{ formatar_moeda_brl(medicao.valor_liquido_medido) }}</td><td>{{ medicao.status_financeiro }}</td></tr>
                         {% else %}
                             <tr><td class="empty-state" colspan="5">Nenhuma medição cadastrada.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+
+        <section class="table-card">
+            <h2>Notas emitidas sem título</h2>
+            <div class="listbox-10-linhas contas-receber-listbox">
+                <table class="table contas-receber-table-mini">
+                    <thead><tr><th>Número</th><th>Cliente</th><th>Emissão</th><th>Valor</th><th>Status financeiro</th></tr></thead>
+                    <tbody>
+                        {% for nota in dados.notas_sem_titulo_recentes %}
+                            <tr><td>{{ nota.numero_nota }}</td><td>{{ nota.cliente_nome_snapshot }}</td><td>{{ formatar_data_brasil(nota.data_emissao) }}</td><td>{{ formatar_moeda_brl(nota.valor_total) }}</td><td>{{ nota.status_financeiro }}</td></tr>
+                        {% else %}
+                            <tr><td class="empty-state" colspan="5">Nenhuma nota emitida sem título.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="table-card">
+            <h2>Medições aprovadas sem título</h2>
+            <div class="listbox-10-linhas contas-receber-listbox">
+                <table class="table contas-receber-table-mini">
+                    <thead><tr><th>Medição</th><th>Contrato</th><th>Cliente</th><th>Data</th><th>Valor</th></tr></thead>
+                    <tbody>
+                        {% for medicao in dados.medicoes_aprovadas_sem_titulo %}
+                            <tr><td>{{ medicao.numero_medicao }}</td><td>{{ medicao.contrato.numero_contrato if medicao.contrato else '-' }}</td><td>{{ medicao.contrato.cliente_nome_snapshot if medicao.contrato else '-' }}</td><td>{{ formatar_data_brasil(medicao.data_medicao) }}</td><td>{{ formatar_moeda_brl(medicao.valor_liquido_medido) }}</td></tr>
+                        {% else %}
+                            <tr><td class="empty-state" colspan="5">Nenhuma medição aprovada sem título.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>

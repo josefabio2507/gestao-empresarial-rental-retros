@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% set aba_ativa = "inadimplencia" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Financeiro &gt; Contas a Receber &gt; Inadimplência &gt; Registrar acompanhamento</span>
+            <h1>Registrar acompanhamento</h1>
+            <p>Título #{{ titulo.id }} · {{ titulo.cliente_nome_snapshot }}</p>
+        </div>
+        <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_receber.detalhe', titulo_id=titulo.id) }}">Voltar</a>
+    </div>
+
+    {% include "financeiro/contas_receber/_menu.html" %}
+
+    <div class="details-card">
+        <div class="detail-grid">
+            <section><h3>Título</h3><p><strong>Documento:</strong> {{ titulo.numero_documento or '-' }}</p><p><strong>Vencimento:</strong> {{ formatar_data_brasil(titulo.data_vencimento) }}</p><p><strong>Status:</strong> {{ titulo.status_visual() }}</p></section>
+            <section><h3>Valores</h3><p><strong>Valor original:</strong> {{ formatar_moeda_brl(titulo.valor_original) }}</p><p><strong>Valor recebido:</strong> {{ formatar_moeda_brl(titulo.valor_recebido) }}</p><p><strong>Saldo em aberto:</strong> {{ formatar_moeda_brl(titulo.saldo_aberto) }}</p></section>
+        </div>
+    </div>
+
+    <form class="form-card" method="POST">
+        <div class="form-grid">
+            <div class="form-group"><label for="data_contato">Data do contato</label><input id="data_contato" name="data_contato" type="date" required></div>
+            <div class="form-group"><label for="tipo_contato">Tipo de contato</label><select id="tipo_contato" name="tipo_contato" required><option value="">Selecione</option>{% for item in tipos_contato %}<option value="{{ item }}">{{ item }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="responsavel_usuario_id">Responsável</label><select id="responsavel_usuario_id" name="responsavel_usuario_id"><option value="">Usuário atual</option>{% for usuario in usuarios %}<option value="{{ usuario.id }}">{{ usuario.nome }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="status_cobranca">Status de cobrança</label><select id="status_cobranca" name="status_cobranca" required>{% for item in status_cobranca %}<option value="{{ item }}">{{ item }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="previsao_pagamento">Previsão de pagamento</label><input id="previsao_pagamento" name="previsao_pagamento" type="date"></div>
+            <div class="form-group"><label for="data_proxima_acao">Data da próxima ação</label><input id="data_proxima_acao" name="data_proxima_acao" type="date"></div>
+            <div class="form-group full-span"><label for="proxima_acao">Próxima ação</label><input id="proxima_acao" name="proxima_acao" data-uppercase></div>
+            <div class="form-group full-span"><label for="observacao">Observação</label><textarea id="observacao" name="observacao" rows="4" data-uppercase></textarea></div>
+        </div>
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Registrar acompanhamento</button>
+            <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_receber.detalhe', titulo_id=titulo.id) }}">Cancelar</a>
+        </div>
+    </form>
+</section>
+{% endblock %}

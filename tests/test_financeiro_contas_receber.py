@@ -8,6 +8,7 @@ from app.extensions import db
 from app.models import (
     Departamento,
     FinanceiroContaReceberBaixa,
+    FinanceiroContaReceberCobranca,
     FinanceiroContaReceberLoteBaixa,
     FinanceiroContaReceberTitulo,
     FinanceiroContratoCliente,
@@ -34,6 +35,13 @@ from app.services.financeiro_contas_receber_service import (
     vincular_medicao_a_nota,
     vincular_medicao_a_titulo,
     vincular_nota_a_titulo,
+)
+from app.services.financeiro_contas_receber_relatorios_service import (
+    cancelar_cobranca_titulo,
+    filtros_padrao_cr,
+    listar_inadimplencia,
+    montar_relatorio_cr,
+    salvar_cobranca_titulo,
 )
 
 
@@ -90,7 +98,14 @@ class FinanceiroContasReceberTestCase(unittest.TestCase):
             ativo=True,
             ordem=2,
         )
-        db.session.add(self.modulo)
+        self.modulo_relatorios = Modulo(
+            departamento_id=self.departamento.id,
+            nome="Relatorios",
+            slug="relatorios",
+            ativo=True,
+            ordem=3,
+        )
+        db.session.add_all([self.modulo, self.modulo_relatorios])
         db.session.commit()
         self.client = self.app.test_client()
 
@@ -112,6 +127,22 @@ class FinanceiroContasReceberTestCase(unittest.TestCase):
             pode_criar=acoes.get("criar", False),
             pode_editar=acoes.get("editar", False),
             pode_excluir=acoes.get("cancelar", False),
+            ativo=True,
+        )
+        permissao.garantir_visualizacao()
+        db.session.add(permissao)
+        db.session.commit()
+
+
+    def _liberar_relatorios(self, exportar=False):
+        permissao = PermissaoUsuarioModulo(
+            usuario_id=self.usuario.id,
+            modulo_id=self.modulo_relatorios.id,
+            pode_visualizar=True,
+            pode_criar=True,
+            pode_editar=True,
+            pode_excluir=False,
+            pode_exportar=exportar,
             ativo=True,
         )
         permissao.garantir_visualizacao()
@@ -730,6 +761,89 @@ class FinanceiroContasReceberTestCase(unittest.TestCase):
         self.assertIn("Contratos ativos".encode("utf-8"), dashboard.data)
         self.assertIn("Medições pendentes".encode("utf-8"), dashboard.data)
         self.assertIn(b"title=", dashboard.data)
+
+    def test_inadimplencia_registra_historico_cobranca_e_cancela(self):
+        ontem = (date.today() - timedelta(days=5)).isoformat()
+        sucesso, _, titulo, _ = salvar_titulo_receber(self._dados_titulo(valor_recebido="0", data_vencimento=ontem), usuario=self.admin)
+        self.assertTrue(sucesso)
+
+        inadimplentes = listar_inadimplencia({"sem_periodo": "1"})
+        self.assertEqual(1, len(inadimplentes))
+        self.assertEqual(5, inadimplentes[0]["dias_atraso"])
+
+        sucesso, mensagem, cobranca = salvar_cobranca_titulo(
+            titulo,
+            {
+                "data_contato": date.today().isoformat(),
+                "tipo_contato": "WhatsApp",
+                "status_cobranca": "Cobrança enviada",
+                "previsao_pagamento": (date.today() + timedelta(days=2)).isoformat(),
+                "observacao": "Cliente acionado",
+                "proxima_acao": "Retornar contato",
+                "data_proxima_acao": (date.today() + timedelta(days=1)).isoformat(),
+            },
+            usuario=self.admin,
+        )
+        self.assertTrue(sucesso, mensagem)
+        self.assertEqual("Acompanhamento de cobrança registrado com sucesso.", mensagem)
+        self.assertEqual("Cobrança enviada", cobranca.status_cobranca)
+        self.assertEqual(1, FinanceiroContaReceberCobranca.query.count())
+
+        sucesso, mensagem = cancelar_cobranca_titulo(cobranca, "Registro em duplicidade", usuario=self.admin)
+        self.assertTrue(sucesso, mensagem)
+        self.assertEqual("Cancelado", cobranca.status)
+        self.assertEqual(1, FinanceiroContaReceberCobranca.query.count())
+
+    def test_rotas_inadimplencia_cobranca_relatorios_cr_e_exportacao(self):
+        self._liberar(visualizar=True, criar=True, editar=True, cancelar=True)
+        self._liberar_relatorios(exportar=True)
+        self._autenticar(self.usuario)
+        ontem = (date.today() - timedelta(days=3)).isoformat()
+        sucesso, _, titulo, _ = salvar_titulo_receber(self._dados_titulo(valor_recebido="0", data_vencimento=ontem), usuario=self.admin)
+        self.assertTrue(sucesso)
+
+        lista = self.client.get("/financeiro/contas-a-receber/inadimplencia")
+        self.assertEqual(200, lista.status_code)
+        self.assertIn("Inadimplência".encode("utf-8"), lista.data)
+        self.assertIn(b"listbox-10-linhas", lista.data)
+        self.assertIn(b"Registrar acompanhamento", lista.data)
+
+        form = self.client.get(f"/financeiro/contas-a-receber/{titulo.id}/cobrancas/nova")
+        self.assertEqual(200, form.status_code)
+        self.assertIn(b"Registrar acompanhamento", form.data)
+
+        post = self.client.post(
+            f"/financeiro/contas-a-receber/{titulo.id}/cobrancas/nova",
+            data={"data_contato": date.today().isoformat(), "tipo_contato": "E-mail", "status_cobranca": "Aguardando retorno", "observacao": "Teste"},
+            follow_redirects=True,
+        )
+        self.assertEqual(200, post.status_code)
+        self.assertIn("Acompanhamento de cobrança registrado com sucesso.".encode("utf-8"), post.data)
+        self.assertIn("Histórico de Cobrança".encode("utf-8"), post.data)
+        self.assertIn(b"listbox-10-linhas", post.data)
+
+        relatorio = self.client.get("/financeiro/relatorios?escopo=contas_receber&tipo_relatorio=cr_inadimplencia&sem_periodo=1")
+        self.assertEqual(200, relatorio.status_code)
+        self.assertIn("Financeiro &gt; Relatórios &gt; Contas a Receber".encode("utf-8"), relatorio.data)
+        self.assertIn(b"listbox-10-linhas", relatorio.data)
+
+        exportacao = self.client.get("/financeiro/relatorios/exportar?escopo=contas_receber&tipo_relatorio=cr_inadimplencia&sem_periodo=1")
+        self.assertEqual(200, exportacao.status_code)
+        self.assertIn("text/csv", exportacao.headers["Content-Type"])
+        self.assertIn("contas_a_receber_inadimplencia", exportacao.headers["Content-Disposition"])
+        self.assertIn("Inadimpl", exportacao.data.decode("utf-8"))
+
+    def test_relatorios_cr_cobrem_tipos_minimos(self):
+        hoje = date.today()
+        salvar_titulo_receber(self._dados_titulo(numero_documento="DOC-CR-1", valor_recebido="0", data_vencimento=(hoje - timedelta(days=2)).isoformat()), usuario=self.admin)
+        salvar_titulo_receber(self._dados_titulo(numero_documento="DOC-CR-2", valor_recebido="0", data_vencimento=(hoje + timedelta(days=10)).isoformat(), origem_lancamento="Medição"), usuario=self.admin)
+        titulo = FinanceiroContaReceberTitulo.query.filter_by(numero_documento="DOC-CR-2").one()
+        registrar_recebimento_titulo(titulo, {"data_recebimento": hoje.isoformat(), "valor_recebido": "100.00", "forma_recebimento": "Pix"}, usuario=self.admin)
+        filtros = filtros_padrao_cr({"sem_periodo": "1"})
+        for tipo in ["cr_periodo", "cr_vencidos", "cr_a_vencer", "cr_recebimentos", "cr_cliente", "cr_origem", "cr_sem_comprovante", "cr_inadimplencia", "cr_lotes"]:
+            relatorio = montar_relatorio_cr(tipo, filtros)
+            self.assertEqual(tipo, relatorio["tipo"])
+            self.assertIn("quantidade", relatorio["totais"])
 
 if __name__ == "__main__":
     unittest.main()

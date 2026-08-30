@@ -13,6 +13,7 @@ from app.models import (
     Departamento,
     Equipe,
     FinanceiroContaReceberBaixa,
+    FinanceiroContaReceberCobranca,
     FinanceiroContaReceberLoteBaixa,
     FinanceiroContaReceberTitulo,
     FinanceiroContratoCliente,
@@ -37,6 +38,7 @@ from app.services.financeiro_contas_receber_service import (
     gerar_titulos_da_nota,
     vincular_medicao_a_nota,
 )
+from app.services.financeiro_contas_receber_relatorios_service import salvar_cobranca_titulo
 
 
 USUARIO_DEMO_EMAIL = "financeiro.receber.demo@rentalretros.local"
@@ -95,6 +97,14 @@ MEDICOES_TESTE_CR = [
 ]
 
 
+
+COBRANCAS_TESTE_CR = [
+    ("CR-TESTE-0005", "2026-08-01", "WhatsApp", "Cobrança enviada", "2026-08-05", "TESTE CR - Cliente informado que verificará com financeiro.", "Retornar contato", "2026-08-06"),
+    ("CR-TESTE-0006", "2026-08-02", "E-mail", "Aguardando retorno", "2026-08-10", "TESTE CR - E-mail enviado ao financeiro do cliente.", "Reenviar cobrança", "2026-08-07"),
+    ("CR-TESTE-0011", "2026-08-03", "Telefone", "Promessa de pagamento", "2026-08-09", "TESTE CR - Cliente prometeu pagar saldo restante.", "Conferir recebimento", "2026-08-10"),
+    ("CR-TESTE-0014", "2026-08-04", "WhatsApp", "Em negociação", "2026-08-15", "TESTE CR - Cliente solicitou envio de segunda via.", "Enviar segunda via", "2026-08-05"),
+]
+
 def ambiente_local_liberado(app):
     if os.environ.get("ALLOW_DEV_SEED") != "1":
         return False
@@ -126,11 +136,16 @@ def garantir_financeiro_contas_receber():
         {"departamento_id": departamento.id, "slug": "contas_a_receber"},
         {"nome": "Contas a Receber", "descricao": "Clientes e recebimentos", "ativo": True, "ordem": 2},
     )
+    relatorios = obter_ou_criar(
+        Modulo,
+        {"departamento_id": departamento.id, "slug": "relatorios"},
+        {"nome": "Relatorios", "descricao": "Relatorios financeiros", "ativo": True, "ordem": 3},
+    )
     db.session.flush()
-    return departamento, modulo
+    return departamento, modulo, relatorios
 
 
-def criar_usuario_demo(modulo):
+def criar_usuario_demo(modulo, modulo_relatorios=None):
     nivel = obter_ou_criar(NivelAcesso, {"slug": "usuario"}, {"nome": "Usuario", "descricao": "Usuario local de testes.", "ativo": True})
     db.session.flush()
     usuario = obter_ou_criar(
@@ -139,17 +154,20 @@ def criar_usuario_demo(modulo):
         {"nome": "Financeiro Receber Demo", "nivel_acesso_id": nivel.id, "ativo": True, "precisa_trocar_senha": False},
     )
     usuario.definir_senha(USUARIO_DEMO_SENHA)
-    permissao = PermissaoUsuarioModulo.query.filter_by(usuario_id=usuario.id, modulo_id=modulo.id).first()
-    if not permissao:
-        permissao = PermissaoUsuarioModulo(usuario_id=usuario.id, modulo_id=modulo.id)
-        db.session.add(permissao)
-    permissao.pode_visualizar = True
-    permissao.pode_criar = True
-    permissao.pode_editar = True
-    permissao.pode_excluir = True
-    permissao.pode_exportar = True
-    permissao.ativo = True
-    permissao.garantir_visualizacao()
+    for modulo_alvo in [modulo, modulo_relatorios]:
+        if not modulo_alvo:
+            continue
+        permissao = PermissaoUsuarioModulo.query.filter_by(usuario_id=usuario.id, modulo_id=modulo_alvo.id).first()
+        if not permissao:
+            permissao = PermissaoUsuarioModulo(usuario_id=usuario.id, modulo_id=modulo_alvo.id)
+            db.session.add(permissao)
+        permissao.pode_visualizar = True
+        permissao.pode_criar = True
+        permissao.pode_editar = True
+        permissao.pode_excluir = True
+        permissao.pode_exportar = True
+        permissao.ativo = True
+        permissao.garantir_visualizacao()
     return usuario
 
 
@@ -369,6 +387,34 @@ def criar_integracao_medicao_demo(usuario):
     if medicao and nota and not medicao.nota_emitida_id:
         vincular_medicao_a_nota(medicao, nota.id, usuario=usuario)
 
+
+def criar_cobranca_demo(item, usuario):
+    documento, data_contato, tipo_contato, status_cobranca, previsao, observacao, proxima_acao, data_proxima = item
+    titulo = FinanceiroContaReceberTitulo.query.filter_by(numero_documento=documento).first()
+    if not titulo:
+        return None
+    existente = FinanceiroContaReceberCobranca.query.filter_by(titulo_id=titulo.id, observacao=observacao.upper()).first()
+    if existente:
+        return existente
+    sucesso, mensagem, cobranca = salvar_cobranca_titulo(
+        titulo,
+        {
+            "data_contato": data_contato,
+            "tipo_contato": tipo_contato,
+            "responsavel_usuario_id": str(usuario.id),
+            "status_cobranca": status_cobranca,
+            "previsao_pagamento": previsao,
+            "observacao": observacao,
+            "proxima_acao": proxima_acao,
+            "data_proxima_acao": data_proxima,
+        },
+        usuario=usuario,
+    )
+    if not sucesso:
+        print(f"Falha ao criar cobrança {documento}: {mensagem}")
+        return None
+    return cobranca
+
 def executar_seed(app=None):
     app = app or create_app()
     if not ambiente_local_liberado(app):
@@ -380,8 +426,8 @@ def executar_seed(app=None):
             db.create_all()
         from app.seed_modulos_base_producao import executar_seed as executar_seed_modulos_base
         executar_seed_modulos_base()
-        _, modulo = garantir_financeiro_contas_receber()
-        usuario = criar_usuario_demo(modulo)
+        _, modulo, modulo_relatorios = garantir_financeiro_contas_receber()
+        usuario = criar_usuario_demo(modulo, modulo_relatorios)
         centros, equipes = criar_cadastros_auxiliares_demo()
         for item in TITULOS_TESTE_CR:
             criar_titulo_demo(item, usuario, centros, equipes)
@@ -403,6 +449,9 @@ def executar_seed(app=None):
             criar_integracao_medicao_demo(usuario)
         for titulo in FinanceiroContaReceberTitulo.query.filter(FinanceiroContaReceberTitulo.numero_documento.like("CR-TESTE-%")).all():
             recalcular_recebimento_titulo(titulo, usuario=usuario)
+        if "financeiro_contas_receber_cobrancas" in sa_inspect(db.engine).get_table_names():
+            for item in COBRANCAS_TESTE_CR:
+                criar_cobranca_demo(item, usuario)
         db.session.commit()
         print("Dados fictícios de Contas a Receber criados com sucesso.")
         print("Dados fictícios já existem. Nenhum registro duplicado foi criado quando aplicável.")

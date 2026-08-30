@@ -810,6 +810,7 @@ class FinanceiroContaReceberTitulo(db.Model):
     atualizado_por = db.relationship("Usuario", foreign_keys=[atualizado_por_usuario_id])
     cancelado_por = db.relationship("Usuario", foreign_keys=[cancelado_por_usuario_id])
     baixas = db.relationship("FinanceiroContaReceberBaixa", back_populates="titulo", order_by="FinanceiroContaReceberBaixa.data_recebimento.desc(), FinanceiroContaReceberBaixa.id.desc()")
+    cobrancas = db.relationship("FinanceiroContaReceberCobranca", back_populates="titulo", order_by="FinanceiroContaReceberCobranca.data_contato.desc(), FinanceiroContaReceberCobranca.id.desc()")
 
     __table_args__ = (
         db.CheckConstraint("valor_original > 0", name="ck_fin_cr_titulos_valor_original"),
@@ -1131,6 +1132,52 @@ class FinanceiroContratoMedicao(db.Model):
         return f"<FinanceiroContratoMedicao {self.id} {self.numero_medicao}>"
 
 
+
+
+class FinanceiroContaReceberCobranca(db.Model):
+    __tablename__ = "financeiro_contas_receber_cobrancas"
+
+    id = db.Column(db.Integer, primary_key=True)
+    titulo_id = db.Column(db.Integer, db.ForeignKey("financeiro_contas_receber_titulos.id"), nullable=False, index=True)
+    data_contato = db.Column(db.Date, nullable=False, index=True)
+    tipo_contato = db.Column(db.String(30), nullable=False, index=True)
+    responsavel_usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=True, index=True)
+    status_cobranca = db.Column(db.String(40), nullable=False, default="A cobrar", index=True)
+    previsao_pagamento = db.Column(db.Date, nullable=True, index=True)
+    observacao = db.Column(db.Text, nullable=True)
+    proxima_acao = db.Column(db.String(180), nullable=True)
+    data_proxima_acao = db.Column(db.Date, nullable=True, index=True)
+    criado_por_usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=True, index=True)
+    atualizado_por_usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=True, index=True)
+    cancelado_por_usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=True, index=True)
+    cancelado_em = db.Column(db.DateTime, nullable=True)
+    motivo_cancelamento = db.Column(db.Text, nullable=True)
+    status = db.Column(db.String(20), nullable=False, default="Ativo", index=True)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
+    atualizado_em = db.Column(db.DateTime, default=agora_brasil, onupdate=agora_brasil, nullable=False)
+
+    titulo = db.relationship("FinanceiroContaReceberTitulo", back_populates="cobrancas")
+    responsavel = db.relationship("Usuario", foreign_keys=[responsavel_usuario_id])
+    criado_por = db.relationship("Usuario", foreign_keys=[criado_por_usuario_id])
+    atualizado_por = db.relationship("Usuario", foreign_keys=[atualizado_por_usuario_id])
+    cancelado_por = db.relationship("Usuario", foreign_keys=[cancelado_por_usuario_id])
+
+    __table_args__ = (
+        db.CheckConstraint(
+            "tipo_contato in ('Telefone', 'WhatsApp', 'E-mail', 'Reunião', 'Presencial', 'Outro')",
+            name="ck_fin_cr_cobrancas_tipo_contato",
+        ),
+        db.CheckConstraint(
+            "status_cobranca in ('Sem cobrança', 'A cobrar', 'Cobrança enviada', 'Em negociação', "
+            "'Promessa de pagamento', 'Aguardando retorno', 'Recebido parcialmente', 'Resolvido', "
+            "'Suspenso', 'Inadimplência encerrada')",
+            name="ck_fin_cr_cobrancas_status_cobranca",
+        ),
+        db.CheckConstraint("status in ('Ativo', 'Cancelado')", name="ck_fin_cr_cobrancas_status"),
+    )
+
+    def __repr__(self):
+        return f"<FinanceiroContaReceberCobranca {self.id} titulo={self.titulo_id}>"
 
 class FinanceiroContaReceberLoteBaixa(db.Model):
     __tablename__ = "financeiro_contas_receber_lotes_baixa"
