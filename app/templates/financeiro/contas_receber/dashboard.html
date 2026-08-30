@@ -47,6 +47,12 @@
         <article class="stat-card dashboard-info-card" title="Quantidade de títulos totalmente recebidos dentro do mês selecionado."><span>Títulos recebidos no mês</span><strong>{{ dados.cards.titulos_recebidos_mes }}</strong></article>
         <article class="stat-card dashboard-info-card" title="Títulos com recebimento registrado, mas sem comprovante anexado."><span>Títulos sem comprovante</span><strong>{{ dados.cards.titulos_sem_comprovante }}</strong></article>
         <article class="stat-card dashboard-info-card" title="Saldo geral em aberto, desconsiderando títulos cancelados, estornados e recebidos."><span>Saldo geral em aberto</span><strong>{{ formatar_moeda_brl(dados.cards.saldo_geral_aberto) }}</strong></article>
+        <article class="stat-card dashboard-info-card" title="Quantidade de notas fiscais emitidas no mês selecionado."><span>Notas emitidas no mês</span><strong>{{ dados.cards.notas_emitidas_mes }}</strong></article>
+        <article class="stat-card dashboard-info-card" title="Soma do valor total das notas fiscais emitidas no mês selecionado."><span>Valor de notas emitidas</span><strong>{{ formatar_moeda_brl(dados.cards.valor_notas_emitidas_mes) }}</strong></article>
+        <article class="stat-card dashboard-info-card" title="Quantidade de notas fiscais emitidas que ainda não possuem título financeiro vinculado."><span>Notas sem título</span><strong>{{ dados.cards.notas_sem_titulo }}</strong></article>
+        <article class="stat-card dashboard-info-card" title="Soma do valor das notas emitidas que ainda não geraram Contas a Receber."><span>Valor sem título financeiro</span><strong>{{ formatar_moeda_brl(dados.cards.valor_notas_sem_titulo) }}</strong></article>
+        <article class="stat-card dashboard-info-card" title="Quantidade de notas emitidas já vinculadas a títulos a receber."><span>Notas vinculadas</span><strong>{{ dados.cards.notas_vinculadas }}</strong></article>
+        <article class="stat-card dashboard-info-card" title="Quantidade de títulos a receber originados de notas fiscais emitidas."><span>Títulos por nota emitida</span><strong>{{ dados.cards.titulos_gerados_por_nota }}</strong></article>
     </div>
 
     <div class="dashboard-tables-grid">
@@ -90,6 +96,22 @@
                             <tr><td>{{ item.forma }}</td><td>{{ formatar_moeda_brl(item.total) }}</td></tr>
                         {% else %}
                             <tr><td class="empty-state" colspan="2">Nenhum recebimento no mês.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="table-card">
+            <h2>Notas emitidas recentes</h2>
+            <div class="listbox-10-linhas contas-receber-listbox">
+                <table class="table contas-receber-table-mini">
+                    <thead><tr><th>Número</th><th>Cliente</th><th>Emissão</th><th>Valor</th><th>Status financeiro</th></tr></thead>
+                    <tbody>
+                        {% for nota in dados.notas_recentes %}
+                            <tr><td>{{ nota.numero_nota }}</td><td>{{ nota.cliente_nome_snapshot }}</td><td>{{ formatar_data_brasil(nota.data_emissao) }}</td><td>{{ formatar_moeda_brl(nota.valor_total) }}</td><td>{{ nota.status_financeiro }}</td></tr>
+                        {% else %}
+                            <tr><td class="empty-state" colspan="5">Nenhuma nota emitida cadastrada.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>

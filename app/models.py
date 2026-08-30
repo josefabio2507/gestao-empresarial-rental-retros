@@ -1,3 +1,4 @@
+from decimal import Decimal
 from app.utils.datas import agora_brasil
 
 from flask_login import UserMixin
@@ -739,6 +740,9 @@ class FinanceiroContaReceberTitulo(db.Model):
     numero_documento = db.Column(db.String(80), nullable=True, index=True)
     numero_nota_fiscal = db.Column(db.String(80), nullable=True, index=True)
     chave_acesso_nfe_nfse = db.Column(db.String(80), nullable=True)
+    codigo_verificacao_nfse = db.Column(db.String(80), nullable=True)
+    nota_emitida_id = db.Column(db.Integer, db.ForeignKey("financeiro_notas_fiscais_emitidas.id"), nullable=True, index=True)
+    tipo_nota_emitida = db.Column(db.String(30), nullable=True)
     contrato_id = db.Column(db.Integer, nullable=True, index=True)
     medicao_id = db.Column(db.Integer, nullable=True, index=True)
     origem_lancamento = db.Column(db.String(40), nullable=False, index=True)
@@ -799,6 +803,7 @@ class FinanceiroContaReceberTitulo(db.Model):
 
     centro_custo = db.relationship("CentroCusto")
     sub_centro_custo_equipe = db.relationship("Equipe")
+    nota_emitida = db.relationship("FinanceiroNotaFiscalEmitida", back_populates="titulos")
     criado_por = db.relationship("Usuario", foreign_keys=[criado_por_usuario_id])
     atualizado_por = db.relationship("Usuario", foreign_keys=[atualizado_por_usuario_id])
     cancelado_por = db.relationship("Usuario", foreign_keys=[cancelado_por_usuario_id])
@@ -860,6 +865,99 @@ class FinanceiroContaReceberTitulo(db.Model):
 
     def __repr__(self):
         return f"<FinanceiroContaReceberTitulo {self.id} {self.cliente_nome_snapshot}>"
+
+
+class FinanceiroNotaFiscalEmitida(db.Model):
+    __tablename__ = "financeiro_notas_fiscais_emitidas"
+
+    id = db.Column(db.Integer, primary_key=True)
+    tipo_nota = db.Column(db.String(30), nullable=False, index=True)
+    numero_nota = db.Column(db.String(80), nullable=False, index=True)
+    serie = db.Column(db.String(30), nullable=True, index=True)
+    chave_acesso = db.Column(db.String(80), nullable=True, index=True)
+    codigo_verificacao_nfse = db.Column(db.String(80), nullable=True)
+    cliente_nome_snapshot = db.Column(db.String(180), nullable=False, index=True)
+    cliente_cnpj_cpf_snapshot = db.Column(db.String(20), nullable=False, index=True)
+    cliente_email_financeiro_snapshot = db.Column(db.String(150), nullable=True)
+    cliente_telefone_snapshot = db.Column(db.String(20), nullable=True)
+    data_emissao = db.Column(db.Date, nullable=False, index=True)
+    competencia = db.Column(db.String(7), nullable=True, index=True)
+    descricao = db.Column(db.Text, nullable=True)
+    valor_bruto = db.Column(db.Numeric(12, 2), nullable=False, default=0)
+    valor_desconto = db.Column(db.Numeric(12, 2), nullable=False, default=0)
+    valor_impostos_retidos = db.Column(db.Numeric(12, 2), nullable=False, default=0)
+    valor_liquido = db.Column(db.Numeric(12, 2), nullable=False, default=0)
+    valor_total = db.Column(db.Numeric(12, 2), nullable=False)
+    data_vencimento_padrao = db.Column(db.Date, nullable=True)
+    numero_parcelas = db.Column(db.Integer, nullable=False, default=1)
+    condicao_recebimento = db.Column(db.String(120), nullable=True)
+    status_fiscal = db.Column(db.String(30), nullable=False, default="Emitida", index=True)
+    status_financeiro = db.Column(db.String(40), nullable=False, default="Não integrado", index=True)
+    arquivo_pdf_nome_original = db.Column(db.String(255), nullable=True)
+    arquivo_pdf_nome_armazenado = db.Column(db.String(255), nullable=True)
+    arquivo_pdf_path = db.Column(db.String(500), nullable=True)
+    arquivo_pdf_drive_file_id = db.Column(db.String(255), nullable=True)
+    arquivo_pdf_drive_link = db.Column(db.String(500), nullable=True)
+    arquivo_xml_nome_original = db.Column(db.String(255), nullable=True)
+    arquivo_xml_nome_armazenado = db.Column(db.String(255), nullable=True)
+    arquivo_xml_path = db.Column(db.String(500), nullable=True)
+    arquivo_xml_drive_file_id = db.Column(db.String(255), nullable=True)
+    arquivo_xml_drive_link = db.Column(db.String(500), nullable=True)
+    observacoes_fiscais = db.Column(db.Text, nullable=True)
+    observacoes_financeiras = db.Column(db.Text, nullable=True)
+    criado_por_usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=True, index=True)
+    atualizado_por_usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=True, index=True)
+    cancelado_por_usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=True, index=True)
+    cancelado_em = db.Column(db.DateTime, nullable=True)
+    motivo_cancelamento = db.Column(db.Text, nullable=True)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
+    atualizado_em = db.Column(db.DateTime, default=agora_brasil, onupdate=agora_brasil, nullable=False)
+
+    titulos = db.relationship("FinanceiroContaReceberTitulo", back_populates="nota_emitida", order_by="FinanceiroContaReceberTitulo.parcela_numero.asc(), FinanceiroContaReceberTitulo.id.asc()")
+    criado_por = db.relationship("Usuario", foreign_keys=[criado_por_usuario_id])
+    atualizado_por = db.relationship("Usuario", foreign_keys=[atualizado_por_usuario_id])
+    cancelado_por = db.relationship("Usuario", foreign_keys=[cancelado_por_usuario_id])
+
+    __table_args__ = (
+        db.CheckConstraint("valor_bruto >= 0", name="ck_fin_notas_emitidas_valor_bruto"),
+        db.CheckConstraint("valor_desconto >= 0", name="ck_fin_notas_emitidas_valor_desconto"),
+        db.CheckConstraint("valor_impostos_retidos >= 0", name="ck_fin_notas_emitidas_valor_impostos"),
+        db.CheckConstraint("valor_liquido >= 0", name="ck_fin_notas_emitidas_valor_liquido"),
+        db.CheckConstraint("valor_total > 0", name="ck_fin_notas_emitidas_valor_total"),
+        db.CheckConstraint("numero_parcelas >= 1", name="ck_fin_notas_emitidas_parcelas"),
+        db.CheckConstraint("tipo_nota in ('NFS-e', 'NF-e', 'Recibo', 'Fatura', 'Outro')", name="ck_fin_notas_emitidas_tipo"),
+        db.CheckConstraint("status_fiscal in ('Rascunho', 'Emitida', 'Enviada ao cliente', 'Cancelada', 'Substituída')", name="ck_fin_notas_emitidas_status_fiscal"),
+        db.CheckConstraint("status_financeiro in ('Não integrado', 'Pendente de geração', 'Título gerado', 'Parcialmente vinculado', 'Vinculado a título existente', 'Cancelado')", name="ck_fin_notas_emitidas_status_financeiro"),
+    )
+
+    @property
+    def titulos_ativos(self):
+        return [titulo for titulo in self.titulos if titulo.status not in ["Cancelado", "Estornado"]]
+
+    @property
+    def quantidade_titulos_ativos(self):
+        return len(self.titulos_ativos)
+
+    @property
+    def valor_vinculado_contas_receber(self):
+        total = sum((titulo.valor_liquido for titulo in self.titulos_ativos), Decimal("0.00"))
+        return total.quantize(Decimal("0.01"))
+
+    @property
+    def saldo_sem_titulo_financeiro(self):
+        saldo = self.valor_total - self.valor_vinculado_contas_receber
+        return saldo.quantize(Decimal("0.01")) if saldo > 0 else Decimal("0.00")
+
+    @property
+    def arquivo_pdf_disponivel(self):
+        return bool(self.arquivo_pdf_path or self.arquivo_pdf_drive_file_id)
+
+    @property
+    def arquivo_xml_disponivel(self):
+        return bool(self.arquivo_xml_path or self.arquivo_xml_drive_file_id)
+
+    def __repr__(self):
+        return f"<FinanceiroNotaFiscalEmitida {self.id} {self.numero_nota}>"
 
 
 

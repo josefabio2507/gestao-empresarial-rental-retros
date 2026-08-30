@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% set aba_ativa = "notas" %}
+
+{% block content %}
+<section class="page page-wide">
+    <div class="top-bar"><div><span class="page-kicker">Financeiro &gt; Contas a Receber &gt; Notas Emitidas &gt; Conferir Geração</span><h1>Gerar Contas a Receber</h1><p>Conferência antes de criar títulos financeiros para a nota {{ nota.numero_nota }}.</p></div><div class="actions"><a class="btn btn-secondary" href="{{ url_for('financeiro_contas_receber.nota_emitida_detalhe', nota_id=nota.id) }}">Voltar</a></div></div>
+    {% include "financeiro/contas_receber/_menu.html" %}
+    <div class="details-card"><div class="detail-grid"><section><h3>Nota</h3><p><strong>Número:</strong> {{ nota.numero_nota }}</p><p><strong>Cliente:</strong> {{ nota.cliente_nome_snapshot }}</p><p><strong>CNPJ/CPF:</strong> {{ nota.cliente_cnpj_cpf_snapshot }}</p></section><section><h3>Valores</h3><p><strong>Emissão:</strong> {{ formatar_data_brasil(nota.data_emissao) }}</p><p><strong>Valor total:</strong> {{ formatar_moeda_brl(nota.valor_total) }}</p><p><strong>Status fiscal:</strong> {{ nota.status_fiscal }}</p><p><strong>Status financeiro:</strong> {{ nota.status_financeiro }}</p></section></div></div>
+    <form class="form-card" method="POST">
+        <div class="form-grid">
+            <div class="form-group"><label for="descricao">Descrição do título</label><input id="descricao" name="descricao" data-uppercase value="{{ nota.descricao or ('Nota fiscal emitida ' ~ nota.numero_nota) }}"></div>
+            <div class="form-group"><label for="origem_lancamento">Origem</label><input id="origem_lancamento" name="origem_lancamento" value="Nota Fiscal Emitida" readonly></div>
+            <div class="form-group"><label for="competencia">Competência</label><input id="competencia" name="competencia" type="month" value="{{ nota.competencia or '' }}"></div>
+            <div class="form-group"><label for="data_primeiro_vencimento">Data do primeiro vencimento</label><input id="data_primeiro_vencimento" name="data_primeiro_vencimento" type="date" required value="{{ nota.data_vencimento_padrao.isoformat() if nota.data_vencimento_padrao else '' }}"></div>
+            <div class="form-group"><label for="numero_parcelas">Número de parcelas</label><input id="numero_parcelas" name="numero_parcelas" type="number" min="1" required value="{{ nota.numero_parcelas or 1 }}"></div>
+            <div class="form-group"><label for="condicao_recebimento">Condição de recebimento</label><input id="condicao_recebimento" name="condicao_recebimento" value="{{ nota.condicao_recebimento or '' }}"></div>
+            <div class="form-group"><label for="centro_custo_id">Centro de custo</label><select id="centro_custo_id" name="centro_custo_id"><option value="">Não informado</option>{% for centro in centros_custo %}<option value="{{ centro.id }}">{{ centro.codigo or '-' }} - {{ centro.nome }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="sub_centro_custo_equipe_id">Subcentro/equipe</label><select id="sub_centro_custo_equipe_id" name="sub_centro_custo_equipe_id"><option value="">Não informado</option>{% for equipe in equipes %}<option value="{{ equipe.id }}">{{ equipe.nome }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="sub_centro_custo_veiculo_id">Subcentro/veículo</label><input id="sub_centro_custo_veiculo_id" name="sub_centro_custo_veiculo_id" type="number" min="1"></div>
+        </div>
+        <div class="form-group"><label for="observacoes_financeiras">Observações financeiras</label><textarea id="observacoes_financeiras" name="observacoes_financeiras" rows="3">{{ nota.observacoes_financeiras or '' }}</textarea></div>
+        <div class="form-actions"><button class="btn btn-primary" type="submit">Gerar títulos</button><a class="btn btn-secondary" href="{{ url_for('financeiro_contas_receber.nota_emitida_detalhe', nota_id=nota.id) }}">Cancelar</a></div>
+    </form>
+</section>
+{% endblock %}

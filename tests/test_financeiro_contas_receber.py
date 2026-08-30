@@ -10,6 +10,7 @@ from app.models import (
     FinanceiroContaReceberBaixa,
     FinanceiroContaReceberLoteBaixa,
     FinanceiroContaReceberTitulo,
+    FinanceiroNotaFiscalEmitida,
     LogAcesso,
     Modulo,
     NivelAcesso,
@@ -19,10 +20,13 @@ from app.models import (
 from app.services.financeiro_contas_receber_service import (
     cancelar_recebimento_titulo,
     gerar_dashboard,
+    gerar_titulos_da_nota,
     listar_titulos_receber,
+    salvar_nota_emitida,
     registrar_recebimento_em_massa,
     registrar_recebimento_titulo,
     salvar_titulo_receber,
+    vincular_nota_a_titulo,
 )
 
 
@@ -130,6 +134,37 @@ class FinanceiroContasReceberTestCase(unittest.TestCase):
             "total_parcelas": "2",
             "status": "Faturado",
             "observacoes": "Teste",
+        }
+        dados.update(extras)
+        return dados
+
+
+    def _dados_nota(self, **extras):
+        dados = {
+            "tipo_nota": "NFS-e",
+            "numero_nota": "NFSE-100",
+            "serie": "A",
+            "chave_acesso": "",
+            "codigo_verificacao_nfse": "COD-100",
+            "cliente_nome_snapshot": "Cliente Teste",
+            "cliente_cnpj_cpf_snapshot": "11.222.333/0001-81",
+            "cliente_email_financeiro_snapshot": "financeiro@cliente.com",
+            "cliente_telefone_snapshot": "13999998888",
+            "data_emissao": "2026-08-01",
+            "competencia": "2026-08",
+            "descricao": "Servico faturado",
+            "valor_bruto": "10000.00",
+            "valor_desconto": "0.00",
+            "valor_impostos_retidos": "0.00",
+            "valor_liquido": "10000.00",
+            "valor_total": "10000.00",
+            "data_vencimento_padrao": "2026-08-30",
+            "numero_parcelas": "1",
+            "condicao_recebimento": "A vista",
+            "status_fiscal": "Emitida",
+            "status_financeiro": "Não integrado",
+            "observacoes_fiscais": "Teste fiscal",
+            "observacoes_financeiras": "Teste financeiro",
         }
         dados.update(extras)
         return dados
@@ -462,5 +497,118 @@ class FinanceiroContasReceberTestCase(unittest.TestCase):
         self.assertIn("Lote de recebimento estornado com sucesso.".encode(), estorno.data)
         self.assertEqual("Estornado", FinanceiroContaReceberLoteBaixa.query.get(lote.id).status)
         self.assertEqual(2, FinanceiroContaReceberBaixa.query.filter_by(status="Estornada").count())
+
+    def test_notas_emitidas_cadastro_arquivos_e_validacoes(self):
+        sucesso, mensagem, nota = salvar_nota_emitida(self._dados_nota(), usuario=self.admin)
+        self.assertTrue(sucesso)
+        self.assertEqual("Nota fiscal emitida cadastrada com sucesso.", mensagem)
+        self.assertEqual(Decimal("10000.00"), nota.valor_total)
+
+        sucesso, mensagem, _ = salvar_nota_emitida(self._dados_nota(), usuario=self.admin)
+        self.assertFalse(sucesso)
+        self.assertIn("Já existe nota fiscal emitida", mensagem)
+
+        sucesso, mensagem, _ = salvar_nota_emitida(self._dados_nota(numero_nota=""), usuario=self.admin)
+        self.assertFalse(sucesso)
+        self.assertEqual("Informe o número da nota.", mensagem)
+        sucesso, mensagem, _ = salvar_nota_emitida(self._dados_nota(numero_nota="NFSE-101", cliente_nome_snapshot=""), usuario=self.admin)
+        self.assertFalse(sucesso)
+        self.assertEqual("Informe o cliente.", mensagem)
+        sucesso, mensagem, _ = salvar_nota_emitida(self._dados_nota(numero_nota="NFSE-102", valor_total="0"), usuario=self.admin)
+        self.assertFalse(sucesso)
+        self.assertEqual("Informe um valor maior que zero.", mensagem)
+
+    def test_gera_titulos_parcelados_da_nota_com_centavos_e_bloqueia_duplicidade(self):
+        sucesso, _, nota = salvar_nota_emitida(self._dados_nota(valor_total="10000.00", valor_bruto="10000.00", valor_liquido="10000.00", numero_parcelas="3"), usuario=self.admin)
+        self.assertTrue(sucesso)
+
+        sucesso, mensagem, titulos = gerar_titulos_da_nota(
+            nota,
+            {"data_primeiro_vencimento": "2026-08-31", "numero_parcelas": "3", "competencia": "2026-08", "descricao": "Servico parcelado"},
+            usuario=self.admin,
+        )
+
+        self.assertTrue(sucesso)
+        self.assertEqual("Título(s) a receber gerado(s) com sucesso.", mensagem)
+        self.assertEqual(3, len(titulos))
+        self.assertEqual([Decimal("3333.33"), Decimal("3333.33"), Decimal("3333.34")], [titulo.valor_original for titulo in titulos])
+        self.assertEqual([date(2026, 8, 31), date(2026, 9, 30), date(2026, 10, 31)], [titulo.data_vencimento for titulo in titulos])
+        self.assertEqual("Título gerado", nota.status_financeiro)
+        self.assertEqual("Nota Fiscal Emitida", titulos[0].origem_lancamento)
+        self.assertEqual(nota.id, titulos[0].nota_emitida_id)
+
+        sucesso, mensagem, _ = gerar_titulos_da_nota(nota, {"data_primeiro_vencimento": "2026-08-31", "numero_parcelas": "1"}, usuario=self.admin)
+        self.assertFalse(sucesso)
+        self.assertEqual("Esta nota fiscal já possui título(s) a receber vinculado(s).", mensagem)
+
+    def test_vincula_nota_a_titulo_existente_e_exibe_nas_rotas(self):
+        self._autenticar(self.admin)
+        salvar_titulo_receber(self._dados_titulo(numero_nota_fiscal="", chave_acesso_nfe_nfse="", origem_lancamento="Manual"), usuario=self.admin)
+        titulo = FinanceiroContaReceberTitulo.query.one()
+        sucesso, _, nota = salvar_nota_emitida(self._dados_nota(numero_nota="NFSE-200", valor_total="960.00", valor_bruto="960.00", valor_liquido="960.00"), usuario=self.admin)
+        self.assertTrue(sucesso)
+
+        sucesso, mensagem, titulo = vincular_nota_a_titulo(nota, titulo.id, usuario=self.admin)
+        self.assertTrue(sucesso)
+        self.assertEqual("Nota fiscal vinculada ao título com sucesso.", mensagem)
+        self.assertEqual(nota.id, titulo.nota_emitida_id)
+        self.assertEqual("NFSE-200", titulo.numero_nota_fiscal)
+        self.assertEqual("Vinculado a título existente", nota.status_financeiro)
+
+        detalhe_titulo = self.client.get(f"/financeiro/contas-a-receber/{titulo.id}")
+        self.assertEqual(200, detalhe_titulo.status_code)
+        self.assertIn("Nota Fiscal Emitida Vinculada".encode(), detalhe_titulo.data)
+        self.assertIn(b"NFSE-200", detalhe_titulo.data)
+
+        detalhe_nota = self.client.get(f"/financeiro/contas-a-receber/notas-emitidas/{nota.id}")
+        self.assertEqual(200, detalhe_nota.status_code)
+        self.assertIn("Títulos a receber vinculados".encode(), detalhe_nota.data)
+        self.assertIn(b"listbox-10-linhas", detalhe_nota.data)
+
+    def test_rotas_notas_emitidas_menu_dashboard_geracao_e_arquivos(self):
+        self._autenticar(self.admin)
+        resposta = self.client.post(
+            "/financeiro/contas-a-receber/notas-emitidas/nova",
+            data={**self._dados_nota(numero_nota="NFSE-300", valor_total="500.00", valor_bruto="500.00", valor_liquido="500.00"), "arquivo_pdf": (io.BytesIO(b"pdf nota"), "nota.pdf"), "arquivo_xml": (io.BytesIO(b"<xml />"), "nota.xml")},
+            content_type="multipart/form-data",
+            follow_redirects=True,
+        )
+        self.assertEqual(200, resposta.status_code)
+        self.assertIn("Nota fiscal emitida cadastrada com sucesso.".encode(), resposta.data)
+        nota = FinanceiroNotaFiscalEmitida.query.filter_by(numero_nota="NFSE-300").one()
+
+        lista = self.client.get("/financeiro/contas-a-receber/notas-emitidas")
+        self.assertEqual(200, lista.status_code)
+        self.assertIn(b"Notas Emitidas", lista.data)
+        self.assertIn(b"listbox-10-linhas", lista.data)
+        self.assertIn(b"NFSE-300", lista.data)
+
+        pdf = self.client.get(f"/financeiro/contas-a-receber/notas-emitidas/{nota.id}/arquivo/pdf")
+        xml = self.client.get(f"/financeiro/contas-a-receber/notas-emitidas/{nota.id}/arquivo/xml")
+        self.assertEqual(200, pdf.status_code)
+        self.assertEqual(200, xml.status_code)
+        self.assertEqual(b"pdf nota", pdf.data)
+        self.assertEqual(b"<xml />", xml.data)
+
+        gerar = self.client.post(
+            f"/financeiro/contas-a-receber/notas-emitidas/{nota.id}/gerar",
+            data={"data_primeiro_vencimento": "2026-08-30", "numero_parcelas": "1", "competencia": "2026-08", "descricao": "Nota teste"},
+            follow_redirects=True,
+        )
+        self.assertEqual(200, gerar.status_code)
+        self.assertIn("Título(s) a receber gerado(s) com sucesso.".encode(), gerar.data)
+        self.assertEqual(1, FinanceiroContaReceberTitulo.query.filter_by(nota_emitida_id=nota.id).count())
+
+        dashboard = self.client.get("/financeiro/contas-a-receber/dashboard?mes=2026-08")
+        self.assertEqual(200, dashboard.status_code)
+        self.assertIn("Quantidade de notas fiscais emitidas que ainda não possuem título financeiro vinculado.".encode(), dashboard.data)
+        self.assertIn(b"Notas emitidas recentes", dashboard.data)
+
+    def test_permissao_bloqueia_notas_emitidas_sem_visualizar(self):
+        self._autenticar(self.usuario)
+        resposta = self.client.get("/financeiro/contas-a-receber/notas-emitidas")
+        self.assertEqual(302, resposta.status_code)
+        self.assertIn("/acesso-negado", resposta.headers["Location"])
+
 if __name__ == "__main__":
     unittest.main()

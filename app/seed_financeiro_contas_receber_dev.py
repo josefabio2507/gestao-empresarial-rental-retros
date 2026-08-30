@@ -15,6 +15,7 @@ from app.models import (
     FinanceiroContaReceberBaixa,
     FinanceiroContaReceberLoteBaixa,
     FinanceiroContaReceberTitulo,
+    FinanceiroNotaFiscalEmitida,
     Modulo,
     NivelAcesso,
     PermissaoUsuarioModulo,
@@ -26,7 +27,9 @@ from app.services.financeiro_contas_receber_service import (
     recalcular_recebimento_titulo,
     registrar_recebimento_em_massa,
     registrar_recebimento_titulo,
+    salvar_nota_emitida,
     salvar_titulo_receber,
+    gerar_titulos_da_nota,
 )
 
 
@@ -57,6 +60,16 @@ TITULOS_TESTE_CR = [
     ("CR-TESTE-0013", 2, "TESTE CR - Título cancelado para teste de bloqueio", "900013", "Manual", "2026-08", "2026-08-01", "2026-08-12", "7500.00", "Cancelado"),
     ("CR-TESTE-0014", 3, "TESTE CR - Título sem comprovante após baixa", "900014", "Manual", "2026-08", "2026-08-04", "2026-08-14", "8800.00", "Agendado"),
     ("CR-TESTE-0015", 4, "TESTE CR - Título para baixa em massa parcial", "900015", "Manual", "2026-09", "2026-09-02", "2026-09-20", "14200.00", "A vencer"),
+]
+
+NOTAS_TESTE_CR = [
+    ("NFS-e", "NFSE-TESTE-1001", "", "Cliente TESTE CR - Santos Logística Ltda", "12345678000190", "financeiro@santoslogistica.test", "1333330001", "2026-08-01", "2026-08", "TESTE CR - Prestação de serviço operacional", "15000.00", "2026-08-10", "1", "Emitida", "Não integrado"),
+    ("NFS-e", "NFSE-TESTE-1002", "", "Cliente TESTE CR - Porto Serviços Integrados Ltda", "23456789000180", "financeiro@portoservicos.test", "1333330002", "2026-08-03", "2026-08", "TESTE CR - Serviços de limpeza industrial", "22000.00", "2026-08-20", "2", "Emitida", "Não integrado"),
+    ("NFS-e", "NFSE-TESTE-1003", "", "Cliente TESTE CR - Guarujá Manutenção Ferroviária Ltda", "34567890000170", "financeiro@guarujamf.test", "1333330003", "2026-07-01", "2026-07", "TESTE CR - Manutenção ferroviária corretiva", "18400.00", "2026-07-15", "1", "Emitida", "Não integrado"),
+    ("Fatura", "FAT-TESTE-2001", "A", "Cliente TESTE CR - Terminal Atlântico Operações S.A.", "45678901000160", "financeiro@terminalatlantico.test", "1333330004", "2026-09-01", "2026-09", "TESTE CR - Locação de equipe operacional", "30000.00", "2026-09-10", "3", "Emitida", "Não integrado"),
+    ("NFS-e", "NFSE-TESTE-1004", "", "Cliente TESTE CR - Baixada Infraestrutura Ltda", "56789012000150", "financeiro@baixadainfra.test", "1333330005", "2026-08-07", "2026-08", "TESTE CR - Serviços administrativos compartilhados", "6700.00", "2026-08-28", "1", "Emitida", "Não integrado"),
+    ("NFS-e", "NFSE-TESTE-1005", "", "Cliente TESTE CR - Santos Logística Ltda", "12345678000190", "financeiro@santoslogistica.test", "1333330001", "2026-08-09", "2026-08", "TESTE CR - Nota já integrada", "2500.00", "2026-08-31", "1", "Emitida", "Não integrado"),
+    ("NFS-e", "NFSE-TESTE-1006", "", "Cliente TESTE CR - Porto Serviços Integrados Ltda", "23456789000180", "financeiro@portoservicos.test", "1333330002", "2026-08-11", "2026-08", "TESTE CR - Nota cancelada para bloqueio", "1200.00", "2026-08-30", "1", "Cancelada", "Cancelado"),
 ]
 
 
@@ -215,6 +228,50 @@ def criar_lote_demo(usuario, inspector):
     return lote
 
 
+
+def criar_nota_emitida_demo(item, usuario):
+    tipo, numero, serie, cliente, cnpj, email, telefone, emissao, competencia, descricao, valor, vencimento, parcelas, status_fiscal, status_financeiro = item
+    nota = FinanceiroNotaFiscalEmitida.query.filter_by(numero_nota=numero, cliente_cnpj_cpf_snapshot=cnpj).first()
+    if nota and nota.titulos:
+        return nota
+    dados = {
+        "tipo_nota": tipo,
+        "numero_nota": numero,
+        "serie": serie,
+        "chave_acesso": f"352608{cnpj}550010000{numero[-4:]}10000{numero[-4:]}8"[:44] if tipo == "NF-e" else "",
+        "codigo_verificacao_nfse": f"COD-{numero}",
+        "cliente_nome_snapshot": cliente,
+        "cliente_cnpj_cpf_snapshot": cnpj,
+        "cliente_email_financeiro_snapshot": email,
+        "cliente_telefone_snapshot": telefone,
+        "data_emissao": emissao,
+        "competencia": competencia,
+        "descricao": descricao,
+        "valor_bruto": valor,
+        "valor_desconto": "0.00",
+        "valor_impostos_retidos": "0.00",
+        "valor_liquido": valor,
+        "valor_total": valor,
+        "data_vencimento_padrao": vencimento,
+        "numero_parcelas": parcelas,
+        "condicao_recebimento": f"{parcelas} parcela(s)",
+        "status_fiscal": status_fiscal,
+        "status_financeiro": status_financeiro,
+        "observacoes_fiscais": "TESTE CR - nota emitida fictícia local.",
+        "observacoes_financeiras": "TESTE CR - preparada para integração com Contas a Receber.",
+    }
+    sucesso, mensagem, nota = salvar_nota_emitida(dados, nota=nota, usuario=usuario)
+    if not sucesso:
+        print(f"Falha ao criar nota {numero}: {mensagem}")
+        return None
+    return nota
+
+
+def criar_integracao_nota_demo(usuario):
+    nota = FinanceiroNotaFiscalEmitida.query.filter_by(numero_nota="NFSE-TESTE-1005").first()
+    if nota and not nota.titulos:
+        gerar_titulos_da_nota(nota, {"data_primeiro_vencimento": "2026-08-31", "numero_parcelas": "1", "competencia": "2026-08", "descricao": nota.descricao}, usuario=usuario)
+
 def executar_seed(app=None):
     app = app or create_app()
     if not ambiente_local_liberado(app):
@@ -236,6 +293,10 @@ def executar_seed(app=None):
         criar_baixa_demo("CR-TESTE-0014", usuario, "3000.00", "Boleto", "Banco TESTE CR - Conta Cobrança", "Recebimento parcial sem comprovante para teste", "2026-08-15")
         criar_baixa_demo("CR-TESTE-0009", usuario, "1000.00", "Pix", "Banco TESTE CR - Conta Corrente", "Baixa cancelada fictícia para testar exclusão de totais", "2026-08-20", estornar=True)
         criar_lote_demo(usuario, sa_inspect(db.engine))
+        if "financeiro_notas_fiscais_emitidas" in sa_inspect(db.engine).get_table_names():
+            for item in NOTAS_TESTE_CR:
+                criar_nota_emitida_demo(item, usuario)
+            criar_integracao_nota_demo(usuario)
         for titulo in FinanceiroContaReceberTitulo.query.filter(FinanceiroContaReceberTitulo.numero_documento.like("CR-TESTE-%")).all():
             recalcular_recebimento_titulo(titulo, usuario=usuario)
         db.session.commit()
