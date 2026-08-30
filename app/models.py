@@ -743,8 +743,8 @@ class FinanceiroContaReceberTitulo(db.Model):
     codigo_verificacao_nfse = db.Column(db.String(80), nullable=True)
     nota_emitida_id = db.Column(db.Integer, db.ForeignKey("financeiro_notas_fiscais_emitidas.id"), nullable=True, index=True)
     tipo_nota_emitida = db.Column(db.String(30), nullable=True)
-    contrato_id = db.Column(db.Integer, nullable=True, index=True)
-    medicao_id = db.Column(db.Integer, nullable=True, index=True)
+    contrato_id = db.Column(db.Integer, db.ForeignKey("financeiro_contratos_clientes.id"), nullable=True, index=True)
+    medicao_id = db.Column(db.Integer, db.ForeignKey("financeiro_contratos_medicoes.id"), nullable=True, index=True)
     origem_lancamento = db.Column(db.String(40), nullable=False, index=True)
     competencia = db.Column(db.String(7), nullable=True, index=True)
     data_emissao = db.Column(db.Date, nullable=True, index=True)
@@ -804,6 +804,8 @@ class FinanceiroContaReceberTitulo(db.Model):
     centro_custo = db.relationship("CentroCusto")
     sub_centro_custo_equipe = db.relationship("Equipe")
     nota_emitida = db.relationship("FinanceiroNotaFiscalEmitida", back_populates="titulos")
+    contrato = db.relationship("FinanceiroContratoCliente", back_populates="titulos")
+    medicao = db.relationship("FinanceiroContratoMedicao", back_populates="titulos")
     criado_por = db.relationship("Usuario", foreign_keys=[criado_por_usuario_id])
     atualizado_por = db.relationship("Usuario", foreign_keys=[atualizado_por_usuario_id])
     cancelado_por = db.relationship("Usuario", foreign_keys=[cancelado_por_usuario_id])
@@ -876,6 +878,8 @@ class FinanceiroNotaFiscalEmitida(db.Model):
     serie = db.Column(db.String(30), nullable=True, index=True)
     chave_acesso = db.Column(db.String(80), nullable=True, index=True)
     codigo_verificacao_nfse = db.Column(db.String(80), nullable=True)
+    contrato_id = db.Column(db.Integer, db.ForeignKey("financeiro_contratos_clientes.id"), nullable=True, index=True)
+    medicao_id = db.Column(db.Integer, db.ForeignKey("financeiro_contratos_medicoes.id"), nullable=True, index=True)
     cliente_nome_snapshot = db.Column(db.String(180), nullable=False, index=True)
     cliente_cnpj_cpf_snapshot = db.Column(db.String(20), nullable=False, index=True)
     cliente_email_financeiro_snapshot = db.Column(db.String(150), nullable=True)
@@ -914,6 +918,8 @@ class FinanceiroNotaFiscalEmitida(db.Model):
     atualizado_em = db.Column(db.DateTime, default=agora_brasil, onupdate=agora_brasil, nullable=False)
 
     titulos = db.relationship("FinanceiroContaReceberTitulo", back_populates="nota_emitida", order_by="FinanceiroContaReceberTitulo.parcela_numero.asc(), FinanceiroContaReceberTitulo.id.asc()")
+    contrato = db.relationship("FinanceiroContratoCliente", back_populates="notas_emitidas")
+    medicao = db.relationship("FinanceiroContratoMedicao", back_populates="notas_emitidas", foreign_keys=[medicao_id])
     criado_por = db.relationship("Usuario", foreign_keys=[criado_por_usuario_id])
     atualizado_por = db.relationship("Usuario", foreign_keys=[atualizado_por_usuario_id])
     cancelado_por = db.relationship("Usuario", foreign_keys=[cancelado_por_usuario_id])
@@ -958,6 +964,171 @@ class FinanceiroNotaFiscalEmitida(db.Model):
 
     def __repr__(self):
         return f"<FinanceiroNotaFiscalEmitida {self.id} {self.numero_nota}>"
+
+
+class FinanceiroContratoCliente(db.Model):
+    __tablename__ = "financeiro_contratos_clientes"
+
+    id = db.Column(db.Integer, primary_key=True)
+    numero_contrato = db.Column(db.String(80), nullable=False, index=True)
+    cliente_nome_snapshot = db.Column(db.String(180), nullable=False, index=True)
+    cliente_cnpj_cpf_snapshot = db.Column(db.String(20), nullable=False, index=True)
+    cliente_email_financeiro_snapshot = db.Column(db.String(150), nullable=True)
+    cliente_telefone_snapshot = db.Column(db.String(20), nullable=True)
+    descricao_objeto = db.Column(db.Text, nullable=True)
+    data_inicio = db.Column(db.Date, nullable=False, index=True)
+    data_fim = db.Column(db.Date, nullable=True, index=True)
+    valor_contratual = db.Column(db.Numeric(12, 2), nullable=False, default=0)
+    tipo_cobranca = db.Column(db.String(40), nullable=False, default="Medição variável")
+    periodicidade_medicao = db.Column(db.String(30), nullable=False, default="Mensal")
+    dia_padrao_vencimento = db.Column(db.Integer, nullable=True)
+    condicao_recebimento = db.Column(db.String(120), nullable=True)
+    centro_custo_id = db.Column(db.Integer, db.ForeignKey("centros_custo.id"), nullable=True, index=True)
+    sub_centro_custo_equipe_id = db.Column(db.Integer, db.ForeignKey("equipes.id"), nullable=True, index=True)
+    responsavel_interno_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=True, index=True)
+    status = db.Column(db.String(30), nullable=False, default="Ativo", index=True)
+    observacoes = db.Column(db.Text, nullable=True)
+    criado_por_usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=True, index=True)
+    atualizado_por_usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=True, index=True)
+    cancelado_por_usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=True, index=True)
+    cancelado_em = db.Column(db.DateTime, nullable=True)
+    motivo_cancelamento = db.Column(db.Text, nullable=True)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
+    atualizado_em = db.Column(db.DateTime, default=agora_brasil, onupdate=agora_brasil, nullable=False)
+
+    centro_custo = db.relationship("CentroCusto")
+    sub_centro_custo_equipe = db.relationship("Equipe")
+    responsavel_interno = db.relationship("Usuario", foreign_keys=[responsavel_interno_id])
+    criado_por = db.relationship("Usuario", foreign_keys=[criado_por_usuario_id])
+    atualizado_por = db.relationship("Usuario", foreign_keys=[atualizado_por_usuario_id])
+    cancelado_por = db.relationship("Usuario", foreign_keys=[cancelado_por_usuario_id])
+    medicoes = db.relationship("FinanceiroContratoMedicao", back_populates="contrato", order_by="FinanceiroContratoMedicao.data_medicao.desc(), FinanceiroContratoMedicao.id.desc()")
+    titulos = db.relationship("FinanceiroContaReceberTitulo", back_populates="contrato", order_by="FinanceiroContaReceberTitulo.data_vencimento.desc(), FinanceiroContaReceberTitulo.id.desc()")
+    notas_emitidas = db.relationship("FinanceiroNotaFiscalEmitida", back_populates="contrato", order_by="FinanceiroNotaFiscalEmitida.data_emissao.desc(), FinanceiroNotaFiscalEmitida.id.desc()")
+
+    __table_args__ = (
+        db.UniqueConstraint("numero_contrato", "cliente_cnpj_cpf_snapshot", name="uq_fin_contratos_numero_cliente"),
+        db.CheckConstraint("valor_contratual >= 0", name="ck_fin_contratos_valor"),
+        db.CheckConstraint("status in ('Rascunho', 'Ativo', 'Suspenso', 'Encerrado', 'Cancelado')", name="ck_fin_contratos_status"),
+        db.CheckConstraint("tipo_cobranca in ('Medição variável', 'Valor fixo mensal', 'Por evento', 'Por ordem de serviço', 'Reembolso', 'Outro')", name="ck_fin_contratos_tipo_cobranca"),
+        db.CheckConstraint("periodicidade_medicao in ('Mensal', 'Quinzenal', 'Semanal', 'Por demanda', 'Única', 'Outra')", name="ck_fin_contratos_periodicidade"),
+    )
+
+    @property
+    def medicoes_ativas(self):
+        return [medicao for medicao in self.medicoes if medicao.status_medicao != "Cancelada"]
+
+    @property
+    def titulos_ativos(self):
+        return [titulo for titulo in self.titulos if titulo.status not in ["Cancelado", "Estornado"]]
+
+    @property
+    def notas_ativas(self):
+        return [nota for nota in self.notas_emitidas if nota.status_fiscal != "Cancelada"]
+
+    @property
+    def quantidade_medicoes(self):
+        return len(self.medicoes_ativas)
+
+    @property
+    def valor_medido_acumulado(self):
+        total = sum((medicao.valor_liquido_medido for medicao in self.medicoes_ativas), Decimal("0.00"))
+        return total.quantize(Decimal("0.01"))
+
+    @property
+    def valor_faturado(self):
+        total = sum((titulo.valor_liquido for titulo in self.titulos_ativos), Decimal("0.00"))
+        return total.quantize(Decimal("0.01"))
+
+    @property
+    def saldo_contratual_estimado(self):
+        saldo = self.valor_contratual - self.valor_medido_acumulado
+        return saldo.quantize(Decimal("0.01")) if saldo > 0 else Decimal("0.00")
+
+    def __repr__(self):
+        return f"<FinanceiroContratoCliente {self.id} {self.numero_contrato}>"
+
+
+class FinanceiroContratoMedicao(db.Model):
+    __tablename__ = "financeiro_contratos_medicoes"
+
+    id = db.Column(db.Integer, primary_key=True)
+    contrato_id = db.Column(db.Integer, db.ForeignKey("financeiro_contratos_clientes.id"), nullable=False, index=True)
+    nota_emitida_id = db.Column(db.Integer, db.ForeignKey("financeiro_notas_fiscais_emitidas.id"), nullable=True, index=True)
+    numero_medicao = db.Column(db.String(80), nullable=False, index=True)
+    competencia = db.Column(db.String(7), nullable=False, index=True)
+    data_medicao = db.Column(db.Date, nullable=False, index=True)
+    periodo_inicio = db.Column(db.Date, nullable=False, index=True)
+    periodo_fim = db.Column(db.Date, nullable=False, index=True)
+    descricao = db.Column(db.Text, nullable=True)
+    valor_bruto_medido = db.Column(db.Numeric(12, 2), nullable=False, default=0)
+    valor_desconto = db.Column(db.Numeric(12, 2), nullable=False, default=0)
+    valor_acrescimo = db.Column(db.Numeric(12, 2), nullable=False, default=0)
+    valor_retencoes = db.Column(db.Numeric(12, 2), nullable=False, default=0)
+    valor_liquido_medido = db.Column(db.Numeric(12, 2), nullable=False)
+    data_prevista_faturamento = db.Column(db.Date, nullable=True)
+    data_prevista_vencimento = db.Column(db.Date, nullable=True)
+    status_medicao = db.Column(db.String(40), nullable=False, default="Medida", index=True)
+    status_financeiro = db.Column(db.String(40), nullable=False, default="Não integrado", index=True)
+    anexo_nome_original = db.Column(db.String(255), nullable=True)
+    anexo_nome_armazenado = db.Column(db.String(255), nullable=True)
+    anexo_path = db.Column(db.String(500), nullable=True)
+    anexo_drive_file_id = db.Column(db.String(255), nullable=True)
+    anexo_drive_link = db.Column(db.String(500), nullable=True)
+    observacoes_tecnicas = db.Column(db.Text, nullable=True)
+    observacoes_financeiras = db.Column(db.Text, nullable=True)
+    criado_por_usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=True, index=True)
+    atualizado_por_usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=True, index=True)
+    cancelado_por_usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=True, index=True)
+    cancelado_em = db.Column(db.DateTime, nullable=True)
+    motivo_cancelamento = db.Column(db.Text, nullable=True)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
+    atualizado_em = db.Column(db.DateTime, default=agora_brasil, onupdate=agora_brasil, nullable=False)
+
+    contrato = db.relationship("FinanceiroContratoCliente", back_populates="medicoes")
+    nota_emitida = db.relationship("FinanceiroNotaFiscalEmitida", foreign_keys=[nota_emitida_id])
+    titulos = db.relationship("FinanceiroContaReceberTitulo", back_populates="medicao", order_by="FinanceiroContaReceberTitulo.parcela_numero.asc(), FinanceiroContaReceberTitulo.id.asc()")
+    notas_emitidas = db.relationship("FinanceiroNotaFiscalEmitida", back_populates="medicao", foreign_keys="FinanceiroNotaFiscalEmitida.medicao_id", order_by="FinanceiroNotaFiscalEmitida.data_emissao.desc(), FinanceiroNotaFiscalEmitida.id.desc()")
+    criado_por = db.relationship("Usuario", foreign_keys=[criado_por_usuario_id])
+    atualizado_por = db.relationship("Usuario", foreign_keys=[atualizado_por_usuario_id])
+    cancelado_por = db.relationship("Usuario", foreign_keys=[cancelado_por_usuario_id])
+
+    __table_args__ = (
+        db.UniqueConstraint("contrato_id", "numero_medicao", name="uq_fin_medicoes_contrato_numero"),
+        db.CheckConstraint("valor_bruto_medido >= 0", name="ck_fin_medicoes_valor_bruto"),
+        db.CheckConstraint("valor_desconto >= 0", name="ck_fin_medicoes_desconto"),
+        db.CheckConstraint("valor_acrescimo >= 0", name="ck_fin_medicoes_acrescimo"),
+        db.CheckConstraint("valor_retencoes >= 0", name="ck_fin_medicoes_retencoes"),
+        db.CheckConstraint("valor_liquido_medido > 0", name="ck_fin_medicoes_valor_liquido"),
+        db.CheckConstraint("periodo_fim >= periodo_inicio", name="ck_fin_medicoes_periodo"),
+        db.CheckConstraint("status_medicao in ('Rascunho', 'Medida', 'Aguardando aprovação', 'Aprovada', 'Faturada', 'Gerada no Contas a Receber', 'Cancelada')", name="ck_fin_medicoes_status"),
+        db.CheckConstraint("status_financeiro in ('Não integrado', 'Pendente de geração', 'Título gerado', 'Vinculado a título existente', 'Vinculado à nota emitida', 'Cancelado')", name="ck_fin_medicoes_status_financeiro"),
+    )
+
+    @property
+    def titulos_ativos(self):
+        return [titulo for titulo in self.titulos if titulo.status not in ["Cancelado", "Estornado"]]
+
+    @property
+    def quantidade_titulos_ativos(self):
+        return len(self.titulos_ativos)
+
+    @property
+    def valor_faturado(self):
+        total = sum((titulo.valor_liquido for titulo in self.titulos_ativos), Decimal("0.00"))
+        return total.quantize(Decimal("0.01"))
+
+    @property
+    def saldo_sem_titulo_financeiro(self):
+        saldo = self.valor_liquido_medido - self.valor_faturado
+        return saldo.quantize(Decimal("0.01")) if saldo > 0 else Decimal("0.00")
+
+    @property
+    def anexo_disponivel(self):
+        return bool(self.anexo_path or self.anexo_drive_file_id)
+
+    def __repr__(self):
+        return f"<FinanceiroContratoMedicao {self.id} {self.numero_medicao}>"
 
 
 

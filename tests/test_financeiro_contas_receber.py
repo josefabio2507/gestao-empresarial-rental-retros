@@ -10,6 +10,8 @@ from app.models import (
     FinanceiroContaReceberBaixa,
     FinanceiroContaReceberLoteBaixa,
     FinanceiroContaReceberTitulo,
+    FinanceiroContratoCliente,
+    FinanceiroContratoMedicao,
     FinanceiroNotaFiscalEmitida,
     LogAcesso,
     Modulo,
@@ -20,12 +22,17 @@ from app.models import (
 from app.services.financeiro_contas_receber_service import (
     cancelar_recebimento_titulo,
     gerar_dashboard,
+    gerar_titulos_da_medicao,
     gerar_titulos_da_nota,
     listar_titulos_receber,
+    salvar_contrato_cliente,
+    salvar_medicao_contrato,
     salvar_nota_emitida,
     registrar_recebimento_em_massa,
     registrar_recebimento_titulo,
     salvar_titulo_receber,
+    vincular_medicao_a_nota,
+    vincular_medicao_a_titulo,
     vincular_nota_a_titulo,
 )
 
@@ -164,6 +171,57 @@ class FinanceiroContasReceberTestCase(unittest.TestCase):
             "status_fiscal": "Emitida",
             "status_financeiro": "Não integrado",
             "observacoes_fiscais": "Teste fiscal",
+            "observacoes_financeiras": "Teste financeiro",
+        }
+        dados.update(extras)
+        return dados
+
+
+    def _dados_contrato(self, **extras):
+        dados = {
+            "numero_contrato": "CTR-100",
+            "cliente_nome_snapshot": "Cliente Teste",
+            "cliente_cnpj_cpf_snapshot": "11.222.333/0001-81",
+            "cliente_email_financeiro_snapshot": "financeiro@cliente.com",
+            "cliente_telefone_snapshot": "13999998888",
+            "descricao_objeto": "Contrato de serviços",
+            "data_inicio": "2026-08-01",
+            "data_fim": "2027-07-31",
+            "valor_contratual": "120000.00",
+            "tipo_cobranca": "Medição variável",
+            "periodicidade_medicao": "Mensal",
+            "dia_padrao_vencimento": "10",
+            "condicao_recebimento": "Mensal",
+            "status": "Ativo",
+            "observacoes": "Teste",
+        }
+        dados.update(extras)
+        return dados
+
+    def _criar_contrato(self, **extras):
+        sucesso, mensagem, contrato = salvar_contrato_cliente(self._dados_contrato(**extras), usuario=self.admin)
+        self.assertTrue(sucesso, mensagem)
+        return contrato
+
+    def _dados_medicao(self, contrato, **extras):
+        dados = {
+            "contrato_id": str(contrato.id),
+            "numero_medicao": "MED-100",
+            "competencia": "2026-08",
+            "data_medicao": "2026-08-31",
+            "periodo_inicio": "2026-08-01",
+            "periodo_fim": "2026-08-31",
+            "descricao": "Medição mensal",
+            "valor_bruto_medido": "10000.00",
+            "valor_desconto": "0.00",
+            "valor_acrescimo": "0.00",
+            "valor_retencoes": "0.00",
+            "valor_liquido_medido": "10000.00",
+            "data_prevista_faturamento": "2026-09-01",
+            "data_prevista_vencimento": "2026-09-10",
+            "status_medicao": "Aprovada",
+            "status_financeiro": "Não integrado",
+            "observacoes_tecnicas": "Teste técnico",
             "observacoes_financeiras": "Teste financeiro",
         }
         dados.update(extras)
@@ -609,6 +667,69 @@ class FinanceiroContasReceberTestCase(unittest.TestCase):
         resposta = self.client.get("/financeiro/contas-a-receber/notas-emitidas")
         self.assertEqual(302, resposta.status_code)
         self.assertIn("/acesso-negado", resposta.headers["Location"])
+
+    def test_cria_contrato_e_bloqueia_duplicado(self):
+        contrato = self._criar_contrato()
+        self.assertEqual("CTR-100", contrato.numero_contrato)
+        sucesso, mensagem, _ = salvar_contrato_cliente(self._dados_contrato(), usuario=self.admin)
+        self.assertFalse(sucesso)
+        self.assertIn("Já existe contrato", mensagem)
+
+    def test_cria_medicao_valida_periodo_e_gera_titulos_parcelados(self):
+        contrato = self._criar_contrato()
+        sucesso, mensagem, medicao = salvar_medicao_contrato(self._dados_medicao(contrato, valor_liquido_medido="10000.00"), usuario=self.admin)
+        self.assertTrue(sucesso, mensagem)
+        sucesso, mensagem, _ = salvar_medicao_contrato(self._dados_medicao(contrato, numero_medicao="MED-101", periodo_fim="2026-07-31"), usuario=self.admin)
+        self.assertFalse(sucesso)
+        self.assertEqual("Período final não pode ser menor que o período inicial.", mensagem)
+        sucesso, mensagem, titulos = gerar_titulos_da_medicao(medicao, {"data_vencimento": "2026-09-30", "numero_parcelas": "3", "competencia": "2026-08"}, usuario=self.admin)
+        self.assertTrue(sucesso, mensagem)
+        self.assertEqual([Decimal("3333.33"), Decimal("3333.33"), Decimal("3333.34")], [titulo.valor_original for titulo in titulos])
+        self.assertEqual("Título gerado", FinanceiroContratoMedicao.query.get(medicao.id).status_financeiro)
+        sucesso, mensagem, _ = gerar_titulos_da_medicao(medicao, {"data_vencimento": "2026-09-30"}, usuario=self.admin)
+        self.assertFalse(sucesso)
+        self.assertIn("já possui título", mensagem)
+
+    def test_vincula_medicao_a_titulo_e_nota_emitida(self):
+        contrato = self._criar_contrato()
+        sucesso, _, medicao = salvar_medicao_contrato(self._dados_medicao(contrato), usuario=self.admin)
+        self.assertTrue(sucesso)
+        sucesso, _, nota = salvar_nota_emitida(self._dados_nota(numero_nota="NFSE-MED-1"), usuario=self.admin)
+        self.assertTrue(sucesso)
+        sucesso, mensagem, nota = vincular_medicao_a_nota(medicao, nota.id, usuario=self.admin)
+        self.assertTrue(sucesso, mensagem)
+        self.assertEqual(medicao.id, nota.medicao_id)
+        sucesso, _, titulo, _ = salvar_titulo_receber(self._dados_titulo(numero_documento="DOC-MED", nota_emitida_id=""), usuario=self.admin)
+        self.assertTrue(sucesso)
+        sucesso, mensagem, titulo = vincular_medicao_a_titulo(medicao, titulo.id, usuario=self.admin)
+        self.assertTrue(sucesso, mensagem)
+        self.assertEqual(medicao.id, titulo.medicao_id)
+        self.assertEqual(contrato.id, titulo.contrato_id)
+
+    def test_rotas_contratos_medicoes_dashboard_e_listbox(self):
+        self._liberar(visualizar=True, criar=True, editar=True, cancelar=True)
+        self._autenticar(self.usuario)
+        contrato = self._criar_contrato()
+        sucesso, _, medicao = salvar_medicao_contrato(self._dados_medicao(contrato), usuario=self.admin)
+        self.assertTrue(sucesso)
+        rotas_com_listbox = [
+            "/financeiro/contas-a-receber/contratos",
+            f"/financeiro/contas-a-receber/contratos/{contrato.id}",
+            "/financeiro/contas-a-receber/medicoes",
+            f"/financeiro/contas-a-receber/medicoes/{medicao.id}",
+        ]
+        for rota in rotas_com_listbox:
+            resposta = self.client.get(rota)
+            self.assertEqual(200, resposta.status_code, rota)
+            self.assertIn(b"listbox-10-linhas", resposta.data)
+        gerar = self.client.get(f"/financeiro/contas-a-receber/medicoes/{medicao.id}/gerar")
+        self.assertEqual(200, gerar.status_code)
+        self.assertIn("Gerar Contas a Receber".encode("utf-8"), gerar.data)
+        dashboard = self.client.get("/financeiro/contas-a-receber/dashboard")
+        self.assertEqual(200, dashboard.status_code)
+        self.assertIn("Contratos ativos".encode("utf-8"), dashboard.data)
+        self.assertIn("Medições pendentes".encode("utf-8"), dashboard.data)
+        self.assertIn(b"title=", dashboard.data)
 
 if __name__ == "__main__":
     unittest.main()

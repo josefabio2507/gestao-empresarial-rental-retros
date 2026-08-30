@@ -4,38 +4,57 @@ from flask_login import current_user, login_required
 from app.services.financeiro_contas_receber_service import (
     FORMAS_RECEBIMENTO,
     ORIGENS_LANCAMENTO,
+    STATUS_CONTRATOS_CLIENTES,
     STATUS_FISCAIS_NOTA_EMITIDA,
+    STATUS_FINANCEIROS_MEDICAO,
     STATUS_FINANCEIROS_NOTA_EMITIDA,
+    STATUS_MEDICOES,
     STATUS_TITULOS_RECEBER,
+    PERIODICIDADES_MEDICAO,
+    TIPOS_COBRANCA_CONTRATO,
     TIPOS_NOTA_EMITIDA,
     buscar_baixa_recebimento_por_id,
     buscar_lote_recebimento_por_id,
     buscar_centros_custo_ativos,
+    buscar_contrato_cliente_por_id,
     buscar_equipes_ativas,
+    buscar_medicao_contrato_por_id,
     buscar_nota_emitida_por_id,
     buscar_titulo_por_id,
+    cancelar_contrato_cliente,
     cancelar_lote_recebimento,
+    cancelar_medicao_contrato,
     cancelar_nota_emitida,
     cancelar_recebimento_titulo,
     cancelar_titulo_receber,
+    caminho_anexo_medicao,
     caminho_arquivo_nota_emitida,
     caminho_comprovante_lote_recebimento,
     caminho_comprovante_recebimento,
     formatar_data_brasil,
     formatar_moeda_brl,
     gerar_dashboard,
+    gerar_titulos_da_medicao,
     gerar_titulos_da_nota,
+    listar_contratos_clientes,
     listar_lotes_recebimento,
+    listar_medicoes_contratos,
+    listar_notas_elegiveis_vinculo_medicao,
     listar_notas_emitidas,
+    listar_titulos_elegiveis_vinculo_medicao,
     listar_titulos_elegiveis_vinculo_nota,
     listar_titulos_receber,
     preparar_baixa_em_massa,
     recalcular_recebimento_titulo,
     registrar_recebimento_em_massa,
     registrar_recebimento_titulo,
+    salvar_contrato_cliente,
+    salvar_medicao_contrato,
     salvar_nota_emitida,
     salvar_titulo_receber,
     titulo_elegivel_recebimento,
+    vincular_medicao_a_nota,
+    vincular_medicao_a_titulo,
     vincular_nota_a_titulo,
 )
 from app.services.logs_service import registrar_log
@@ -88,6 +107,8 @@ def dashboard():
         formatar_data_brasil=formatar_data_brasil,
         pode_criar=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "criar"),
         pode_ver_notas=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "visualizar"),
+        pode_ver_contratos=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "visualizar"),
+        pode_ver_medicoes=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "visualizar"),
     )
 
 
@@ -585,3 +606,331 @@ def baixar_comprovante(baixa_id):
         as_attachment=True,
         download_name=baixa.comprovante_nome_original or baixa.comprovante_nome_armazenado or (baixa.lote_baixa.comprovante_nome_original if baixa.lote_baixa else None) or (baixa.lote_baixa.comprovante_nome_armazenado if baixa.lote_baixa else None),
     )
+
+
+
+@financeiro_contas_receber_bp.route("/contratos")
+@login_required
+def contratos():
+    if not _permitido("visualizar"):
+        return redirect(url_for("main.acesso_negado"))
+    return render_template(
+        "financeiro/contas_receber/contratos.html",
+        contratos=listar_contratos_clientes(request.args),
+        filtros=request.args,
+        status_contratos=STATUS_CONTRATOS_CLIENTES,
+        formatar_moeda_brl=formatar_moeda_brl,
+        formatar_data_brasil=formatar_data_brasil,
+        pode_criar=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "criar"),
+        pode_editar=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "editar"),
+        pode_cancelar=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "excluir"),
+        pode_ver_notas=True,
+        pode_ver_contratos=True,
+        pode_ver_medicoes=True,
+    )
+
+
+@financeiro_contas_receber_bp.route("/contratos/novo", methods=["GET", "POST"])
+@login_required
+def novo_contrato():
+    if not _permitido("criar"):
+        return redirect(url_for("main.acesso_negado"))
+    contrato = None
+    if request.method == "POST":
+        sucesso, mensagem, contrato = salvar_contrato_cliente(request.form, usuario=current_user)
+        flash(mensagem, "success" if sucesso else "danger")
+        if sucesso:
+            return redirect(url_for("financeiro_contas_receber.contrato_detalhe", contrato_id=contrato.id))
+    return render_template(
+        "financeiro/contas_receber/contrato_form.html",
+        contrato=contrato,
+        modo="novo",
+        status_contratos=STATUS_CONTRATOS_CLIENTES,
+        tipos_cobranca=TIPOS_COBRANCA_CONTRATO,
+        periodicidades=PERIODICIDADES_MEDICAO,
+        centros_custo=buscar_centros_custo_ativos(),
+        equipes=buscar_equipes_ativas(),
+        pode_criar=True,
+        pode_ver_notas=True,
+        pode_ver_contratos=True,
+        pode_ver_medicoes=True,
+    )
+
+
+@financeiro_contas_receber_bp.route("/contratos/<int:contrato_id>")
+@login_required
+def contrato_detalhe(contrato_id):
+    if not _permitido("visualizar"):
+        return redirect(url_for("main.acesso_negado"))
+    contrato = buscar_contrato_cliente_por_id(contrato_id)
+    if not contrato:
+        flash("Contrato não encontrado.", "warning")
+        return redirect(url_for("financeiro_contas_receber.contratos"))
+    return render_template(
+        "financeiro/contas_receber/contrato_detalhe.html",
+        contrato=contrato,
+        formatar_moeda_brl=formatar_moeda_brl,
+        formatar_data_brasil=formatar_data_brasil,
+        pode_editar=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "editar"),
+        pode_cancelar=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "excluir"),
+        pode_criar=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "criar"),
+        pode_ver_notas=True,
+        pode_ver_contratos=True,
+        pode_ver_medicoes=True,
+    )
+
+
+@financeiro_contas_receber_bp.route("/contratos/<int:contrato_id>/editar", methods=["GET", "POST"])
+@login_required
+def editar_contrato(contrato_id):
+    if not _permitido("editar"):
+        return redirect(url_for("main.acesso_negado"))
+    contrato = buscar_contrato_cliente_por_id(contrato_id)
+    if not contrato:
+        flash("Contrato não encontrado.", "warning")
+        return redirect(url_for("financeiro_contas_receber.contratos"))
+    if request.method == "POST":
+        sucesso, mensagem, contrato = salvar_contrato_cliente(request.form, contrato=contrato, usuario=current_user)
+        flash(mensagem, "success" if sucesso else "danger")
+        if sucesso:
+            return redirect(url_for("financeiro_contas_receber.contrato_detalhe", contrato_id=contrato.id))
+    return render_template(
+        "financeiro/contas_receber/contrato_form.html",
+        contrato=contrato,
+        modo="editar",
+        status_contratos=STATUS_CONTRATOS_CLIENTES,
+        tipos_cobranca=TIPOS_COBRANCA_CONTRATO,
+        periodicidades=PERIODICIDADES_MEDICAO,
+        centros_custo=buscar_centros_custo_ativos(),
+        equipes=buscar_equipes_ativas(),
+        pode_criar=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "criar"),
+        pode_ver_notas=True,
+        pode_ver_contratos=True,
+        pode_ver_medicoes=True,
+    )
+
+
+@financeiro_contas_receber_bp.route("/contratos/<int:contrato_id>/cancelar", methods=["POST"])
+@login_required
+def cancelar_contrato(contrato_id):
+    if not _permitido("excluir"):
+        return redirect(url_for("main.acesso_negado"))
+    contrato = buscar_contrato_cliente_por_id(contrato_id)
+    sucesso, mensagem = cancelar_contrato_cliente(contrato, request.form.get("motivo_cancelamento"), usuario=current_user)
+    flash(mensagem, "success" if sucesso else "danger")
+    return redirect(url_for("financeiro_contas_receber.contrato_detalhe", contrato_id=contrato_id) if contrato else url_for("financeiro_contas_receber.contratos"))
+
+
+@financeiro_contas_receber_bp.route("/medicoes")
+@login_required
+def medicoes():
+    if not _permitido("visualizar"):
+        return redirect(url_for("main.acesso_negado"))
+    return render_template(
+        "financeiro/contas_receber/medicoes.html",
+        medicoes=listar_medicoes_contratos(request.args),
+        contratos=listar_contratos_clientes(),
+        filtros=request.args,
+        status_medicoes=STATUS_MEDICOES,
+        status_financeiros=STATUS_FINANCEIROS_MEDICAO,
+        formatar_moeda_brl=formatar_moeda_brl,
+        formatar_data_brasil=formatar_data_brasil,
+        pode_criar=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "criar"),
+        pode_editar=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "editar"),
+        pode_cancelar=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "excluir"),
+        pode_ver_notas=True,
+        pode_ver_contratos=True,
+        pode_ver_medicoes=True,
+    )
+
+
+@financeiro_contas_receber_bp.route("/medicoes/nova", methods=["GET", "POST"])
+@login_required
+def nova_medicao():
+    if not _permitido("criar"):
+        return redirect(url_for("main.acesso_negado"))
+    medicao = None
+    contrato_id = request.args.get("contrato_id") or request.form.get("contrato_id")
+    if request.method == "POST":
+        sucesso, mensagem, medicao = salvar_medicao_contrato(request.form, arquivos={"anexo": request.files.get("anexo")}, usuario=current_user)
+        flash(mensagem, "success" if sucesso else "danger")
+        if sucesso:
+            return redirect(url_for("financeiro_contas_receber.medicao_detalhe", medicao_id=medicao.id))
+    return render_template(
+        "financeiro/contas_receber/medicao_form.html",
+        medicao=medicao,
+        contrato_preselecionado=buscar_contrato_cliente_por_id(contrato_id) if contrato_id else None,
+        contratos=listar_contratos_clientes({"marcador": "ativos"}),
+        notas=listar_notas_emitidas({"vinculo": "sem"}),
+        modo="nova",
+        status_medicoes=STATUS_MEDICOES,
+        status_financeiros=STATUS_FINANCEIROS_MEDICAO,
+        pode_criar=True,
+        pode_ver_notas=True,
+        pode_ver_contratos=True,
+        pode_ver_medicoes=True,
+    )
+
+
+@financeiro_contas_receber_bp.route("/medicoes/<int:medicao_id>")
+@login_required
+def medicao_detalhe(medicao_id):
+    if not _permitido("visualizar"):
+        return redirect(url_for("main.acesso_negado"))
+    medicao = buscar_medicao_contrato_por_id(medicao_id)
+    if not medicao:
+        flash("Medição não encontrada.", "warning")
+        return redirect(url_for("financeiro_contas_receber.medicoes"))
+    return render_template(
+        "financeiro/contas_receber/medicao_detalhe.html",
+        medicao=medicao,
+        formatar_moeda_brl=formatar_moeda_brl,
+        formatar_data_brasil=formatar_data_brasil,
+        pode_editar=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "editar"),
+        pode_cancelar=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "excluir"),
+        pode_criar=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "criar"),
+        pode_baixar_anexo=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "visualizar"),
+        pode_ver_notas=True,
+        pode_ver_contratos=True,
+        pode_ver_medicoes=True,
+    )
+
+
+@financeiro_contas_receber_bp.route("/medicoes/<int:medicao_id>/editar", methods=["GET", "POST"])
+@login_required
+def editar_medicao(medicao_id):
+    if not _permitido("editar"):
+        return redirect(url_for("main.acesso_negado"))
+    medicao = buscar_medicao_contrato_por_id(medicao_id)
+    if not medicao:
+        flash("Medição não encontrada.", "warning")
+        return redirect(url_for("financeiro_contas_receber.medicoes"))
+    if request.method == "POST":
+        sucesso, mensagem, medicao = salvar_medicao_contrato(request.form, medicao=medicao, arquivos={"anexo": request.files.get("anexo")}, usuario=current_user)
+        flash(mensagem, "success" if sucesso else "danger")
+        if sucesso:
+            return redirect(url_for("financeiro_contas_receber.medicao_detalhe", medicao_id=medicao.id))
+    return render_template(
+        "financeiro/contas_receber/medicao_form.html",
+        medicao=medicao,
+        contrato_preselecionado=medicao.contrato,
+        contratos=listar_contratos_clientes({"marcador": "ativos"}),
+        notas=listar_notas_emitidas({"vinculo": "sem"}),
+        modo="editar",
+        status_medicoes=STATUS_MEDICOES,
+        status_financeiros=STATUS_FINANCEIROS_MEDICAO,
+        pode_criar=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "criar"),
+        pode_ver_notas=True,
+        pode_ver_contratos=True,
+        pode_ver_medicoes=True,
+    )
+
+
+@financeiro_contas_receber_bp.route("/medicoes/<int:medicao_id>/gerar", methods=["GET", "POST"])
+@login_required
+def gerar_contas_receber_medicao(medicao_id):
+    if not _permitido("criar"):
+        return redirect(url_for("main.acesso_negado"))
+    medicao = buscar_medicao_contrato_por_id(medicao_id)
+    if not medicao:
+        flash("Medição não encontrada.", "warning")
+        return redirect(url_for("financeiro_contas_receber.medicoes"))
+    if request.method == "POST":
+        sucesso, mensagem, titulos_gerados = gerar_titulos_da_medicao(medicao, request.form, usuario=current_user)
+        flash(mensagem, "success" if sucesso else "danger")
+        if sucesso and titulos_gerados:
+            return redirect(url_for("financeiro_contas_receber.medicao_detalhe", medicao_id=medicao.id))
+    return render_template(
+        "financeiro/contas_receber/medicao_gerar_titulos.html",
+        medicao=medicao,
+        centros_custo=buscar_centros_custo_ativos(),
+        equipes=buscar_equipes_ativas(),
+        formatar_moeda_brl=formatar_moeda_brl,
+        formatar_data_brasil=formatar_data_brasil,
+        pode_criar=True,
+        pode_ver_notas=True,
+        pode_ver_contratos=True,
+        pode_ver_medicoes=True,
+    )
+
+
+@financeiro_contas_receber_bp.route("/medicoes/<int:medicao_id>/vincular-titulo", methods=["GET", "POST"])
+@login_required
+def vincular_medicao_titulo(medicao_id):
+    if not _permitido("editar"):
+        return redirect(url_for("main.acesso_negado"))
+    medicao = buscar_medicao_contrato_por_id(medicao_id)
+    if not medicao:
+        flash("Medição não encontrada.", "warning")
+        return redirect(url_for("financeiro_contas_receber.medicoes"))
+    if request.method == "POST":
+        sucesso, mensagem, titulo = vincular_medicao_a_titulo(medicao, request.form.get("titulo_id"), usuario=current_user)
+        flash(mensagem, "success" if sucesso else "danger")
+        if sucesso:
+            return redirect(url_for("financeiro_contas_receber.detalhe", titulo_id=titulo.id))
+    return render_template(
+        "financeiro/contas_receber/medicao_vincular_titulo.html",
+        medicao=medicao,
+        titulos=listar_titulos_elegiveis_vinculo_medicao(medicao, request.args),
+        filtros=request.args,
+        status_titulos=STATUS_TITULOS_RECEBER,
+        formatar_moeda_brl=formatar_moeda_brl,
+        formatar_data_brasil=formatar_data_brasil,
+        pode_criar=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "criar"),
+        pode_ver_notas=True,
+        pode_ver_contratos=True,
+        pode_ver_medicoes=True,
+    )
+
+
+@financeiro_contas_receber_bp.route("/medicoes/<int:medicao_id>/vincular-nota", methods=["GET", "POST"])
+@login_required
+def vincular_medicao_nota(medicao_id):
+    if not _permitido("editar"):
+        return redirect(url_for("main.acesso_negado"))
+    medicao = buscar_medicao_contrato_por_id(medicao_id)
+    if not medicao:
+        flash("Medição não encontrada.", "warning")
+        return redirect(url_for("financeiro_contas_receber.medicoes"))
+    if request.method == "POST":
+        sucesso, mensagem, nota = vincular_medicao_a_nota(medicao, request.form.get("nota_id"), usuario=current_user)
+        flash(mensagem, "success" if sucesso else "danger")
+        if sucesso:
+            return redirect(url_for("financeiro_contas_receber.nota_emitida_detalhe", nota_id=nota.id))
+    return render_template(
+        "financeiro/contas_receber/medicao_vincular_nota.html",
+        medicao=medicao,
+        notas=listar_notas_elegiveis_vinculo_medicao(medicao, request.args),
+        filtros=request.args,
+        status_financeiros=STATUS_FINANCEIROS_NOTA_EMITIDA,
+        formatar_moeda_brl=formatar_moeda_brl,
+        formatar_data_brasil=formatar_data_brasil,
+        pode_criar=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "criar"),
+        pode_ver_notas=True,
+        pode_ver_contratos=True,
+        pode_ver_medicoes=True,
+    )
+
+
+@financeiro_contas_receber_bp.route("/medicoes/<int:medicao_id>/cancelar", methods=["POST"])
+@login_required
+def cancelar_medicao(medicao_id):
+    if not _permitido("excluir"):
+        return redirect(url_for("main.acesso_negado"))
+    medicao = buscar_medicao_contrato_por_id(medicao_id)
+    sucesso, mensagem = cancelar_medicao_contrato(medicao, request.form.get("motivo_cancelamento"), usuario=current_user)
+    flash(mensagem, "success" if sucesso else "danger")
+    return redirect(url_for("financeiro_contas_receber.medicao_detalhe", medicao_id=medicao_id) if medicao else url_for("financeiro_contas_receber.medicoes"))
+
+
+@financeiro_contas_receber_bp.route("/medicoes/<int:medicao_id>/anexo")
+@login_required
+def baixar_anexo_medicao(medicao_id):
+    if not _permitido("visualizar"):
+        return redirect(url_for("main.acesso_negado"))
+    medicao = buscar_medicao_contrato_por_id(medicao_id)
+    caminho = caminho_anexo_medicao(medicao)
+    if not caminho:
+        abort(404)
+    registrar_log("financeiro_contas_receber_medicao_anexo_download", f"Download de anexo de medição. Medição: {medicao.id}.")
+    return send_file(caminho, as_attachment=True, download_name=medicao.anexo_nome_original or medicao.anexo_nome_armazenado)
