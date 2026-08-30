@@ -151,3 +151,21 @@
 .contas-receber-medicoes-table .acoes-botoes {
     min-width: 260px;
 }
+
+.contas-receber-inadimplencia-table {
+    min-width: 2200px;
+}
+
+.contas-receber-cobrancas-table {
+    min-width: 1780px;
+}
+
+.contas-receber-relatorios-table {
+    min-width: 1900px;
+}
+
+.contas-receber-inadimplencia-table .acoes-botoes,
+.contas-receber-cobrancas-table .acoes-botoes,
+.contas-receber-relatorios-table .acoes-botoes {
+    min-width: 250px;
+}

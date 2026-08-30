@@ -57,6 +57,15 @@ from app.services.financeiro_contas_receber_service import (
     vincular_medicao_a_titulo,
     vincular_nota_a_titulo,
 )
+from app.services.financeiro_contas_receber_relatorios_service import (
+    STATUS_COBRANCA,
+    TIPOS_CONTATO_COBRANCA,
+    buscar_cobranca_por_id,
+    cancelar_cobranca_titulo,
+    listar_inadimplencia,
+    salvar_cobranca_titulo,
+    usuarios_ativos,
+)
 from app.services.logs_service import registrar_log
 from app.services.permissoes_service import usuario_tem_permissao
 from app.financeiro.contas_receber import financeiro_contas_receber_bp
@@ -109,6 +118,28 @@ def dashboard():
         pode_ver_notas=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "visualizar"),
         pode_ver_contratos=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "visualizar"),
         pode_ver_medicoes=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "visualizar"),
+        pode_ver_inadimplencia=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "visualizar"),
+    )
+
+
+@financeiro_contas_receber_bp.route("/inadimplencia")
+@login_required
+def inadimplencia():
+    if not _permitido("visualizar"):
+        return redirect(url_for("main.acesso_negado"))
+    return render_template(
+        "financeiro/contas_receber/inadimplencia.html",
+        titulos=listar_inadimplencia(request.args),
+        filtros=request.args,
+        status_cobranca=STATUS_COBRANCA,
+        formatar_moeda_brl=formatar_moeda_brl,
+        formatar_data_brasil=formatar_data_brasil,
+        pode_criar=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "criar"),
+        pode_editar=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "editar"),
+        pode_ver_notas=True,
+        pode_ver_contratos=True,
+        pode_ver_medicoes=True,
+        pode_ver_inadimplencia=True,
     )
 
 
@@ -375,7 +406,55 @@ def detalhe(titulo_id):
         pode_baixar_comprovante=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "visualizar"),
         pode_estornar_recebimento=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "excluir"),
         pode_ver_notas=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "visualizar"),
+        pode_ver_inadimplencia=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "visualizar"),
+        pode_registrar_cobranca=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "editar"),
+        pode_cancelar_cobranca=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "excluir"),
     )
+
+
+@financeiro_contas_receber_bp.route("/<int:titulo_id>/cobrancas/nova", methods=["GET", "POST"])
+@login_required
+def registrar_cobranca(titulo_id):
+    if not _permitido("editar"):
+        flash("Você não possui permissão para registrar acompanhamento de cobrança.", "danger")
+        return redirect(url_for("main.acesso_negado"))
+    titulo = buscar_titulo_por_id(titulo_id)
+    if not titulo:
+        flash("Título a receber não encontrado.", "warning")
+        return redirect(url_for("financeiro_contas_receber.inadimplencia"))
+    if request.method == "POST":
+        sucesso, mensagem, _ = salvar_cobranca_titulo(titulo, request.form, usuario=current_user)
+        flash(mensagem, "success" if sucesso else "danger")
+        if sucesso:
+            return redirect(url_for("financeiro_contas_receber.detalhe", titulo_id=titulo.id))
+    return render_template(
+        "financeiro/contas_receber/cobranca_form.html",
+        titulo=titulo,
+        status_cobranca=STATUS_COBRANCA,
+        tipos_contato=TIPOS_CONTATO_COBRANCA,
+        usuarios=usuarios_ativos(),
+        formatar_moeda_brl=formatar_moeda_brl,
+        formatar_data_brasil=formatar_data_brasil,
+        pode_criar=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "criar"),
+        pode_ver_notas=True,
+        pode_ver_contratos=True,
+        pode_ver_medicoes=True,
+        pode_ver_inadimplencia=True,
+    )
+
+
+@financeiro_contas_receber_bp.route("/<int:titulo_id>/cobrancas/<int:cobranca_id>/cancelar", methods=["POST"])
+@login_required
+def cancelar_cobranca(titulo_id, cobranca_id):
+    if not _permitido("excluir"):
+        return redirect(url_for("main.acesso_negado"))
+    cobranca = buscar_cobranca_por_id(cobranca_id)
+    if not cobranca or cobranca.titulo_id != titulo_id:
+        flash("Acompanhamento de cobrança não encontrado.", "warning")
+        return redirect(url_for("financeiro_contas_receber.titulos"))
+    sucesso, mensagem = cancelar_cobranca_titulo(cobranca, request.form.get("motivo_cancelamento"), usuario=current_user)
+    flash(mensagem, "success" if sucesso else "danger")
+    return redirect(url_for("financeiro_contas_receber.detalhe", titulo_id=titulo_id))
 
 
 @financeiro_contas_receber_bp.route("/<int:titulo_id>/editar", methods=["GET", "POST"])

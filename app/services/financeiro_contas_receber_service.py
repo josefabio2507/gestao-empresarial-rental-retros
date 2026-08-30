@@ -9,7 +9,7 @@ from sqlalchemy import func, or_
 from sqlalchemy.orm import joinedload
 
 from app.extensions import db
-from app.models import CentroCusto, Equipe, FinanceiroContaReceberBaixa, FinanceiroContaReceberLoteBaixa, FinanceiroContaReceberTitulo, FinanceiroNotaFiscalEmitida, FinanceiroContratoCliente, FinanceiroContratoMedicao
+from app.models import CentroCusto, Equipe, FinanceiroContaReceberBaixa, FinanceiroContaReceberLoteBaixa, FinanceiroContaReceberTitulo, FinanceiroNotaFiscalEmitida, FinanceiroContratoCliente, FinanceiroContratoMedicao, FinanceiroContaReceberCobranca
 from app.utils.datas import agora_brasil
 
 
@@ -270,6 +270,9 @@ def buscar_titulo_por_id(titulo_id):
         joinedload(FinanceiroContaReceberTitulo.cancelado_por),
         joinedload(FinanceiroContaReceberTitulo.baixas).joinedload(FinanceiroContaReceberBaixa.registrado_por),
         joinedload(FinanceiroContaReceberTitulo.baixas).joinedload(FinanceiroContaReceberBaixa.cancelado_por),
+        joinedload(FinanceiroContaReceberTitulo.cobrancas).joinedload(FinanceiroContaReceberCobranca.responsavel),
+        joinedload(FinanceiroContaReceberTitulo.cobrancas).joinedload(FinanceiroContaReceberCobranca.criado_por),
+        joinedload(FinanceiroContaReceberTitulo.cobrancas).joinedload(FinanceiroContaReceberCobranca.cancelado_por),
     ).get(titulo_id)
 
 
@@ -443,6 +446,8 @@ def gerar_dashboard(filtros=None):
         _saldo_expr() > 0,
     )
     vencidos = abertos.filter(FinanceiroContaReceberTitulo.data_vencimento < hoje)
+    hoje_query = abertos.filter(FinanceiroContaReceberTitulo.data_vencimento == hoje)
+    inadimplentes_query = abertos.filter(FinanceiroContaReceberTitulo.data_vencimento < hoje)
     proximos_7 = abertos.filter(
         FinanceiroContaReceberTitulo.data_vencimento >= hoje,
         FinanceiroContaReceberTitulo.data_vencimento <= hoje + timedelta(days=7),
@@ -511,6 +516,8 @@ def gerar_dashboard(filtros=None):
         "total_mes": _somar_saldo(mes_query),
         "total_aberto": _somar_saldo(abertos),
         "total_vencido": _somar_saldo(vencidos),
+        "total_inadimplente": _somar_saldo(inadimplentes_query),
+        "total_vence_hoje": _somar_saldo(hoje_query),
         "total_7_dias": _somar_saldo(proximos_7),
         "total_30_dias": _somar_saldo(proximos_30),
         "total_aguardando_faturamento": _somar_saldo(aguardando),
@@ -524,6 +531,9 @@ def gerar_dashboard(filtros=None):
         "valor_notas_sem_titulo": Decimal(notas_sem_titulo.with_entities(func.coalesce(func.sum(FinanceiroNotaFiscalEmitida.valor_total), 0)).scalar() or 0).quantize(Decimal("0.01")),
         "notas_vinculadas": FinanceiroNotaFiscalEmitida.query.filter(FinanceiroNotaFiscalEmitida.status_financeiro.in_([STATUS_NOTA_TITULO_GERADO, STATUS_NOTA_VINCULADO, "Parcialmente vinculado"])).count(),
         "titulos_gerados_por_nota": titulos_gerados_por_nota.count(),
+        "valor_originado_notas": _somar_saldo(ativos.filter(FinanceiroContaReceberTitulo.nota_emitida_id.isnot(None))),
+        "valor_originado_contratos": _somar_saldo(ativos.filter(FinanceiroContaReceberTitulo.contrato_id.isnot(None))),
+        "valor_originado_medicoes": _somar_saldo(ativos.filter(FinanceiroContaReceberTitulo.medicao_id.isnot(None))),
         "contratos_ativos": FinanceiroContratoCliente.query.filter(FinanceiroContratoCliente.status == "Ativo").count(),
         "valor_contratual_ativo": Decimal(FinanceiroContratoCliente.query.filter(FinanceiroContratoCliente.status == "Ativo").with_entities(func.coalesce(func.sum(FinanceiroContratoCliente.valor_contratual), 0)).scalar() or 0).quantize(Decimal("0.01")),
         "medicoes_pendentes": FinanceiroContratoMedicao.query.filter(FinanceiroContratoMedicao.status_medicao.in_(["Medida", "Aguardando aprovação", "Aprovada"]), FinanceiroContratoMedicao.status_financeiro.in_([STATUS_MEDICAO_NAO_INTEGRADA, "Pendente de geração", STATUS_MEDICAO_VINCULADO_NOTA])).count(),
@@ -538,6 +548,7 @@ def gerar_dashboard(filtros=None):
         FinanceiroContaReceberTitulo.data_vencimento >= hoje,
     ).order_by(FinanceiroContaReceberTitulo.data_vencimento.asc()).limit(50).all()
     recebiveis_vencidos = vencidos.order_by(FinanceiroContaReceberTitulo.data_vencimento.asc()).limit(50).all()
+    titulos_inadimplentes = inadimplentes_query.order_by(FinanceiroContaReceberTitulo.data_vencimento.asc()).limit(50).all()
     maiores_abertos = abertos.order_by(_saldo_expr().desc()).limit(50).all()
     recebimentos_recentes = ativos.filter(
         FinanceiroContaReceberTitulo.valor_recebido > 0,
@@ -553,6 +564,8 @@ def gerar_dashboard(filtros=None):
     notas_recentes = FinanceiroNotaFiscalEmitida.query.order_by(FinanceiroNotaFiscalEmitida.data_emissao.desc(), FinanceiroNotaFiscalEmitida.id.desc()).limit(50).all()
     contratos_recentes = FinanceiroContratoCliente.query.order_by(FinanceiroContratoCliente.criado_em.desc(), FinanceiroContratoCliente.id.desc()).limit(50).all()
     medicoes_recentes = FinanceiroContratoMedicao.query.options(joinedload(FinanceiroContratoMedicao.contrato)).order_by(FinanceiroContratoMedicao.data_medicao.desc(), FinanceiroContratoMedicao.id.desc()).limit(50).all()
+    medicoes_aprovadas_sem_titulo = FinanceiroContratoMedicao.query.options(joinedload(FinanceiroContratoMedicao.contrato)).filter(FinanceiroContratoMedicao.status_medicao.in_(["Aprovada", "Faturada", "Medida"]), ~FinanceiroContaReceberTitulo.query.filter(FinanceiroContaReceberTitulo.medicao_id == FinanceiroContratoMedicao.id, ~FinanceiroContaReceberTitulo.status.in_(STATUS_INATIVOS)).exists()).order_by(FinanceiroContratoMedicao.data_medicao.desc()).limit(50).all()
+    notas_sem_titulo_recentes = notas_sem_titulo.order_by(FinanceiroNotaFiscalEmitida.data_emissao.desc(), FinanceiroNotaFiscalEmitida.id.desc()).limit(50).all()
 
     clientes_saldo = abertos.with_entities(
         FinanceiroContaReceberTitulo.cliente_nome_snapshot.label("cliente"),
@@ -566,13 +579,16 @@ def gerar_dashboard(filtros=None):
         "cards": cards,
         "proximos_vencimentos": proximos_vencimentos,
         "recebiveis_vencidos": recebiveis_vencidos,
+        "titulos_inadimplentes": titulos_inadimplentes,
         "maiores_abertos": maiores_abertos,
         "recebimentos_recentes": recebimentos_recentes,
         "clientes_saldo": clientes_saldo,
         "recebidos_por_forma": recebidos_por_forma,
         "notas_recentes": notas_recentes,
+        "notas_sem_titulo_recentes": notas_sem_titulo_recentes,
         "contratos_recentes": contratos_recentes,
         "medicoes_recentes": medicoes_recentes,
+        "medicoes_aprovadas_sem_titulo": medicoes_aprovadas_sem_titulo,
     }
 
 

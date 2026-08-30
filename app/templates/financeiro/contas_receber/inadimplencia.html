@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% set aba_ativa = "inadimplencia" %}
+
+{% block content %}
+<section class="page page-wide">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Financeiro &gt; Contas a Receber &gt; Inadimplência</span>
+            <h1>Inadimplência</h1>
+            <p>Títulos vencidos com saldo em aberto e acompanhamento manual de cobrança.</p>
+        </div>
+        <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_receber.dashboard') }}">Voltar ao Dashboard</a>
+    </div>
+
+    {% include "financeiro/contas_receber/_menu.html" %}
+
+    <form class="filter-card" method="GET">
+        <div class="filter-grid">
+            <div class="form-group"><label for="cliente">Cliente</label><input id="cliente" name="cliente" value="{{ filtros.cliente or '' }}"></div>
+            <div class="form-group"><label for="cnpj_cpf">CNPJ/CPF</label><input id="cnpj_cpf" name="cnpj_cpf" value="{{ filtros.cnpj_cpf or '' }}" data-documento-br></div>
+            <div class="form-group"><label for="data_inicio">Vencimento inicial</label><input id="data_inicio" name="data_inicio" type="date" value="{{ filtros.data_inicio or '' }}"></div>
+            <div class="form-group"><label for="data_fim">Vencimento final</label><input id="data_fim" name="data_fim" type="date" value="{{ filtros.data_fim or '' }}"></div>
+            <div class="form-group"><label for="dias_atraso_min">Dias em atraso mín.</label><input id="dias_atraso_min" name="dias_atraso_min" type="number" min="0" value="{{ filtros.dias_atraso_min or '' }}"></div>
+            <div class="form-group"><label for="dias_atraso_max">Dias em atraso máx.</label><input id="dias_atraso_max" name="dias_atraso_max" type="number" min="0" value="{{ filtros.dias_atraso_max or '' }}"></div>
+            <div class="form-group"><label for="status_cobranca">Status de cobrança</label><select id="status_cobranca" name="status_cobranca"><option value="">Todos</option>{% for item in status_cobranca %}<option value="{{ item }}" {{ 'selected' if filtros.status_cobranca == item else '' }}>{{ item }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="origem_lancamento">Origem</label><input id="origem_lancamento" name="origem_lancamento" value="{{ filtros.origem_lancamento or '' }}"></div>
+            <div class="form-group"><label for="cobranca">Cobrança</label><select id="cobranca" name="cobranca"><option value="">Todos</option><option value="com" {{ 'selected' if filtros.cobranca == 'com' else '' }}>Com cobrança registrada</option><option value="sem" {{ 'selected' if filtros.cobranca == 'sem' else '' }}>Sem cobrança registrada</option></select></div>
+        </div>
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Filtrar</button>
+            <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_receber.inadimplencia') }}">Limpar</a>
+            <a class="btn btn-secondary" href="{{ url_for('financeiro.relatorios', escopo='contas_receber', tipo_relatorio='cr_inadimplencia') }}">Relatório de Inadimplência</a>
+        </div>
+    </form>
+
+    <section class="table-card">
+        <h2>Títulos inadimplentes</h2>
+        <div class="listbox-10-linhas contas-receber-listbox">
+            <table class="table contas-receber-inadimplencia-table">
+                <thead><tr><th>ID</th><th>Cliente</th><th>CNPJ/CPF</th><th>Documento</th><th>Nota fiscal</th><th>Contrato</th><th>Medição</th><th>Vencimento</th><th>Dias em atraso</th><th>Valor original</th><th>Valor recebido</th><th>Saldo em aberto</th><th>Status título</th><th>Status cobrança</th><th>Última cobrança</th><th>Responsável</th><th>Ações</th></tr></thead>
+                <tbody>
+                    {% for titulo in titulos %}
+                        <tr>
+                            <td>#{{ titulo.titulo_id }}</td>
+                            <td>{{ titulo.cliente }}</td>
+                            <td>{{ titulo.cnpj_cpf }}</td>
+                            <td>{{ titulo.documento }}</td>
+                            <td>{{ titulo.nota_fiscal }}</td>
+                            <td>{{ titulo.contrato }}</td>
+                            <td>{{ titulo.medicao }}</td>
+                            <td>{{ formatar_data_brasil(titulo.vencimento) }}</td>
+                            <td>{{ titulo.dias_atraso }}</td>
+                            <td>{{ formatar_moeda_brl(titulo.valor_original) }}</td>
+                            <td>{{ formatar_moeda_brl(titulo.valor_recebido) }}</td>
+                            <td>{{ formatar_moeda_brl(titulo.saldo_aberto) }}</td>
+                            <td><span class="badge badge-danger">{{ titulo.status }}</span></td>
+                            <td>{{ titulo.status_cobranca }}</td>
+                            <td>{{ formatar_data_brasil(titulo.ultima_cobranca) }}</td>
+                            <td>{{ titulo.responsavel }}</td>
+                            <td class="col-acoes"><div class="acoes-botoes"><a class="btn btn-secondary" href="{{ url_for('financeiro_contas_receber.detalhe', titulo_id=titulo.titulo_id) }}">Ver título</a>{% if pode_editar %}<a class="btn btn-primary" href="{{ url_for('financeiro_contas_receber.registrar_cobranca', titulo_id=titulo.titulo_id) }}">Registrar acompanhamento</a>{% endif %}</div></td>
+                        </tr>
+                    {% else %}
+                        <tr><td class="empty-state" colspan="17">Nenhum título inadimplente encontrado para os filtros informados.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+</section>
+{% endblock %}

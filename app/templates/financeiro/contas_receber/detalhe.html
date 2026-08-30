@@ -136,6 +136,42 @@
         {% endif %}
     </section>
 
+
+    <section class="table-card">
+        <div class="section-header">
+            <div>
+                <h2>Histórico de Cobrança</h2>
+                <p>Acompanhamentos manuais de inadimplência e negociação.</p>
+            </div>
+            {% if pode_registrar_cobranca and titulo.status not in ['Cancelado', 'Estornado', 'Recebido'] and titulo.saldo_aberto > 0 %}<a class="btn btn-primary" href="{{ url_for('financeiro_contas_receber.registrar_cobranca', titulo_id=titulo.id) }}">Registrar acompanhamento</a>{% endif %}
+        </div>
+        <div class="listbox-10-linhas contas-receber-listbox">
+            <table class="table contas-receber-cobrancas-table">
+                <thead><tr><th>Data contato</th><th>Tipo</th><th>Responsável</th><th>Status cobrança</th><th>Previsão pagamento</th><th>Próxima ação</th><th>Data próxima ação</th><th>Observação</th><th>Usuário</th><th>Registro</th><th>Status</th><th>Ações</th></tr></thead>
+                <tbody>
+                    {% for cobranca in titulo.cobrancas %}
+                        <tr>
+                            <td>{{ formatar_data_brasil(cobranca.data_contato) }}</td>
+                            <td>{{ cobranca.tipo_contato }}</td>
+                            <td>{{ cobranca.responsavel.nome if cobranca.responsavel else '-' }}</td>
+                            <td>{{ cobranca.status_cobranca }}</td>
+                            <td>{{ formatar_data_brasil(cobranca.previsao_pagamento) }}</td>
+                            <td>{{ cobranca.proxima_acao or '-' }}</td>
+                            <td>{{ formatar_data_brasil(cobranca.data_proxima_acao) }}</td>
+                            <td>{{ cobranca.observacao or cobranca.motivo_cancelamento or '-' }}</td>
+                            <td>{{ cobranca.criado_por.nome if cobranca.criado_por else '-' }}</td>
+                            <td>{{ cobranca.criado_em.strftime('%d/%m/%Y %H:%M') if cobranca.criado_em else '-' }}</td>
+                            <td><span class="badge {{ 'badge-success' if cobranca.status == 'Ativo' else 'badge-secondary' }}">{{ cobranca.status }}</span></td>
+                            <td>{% if cobranca.status == 'Ativo' and pode_cancelar_cobranca %}<form class="inline-form" method="POST" action="{{ url_for('financeiro_contas_receber.cancelar_cobranca', titulo_id=titulo.id, cobranca_id=cobranca.id) }}"><input name="motivo_cancelamento" placeholder="Motivo" required><button class="btn btn-warning" type="submit">Cancelar</button></form>{% else %}-{% endif %}</td>
+                        </tr>
+                    {% else %}
+                        <tr><td class="empty-state" colspan="12">Nenhum acompanhamento de cobrança registrado.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
     <section class="table-card">
         <h2>Histórico do título</h2>
         <div class="listbox-10-linhas contas-receber-listbox">
