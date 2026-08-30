@@ -72,6 +72,20 @@
     </div>
 
     <section class="table-card">
+        <h2>Nota Fiscal Emitida Vinculada</h2>
+        {% if titulo.nota_emitida %}
+            <div class="listbox-10-linhas contas-receber-listbox">
+                <table class="table contas-receber-table-mini">
+                    <thead><tr><th>Tipo</th><th>Número</th><th>Série</th><th>Chave/código</th><th>Emissão</th><th>Valor</th><th>Status fiscal</th><th>Ações</th></tr></thead>
+                    <tbody><tr><td>{{ titulo.nota_emitida.tipo_nota }}</td><td>{{ titulo.nota_emitida.numero_nota }}</td><td>{{ titulo.nota_emitida.serie or '-' }}</td><td>{{ titulo.nota_emitida.chave_acesso or titulo.nota_emitida.codigo_verificacao_nfse or '-' }}</td><td>{{ formatar_data_brasil(titulo.nota_emitida.data_emissao) }}</td><td>{{ formatar_moeda_brl(titulo.nota_emitida.valor_total) }}</td><td>{{ titulo.nota_emitida.status_fiscal }}</td><td><a class="btn btn-secondary" href="{{ url_for('financeiro_contas_receber.nota_emitida_detalhe', nota_id=titulo.nota_emitida.id) }}">Abrir nota</a>{% if titulo.nota_emitida.arquivo_pdf_disponivel %}<a class="btn btn-secondary" href="{{ url_for('financeiro_contas_receber.baixar_arquivo_nota_emitida', nota_id=titulo.nota_emitida.id, tipo='pdf') }}">PDF</a>{% endif %}{% if titulo.nota_emitida.arquivo_xml_disponivel %}<a class="btn btn-secondary" href="{{ url_for('financeiro_contas_receber.baixar_arquivo_nota_emitida', nota_id=titulo.nota_emitida.id, tipo='xml') }}">XML</a>{% endif %}</td></tr></tbody>
+                </table>
+            </div>
+        {% else %}
+            <p>Nenhuma nota fiscal vinculada.</p>
+        {% endif %}
+    </section>
+
+    <section class="table-card">
         <div class="section-header">
             <div>
                 <h2>Recebimentos / Baixas</h2>

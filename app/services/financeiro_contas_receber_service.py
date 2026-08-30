@@ -1,4 +1,5 @@
 from datetime import date, timedelta
+import calendar
 from decimal import Decimal, InvalidOperation
 import os
 import re
@@ -8,7 +9,7 @@ from sqlalchemy import func, or_
 from sqlalchemy.orm import joinedload
 
 from app.extensions import db
-from app.models import CentroCusto, Equipe, FinanceiroContaReceberBaixa, FinanceiroContaReceberLoteBaixa, FinanceiroContaReceberTitulo
+from app.models import CentroCusto, Equipe, FinanceiroContaReceberBaixa, FinanceiroContaReceberLoteBaixa, FinanceiroContaReceberTitulo, FinanceiroNotaFiscalEmitida
 from app.utils.datas import agora_brasil
 
 
@@ -49,17 +50,29 @@ STATUS_LOTE_ESTORNADO = "Estornado"
 STATUS_LOTES_RECEBER = [STATUS_LOTE_ATIVO, STATUS_LOTE_CANCELADO, STATUS_LOTE_ESTORNADO]
 FORMAS_RECEBIMENTO = ["Pix", "Transferência", "Depósito", "Boleto", "Dinheiro", "Cartão", "Outro"]
 EXTENSOES_COMPROVANTE = {"pdf", "jpg", "jpeg", "png", "webp"}
+EXTENSOES_NOTA_PDF = {"pdf", "jpg", "jpeg", "png", "webp"}
+EXTENSOES_NOTA_XML = {"xml"}
 MAX_COMPROVANTE_BYTES = 10 * 1024 * 1024
+MAX_ARQUIVO_NOTA_BYTES = 10 * 1024 * 1024
 
 ORIGEM_MANUAL = "Manual"
+ORIGEM_NOTA_FISCAL_EMITIDA = "Nota Fiscal Emitida"
 ORIGENS_LANCAMENTO = [
     ORIGEM_MANUAL,
-    "Nota Fiscal Emitida",
+    ORIGEM_NOTA_FISCAL_EMITIDA,
     "Medição",
     "Contrato",
     "Reembolso",
     "Outro",
 ]
+
+TIPOS_NOTA_EMITIDA = ["NFS-e", "NF-e", "Recibo", "Fatura", "Outro"]
+STATUS_FISCAIS_NOTA_EMITIDA = ["Rascunho", "Emitida", "Enviada ao cliente", "Cancelada", "Substituída"]
+STATUS_FINANCEIROS_NOTA_EMITIDA = ["Não integrado", "Pendente de geração", "Título gerado", "Parcialmente vinculado", "Vinculado a título existente", "Cancelado"]
+STATUS_NOTA_NAO_INTEGRADA = "Não integrado"
+STATUS_NOTA_TITULO_GERADO = "Título gerado"
+STATUS_NOTA_VINCULADO = "Vinculado a título existente"
+STATUS_NOTA_CANCELADO = "Cancelado"
 
 
 def texto(valor):
@@ -139,6 +152,9 @@ def _aplicar_dados(titulo, form_data, usuario=None, novo=False):
     titulo.numero_documento = texto_maiusculo(form_data.get("numero_documento"))
     titulo.numero_nota_fiscal = texto_maiusculo(form_data.get("numero_nota_fiscal"))
     titulo.chave_acesso_nfe_nfse = texto_maiusculo(form_data.get("chave_acesso_nfe_nfse"))
+    titulo.codigo_verificacao_nfse = texto_maiusculo(form_data.get("codigo_verificacao_nfse"))
+    titulo.nota_emitida_id = inteiro_ou_none(form_data.get("nota_emitida_id"))
+    titulo.tipo_nota_emitida = texto(form_data.get("tipo_nota_emitida")) or None
     titulo.contrato_id = inteiro_ou_none(form_data.get("contrato_id"))
     titulo.medicao_id = inteiro_ou_none(form_data.get("medicao_id"))
     titulo.origem_lancamento = texto(form_data.get("origem_lancamento")) or ORIGEM_MANUAL
@@ -232,6 +248,7 @@ def buscar_titulo_por_id(titulo_id):
     return FinanceiroContaReceberTitulo.query.options(
         joinedload(FinanceiroContaReceberTitulo.centro_custo),
         joinedload(FinanceiroContaReceberTitulo.sub_centro_custo_equipe),
+        joinedload(FinanceiroContaReceberTitulo.nota_emitida),
         joinedload(FinanceiroContaReceberTitulo.criado_por),
         joinedload(FinanceiroContaReceberTitulo.atualizado_por),
         joinedload(FinanceiroContaReceberTitulo.cancelado_por),
@@ -429,6 +446,19 @@ def gerar_dashboard(filtros=None):
             FinanceiroContaReceberTitulo.numero_nota_fiscal.isnot(None),
         )
     )
+    notas_mes = FinanceiroNotaFiscalEmitida.query.filter(
+        FinanceiroNotaFiscalEmitida.status_fiscal != "Cancelada",
+        FinanceiroNotaFiscalEmitida.data_emissao >= inicio_mes,
+        FinanceiroNotaFiscalEmitida.data_emissao < inicio_proximo_mes,
+    )
+    notas_sem_titulo = FinanceiroNotaFiscalEmitida.query.filter(
+        FinanceiroNotaFiscalEmitida.status_fiscal != "Cancelada",
+        ~FinanceiroContaReceberTitulo.query.filter(
+            FinanceiroContaReceberTitulo.nota_emitida_id == FinanceiroNotaFiscalEmitida.id,
+            ~FinanceiroContaReceberTitulo.status.in_(STATUS_INATIVOS),
+        ).exists(),
+    )
+    titulos_gerados_por_nota = ativos.filter(FinanceiroContaReceberTitulo.nota_emitida_id.isnot(None))
 
     recebimentos_mes = FinanceiroContaReceberBaixa.query.filter(
         FinanceiroContaReceberBaixa.status == STATUS_BAIXA_ATIVA,
@@ -472,6 +502,12 @@ def gerar_dashboard(filtros=None):
         "quantidade_abertos": abertos.count(),
         "quantidade_vencidos": vencidos.count(),
         "saldo_geral_aberto": _somar_saldo(abertos),
+        "notas_emitidas_mes": notas_mes.count(),
+        "valor_notas_emitidas_mes": Decimal(notas_mes.with_entities(func.coalesce(func.sum(FinanceiroNotaFiscalEmitida.valor_total), 0)).scalar() or 0).quantize(Decimal("0.01")),
+        "notas_sem_titulo": notas_sem_titulo.count(),
+        "valor_notas_sem_titulo": Decimal(notas_sem_titulo.with_entities(func.coalesce(func.sum(FinanceiroNotaFiscalEmitida.valor_total), 0)).scalar() or 0).quantize(Decimal("0.01")),
+        "notas_vinculadas": FinanceiroNotaFiscalEmitida.query.filter(FinanceiroNotaFiscalEmitida.status_financeiro.in_([STATUS_NOTA_TITULO_GERADO, STATUS_NOTA_VINCULADO, "Parcialmente vinculado"])).count(),
+        "titulos_gerados_por_nota": titulos_gerados_por_nota.count(),
     }
 
     proximos_vencimentos = abertos.filter(
@@ -490,6 +526,8 @@ def gerar_dashboard(filtros=None):
         func.coalesce(func.sum(FinanceiroContaReceberBaixa.valor_recebido), 0).label("total"),
     ).group_by(FinanceiroContaReceberBaixa.forma_recebimento).order_by(func.coalesce(func.sum(FinanceiroContaReceberBaixa.valor_recebido), 0).desc()).all()
 
+    notas_recentes = FinanceiroNotaFiscalEmitida.query.order_by(FinanceiroNotaFiscalEmitida.data_emissao.desc(), FinanceiroNotaFiscalEmitida.id.desc()).limit(50).all()
+
     clientes_saldo = abertos.with_entities(
         FinanceiroContaReceberTitulo.cliente_nome_snapshot.label("cliente"),
         func.coalesce(func.sum(_saldo_expr()), 0).label("saldo"),
@@ -506,6 +544,7 @@ def gerar_dashboard(filtros=None):
         "recebimentos_recentes": recebimentos_recentes,
         "clientes_saldo": clientes_saldo,
         "recebidos_por_forma": recebidos_por_forma,
+        "notas_recentes": notas_recentes,
     }
 
 
@@ -890,6 +929,379 @@ def caminho_comprovante_lote_recebimento(lote):
         return None
     caminho = os.path.abspath(lote.comprovante_path)
     pasta_base = os.path.abspath(os.path.join(current_app.instance_path, "financeiro", "recebimentos"))
+    if not caminho.startswith(pasta_base):
+        return None
+    if not os.path.exists(caminho):
+        return None
+    return caminho
+
+
+def _arquivo_extensao(arquivo):
+    nome = arquivo.filename or ""
+    if "." not in nome:
+        return ""
+    return nome.rsplit(".", 1)[1].lower()
+
+
+def _salvar_arquivo_nota(nota, arquivo, tipo):
+    if not arquivo or not arquivo.filename:
+        return
+    extensao = _arquivo_extensao(arquivo)
+    permitidas = EXTENSOES_NOTA_XML if tipo == "xml" else EXTENSOES_NOTA_PDF
+    if extensao not in permitidas:
+        raise ValueError("Formato de arquivo da nota inválido.")
+    tamanho = _tamanho_arquivo(arquivo)
+    if tamanho > MAX_ARQUIVO_NOTA_BYTES:
+        raise ValueError("Arquivo da nota maior que 10 MB.")
+    pasta = os.path.join(current_app.instance_path, "financeiro", "notas_emitidas")
+    os.makedirs(pasta, exist_ok=True)
+    numero = re.sub(r"[^A-Za-z0-9_-]", "-", nota.numero_nota or str(nota.id))[:60]
+    data_nome = agora_brasil().strftime("%Y%m%d-%H%M%S")
+    nome_armazenado = f"CR-NOTA-{nota.id}_{tipo.upper()}_{numero}_{data_nome}.{extensao}"
+    caminho = os.path.abspath(os.path.join(pasta, nome_armazenado))
+    pasta_base = os.path.abspath(pasta)
+    if not caminho.startswith(pasta_base):
+        raise ValueError("Caminho de arquivo da nota inválido.")
+    arquivo.stream.seek(0)
+    arquivo.save(caminho)
+    if tipo == "xml":
+        nota.arquivo_xml_nome_original = arquivo.filename
+        nota.arquivo_xml_nome_armazenado = nome_armazenado
+        nota.arquivo_xml_path = caminho
+        _registrar_log("financeiro_contas_receber_nota_xml_upload", f"XML de nota emitida anexado. Nota: {nota.id}.")
+    else:
+        nota.arquivo_pdf_nome_original = arquivo.filename
+        nota.arquivo_pdf_nome_armazenado = nome_armazenado
+        nota.arquivo_pdf_path = caminho
+        _registrar_log("financeiro_contas_receber_nota_pdf_upload", f"PDF de nota emitida anexado. Nota: {nota.id}.")
+
+
+def _aplicar_dados_nota(nota, dados, usuario=None, novo=False):
+    nota.tipo_nota = texto(dados.get("tipo_nota")) or "NFS-e"
+    nota.numero_nota = texto_maiusculo(dados.get("numero_nota"))
+    nota.serie = texto_maiusculo(dados.get("serie")) or None
+    nota.chave_acesso = texto_maiusculo(dados.get("chave_acesso")) or None
+    nota.codigo_verificacao_nfse = texto_maiusculo(dados.get("codigo_verificacao_nfse")) or None
+    nota.cliente_nome_snapshot = texto_maiusculo(dados.get("cliente_nome_snapshot"))
+    nota.cliente_cnpj_cpf_snapshot = somente_digitos(dados.get("cliente_cnpj_cpf_snapshot"))
+    nota.cliente_email_financeiro_snapshot = texto(dados.get("cliente_email_financeiro_snapshot")).lower()
+    nota.cliente_telefone_snapshot = somente_digitos(dados.get("cliente_telefone_snapshot"))
+    nota.data_emissao = data_ou_none(dados.get("data_emissao"))
+    nota.competencia = texto(dados.get("competencia"))
+    nota.descricao = texto_maiusculo(dados.get("descricao"))
+    nota.valor_bruto = decimal_ou_zero(dados.get("valor_bruto"))
+    nota.valor_desconto = decimal_ou_zero(dados.get("valor_desconto"))
+    nota.valor_impostos_retidos = decimal_ou_zero(dados.get("valor_impostos_retidos"))
+    nota.valor_liquido = decimal_ou_zero(dados.get("valor_liquido"))
+    nota.valor_total = decimal_ou_zero(dados.get("valor_total"))
+    nota.data_vencimento_padrao = data_ou_none(dados.get("data_vencimento_padrao"))
+    nota.numero_parcelas = inteiro_ou_none(dados.get("numero_parcelas")) or 1
+    nota.condicao_recebimento = texto(dados.get("condicao_recebimento")) or None
+    nota.status_fiscal = texto(dados.get("status_fiscal")) or "Emitida"
+    nota.status_financeiro = texto(dados.get("status_financeiro")) or STATUS_NOTA_NAO_INTEGRADA
+    nota.observacoes_fiscais = texto(dados.get("observacoes_fiscais")) or None
+    nota.observacoes_financeiras = texto(dados.get("observacoes_financeiras")) or None
+    if novo:
+        nota.criado_por_usuario_id = getattr(usuario, "id", None)
+    nota.atualizado_por_usuario_id = getattr(usuario, "id", None)
+
+
+def _nota_duplicada(nota):
+    query = FinanceiroNotaFiscalEmitida.query.filter(
+        FinanceiroNotaFiscalEmitida.numero_nota == nota.numero_nota,
+        FinanceiroNotaFiscalEmitida.cliente_cnpj_cpf_snapshot == nota.cliente_cnpj_cpf_snapshot,
+    )
+    if nota.serie:
+        query = query.filter(FinanceiroNotaFiscalEmitida.serie == nota.serie)
+    else:
+        query = query.filter(FinanceiroNotaFiscalEmitida.serie.is_(None))
+    if nota.id:
+        query = query.filter(FinanceiroNotaFiscalEmitida.id != nota.id)
+    if query.first():
+        return True
+    if nota.chave_acesso:
+        chave_query = FinanceiroNotaFiscalEmitida.query.filter(FinanceiroNotaFiscalEmitida.chave_acesso == nota.chave_acesso)
+        if nota.id:
+            chave_query = chave_query.filter(FinanceiroNotaFiscalEmitida.id != nota.id)
+        if chave_query.first():
+            return True
+    return False
+
+
+def _validar_nota(nota):
+    if not nota.numero_nota:
+        return False, "Informe o número da nota."
+    if not nota.cliente_nome_snapshot:
+        return False, "Informe o cliente."
+    if not nota.cliente_cnpj_cpf_snapshot:
+        return False, "Informe o CNPJ/CPF do cliente."
+    if not nota.data_emissao:
+        return False, "Informe a data de emissão."
+    if nota.valor_total is None or nota.valor_total <= 0:
+        return False, "Informe um valor maior que zero."
+    if any(valor is None or valor < 0 for valor in [nota.valor_bruto, nota.valor_desconto, nota.valor_impostos_retidos, nota.valor_liquido]):
+        return False, "Valores da nota não podem ser negativos."
+    if nota.tipo_nota not in TIPOS_NOTA_EMITIDA:
+        return False, "Tipo de nota inválido."
+    if nota.status_fiscal not in STATUS_FISCAIS_NOTA_EMITIDA:
+        return False, "Status fiscal inválido."
+    if nota.status_financeiro not in STATUS_FINANCEIROS_NOTA_EMITIDA:
+        return False, "Status financeiro inválido."
+    if nota.numero_parcelas < 1:
+        return False, "Número de parcelas inválido."
+    if _nota_duplicada(nota):
+        _registrar_log("financeiro_contas_receber_nota_duplicidade_bloqueada", f"Duplicidade bloqueada para nota {nota.numero_nota}.")
+        return False, "Já existe nota fiscal emitida cadastrada para este número, série e cliente."
+    return True, ""
+
+
+def salvar_nota_emitida(dados, nota=None, arquivos=None, usuario=None):
+    novo = nota is None
+    nota = nota or FinanceiroNotaFiscalEmitida()
+    _aplicar_dados_nota(nota, dados, usuario=usuario, novo=novo)
+    valido, mensagem = _validar_nota(nota)
+    if not valido:
+        db.session.rollback()
+        return False, mensagem, nota
+    try:
+        db.session.add(nota)
+        db.session.flush()
+        arquivos = arquivos or {}
+        _salvar_arquivo_nota(nota, arquivos.get("arquivo_pdf"), "pdf")
+        _salvar_arquivo_nota(nota, arquivos.get("arquivo_xml"), "xml")
+        db.session.commit()
+        _registrar_log("financeiro_contas_receber_nota_criada" if novo else "financeiro_contas_receber_nota_atualizada", f"Nota emitida salva. ID: {nota.id}.")
+        return True, "Nota fiscal emitida cadastrada com sucesso." if novo else "Nota fiscal emitida atualizada com sucesso.", nota
+    except ValueError as exc:
+        db.session.rollback()
+        return False, str(exc), nota
+
+
+def listar_notas_emitidas(filtros=None):
+    filtros = filtros or {}
+    query = FinanceiroNotaFiscalEmitida.query.options(joinedload(FinanceiroNotaFiscalEmitida.titulos))
+    cliente = texto(filtros.get("cliente"))
+    if cliente:
+        query = query.filter(FinanceiroNotaFiscalEmitida.cliente_nome_snapshot.ilike(f"%{cliente}%"))
+    cnpj_cpf = somente_digitos(filtros.get("cnpj_cpf"))
+    if cnpj_cpf:
+        query = query.filter(FinanceiroNotaFiscalEmitida.cliente_cnpj_cpf_snapshot.ilike(f"%{cnpj_cpf}%"))
+    numero = texto(filtros.get("numero_nota"))
+    if numero:
+        query = query.filter(FinanceiroNotaFiscalEmitida.numero_nota.ilike(f"%{numero}%"))
+    serie = texto(filtros.get("serie"))
+    if serie:
+        query = query.filter(FinanceiroNotaFiscalEmitida.serie.ilike(f"%{serie}%"))
+    tipo = texto(filtros.get("tipo_nota"))
+    if tipo:
+        query = query.filter(FinanceiroNotaFiscalEmitida.tipo_nota == tipo)
+    competencia = texto(filtros.get("competencia"))
+    if competencia:
+        query = query.filter(FinanceiroNotaFiscalEmitida.competencia == competencia)
+    status_fiscal = texto(filtros.get("status_fiscal"))
+    if status_fiscal:
+        query = query.filter(FinanceiroNotaFiscalEmitida.status_fiscal == status_fiscal)
+    status_financeiro = texto(filtros.get("status_financeiro"))
+    if status_financeiro:
+        query = query.filter(FinanceiroNotaFiscalEmitida.status_financeiro == status_financeiro)
+    emissao_inicio = data_ou_none(filtros.get("emissao_inicio"))
+    emissao_fim = data_ou_none(filtros.get("emissao_fim"))
+    if emissao_inicio:
+        query = query.filter(FinanceiroNotaFiscalEmitida.data_emissao >= emissao_inicio)
+    if emissao_fim:
+        query = query.filter(FinanceiroNotaFiscalEmitida.data_emissao <= emissao_fim)
+    titulos_ativos = FinanceiroContaReceberTitulo.query.filter(
+        FinanceiroContaReceberTitulo.nota_emitida_id == FinanceiroNotaFiscalEmitida.id,
+        ~FinanceiroContaReceberTitulo.status.in_(STATUS_INATIVOS),
+    )
+    vinculo = texto(filtros.get("vinculo"))
+    if vinculo == "com":
+        query = query.filter(titulos_ativos.exists())
+    elif vinculo == "sem":
+        query = query.filter(~titulos_ativos.exists())
+    elif vinculo == "parcial":
+        query = query.filter(FinanceiroNotaFiscalEmitida.status_financeiro == "Parcialmente vinculado")
+    elif vinculo == "cancelada":
+        query = query.filter(FinanceiroNotaFiscalEmitida.status_fiscal == "Cancelada")
+    return query.order_by(FinanceiroNotaFiscalEmitida.data_emissao.desc(), FinanceiroNotaFiscalEmitida.id.desc()).all()
+
+
+def buscar_nota_emitida_por_id(nota_id):
+    return FinanceiroNotaFiscalEmitida.query.options(
+        joinedload(FinanceiroNotaFiscalEmitida.titulos).joinedload(FinanceiroContaReceberTitulo.centro_custo),
+        joinedload(FinanceiroNotaFiscalEmitida.criado_por),
+        joinedload(FinanceiroNotaFiscalEmitida.atualizado_por),
+        joinedload(FinanceiroNotaFiscalEmitida.cancelado_por),
+    ).get(nota_id)
+
+
+def _titulos_ativos_nota(nota):
+    if not nota or not nota.id:
+        return []
+    return FinanceiroContaReceberTitulo.query.filter(
+        FinanceiroContaReceberTitulo.nota_emitida_id == nota.id,
+        ~FinanceiroContaReceberTitulo.status.in_(STATUS_INATIVOS),
+    ).all()
+
+
+def _adicionar_meses(data_base, meses):
+    mes_total = data_base.month - 1 + meses
+    ano = data_base.year + mes_total // 12
+    mes = mes_total % 12 + 1
+    dia = min(data_base.day, calendar.monthrange(ano, mes)[1])
+    return date(ano, mes, dia)
+
+
+def _parcelas(valor_total, quantidade):
+    base = (valor_total / quantidade).quantize(Decimal("0.01"))
+    valores = [base for _ in range(quantidade)]
+    diferenca = valor_total - sum(valores, Decimal("0.00"))
+    valores[-1] = (valores[-1] + diferenca).quantize(Decimal("0.01"))
+    return valores
+
+
+def gerar_titulos_da_nota(nota, dados, usuario=None):
+    if not nota:
+        return False, "Nota fiscal emitida não encontrada.", []
+    if nota.status_fiscal == "Cancelada" or nota.status_financeiro == STATUS_NOTA_CANCELADO:
+        return False, "Nota fiscal cancelada não pode gerar Contas a Receber.", []
+    if _titulos_ativos_nota(nota):
+        _registrar_log("financeiro_contas_receber_nota_duplicidade_bloqueada", f"Geração bloqueada para nota já vinculada. Nota: {nota.id}.")
+        return False, "Esta nota fiscal já possui título(s) a receber vinculado(s).", []
+    primeiro_vencimento = data_ou_none(dados.get("data_primeiro_vencimento")) or nota.data_vencimento_padrao
+    if not primeiro_vencimento:
+        return False, "Informe a data do primeiro vencimento.", []
+    parcelas = inteiro_ou_none(dados.get("numero_parcelas")) or nota.numero_parcelas or 1
+    if parcelas < 1:
+        return False, "Número de parcelas inválido.", []
+    descricao = texto_maiusculo(dados.get("descricao")) or nota.descricao or f"NOTA FISCAL EMITIDA {nota.numero_nota}"
+    competencia = texto(dados.get("competencia")) or nota.competencia
+    centro_custo_id = inteiro_ou_none(dados.get("centro_custo_id"))
+    equipe_id = inteiro_ou_none(dados.get("sub_centro_custo_equipe_id"))
+    veiculo_id = inteiro_ou_none(dados.get("sub_centro_custo_veiculo_id"))
+    observacoes = texto_maiusculo(dados.get("observacoes_financeiras")) or nota.observacoes_financeiras
+    valores = _parcelas(Decimal(nota.valor_total).quantize(Decimal("0.01")), parcelas)
+    titulos = []
+    for indice, valor in enumerate(valores, start=1):
+        vencimento = _adicionar_meses(primeiro_vencimento, indice - 1)
+        titulo = FinanceiroContaReceberTitulo(
+            cliente_nome_snapshot=nota.cliente_nome_snapshot,
+            cliente_cnpj_cpf_snapshot=nota.cliente_cnpj_cpf_snapshot,
+            cliente_email_financeiro_snapshot=nota.cliente_email_financeiro_snapshot,
+            cliente_telefone_snapshot=nota.cliente_telefone_snapshot,
+            descricao=descricao,
+            numero_documento=f"{nota.numero_nota}-{indice:02d}" if parcelas > 1 else nota.numero_nota,
+            numero_nota_fiscal=nota.numero_nota,
+            chave_acesso_nfe_nfse=nota.chave_acesso,
+            codigo_verificacao_nfse=nota.codigo_verificacao_nfse,
+            nota_emitida_id=nota.id,
+            tipo_nota_emitida=nota.tipo_nota,
+            origem_lancamento=ORIGEM_NOTA_FISCAL_EMITIDA,
+            competencia=competencia,
+            data_emissao=nota.data_emissao,
+            data_vencimento=vencimento,
+            valor_original=valor,
+            valor_desconto=Decimal("0.00"),
+            valor_acrescimo=Decimal("0.00"),
+            valor_juros_multa=Decimal("0.00"),
+            valor_recebido=Decimal("0.00"),
+            parcela_numero=indice,
+            total_parcelas=parcelas,
+            centro_custo_id=centro_custo_id,
+            sub_centro_custo_equipe_id=equipe_id,
+            sub_centro_custo_veiculo_id=veiculo_id,
+            status=STATUS_FATURADO,
+            observacoes=observacoes,
+            criado_por_usuario_id=getattr(usuario, "id", None),
+            atualizado_por_usuario_id=getattr(usuario, "id", None),
+        )
+        db.session.add(titulo)
+        titulos.append(titulo)
+    nota.status_financeiro = STATUS_NOTA_TITULO_GERADO
+    nota.atualizado_por_usuario_id = getattr(usuario, "id", None)
+    db.session.commit()
+    for titulo in titulos:
+        _registrar_log("financeiro_contas_receber_titulo_gerado_por_nota", f"Título {titulo.id} gerado pela nota emitida {nota.id}.")
+    return True, "Título(s) a receber gerado(s) com sucesso.", titulos
+
+
+def listar_titulos_elegiveis_vinculo_nota(nota, filtros=None):
+    filtros = filtros or {}
+    query = FinanceiroContaReceberTitulo.query.filter(
+        FinanceiroContaReceberTitulo.nota_emitida_id.is_(None),
+        ~FinanceiroContaReceberTitulo.status.in_(STATUS_INATIVOS),
+    )
+    if nota and nota.cliente_cnpj_cpf_snapshot:
+        query = query.filter(FinanceiroContaReceberTitulo.cliente_cnpj_cpf_snapshot == nota.cliente_cnpj_cpf_snapshot)
+    cliente = texto(filtros.get("cliente"))
+    if cliente:
+        query = query.filter(FinanceiroContaReceberTitulo.cliente_nome_snapshot.ilike(f"%{cliente}%"))
+    documento = texto(filtros.get("numero_documento"))
+    if documento:
+        query = query.filter(FinanceiroContaReceberTitulo.numero_documento.ilike(f"%{documento}%"))
+    status = texto(filtros.get("status"))
+    if status:
+        query = query.filter(FinanceiroContaReceberTitulo.status == status)
+    vencimento = data_ou_none(filtros.get("vencimento"))
+    if vencimento:
+        query = query.filter(FinanceiroContaReceberTitulo.data_vencimento == vencimento)
+    valor = decimal_ou_zero(filtros.get("valor")) if filtros.get("valor") else None
+    if valor is not None:
+        query = query.filter(FinanceiroContaReceberTitulo.valor_original == valor)
+    return query.order_by(FinanceiroContaReceberTitulo.data_vencimento.asc(), FinanceiroContaReceberTitulo.id.desc()).limit(100).all()
+
+
+def vincular_nota_a_titulo(nota, titulo_id, usuario=None):
+    if not nota:
+        return False, "Nota fiscal emitida não encontrada.", None
+    if nota.status_fiscal == "Cancelada" or nota.status_financeiro == STATUS_NOTA_CANCELADO:
+        return False, "Nota fiscal cancelada não pode ser vinculada.", None
+    if _titulos_ativos_nota(nota):
+        _registrar_log("financeiro_contas_receber_nota_duplicidade_bloqueada", f"Vínculo bloqueado para nota já vinculada. Nota: {nota.id}.")
+        return False, "Esta nota fiscal já possui título(s) a receber vinculado(s).", None
+    titulo = FinanceiroContaReceberTitulo.query.get(titulo_id)
+    if not titulo or titulo.status in STATUS_INATIVOS:
+        return False, "Título a receber não encontrado ou inelegível.", None
+    if titulo.nota_emitida_id:
+        return False, "Título a receber já possui nota fiscal vinculada.", None
+    titulo.nota_emitida_id = nota.id
+    titulo.tipo_nota_emitida = nota.tipo_nota
+    titulo.numero_nota_fiscal = nota.numero_nota
+    titulo.chave_acesso_nfe_nfse = nota.chave_acesso
+    titulo.codigo_verificacao_nfse = nota.codigo_verificacao_nfse
+    titulo.origem_lancamento = ORIGEM_NOTA_FISCAL_EMITIDA
+    titulo.atualizado_por_usuario_id = getattr(usuario, "id", None)
+    nota.status_financeiro = STATUS_NOTA_VINCULADO
+    nota.atualizado_por_usuario_id = getattr(usuario, "id", None)
+    db.session.commit()
+    _registrar_log("financeiro_contas_receber_nota_vinculada_titulo", f"Nota emitida {nota.id} vinculada ao título {titulo.id}.")
+    return True, "Nota fiscal vinculada ao título com sucesso.", titulo
+
+
+def cancelar_nota_emitida(nota, motivo=None, usuario=None):
+    if not nota:
+        return False, "Nota fiscal emitida não encontrada."
+    if nota.status_fiscal == "Cancelada":
+        return False, "Nota fiscal emitida já está cancelada."
+    nota.status_fiscal = "Cancelada"
+    nota.status_financeiro = STATUS_NOTA_CANCELADO
+    nota.cancelado_por_usuario_id = getattr(usuario, "id", None)
+    nota.cancelado_em = agora_brasil()
+    nota.motivo_cancelamento = texto(motivo) or "Cancelamento interno"
+    nota.atualizado_por_usuario_id = getattr(usuario, "id", None)
+    db.session.commit()
+    _registrar_log("financeiro_contas_receber_nota_cancelada", f"Registro interno de nota emitida cancelado. Nota: {nota.id}.")
+    return True, "Registro interno da nota fiscal cancelado com sucesso."
+
+
+def caminho_arquivo_nota_emitida(nota, tipo):
+    if not nota:
+        return None
+    caminho = nota.arquivo_xml_path if tipo == "xml" else nota.arquivo_pdf_path
+    if not caminho:
+        return None
+    caminho = os.path.abspath(caminho)
+    pasta_base = os.path.abspath(os.path.join(current_app.instance_path, "financeiro", "notas_emitidas"))
     if not caminho.startswith(pasta_base):
         return None
     if not os.path.exists(caminho):

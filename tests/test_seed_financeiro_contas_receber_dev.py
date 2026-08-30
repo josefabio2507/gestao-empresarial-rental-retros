@@ -6,6 +6,7 @@ from app.extensions import db
 from app.models import (
     FinanceiroContaReceberBaixa,
     FinanceiroContaReceberTitulo,
+    FinanceiroNotaFiscalEmitida,
     Modulo,
     PermissaoUsuarioModulo,
     Usuario,
@@ -60,6 +61,8 @@ class SeedFinanceiroContasReceberDevTestCase(unittest.TestCase):
         self.assertGreaterEqual(total_titulos, 15)
         self.assertGreaterEqual(total_baixas, 4)
         self.assertIsNotNone(FinanceiroContaReceberTitulo.query.filter_by(numero_documento="CR-TESTE-0015").first())
+        self.assertGreaterEqual(FinanceiroNotaFiscalEmitida.query.filter(FinanceiroNotaFiscalEmitida.numero_nota.like("%TESTE%")).count(), 6)
+        self.assertIsNotNone(FinanceiroNotaFiscalEmitida.query.filter_by(numero_nota="NFSE-TESTE-1005", status_financeiro="Título gerado").first())
         self.assertIsNotNone(FinanceiroContaReceberTitulo.query.filter_by(numero_documento="CR-TESTE-0001", status="Recebido").first())
         self.assertGreater(FinanceiroContaReceberBaixa.query.filter_by(status="Ativa").count(), 0)
         self.assertGreater(FinanceiroContaReceberBaixa.query.filter_by(status="Estornada").count(), 0)
@@ -69,8 +72,10 @@ class SeedFinanceiroContasReceberDevTestCase(unittest.TestCase):
         )
 
         executar_seed(self.app)
+        total_notas = FinanceiroNotaFiscalEmitida.query.count()
         self.assertEqual(total_titulos, FinanceiroContaReceberTitulo.query.count())
         self.assertEqual(total_baixas, FinanceiroContaReceberBaixa.query.count())
+        self.assertEqual(total_notas, FinanceiroNotaFiscalEmitida.query.count())
 
     def test_seed_demo_preserva_listboxs_e_tooltips_do_contas_a_receber(self):
         executar_seed(self.app)

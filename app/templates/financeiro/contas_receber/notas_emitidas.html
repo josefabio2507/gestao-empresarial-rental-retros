@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% set aba_ativa = "notas" %}
+
+{% block content %}
+<section class="page page-wide">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Financeiro &gt; Contas a Receber &gt; Notas Emitidas</span>
+            <h1>Notas Emitidas</h1>
+            <p>Notas fiscais emitidas pela Rental Retros vinculadas ao Contas a Receber.</p>
+        </div>
+        <div class="actions">
+            <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_receber.titulos') }}">Títulos a Receber</a>
+            {% if pode_criar %}<a class="btn btn-primary" href="{{ url_for('financeiro_contas_receber.nova_nota_emitida') }}">+ Nova Nota</a>{% endif %}
+        </div>
+    </div>
+
+    {% include "financeiro/contas_receber/_menu.html" %}
+
+    <form class="filter-card" method="GET">
+        <div class="form-grid">
+            <div class="form-group"><label for="cliente">Cliente</label><input id="cliente" name="cliente" value="{{ filtros.get('cliente', '') }}"></div>
+            <div class="form-group"><label for="cnpj_cpf">CNPJ/CPF</label><input id="cnpj_cpf" name="cnpj_cpf" value="{{ filtros.get('cnpj_cpf', '') }}"></div>
+            <div class="form-group"><label for="numero_nota">Número da nota</label><input id="numero_nota" name="numero_nota" value="{{ filtros.get('numero_nota', '') }}"></div>
+            <div class="form-group"><label for="serie">Série</label><input id="serie" name="serie" value="{{ filtros.get('serie', '') }}"></div>
+            <div class="form-group"><label for="tipo_nota">Tipo</label><select id="tipo_nota" name="tipo_nota"><option value="">Todos</option>{% for tipo in tipos_nota %}<option value="{{ tipo }}" {{ 'selected' if filtros.get('tipo_nota') == tipo else '' }}>{{ tipo }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="competencia">Competência</label><input id="competencia" name="competencia" type="month" value="{{ filtros.get('competencia', '') }}"></div>
+            <div class="form-group"><label for="emissao_inicio">Emissão inicial</label><input id="emissao_inicio" name="emissao_inicio" type="date" value="{{ filtros.get('emissao_inicio', '') }}"></div>
+            <div class="form-group"><label for="emissao_fim">Emissão final</label><input id="emissao_fim" name="emissao_fim" type="date" value="{{ filtros.get('emissao_fim', '') }}"></div>
+            <div class="form-group"><label for="status_fiscal">Status fiscal</label><select id="status_fiscal" name="status_fiscal"><option value="">Todos</option>{% for status in status_fiscais %}<option value="{{ status }}" {{ 'selected' if filtros.get('status_fiscal') == status else '' }}>{{ status }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="status_financeiro">Status financeiro</label><select id="status_financeiro" name="status_financeiro"><option value="">Todos</option>{% for status in status_financeiros %}<option value="{{ status }}" {{ 'selected' if filtros.get('status_financeiro') == status else '' }}>{{ status }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="vinculo">Vínculo financeiro</label><select id="vinculo" name="vinculo"><option value="">Todos</option><option value="com" {{ 'selected' if filtros.get('vinculo') == 'com' else '' }}>Com título gerado</option><option value="sem" {{ 'selected' if filtros.get('vinculo') == 'sem' else '' }}>Sem título gerado</option><option value="parcial" {{ 'selected' if filtros.get('vinculo') == 'parcial' else '' }}>Parcialmente vinculada</option><option value="cancelada" {{ 'selected' if filtros.get('vinculo') == 'cancelada' else '' }}>Cancelada</option></select></div>
+        </div>
+        <div class="form-actions"><button class="btn btn-primary" type="submit">Filtrar</button><a class="btn btn-secondary" href="{{ url_for('financeiro_contas_receber.notas_emitidas') }}">Limpar</a></div>
+    </form>
+
+    <section class="table-card">
+        <div class="listbox-10-linhas contas-receber-listbox">
+            <table class="table contas-receber-notas-table">
+                <thead><tr><th>ID</th><th>Número</th><th>Série</th><th>Tipo</th><th>Cliente</th><th>CNPJ/CPF</th><th>Emissão</th><th>Competência</th><th>Valor</th><th>Valor vinculado</th><th>Saldo sem título</th><th>Status fiscal</th><th>Status financeiro</th><th>Títulos</th><th>Ações</th></tr></thead>
+                <tbody>{% for nota in notas %}<tr><td>#{{ nota.id }}</td><td>{{ nota.numero_nota }}</td><td>{{ nota.serie or '-' }}</td><td>{{ nota.tipo_nota }}</td><td>{{ nota.cliente_nome_snapshot }}</td><td>{{ nota.cliente_cnpj_cpf_snapshot }}</td><td>{{ formatar_data_brasil(nota.data_emissao) }}</td><td>{{ nota.competencia or '-' }}</td><td>{{ formatar_moeda_brl(nota.valor_total) }}</td><td>{{ formatar_moeda_brl(nota.valor_vinculado_contas_receber) }}</td><td>{{ formatar_moeda_brl(nota.saldo_sem_titulo_financeiro) }}</td><td><span class="badge {{ 'badge-danger' if nota.status_fiscal == 'Cancelada' else 'badge-success' }}">{{ nota.status_fiscal }}</span></td><td>{{ nota.status_financeiro }}</td><td>{{ nota.quantidade_titulos_ativos }}</td><td class="col-acoes"><div class="acoes-botoes"><a class="btn btn-secondary" href="{{ url_for('financeiro_contas_receber.nota_emitida_detalhe', nota_id=nota.id) }}">Ver nota</a>{% if pode_editar %}<a class="btn btn-primary" href="{{ url_for('financeiro_contas_receber.editar_nota_emitida', nota_id=nota.id) }}">Editar</a>{% endif %}</div></td></tr>{% else %}<tr><td class="empty-state" colspan="15">Nenhuma nota encontrada para os filtros informados.</td></tr>{% endfor %}</tbody>
+            </table>
+        </div>
+    </section>
+</section>
+{% endblock %}

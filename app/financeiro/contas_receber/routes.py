@@ -4,28 +4,39 @@ from flask_login import current_user, login_required
 from app.services.financeiro_contas_receber_service import (
     FORMAS_RECEBIMENTO,
     ORIGENS_LANCAMENTO,
+    STATUS_FISCAIS_NOTA_EMITIDA,
+    STATUS_FINANCEIROS_NOTA_EMITIDA,
     STATUS_TITULOS_RECEBER,
+    TIPOS_NOTA_EMITIDA,
     buscar_baixa_recebimento_por_id,
     buscar_lote_recebimento_por_id,
     buscar_centros_custo_ativos,
     buscar_equipes_ativas,
+    buscar_nota_emitida_por_id,
     buscar_titulo_por_id,
     cancelar_lote_recebimento,
+    cancelar_nota_emitida,
     cancelar_recebimento_titulo,
     cancelar_titulo_receber,
+    caminho_arquivo_nota_emitida,
     caminho_comprovante_lote_recebimento,
     caminho_comprovante_recebimento,
     formatar_data_brasil,
     formatar_moeda_brl,
     gerar_dashboard,
+    gerar_titulos_da_nota,
     listar_lotes_recebimento,
+    listar_notas_emitidas,
+    listar_titulos_elegiveis_vinculo_nota,
     listar_titulos_receber,
     preparar_baixa_em_massa,
     recalcular_recebimento_titulo,
     registrar_recebimento_em_massa,
     registrar_recebimento_titulo,
+    salvar_nota_emitida,
     salvar_titulo_receber,
     titulo_elegivel_recebimento,
+    vincular_nota_a_titulo,
 )
 from app.services.logs_service import registrar_log
 from app.services.permissoes_service import usuario_tem_permissao
@@ -76,6 +87,7 @@ def dashboard():
         formatar_moeda_brl=formatar_moeda_brl,
         formatar_data_brasil=formatar_data_brasil,
         pode_criar=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "criar"),
+        pode_ver_notas=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "visualizar"),
     )
 
 
@@ -100,6 +112,7 @@ def titulos():
         pode_registrar_recebimento=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "editar"),
         pode_baixa_em_massa=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "editar"),
         titulo_elegivel_recebimento=titulo_elegivel_recebimento,
+        pode_ver_notas=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "visualizar"),
     )
 
 
@@ -129,8 +142,191 @@ def novo():
         "financeiro/contas_receber/form.html",
         titulo=titulo,
         modo="novo",
+        pode_ver_notas=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "visualizar"),
         **_contexto_formulario(),
     )
+
+
+@financeiro_contas_receber_bp.route("/notas-emitidas")
+@login_required
+def notas_emitidas():
+    if not _permitido("visualizar"):
+        return redirect(url_for("main.acesso_negado"))
+    return render_template(
+        "financeiro/contas_receber/notas_emitidas.html",
+        notas=listar_notas_emitidas(request.args),
+        filtros=request.args,
+        tipos_nota=TIPOS_NOTA_EMITIDA,
+        status_fiscais=STATUS_FISCAIS_NOTA_EMITIDA,
+        status_financeiros=STATUS_FINANCEIROS_NOTA_EMITIDA,
+        formatar_moeda_brl=formatar_moeda_brl,
+        formatar_data_brasil=formatar_data_brasil,
+        pode_criar=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "criar"),
+        pode_editar=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "editar"),
+        pode_cancelar=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "excluir"),
+        pode_ver_notas=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "visualizar"),
+    )
+
+
+@financeiro_contas_receber_bp.route("/notas-emitidas/nova", methods=["GET", "POST"])
+@login_required
+def nova_nota_emitida():
+    if not _permitido("criar"):
+        return redirect(url_for("main.acesso_negado"))
+    nota = None
+    if request.method == "POST":
+        sucesso, mensagem, nota = salvar_nota_emitida(
+            request.form,
+            arquivos={"arquivo_pdf": request.files.get("arquivo_pdf"), "arquivo_xml": request.files.get("arquivo_xml")},
+            usuario=current_user,
+        )
+        flash(mensagem, "success" if sucesso else "danger")
+        if sucesso:
+            return redirect(url_for("financeiro_contas_receber.nota_emitida_detalhe", nota_id=nota.id))
+    return render_template(
+        "financeiro/contas_receber/nota_form.html",
+        nota=nota,
+        modo="nova",
+        tipos_nota=TIPOS_NOTA_EMITIDA,
+        status_fiscais=STATUS_FISCAIS_NOTA_EMITIDA,
+        status_financeiros=STATUS_FINANCEIROS_NOTA_EMITIDA,
+        pode_criar=True,
+        pode_ver_notas=True,
+    )
+
+
+@financeiro_contas_receber_bp.route("/notas-emitidas/<int:nota_id>")
+@login_required
+def nota_emitida_detalhe(nota_id):
+    if not _permitido("visualizar"):
+        return redirect(url_for("main.acesso_negado"))
+    nota = buscar_nota_emitida_por_id(nota_id)
+    if not nota:
+        flash("Nota fiscal emitida não encontrada.", "warning")
+        return redirect(url_for("financeiro_contas_receber.notas_emitidas"))
+    return render_template(
+        "financeiro/contas_receber/nota_detalhe.html",
+        nota=nota,
+        formatar_moeda_brl=formatar_moeda_brl,
+        formatar_data_brasil=formatar_data_brasil,
+        pode_editar=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "editar"),
+        pode_cancelar=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "excluir"),
+        pode_baixar_arquivos=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "visualizar"),
+        pode_criar=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "criar"),
+        pode_ver_notas=True,
+    )
+
+
+@financeiro_contas_receber_bp.route("/notas-emitidas/<int:nota_id>/editar", methods=["GET", "POST"])
+@login_required
+def editar_nota_emitida(nota_id):
+    if not _permitido("editar"):
+        return redirect(url_for("main.acesso_negado"))
+    nota = buscar_nota_emitida_por_id(nota_id)
+    if not nota:
+        flash("Nota fiscal emitida não encontrada.", "warning")
+        return redirect(url_for("financeiro_contas_receber.notas_emitidas"))
+    if request.method == "POST":
+        sucesso, mensagem, nota = salvar_nota_emitida(
+            request.form,
+            nota=nota,
+            arquivos={"arquivo_pdf": request.files.get("arquivo_pdf"), "arquivo_xml": request.files.get("arquivo_xml")},
+            usuario=current_user,
+        )
+        flash(mensagem, "success" if sucesso else "danger")
+        if sucesso:
+            return redirect(url_for("financeiro_contas_receber.nota_emitida_detalhe", nota_id=nota.id))
+    return render_template(
+        "financeiro/contas_receber/nota_form.html",
+        nota=nota,
+        modo="editar",
+        tipos_nota=TIPOS_NOTA_EMITIDA,
+        status_fiscais=STATUS_FISCAIS_NOTA_EMITIDA,
+        status_financeiros=STATUS_FINANCEIROS_NOTA_EMITIDA,
+        pode_criar=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "criar"),
+        pode_ver_notas=True,
+    )
+
+
+@financeiro_contas_receber_bp.route("/notas-emitidas/<int:nota_id>/gerar", methods=["GET", "POST"])
+@login_required
+def gerar_contas_receber_nota(nota_id):
+    if not _permitido("criar"):
+        return redirect(url_for("main.acesso_negado"))
+    nota = buscar_nota_emitida_por_id(nota_id)
+    if not nota:
+        flash("Nota fiscal emitida não encontrada.", "warning")
+        return redirect(url_for("financeiro_contas_receber.notas_emitidas"))
+    if request.method == "POST":
+        sucesso, mensagem, titulos_gerados = gerar_titulos_da_nota(nota, request.form, usuario=current_user)
+        flash(mensagem, "success" if sucesso else "danger")
+        if sucesso and titulos_gerados:
+            return redirect(url_for("financeiro_contas_receber.nota_emitida_detalhe", nota_id=nota.id))
+    return render_template(
+        "financeiro/contas_receber/nota_gerar_titulos.html",
+        nota=nota,
+        centros_custo=buscar_centros_custo_ativos(),
+        equipes=buscar_equipes_ativas(),
+        formatar_moeda_brl=formatar_moeda_brl,
+        formatar_data_brasil=formatar_data_brasil,
+        pode_criar=True,
+        pode_ver_notas=True,
+    )
+
+
+@financeiro_contas_receber_bp.route("/notas-emitidas/<int:nota_id>/vincular", methods=["GET", "POST"])
+@login_required
+def vincular_nota_emitida(nota_id):
+    if not _permitido("editar"):
+        return redirect(url_for("main.acesso_negado"))
+    nota = buscar_nota_emitida_por_id(nota_id)
+    if not nota:
+        flash("Nota fiscal emitida não encontrada.", "warning")
+        return redirect(url_for("financeiro_contas_receber.notas_emitidas"))
+    if request.method == "POST":
+        sucesso, mensagem, titulo = vincular_nota_a_titulo(nota, request.form.get("titulo_id"), usuario=current_user)
+        flash(mensagem, "success" if sucesso else "danger")
+        if sucesso:
+            return redirect(url_for("financeiro_contas_receber.detalhe", titulo_id=titulo.id))
+    return render_template(
+        "financeiro/contas_receber/nota_vincular_titulo.html",
+        nota=nota,
+        titulos=listar_titulos_elegiveis_vinculo_nota(nota, request.args),
+        filtros=request.args,
+        status_titulos=STATUS_TITULOS_RECEBER,
+        formatar_moeda_brl=formatar_moeda_brl,
+        formatar_data_brasil=formatar_data_brasil,
+        pode_criar=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "criar"),
+        pode_ver_notas=True,
+    )
+
+
+@financeiro_contas_receber_bp.route("/notas-emitidas/<int:nota_id>/cancelar", methods=["POST"])
+@login_required
+def cancelar_nota_emitida_rota(nota_id):
+    if not _permitido("excluir"):
+        return redirect(url_for("main.acesso_negado"))
+    nota = buscar_nota_emitida_por_id(nota_id)
+    sucesso, mensagem = cancelar_nota_emitida(nota, request.form.get("motivo_cancelamento"), usuario=current_user)
+    flash(mensagem, "success" if sucesso else "danger")
+    return redirect(url_for("financeiro_contas_receber.nota_emitida_detalhe", nota_id=nota_id) if nota else url_for("financeiro_contas_receber.notas_emitidas"))
+
+
+@financeiro_contas_receber_bp.route("/notas-emitidas/<int:nota_id>/arquivo/<tipo>")
+@login_required
+def baixar_arquivo_nota_emitida(nota_id, tipo):
+    if not _permitido("visualizar"):
+        return redirect(url_for("main.acesso_negado"))
+    if tipo not in {"pdf", "xml"}:
+        abort(404)
+    nota = buscar_nota_emitida_por_id(nota_id)
+    caminho = caminho_arquivo_nota_emitida(nota, tipo)
+    if not caminho:
+        abort(404)
+    registrar_log("financeiro_contas_receber_nota_arquivo_download", f"Download de arquivo {tipo} da nota emitida. Nota: {nota.id}.")
+    nome = nota.arquivo_xml_nome_original if tipo == "xml" else nota.arquivo_pdf_nome_original
+    nome = nome or (nota.arquivo_xml_nome_armazenado if tipo == "xml" else nota.arquivo_pdf_nome_armazenado)
+    return send_file(caminho, as_attachment=True, download_name=nome)
 
 
 @financeiro_contas_receber_bp.route("/<int:titulo_id>")
@@ -157,6 +353,7 @@ def detalhe(titulo_id):
         pode_ver_recebimentos=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "visualizar"),
         pode_baixar_comprovante=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "visualizar"),
         pode_estornar_recebimento=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "excluir"),
+        pode_ver_notas=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "visualizar"),
     )
 
 

@@ -129,3 +129,11 @@
 .contas-receber-lotes-table {
     min-width: 1040px;
 }
+
+.contas-receber-notas-table {
+    min-width: 1880px;
+}
+
+.contas-receber-notas-table .acoes-botoes {
+    min-width: 170px;
+}
