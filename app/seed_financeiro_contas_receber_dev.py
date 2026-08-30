@@ -15,6 +15,8 @@ from app.models import (
     FinanceiroContaReceberBaixa,
     FinanceiroContaReceberLoteBaixa,
     FinanceiroContaReceberTitulo,
+    FinanceiroContratoCliente,
+    FinanceiroContratoMedicao,
     FinanceiroNotaFiscalEmitida,
     Modulo,
     NivelAcesso,
@@ -27,9 +29,13 @@ from app.services.financeiro_contas_receber_service import (
     recalcular_recebimento_titulo,
     registrar_recebimento_em_massa,
     registrar_recebimento_titulo,
+    salvar_contrato_cliente,
+    salvar_medicao_contrato,
     salvar_nota_emitida,
     salvar_titulo_receber,
+    gerar_titulos_da_medicao,
     gerar_titulos_da_nota,
+    vincular_medicao_a_nota,
 )
 
 
@@ -70,6 +76,22 @@ NOTAS_TESTE_CR = [
     ("NFS-e", "NFSE-TESTE-1004", "", "Cliente TESTE CR - Baixada Infraestrutura Ltda", "56789012000150", "financeiro@baixadainfra.test", "1333330005", "2026-08-07", "2026-08", "TESTE CR - Serviços administrativos compartilhados", "6700.00", "2026-08-28", "1", "Emitida", "Não integrado"),
     ("NFS-e", "NFSE-TESTE-1005", "", "Cliente TESTE CR - Santos Logística Ltda", "12345678000190", "financeiro@santoslogistica.test", "1333330001", "2026-08-09", "2026-08", "TESTE CR - Nota já integrada", "2500.00", "2026-08-31", "1", "Emitida", "Não integrado"),
     ("NFS-e", "NFSE-TESTE-1006", "", "Cliente TESTE CR - Porto Serviços Integrados Ltda", "23456789000180", "financeiro@portoservicos.test", "1333330002", "2026-08-11", "2026-08", "TESTE CR - Nota cancelada para bloqueio", "1200.00", "2026-08-30", "1", "Cancelada", "Cancelado"),
+]
+
+
+CONTRATOS_TESTE_CR = [
+    ("CTR-TESTE-CR-001", 0, "TESTE CR - Contrato de prestação de serviços operacionais", "2026-08-01", "2027-07-31", "180000.00", "Medição variável", "Mensal", "10", "Ativo"),
+    ("CTR-TESTE-CR-002", 1, "TESTE CR - Contrato de limpeza industrial", "2026-08-01", "2027-07-31", "264000.00", "Valor fixo mensal", "Mensal", "20", "Ativo"),
+    ("CTR-TESTE-CR-003", 3, "TESTE CR - Contrato de locação de equipe operacional", "2026-09-01", "2027-08-31", "360000.00", "Medição variável", "Mensal", "10", "Ativo"),
+    ("CTR-TESTE-CR-004", 2, "TESTE CR - Contrato cancelado para bloqueio", "2026-07-01", "2026-12-31", "50000.00", "Outro", "Por demanda", "15", "Cancelado"),
+]
+
+MEDICOES_TESTE_CR = [
+    ("CTR-TESTE-CR-001", "MED-TESTE-CR-001", "2026-08", "2026-08-31", "2026-08-01", "2026-08-31", "TESTE CR - Medição de serviços operacionais agosto", "15000.00", "0.00", "0.00", "0.00", "15000.00", "2026-09-02", "2026-09-10", "Aprovada", "Não integrado", "NFSE-TESTE-1001"),
+    ("CTR-TESTE-CR-002", "MED-TESTE-CR-002", "2026-08", "2026-08-31", "2026-08-01", "2026-08-31", "TESTE CR - Medição de limpeza industrial agosto", "22000.00", "0.00", "0.00", "0.00", "22000.00", "2026-09-03", "2026-09-20", "Aprovada", "Não integrado", ""),
+    ("CTR-TESTE-CR-003", "MED-TESTE-CR-003", "2026-09", "2026-09-30", "2026-09-01", "2026-09-30", "TESTE CR - Medição de locação de equipe setembro", "30000.00", "0.00", "0.00", "0.00", "30000.00", "2026-10-02", "2026-10-10", "Medida", "Não integrado", ""),
+    ("CTR-TESTE-CR-001", "MED-TESTE-CR-004", "2026-08", "2026-08-31", "2026-08-01", "2026-08-31", "TESTE CR - Medição já integrada a título", "2500.00", "0.00", "0.00", "0.00", "2500.00", "2026-08-31", "2026-08-31", "Aprovada", "Não integrado", ""),
+    ("CTR-TESTE-CR-002", "MED-TESTE-CR-005", "2026-08", "2026-08-31", "2026-08-01", "2026-08-31", "TESTE CR - Medição cancelada para bloqueio", "1200.00", "0.00", "0.00", "0.00", "1200.00", "2026-08-30", "2026-08-30", "Cancelada", "Cancelado", ""),
 ]
 
 
@@ -272,6 +294,81 @@ def criar_integracao_nota_demo(usuario):
     if nota and not nota.titulos:
         gerar_titulos_da_nota(nota, {"data_primeiro_vencimento": "2026-08-31", "numero_parcelas": "1", "competencia": "2026-08", "descricao": nota.descricao}, usuario=usuario)
 
+
+def criar_contrato_demo(item, usuario, centros, equipes):
+    numero, cliente_idx, objeto, inicio, fim, valor, tipo, periodicidade, dia_vencimento, status = item
+    cliente, cnpj, email, telefone = CLIENTES_TESTE_CR[cliente_idx]
+    contrato = FinanceiroContratoCliente.query.filter_by(numero_contrato=numero, cliente_cnpj_cpf_snapshot=cnpj).first()
+    dados = {
+        "numero_contrato": numero,
+        "cliente_nome_snapshot": cliente,
+        "cliente_cnpj_cpf_snapshot": cnpj,
+        "cliente_email_financeiro_snapshot": email,
+        "cliente_telefone_snapshot": telefone,
+        "descricao_objeto": objeto,
+        "data_inicio": inicio,
+        "data_fim": fim,
+        "valor_contratual": valor,
+        "tipo_cobranca": tipo,
+        "periodicidade_medicao": periodicidade,
+        "dia_padrao_vencimento": dia_vencimento,
+        "condicao_recebimento": f"Vencimento dia {dia_vencimento}",
+        "centro_custo_id": str(centros[cliente_idx % len(centros)].id),
+        "sub_centro_custo_equipe_id": str(equipes[cliente_idx % len(equipes)].id),
+        "status": status,
+        "observacoes": "TESTE CR - contrato fictício local para Missão 18.5.",
+    }
+    sucesso, mensagem, contrato = salvar_contrato_cliente(dados, contrato=contrato, usuario=usuario)
+    if not sucesso:
+        print(f"Falha ao criar contrato {numero}: {mensagem}")
+        return None
+    return contrato
+
+
+def criar_medicao_demo(item, usuario):
+    numero_contrato, numero_medicao, competencia, data_medicao, periodo_inicio, periodo_fim, descricao, bruto, desconto, acrescimo, retencoes, liquido, faturamento, vencimento, status_medicao, status_financeiro, numero_nota = item
+    contrato = FinanceiroContratoCliente.query.filter_by(numero_contrato=numero_contrato).first()
+    if not contrato:
+        return None
+    medicao = FinanceiroContratoMedicao.query.filter_by(contrato_id=contrato.id, numero_medicao=numero_medicao).first()
+    nota = FinanceiroNotaFiscalEmitida.query.filter_by(numero_nota=numero_nota).first() if numero_nota else None
+    dados = {
+        "contrato_id": str(contrato.id),
+        "nota_emitida_id": str(nota.id) if nota else "",
+        "numero_medicao": numero_medicao,
+        "competencia": competencia,
+        "data_medicao": data_medicao,
+        "periodo_inicio": periodo_inicio,
+        "periodo_fim": periodo_fim,
+        "descricao": descricao,
+        "valor_bruto_medido": bruto,
+        "valor_desconto": desconto,
+        "valor_acrescimo": acrescimo,
+        "valor_retencoes": retencoes,
+        "valor_liquido_medido": liquido,
+        "data_prevista_faturamento": faturamento,
+        "data_prevista_vencimento": vencimento,
+        "status_medicao": status_medicao,
+        "status_financeiro": status_financeiro,
+        "observacoes_tecnicas": "TESTE CR - medição fictícia local.",
+        "observacoes_financeiras": "TESTE CR - preparada para integração com Contas a Receber.",
+    }
+    sucesso, mensagem, medicao = salvar_medicao_contrato(dados, medicao=medicao, usuario=usuario)
+    if not sucesso:
+        print(f"Falha ao criar medição {numero_medicao}: {mensagem}")
+        return None
+    return medicao
+
+
+def criar_integracao_medicao_demo(usuario):
+    medicao = FinanceiroContratoMedicao.query.filter_by(numero_medicao="MED-TESTE-CR-004").first()
+    if medicao and not medicao.titulos:
+        gerar_titulos_da_medicao(medicao, {"data_vencimento": "2026-08-31", "numero_parcelas": "1", "competencia": "2026-08", "descricao": medicao.descricao}, usuario=usuario)
+    medicao = FinanceiroContratoMedicao.query.filter_by(numero_medicao="MED-TESTE-CR-001").first()
+    nota = FinanceiroNotaFiscalEmitida.query.filter_by(numero_nota="NFSE-TESTE-1001").first()
+    if medicao and nota and not medicao.nota_emitida_id:
+        vincular_medicao_a_nota(medicao, nota.id, usuario=usuario)
+
 def executar_seed(app=None):
     app = app or create_app()
     if not ambiente_local_liberado(app):
@@ -297,6 +394,13 @@ def executar_seed(app=None):
             for item in NOTAS_TESTE_CR:
                 criar_nota_emitida_demo(item, usuario)
             criar_integracao_nota_demo(usuario)
+        if "financeiro_contratos_clientes" in sa_inspect(db.engine).get_table_names():
+            for item in CONTRATOS_TESTE_CR:
+                criar_contrato_demo(item, usuario, centros, equipes)
+        if "financeiro_contratos_medicoes" in sa_inspect(db.engine).get_table_names():
+            for item in MEDICOES_TESTE_CR:
+                criar_medicao_demo(item, usuario)
+            criar_integracao_medicao_demo(usuario)
         for titulo in FinanceiroContaReceberTitulo.query.filter(FinanceiroContaReceberTitulo.numero_documento.like("CR-TESTE-%")).all():
             recalcular_recebimento_titulo(titulo, usuario=usuario)
         db.session.commit()

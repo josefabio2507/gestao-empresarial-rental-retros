@@ -53,6 +53,14 @@
         <article class="stat-card dashboard-info-card" title="Soma do valor das notas emitidas que ainda não geraram Contas a Receber."><span>Valor sem título financeiro</span><strong>{{ formatar_moeda_brl(dados.cards.valor_notas_sem_titulo) }}</strong></article>
         <article class="stat-card dashboard-info-card" title="Quantidade de notas emitidas já vinculadas a títulos a receber."><span>Notas vinculadas</span><strong>{{ dados.cards.notas_vinculadas }}</strong></article>
         <article class="stat-card dashboard-info-card" title="Quantidade de títulos a receber originados de notas fiscais emitidas."><span>Títulos por nota emitida</span><strong>{{ dados.cards.titulos_gerados_por_nota }}</strong></article>
+        <article class="stat-card dashboard-info-card" title="Quantidade de contratos de clientes com status ativo."><span>Contratos ativos</span><strong>{{ dados.cards.contratos_ativos }}</strong></article>
+        <article class="stat-card dashboard-info-card" title="Soma do valor contratual dos contratos ativos cadastrados."><span>Valor contratual ativo</span><strong>{{ formatar_moeda_brl(dados.cards.valor_contratual_ativo) }}</strong></article>
+        <article class="stat-card dashboard-info-card" title="Quantidade de medições ainda pendentes de geração financeira ou somente vinculadas à nota emitida."><span>Medições pendentes</span><strong>{{ dados.cards.medicoes_pendentes }}</strong></article>
+        <article class="stat-card dashboard-info-card" title="Quantidade de medições aprovadas que ainda não geraram título no Contas a Receber."><span>Aprovadas sem título</span><strong>{{ dados.cards.medicoes_aprovadas_sem_titulo }}</strong></article>
+        <article class="stat-card dashboard-info-card" title="Soma do valor líquido das medições que ainda não possuem título financeiro vinculado."><span>Valor pendente de geração</span><strong>{{ formatar_moeda_brl(dados.cards.valor_medicoes_pendentes_financeiro) }}</strong></article>
+        <article class="stat-card dashboard-info-card" title="Quantidade de títulos a receber originados de medições de contratos."><span>Títulos por medição</span><strong>{{ dados.cards.titulos_gerados_por_medicao }}</strong></article>
+        <article class="stat-card dashboard-info-card" title="Soma dos saldos em aberto de títulos originados de medições."><span>A receber por medições</span><strong>{{ formatar_moeda_brl(dados.cards.valor_a_receber_originado_medicoes) }}</strong></article>
+        <article class="stat-card dashboard-info-card" title="Quantidade de medições vinculadas a notas fiscais emitidas."><span>Medições com nota</span><strong>{{ dados.cards.medicoes_vinculadas_notas }}</strong></article>
     </div>
 
     <div class="dashboard-tables-grid">
@@ -112,6 +120,38 @@
                             <tr><td>{{ nota.numero_nota }}</td><td>{{ nota.cliente_nome_snapshot }}</td><td>{{ formatar_data_brasil(nota.data_emissao) }}</td><td>{{ formatar_moeda_brl(nota.valor_total) }}</td><td>{{ nota.status_financeiro }}</td></tr>
                         {% else %}
                             <tr><td class="empty-state" colspan="5">Nenhuma nota emitida cadastrada.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="table-card">
+            <h2>Contratos recentes</h2>
+            <div class="listbox-10-linhas contas-receber-listbox">
+                <table class="table contas-receber-table-mini">
+                    <thead><tr><th>Contrato</th><th>Cliente</th><th>Valor</th><th>Status</th><th>Medições</th></tr></thead>
+                    <tbody>
+                        {% for contrato in dados.contratos_recentes %}
+                            <tr><td>{{ contrato.numero_contrato }}</td><td>{{ contrato.cliente_nome_snapshot }}</td><td>{{ formatar_moeda_brl(contrato.valor_contratual) }}</td><td>{{ contrato.status }}</td><td>{{ contrato.quantidade_medicoes }}</td></tr>
+                        {% else %}
+                            <tr><td class="empty-state" colspan="5">Nenhum contrato cadastrado.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="table-card">
+            <h2>Medições recentes</h2>
+            <div class="listbox-10-linhas contas-receber-listbox">
+                <table class="table contas-receber-table-mini">
+                    <thead><tr><th>Medição</th><th>Contrato</th><th>Cliente</th><th>Valor</th><th>Status financeiro</th></tr></thead>
+                    <tbody>
+                        {% for medicao in dados.medicoes_recentes %}
+                            <tr><td>{{ medicao.numero_medicao }}</td><td>{{ medicao.contrato.numero_contrato }}</td><td>{{ medicao.contrato.cliente_nome_snapshot }}</td><td>{{ formatar_moeda_brl(medicao.valor_liquido_medido) }}</td><td>{{ medicao.status_financeiro }}</td></tr>
+                        {% else %}
+                            <tr><td class="empty-state" colspan="5">Nenhuma medição cadastrada.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>

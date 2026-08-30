@@ -9,7 +9,7 @@ from sqlalchemy import func, or_
 from sqlalchemy.orm import joinedload
 
 from app.extensions import db
-from app.models import CentroCusto, Equipe, FinanceiroContaReceberBaixa, FinanceiroContaReceberLoteBaixa, FinanceiroContaReceberTitulo, FinanceiroNotaFiscalEmitida
+from app.models import CentroCusto, Equipe, FinanceiroContaReceberBaixa, FinanceiroContaReceberLoteBaixa, FinanceiroContaReceberTitulo, FinanceiroNotaFiscalEmitida, FinanceiroContratoCliente, FinanceiroContratoMedicao
 from app.utils.datas import agora_brasil
 
 
@@ -73,6 +73,20 @@ STATUS_NOTA_NAO_INTEGRADA = "Não integrado"
 STATUS_NOTA_TITULO_GERADO = "Título gerado"
 STATUS_NOTA_VINCULADO = "Vinculado a título existente"
 STATUS_NOTA_CANCELADO = "Cancelado"
+
+TIPOS_COBRANCA_CONTRATO = ["Medição variável", "Valor fixo mensal", "Por evento", "Por ordem de serviço", "Reembolso", "Outro"]
+PERIODICIDADES_MEDICAO = ["Mensal", "Quinzenal", "Semanal", "Por demanda", "Única", "Outra"]
+STATUS_CONTRATOS_CLIENTES = ["Rascunho", "Ativo", "Suspenso", "Encerrado", "Cancelado"]
+STATUS_MEDICOES = ["Rascunho", "Medida", "Aguardando aprovação", "Aprovada", "Faturada", "Gerada no Contas a Receber", "Cancelada"]
+STATUS_FINANCEIROS_MEDICAO = ["Não integrado", "Pendente de geração", "Título gerado", "Vinculado a título existente", "Vinculado à nota emitida", "Cancelado"]
+STATUS_MEDICAO_NAO_INTEGRADA = "Não integrado"
+STATUS_MEDICAO_TITULO_GERADO = "Título gerado"
+STATUS_MEDICAO_VINCULADO_TITULO = "Vinculado a título existente"
+STATUS_MEDICAO_VINCULADO_NOTA = "Vinculado à nota emitida"
+STATUS_MEDICAO_CANCELADO = "Cancelado"
+ORIGEM_MEDICAO = "Medição"
+EXTENSOES_ANEXO_MEDICAO = {"pdf", "jpg", "jpeg", "png", "webp", "xlsx", "csv"}
+MAX_ANEXO_MEDICAO_BYTES = 10 * 1024 * 1024
 
 
 def texto(valor):
@@ -249,6 +263,8 @@ def buscar_titulo_por_id(titulo_id):
         joinedload(FinanceiroContaReceberTitulo.centro_custo),
         joinedload(FinanceiroContaReceberTitulo.sub_centro_custo_equipe),
         joinedload(FinanceiroContaReceberTitulo.nota_emitida),
+        joinedload(FinanceiroContaReceberTitulo.contrato),
+        joinedload(FinanceiroContaReceberTitulo.medicao),
         joinedload(FinanceiroContaReceberTitulo.criado_por),
         joinedload(FinanceiroContaReceberTitulo.atualizado_por),
         joinedload(FinanceiroContaReceberTitulo.cancelado_por),
@@ -508,6 +524,14 @@ def gerar_dashboard(filtros=None):
         "valor_notas_sem_titulo": Decimal(notas_sem_titulo.with_entities(func.coalesce(func.sum(FinanceiroNotaFiscalEmitida.valor_total), 0)).scalar() or 0).quantize(Decimal("0.01")),
         "notas_vinculadas": FinanceiroNotaFiscalEmitida.query.filter(FinanceiroNotaFiscalEmitida.status_financeiro.in_([STATUS_NOTA_TITULO_GERADO, STATUS_NOTA_VINCULADO, "Parcialmente vinculado"])).count(),
         "titulos_gerados_por_nota": titulos_gerados_por_nota.count(),
+        "contratos_ativos": FinanceiroContratoCliente.query.filter(FinanceiroContratoCliente.status == "Ativo").count(),
+        "valor_contratual_ativo": Decimal(FinanceiroContratoCliente.query.filter(FinanceiroContratoCliente.status == "Ativo").with_entities(func.coalesce(func.sum(FinanceiroContratoCliente.valor_contratual), 0)).scalar() or 0).quantize(Decimal("0.01")),
+        "medicoes_pendentes": FinanceiroContratoMedicao.query.filter(FinanceiroContratoMedicao.status_medicao.in_(["Medida", "Aguardando aprovação", "Aprovada"]), FinanceiroContratoMedicao.status_financeiro.in_([STATUS_MEDICAO_NAO_INTEGRADA, "Pendente de geração", STATUS_MEDICAO_VINCULADO_NOTA])).count(),
+        "medicoes_aprovadas_sem_titulo": FinanceiroContratoMedicao.query.filter(FinanceiroContratoMedicao.status_medicao == "Aprovada", ~FinanceiroContaReceberTitulo.query.filter(FinanceiroContaReceberTitulo.medicao_id == FinanceiroContratoMedicao.id, ~FinanceiroContaReceberTitulo.status.in_(STATUS_INATIVOS)).exists()).count(),
+        "valor_medicoes_pendentes_financeiro": Decimal(FinanceiroContratoMedicao.query.filter(FinanceiroContratoMedicao.status_medicao != "Cancelada", ~FinanceiroContaReceberTitulo.query.filter(FinanceiroContaReceberTitulo.medicao_id == FinanceiroContratoMedicao.id, ~FinanceiroContaReceberTitulo.status.in_(STATUS_INATIVOS)).exists()).with_entities(func.coalesce(func.sum(FinanceiroContratoMedicao.valor_liquido_medido), 0)).scalar() or 0).quantize(Decimal("0.01")),
+        "titulos_gerados_por_medicao": ativos.filter(FinanceiroContaReceberTitulo.medicao_id.isnot(None)).count(),
+        "valor_a_receber_originado_medicoes": _somar_saldo(ativos.filter(FinanceiroContaReceberTitulo.medicao_id.isnot(None))),
+        "medicoes_vinculadas_notas": FinanceiroContratoMedicao.query.filter(FinanceiroContratoMedicao.nota_emitida_id.isnot(None), FinanceiroContratoMedicao.status_medicao != "Cancelada").count(),
     }
 
     proximos_vencimentos = abertos.filter(
@@ -527,6 +551,8 @@ def gerar_dashboard(filtros=None):
     ).group_by(FinanceiroContaReceberBaixa.forma_recebimento).order_by(func.coalesce(func.sum(FinanceiroContaReceberBaixa.valor_recebido), 0).desc()).all()
 
     notas_recentes = FinanceiroNotaFiscalEmitida.query.order_by(FinanceiroNotaFiscalEmitida.data_emissao.desc(), FinanceiroNotaFiscalEmitida.id.desc()).limit(50).all()
+    contratos_recentes = FinanceiroContratoCliente.query.order_by(FinanceiroContratoCliente.criado_em.desc(), FinanceiroContratoCliente.id.desc()).limit(50).all()
+    medicoes_recentes = FinanceiroContratoMedicao.query.options(joinedload(FinanceiroContratoMedicao.contrato)).order_by(FinanceiroContratoMedicao.data_medicao.desc(), FinanceiroContratoMedicao.id.desc()).limit(50).all()
 
     clientes_saldo = abertos.with_entities(
         FinanceiroContaReceberTitulo.cliente_nome_snapshot.label("cliente"),
@@ -545,6 +571,8 @@ def gerar_dashboard(filtros=None):
         "clientes_saldo": clientes_saldo,
         "recebidos_por_forma": recebidos_por_forma,
         "notas_recentes": notas_recentes,
+        "contratos_recentes": contratos_recentes,
+        "medicoes_recentes": medicoes_recentes,
     }
 
 
@@ -1129,6 +1157,8 @@ def listar_notas_emitidas(filtros=None):
 def buscar_nota_emitida_por_id(nota_id):
     return FinanceiroNotaFiscalEmitida.query.options(
         joinedload(FinanceiroNotaFiscalEmitida.titulos).joinedload(FinanceiroContaReceberTitulo.centro_custo),
+        joinedload(FinanceiroNotaFiscalEmitida.contrato),
+        joinedload(FinanceiroNotaFiscalEmitida.medicao),
         joinedload(FinanceiroNotaFiscalEmitida.criado_por),
         joinedload(FinanceiroNotaFiscalEmitida.atualizado_por),
         joinedload(FinanceiroNotaFiscalEmitida.cancelado_por),
@@ -1302,6 +1332,466 @@ def caminho_arquivo_nota_emitida(nota, tipo):
         return None
     caminho = os.path.abspath(caminho)
     pasta_base = os.path.abspath(os.path.join(current_app.instance_path, "financeiro", "notas_emitidas"))
+    if not caminho.startswith(pasta_base):
+        return None
+    if not os.path.exists(caminho):
+        return None
+    return caminho
+
+
+
+def salvar_contrato_cliente(dados, contrato=None, usuario=None):
+    contrato = contrato or FinanceiroContratoCliente()
+    novo = contrato.id is None
+    contrato.numero_contrato = texto_maiusculo(dados.get("numero_contrato"))
+    contrato.cliente_nome_snapshot = texto_maiusculo(dados.get("cliente_nome_snapshot"))
+    contrato.cliente_cnpj_cpf_snapshot = somente_digitos(dados.get("cliente_cnpj_cpf_snapshot"))
+    contrato.cliente_email_financeiro_snapshot = texto(dados.get("cliente_email_financeiro_snapshot")).lower()
+    contrato.cliente_telefone_snapshot = somente_digitos(dados.get("cliente_telefone_snapshot"))
+    contrato.descricao_objeto = texto_maiusculo(dados.get("descricao_objeto"))
+    contrato.data_inicio = data_ou_none(dados.get("data_inicio"))
+    contrato.data_fim = data_ou_none(dados.get("data_fim"))
+    contrato.valor_contratual = decimal_ou_zero(dados.get("valor_contratual"))
+    contrato.tipo_cobranca = texto(dados.get("tipo_cobranca")) or "Medição variável"
+    contrato.periodicidade_medicao = texto(dados.get("periodicidade_medicao")) or "Mensal"
+    contrato.dia_padrao_vencimento = inteiro_ou_none(dados.get("dia_padrao_vencimento"))
+    contrato.condicao_recebimento = texto(dados.get("condicao_recebimento"))
+    contrato.centro_custo_id = inteiro_ou_none(dados.get("centro_custo_id"))
+    contrato.sub_centro_custo_equipe_id = inteiro_ou_none(dados.get("sub_centro_custo_equipe_id"))
+    contrato.responsavel_interno_id = inteiro_ou_none(dados.get("responsavel_interno_id"))
+    contrato.status = texto(dados.get("status")) or "Ativo"
+    contrato.observacoes = texto_maiusculo(dados.get("observacoes"))
+    if novo:
+        contrato.criado_por_usuario_id = getattr(usuario, "id", None)
+    contrato.atualizado_por_usuario_id = getattr(usuario, "id", None)
+    if not contrato.numero_contrato:
+        return False, "Informe o número do contrato.", contrato
+    if not contrato.cliente_nome_snapshot:
+        return False, "Informe o cliente.", contrato
+    if not contrato.cliente_cnpj_cpf_snapshot:
+        return False, "Informe o CNPJ/CPF do cliente.", contrato
+    if not contrato.data_inicio:
+        return False, "Informe a data de início.", contrato
+    if contrato.valor_contratual is None or contrato.valor_contratual < 0:
+        return False, "Informe um valor contratual maior ou igual a zero.", contrato
+    if contrato.status not in STATUS_CONTRATOS_CLIENTES:
+        return False, "Status do contrato inválido.", contrato
+    duplicado = FinanceiroContratoCliente.query.filter(
+        FinanceiroContratoCliente.numero_contrato == contrato.numero_contrato,
+        FinanceiroContratoCliente.cliente_cnpj_cpf_snapshot == contrato.cliente_cnpj_cpf_snapshot,
+    )
+    if contrato.id:
+        duplicado = duplicado.filter(FinanceiroContratoCliente.id != contrato.id)
+    if duplicado.first():
+        return False, "Já existe contrato cadastrado para este cliente com o mesmo número.", contrato
+    db.session.add(contrato)
+    db.session.commit()
+    _registrar_log("financeiro_contas_receber_contrato_salvo", f"Contrato de cliente salvo. Contrato: {contrato.id}.")
+    return True, "Contrato salvo com sucesso.", contrato
+
+
+def listar_contratos_clientes(filtros=None):
+    filtros = filtros or {}
+    query = FinanceiroContratoCliente.query.options(joinedload(FinanceiroContratoCliente.medicoes), joinedload(FinanceiroContratoCliente.titulos), joinedload(FinanceiroContratoCliente.notas_emitidas))
+    cliente = texto(filtros.get("cliente"))
+    if cliente:
+        query = query.filter(FinanceiroContratoCliente.cliente_nome_snapshot.ilike(f"%{cliente}%"))
+    cnpj_cpf = somente_digitos(filtros.get("cnpj_cpf"))
+    if cnpj_cpf:
+        query = query.filter(FinanceiroContratoCliente.cliente_cnpj_cpf_snapshot.ilike(f"%{cnpj_cpf}%"))
+    numero = texto(filtros.get("numero_contrato"))
+    if numero:
+        query = query.filter(FinanceiroContratoCliente.numero_contrato.ilike(f"%{numero}%"))
+    status = texto(filtros.get("status"))
+    if status:
+        query = query.filter(FinanceiroContratoCliente.status == status)
+    inicio_de = data_ou_none(filtros.get("inicio_de"))
+    inicio_ate = data_ou_none(filtros.get("inicio_ate"))
+    fim_de = data_ou_none(filtros.get("fim_de"))
+    fim_ate = data_ou_none(filtros.get("fim_ate"))
+    if inicio_de:
+        query = query.filter(FinanceiroContratoCliente.data_inicio >= inicio_de)
+    if inicio_ate:
+        query = query.filter(FinanceiroContratoCliente.data_inicio <= inicio_ate)
+    if fim_de:
+        query = query.filter(FinanceiroContratoCliente.data_fim >= fim_de)
+    if fim_ate:
+        query = query.filter(FinanceiroContratoCliente.data_fim <= fim_ate)
+    marcador = texto(filtros.get("marcador"))
+    if marcador == "ativos":
+        query = query.filter(FinanceiroContratoCliente.status == "Ativo")
+    elif marcador == "encerrados":
+        query = query.filter(FinanceiroContratoCliente.status.in_(["Encerrado", "Cancelado"]))
+    elif marcador == "sem_medicao":
+        query = query.filter(~FinanceiroContratoMedicao.query.filter(FinanceiroContratoMedicao.contrato_id == FinanceiroContratoCliente.id, FinanceiroContratoMedicao.status_medicao != "Cancelada").exists())
+    elif marcador == "medicoes_pendentes":
+        query = query.filter(FinanceiroContratoMedicao.query.filter(FinanceiroContratoMedicao.contrato_id == FinanceiroContratoCliente.id, FinanceiroContratoMedicao.status_financeiro.in_([STATUS_MEDICAO_NAO_INTEGRADA, "Pendente de geração", STATUS_MEDICAO_VINCULADO_NOTA])).exists())
+    return query.order_by(FinanceiroContratoCliente.data_inicio.desc(), FinanceiroContratoCliente.id.desc()).all()
+
+
+def buscar_contrato_cliente_por_id(contrato_id):
+    return FinanceiroContratoCliente.query.options(
+        joinedload(FinanceiroContratoCliente.medicoes).joinedload(FinanceiroContratoMedicao.nota_emitida),
+        joinedload(FinanceiroContratoCliente.titulos).joinedload(FinanceiroContaReceberTitulo.nota_emitida),
+        joinedload(FinanceiroContratoCliente.notas_emitidas),
+        joinedload(FinanceiroContratoCliente.centro_custo),
+        joinedload(FinanceiroContratoCliente.sub_centro_custo_equipe),
+        joinedload(FinanceiroContratoCliente.criado_por),
+        joinedload(FinanceiroContratoCliente.atualizado_por),
+        joinedload(FinanceiroContratoCliente.cancelado_por),
+    ).get(contrato_id)
+
+
+def cancelar_contrato_cliente(contrato, motivo=None, usuario=None):
+    if not contrato:
+        return False, "Contrato não encontrado."
+    if contrato.status == "Cancelado":
+        return False, "Contrato já está cancelado."
+    contrato.status = "Cancelado"
+    contrato.cancelado_por_usuario_id = getattr(usuario, "id", None)
+    contrato.cancelado_em = agora_brasil()
+    contrato.motivo_cancelamento = texto(motivo) or "Cancelamento interno"
+    contrato.atualizado_por_usuario_id = getattr(usuario, "id", None)
+    db.session.commit()
+    _registrar_log("financeiro_contas_receber_contrato_cancelado", f"Contrato cancelado. Contrato: {contrato.id}.")
+    return True, "Contrato cancelado/inativado com sucesso."
+
+
+def _salvar_anexo_medicao(medicao, arquivo):
+    if not arquivo or not getattr(arquivo, "filename", ""):
+        return True, None
+    nome_original = arquivo.filename
+    extensao = nome_original.rsplit(".", 1)[-1].lower() if "." in nome_original else ""
+    if extensao not in EXTENSOES_ANEXO_MEDICAO:
+        return False, "Formato de anexo não permitido."
+    arquivo.stream.seek(0, os.SEEK_END)
+    tamanho = arquivo.stream.tell()
+    arquivo.stream.seek(0)
+    if tamanho > MAX_ANEXO_MEDICAO_BYTES:
+        return False, "Anexo maior que o limite permitido."
+    pasta = os.path.join(current_app.instance_path, "financeiro", "medicoes")
+    os.makedirs(pasta, exist_ok=True)
+    nome_armazenado = f"MED-{medicao.id or 'novo'}-{agora_brasil().strftime('%Y%m%d-%H%M%S')}.{extensao}"
+    caminho = os.path.join(pasta, nome_armazenado)
+    arquivo.save(caminho)
+    medicao.anexo_nome_original = nome_original
+    medicao.anexo_nome_armazenado = nome_armazenado
+    medicao.anexo_path = caminho
+    _registrar_log("financeiro_contas_receber_medicao_anexo_upload", f"Anexo de medição salvo. Medição: {medicao.id}.")
+    return True, None
+
+
+def salvar_medicao_contrato(dados, medicao=None, arquivos=None, usuario=None):
+    medicao = medicao or FinanceiroContratoMedicao()
+    novo = medicao.id is None
+    contrato = FinanceiroContratoCliente.query.get(inteiro_ou_none(dados.get("contrato_id")))
+    medicao.contrato = contrato
+    medicao.nota_emitida_id = inteiro_ou_none(dados.get("nota_emitida_id"))
+    medicao.numero_medicao = texto_maiusculo(dados.get("numero_medicao"))
+    medicao.competencia = texto(dados.get("competencia"))
+    medicao.data_medicao = data_ou_none(dados.get("data_medicao"))
+    medicao.periodo_inicio = data_ou_none(dados.get("periodo_inicio"))
+    medicao.periodo_fim = data_ou_none(dados.get("periodo_fim"))
+    medicao.descricao = texto_maiusculo(dados.get("descricao"))
+    medicao.valor_bruto_medido = decimal_ou_zero(dados.get("valor_bruto_medido"))
+    medicao.valor_desconto = decimal_ou_zero(dados.get("valor_desconto"))
+    medicao.valor_acrescimo = decimal_ou_zero(dados.get("valor_acrescimo"))
+    medicao.valor_retencoes = decimal_ou_zero(dados.get("valor_retencoes"))
+    liquido = decimal_ou_zero(dados.get("valor_liquido_medido"))
+    if liquido in (None, Decimal("0.00")):
+        liquido = (medicao.valor_bruto_medido + medicao.valor_acrescimo - medicao.valor_desconto - medicao.valor_retencoes).quantize(Decimal("0.01")) if None not in [medicao.valor_bruto_medido, medicao.valor_acrescimo, medicao.valor_desconto, medicao.valor_retencoes] else Decimal("0.00")
+    medicao.valor_liquido_medido = liquido
+    medicao.data_prevista_faturamento = data_ou_none(dados.get("data_prevista_faturamento"))
+    medicao.data_prevista_vencimento = data_ou_none(dados.get("data_prevista_vencimento"))
+    medicao.status_medicao = texto(dados.get("status_medicao")) or "Medida"
+    medicao.status_financeiro = texto(dados.get("status_financeiro")) or STATUS_MEDICAO_NAO_INTEGRADA
+    medicao.observacoes_tecnicas = texto_maiusculo(dados.get("observacoes_tecnicas"))
+    medicao.observacoes_financeiras = texto_maiusculo(dados.get("observacoes_financeiras"))
+    if novo:
+        medicao.criado_por_usuario_id = getattr(usuario, "id", None)
+    medicao.atualizado_por_usuario_id = getattr(usuario, "id", None)
+    if not contrato:
+        return False, "Informe o contrato.", medicao
+    if contrato.status == "Cancelado":
+        return False, "Contrato cancelado não pode receber medição.", medicao
+    if not medicao.numero_medicao:
+        return False, "Informe o número da medição.", medicao
+    if not medicao.competencia:
+        return False, "Informe a competência.", medicao
+    if not medicao.data_medicao:
+        return False, "Informe a data da medição.", medicao
+    if not medicao.periodo_inicio or not medicao.periodo_fim:
+        return False, "Informe o período medido.", medicao
+    if medicao.periodo_fim < medicao.periodo_inicio:
+        return False, "Período final não pode ser menor que o período inicial.", medicao
+    if medicao.valor_liquido_medido is None or medicao.valor_liquido_medido <= 0:
+        return False, "Informe um valor maior que zero.", medicao
+    if medicao.status_medicao not in STATUS_MEDICOES:
+        return False, "Status da medição inválido.", medicao
+    duplicada = FinanceiroContratoMedicao.query.filter(FinanceiroContratoMedicao.contrato_id == contrato.id, FinanceiroContratoMedicao.numero_medicao == medicao.numero_medicao)
+    if medicao.id:
+        duplicada = duplicada.filter(FinanceiroContratoMedicao.id != medicao.id)
+    if duplicada.first():
+        return False, "Já existe medição com este número para o contrato.", medicao
+    db.session.add(medicao)
+    db.session.flush()
+    arquivo = (arquivos or {}).get("anexo") if arquivos else None
+    ok, erro = _salvar_anexo_medicao(medicao, arquivo)
+    if not ok:
+        db.session.rollback()
+        return False, erro, medicao
+    if medicao.nota_emitida_id:
+        nota = FinanceiroNotaFiscalEmitida.query.get(medicao.nota_emitida_id)
+        if nota:
+            nota.contrato_id = contrato.id
+            nota.medicao_id = medicao.id
+            if medicao.status_financeiro == STATUS_MEDICAO_NAO_INTEGRADA:
+                medicao.status_financeiro = STATUS_MEDICAO_VINCULADO_NOTA
+    db.session.commit()
+    _registrar_log("financeiro_contas_receber_medicao_salva", f"Medição salva. Medição: {medicao.id}.")
+    return True, "Medição salva com sucesso.", medicao
+
+
+def listar_medicoes_contratos(filtros=None):
+    filtros = filtros or {}
+    query = FinanceiroContratoMedicao.query.options(joinedload(FinanceiroContratoMedicao.contrato), joinedload(FinanceiroContratoMedicao.nota_emitida), joinedload(FinanceiroContratoMedicao.titulos))
+    contrato_id = inteiro_ou_none(filtros.get("contrato_id"))
+    if contrato_id:
+        query = query.filter(FinanceiroContratoMedicao.contrato_id == contrato_id)
+    cliente = texto(filtros.get("cliente"))
+    if cliente:
+        query = query.join(FinanceiroContratoCliente).filter(FinanceiroContratoCliente.cliente_nome_snapshot.ilike(f"%{cliente}%"))
+    cnpj_cpf = somente_digitos(filtros.get("cnpj_cpf"))
+    if cnpj_cpf:
+        query = query.join(FinanceiroContratoCliente, FinanceiroContratoMedicao.contrato).filter(FinanceiroContratoCliente.cliente_cnpj_cpf_snapshot.ilike(f"%{cnpj_cpf}%"))
+    numero = texto(filtros.get("numero_medicao"))
+    if numero:
+        query = query.filter(FinanceiroContratoMedicao.numero_medicao.ilike(f"%{numero}%"))
+    competencia = texto(filtros.get("competencia"))
+    if competencia:
+        query = query.filter(FinanceiroContratoMedicao.competencia == competencia)
+    status_medicao = texto(filtros.get("status_medicao"))
+    if status_medicao:
+        query = query.filter(FinanceiroContratoMedicao.status_medicao == status_medicao)
+    status_financeiro = texto(filtros.get("status_financeiro"))
+    if status_financeiro:
+        query = query.filter(FinanceiroContratoMedicao.status_financeiro == status_financeiro)
+    marcador = texto(filtros.get("marcador"))
+    if marcador == "com_nota":
+        query = query.filter(FinanceiroContratoMedicao.nota_emitida_id.isnot(None))
+    elif marcador == "sem_nota":
+        query = query.filter(FinanceiroContratoMedicao.nota_emitida_id.is_(None))
+    elif marcador == "com_titulo":
+        query = query.filter(FinanceiroContaReceberTitulo.query.filter(FinanceiroContaReceberTitulo.medicao_id == FinanceiroContratoMedicao.id, ~FinanceiroContaReceberTitulo.status.in_(STATUS_INATIVOS)).exists())
+    elif marcador == "sem_titulo":
+        query = query.filter(~FinanceiroContaReceberTitulo.query.filter(FinanceiroContaReceberTitulo.medicao_id == FinanceiroContratoMedicao.id, ~FinanceiroContaReceberTitulo.status.in_(STATUS_INATIVOS)).exists())
+    return query.order_by(FinanceiroContratoMedicao.data_medicao.desc(), FinanceiroContratoMedicao.id.desc()).all()
+
+
+def buscar_medicao_contrato_por_id(medicao_id):
+    return FinanceiroContratoMedicao.query.options(
+        joinedload(FinanceiroContratoMedicao.contrato).joinedload(FinanceiroContratoCliente.centro_custo),
+        joinedload(FinanceiroContratoMedicao.nota_emitida),
+        joinedload(FinanceiroContratoMedicao.titulos).joinedload(FinanceiroContaReceberTitulo.nota_emitida),
+        joinedload(FinanceiroContratoMedicao.notas_emitidas),
+        joinedload(FinanceiroContratoMedicao.criado_por),
+        joinedload(FinanceiroContratoMedicao.atualizado_por),
+        joinedload(FinanceiroContratoMedicao.cancelado_por),
+    ).get(medicao_id)
+
+
+def _titulos_ativos_medicao(medicao):
+    if not medicao or not medicao.id:
+        return []
+    return FinanceiroContaReceberTitulo.query.filter(FinanceiroContaReceberTitulo.medicao_id == medicao.id, ~FinanceiroContaReceberTitulo.status.in_(STATUS_INATIVOS)).all()
+
+
+def gerar_titulos_da_medicao(medicao, dados, usuario=None):
+    if not medicao:
+        return False, "Medição não encontrada.", []
+    if medicao.status_medicao == "Cancelada" or medicao.status_financeiro == STATUS_MEDICAO_CANCELADO:
+        return False, "Medição cancelada não pode gerar Contas a Receber.", []
+    if _titulos_ativos_medicao(medicao):
+        _registrar_log("financeiro_contas_receber_medicao_duplicidade_bloqueada", f"Geração bloqueada para medição já vinculada. Medição: {medicao.id}.")
+        return False, "Esta medição já possui título(s) a receber vinculado(s).", []
+    nota = medicao.nota_emitida
+    if nota and _titulos_ativos_nota(nota):
+        return False, "A nota emitida vinculada já possui título(s) a receber.", []
+    primeiro_vencimento = data_ou_none(dados.get("data_vencimento")) or medicao.data_prevista_vencimento
+    if not primeiro_vencimento:
+        return False, "Informe a data de vencimento.", []
+    data_emissao = data_ou_none(dados.get("data_emissao")) or medicao.data_medicao
+    parcelas = inteiro_ou_none(dados.get("numero_parcelas")) or 1
+    if parcelas < 1:
+        return False, "Número de parcelas inválido.", []
+    contrato = medicao.contrato
+    descricao = texto_maiusculo(dados.get("descricao")) or medicao.descricao or f"MEDIÇÃO {medicao.numero_medicao}"
+    competencia = texto(dados.get("competencia")) or medicao.competencia
+    centro_custo_id = inteiro_ou_none(dados.get("centro_custo_id")) or getattr(contrato, "centro_custo_id", None)
+    equipe_id = inteiro_ou_none(dados.get("sub_centro_custo_equipe_id")) or getattr(contrato, "sub_centro_custo_equipe_id", None)
+    veiculo_id = inteiro_ou_none(dados.get("sub_centro_custo_veiculo_id"))
+    observacoes = texto_maiusculo(dados.get("observacoes_financeiras")) or medicao.observacoes_financeiras
+    valores = _parcelas(Decimal(medicao.valor_liquido_medido).quantize(Decimal("0.01")), parcelas)
+    titulos = []
+    for indice, valor in enumerate(valores, start=1):
+        vencimento = _adicionar_meses(primeiro_vencimento, indice - 1)
+        titulo = FinanceiroContaReceberTitulo(
+            cliente_nome_snapshot=contrato.cliente_nome_snapshot,
+            cliente_cnpj_cpf_snapshot=contrato.cliente_cnpj_cpf_snapshot,
+            cliente_email_financeiro_snapshot=contrato.cliente_email_financeiro_snapshot,
+            cliente_telefone_snapshot=contrato.cliente_telefone_snapshot,
+            descricao=descricao,
+            numero_documento=f"{medicao.numero_medicao}-{indice:02d}" if parcelas > 1 else medicao.numero_medicao,
+            numero_nota_fiscal=(nota.numero_nota if nota else texto_maiusculo(dados.get("numero_nota_fiscal"))),
+            chave_acesso_nfe_nfse=(nota.chave_acesso if nota else None),
+            codigo_verificacao_nfse=(nota.codigo_verificacao_nfse if nota else None),
+            nota_emitida_id=(nota.id if nota else None),
+            tipo_nota_emitida=(nota.tipo_nota if nota else None),
+            contrato_id=contrato.id,
+            medicao_id=medicao.id,
+            origem_lancamento=ORIGEM_MEDICAO,
+            competencia=competencia,
+            data_emissao=data_emissao,
+            data_vencimento=vencimento,
+            valor_original=valor,
+            valor_desconto=Decimal("0.00"),
+            valor_acrescimo=Decimal("0.00"),
+            valor_juros_multa=Decimal("0.00"),
+            valor_recebido=Decimal("0.00"),
+            parcela_numero=indice,
+            total_parcelas=parcelas,
+            centro_custo_id=centro_custo_id,
+            sub_centro_custo_equipe_id=equipe_id,
+            sub_centro_custo_veiculo_id=veiculo_id,
+            status=STATUS_FATURADO if nota else STATUS_AGENDADO,
+            observacoes=observacoes,
+            criado_por_usuario_id=getattr(usuario, "id", None),
+            atualizado_por_usuario_id=getattr(usuario, "id", None),
+        )
+        db.session.add(titulo)
+        titulos.append(titulo)
+    medicao.status_financeiro = STATUS_MEDICAO_TITULO_GERADO
+    medicao.status_medicao = "Gerada no Contas a Receber"
+    medicao.atualizado_por_usuario_id = getattr(usuario, "id", None)
+    if nota:
+        nota.status_financeiro = STATUS_NOTA_TITULO_GERADO
+        nota.contrato_id = contrato.id
+        nota.medicao_id = medicao.id
+        nota.atualizado_por_usuario_id = getattr(usuario, "id", None)
+    db.session.commit()
+    for titulo in titulos:
+        _registrar_log("financeiro_contas_receber_titulo_gerado_por_medicao", f"Título {titulo.id} gerado pela medição {medicao.id}.")
+    return True, "Título(s) a receber gerado(s) com sucesso.", titulos
+
+
+def listar_titulos_elegiveis_vinculo_medicao(medicao, filtros=None):
+    filtros = filtros or {}
+    contrato = medicao.contrato if medicao else None
+    query = FinanceiroContaReceberTitulo.query.filter(FinanceiroContaReceberTitulo.medicao_id.is_(None), ~FinanceiroContaReceberTitulo.status.in_(STATUS_INATIVOS))
+    if contrato and contrato.cliente_cnpj_cpf_snapshot:
+        query = query.filter(FinanceiroContaReceberTitulo.cliente_cnpj_cpf_snapshot == contrato.cliente_cnpj_cpf_snapshot)
+    cliente = texto(filtros.get("cliente"))
+    if cliente:
+        query = query.filter(FinanceiroContaReceberTitulo.cliente_nome_snapshot.ilike(f"%{cliente}%"))
+    documento = texto(filtros.get("numero_documento"))
+    if documento:
+        query = query.filter(FinanceiroContaReceberTitulo.numero_documento.ilike(f"%{documento}%"))
+    status = texto(filtros.get("status"))
+    if status:
+        query = query.filter(FinanceiroContaReceberTitulo.status == status)
+    valor = decimal_ou_zero(filtros.get("valor")) if filtros.get("valor") else None
+    if valor is not None:
+        query = query.filter(FinanceiroContaReceberTitulo.valor_original == valor)
+    return query.order_by(FinanceiroContaReceberTitulo.data_vencimento.asc(), FinanceiroContaReceberTitulo.id.desc()).limit(100).all()
+
+
+def vincular_medicao_a_titulo(medicao, titulo_id, usuario=None):
+    if not medicao:
+        return False, "Medição não encontrada.", None
+    if medicao.status_medicao == "Cancelada":
+        return False, "Medição cancelada não pode ser vinculada.", None
+    if _titulos_ativos_medicao(medicao):
+        return False, "Esta medição já possui título(s) a receber vinculado(s).", None
+    titulo = FinanceiroContaReceberTitulo.query.get(titulo_id)
+    if not titulo or titulo.status in STATUS_INATIVOS:
+        return False, "Título a receber não encontrado ou inelegível.", None
+    if titulo.medicao_id:
+        return False, "Título a receber já possui medição vinculada.", None
+    titulo.contrato_id = medicao.contrato_id
+    titulo.medicao_id = medicao.id
+    titulo.origem_lancamento = ORIGEM_MEDICAO
+    if medicao.nota_emitida:
+        titulo.nota_emitida_id = medicao.nota_emitida.id
+        titulo.tipo_nota_emitida = medicao.nota_emitida.tipo_nota
+        titulo.numero_nota_fiscal = medicao.nota_emitida.numero_nota
+        titulo.chave_acesso_nfe_nfse = medicao.nota_emitida.chave_acesso
+        titulo.codigo_verificacao_nfse = medicao.nota_emitida.codigo_verificacao_nfse
+    titulo.atualizado_por_usuario_id = getattr(usuario, "id", None)
+    medicao.status_financeiro = STATUS_MEDICAO_VINCULADO_TITULO
+    medicao.atualizado_por_usuario_id = getattr(usuario, "id", None)
+    db.session.commit()
+    _registrar_log("financeiro_contas_receber_medicao_vinculada_titulo", f"Medição {medicao.id} vinculada ao título {titulo.id}.")
+    return True, "Medição vinculada ao título com sucesso.", titulo
+
+
+def listar_notas_elegiveis_vinculo_medicao(medicao, filtros=None):
+    filtros = filtros or {}
+    contrato = medicao.contrato if medicao else None
+    query = FinanceiroNotaFiscalEmitida.query.filter(FinanceiroNotaFiscalEmitida.status_fiscal != "Cancelada")
+    if contrato and contrato.cliente_cnpj_cpf_snapshot:
+        query = query.filter(FinanceiroNotaFiscalEmitida.cliente_cnpj_cpf_snapshot == contrato.cliente_cnpj_cpf_snapshot)
+    numero = texto(filtros.get("numero_nota"))
+    if numero:
+        query = query.filter(FinanceiroNotaFiscalEmitida.numero_nota.ilike(f"%{numero}%"))
+    valor = decimal_ou_zero(filtros.get("valor")) if filtros.get("valor") else None
+    if valor is not None:
+        query = query.filter(FinanceiroNotaFiscalEmitida.valor_total == valor)
+    status_financeiro = texto(filtros.get("status_financeiro"))
+    if status_financeiro:
+        query = query.filter(FinanceiroNotaFiscalEmitida.status_financeiro == status_financeiro)
+    return query.order_by(FinanceiroNotaFiscalEmitida.data_emissao.desc(), FinanceiroNotaFiscalEmitida.id.desc()).limit(100).all()
+
+
+def vincular_medicao_a_nota(medicao, nota_id, usuario=None):
+    if not medicao:
+        return False, "Medição não encontrada.", None
+    if medicao.status_medicao == "Cancelada":
+        return False, "Medição cancelada não pode ser vinculada.", None
+    nota = FinanceiroNotaFiscalEmitida.query.get(nota_id)
+    if not nota or nota.status_fiscal == "Cancelada":
+        return False, "Nota emitida não encontrada ou inelegível.", None
+    medicao.nota_emitida_id = nota.id
+    medicao.status_financeiro = STATUS_MEDICAO_VINCULADO_NOTA if not _titulos_ativos_medicao(medicao) else medicao.status_financeiro
+    medicao.atualizado_por_usuario_id = getattr(usuario, "id", None)
+    nota.contrato_id = medicao.contrato_id
+    nota.medicao_id = medicao.id
+    nota.atualizado_por_usuario_id = getattr(usuario, "id", None)
+    db.session.commit()
+    _registrar_log("financeiro_contas_receber_medicao_vinculada_nota", f"Medição {medicao.id} vinculada à nota {nota.id}.")
+    return True, "Medição vinculada à nota emitida com sucesso.", nota
+
+
+def cancelar_medicao_contrato(medicao, motivo=None, usuario=None):
+    if not medicao:
+        return False, "Medição não encontrada."
+    if medicao.status_medicao == "Cancelada":
+        return False, "Medição já está cancelada."
+    medicao.status_medicao = "Cancelada"
+    medicao.status_financeiro = STATUS_MEDICAO_CANCELADO
+    medicao.cancelado_por_usuario_id = getattr(usuario, "id", None)
+    medicao.cancelado_em = agora_brasil()
+    medicao.motivo_cancelamento = texto(motivo) or "Cancelamento interno"
+    medicao.atualizado_por_usuario_id = getattr(usuario, "id", None)
+    db.session.commit()
+    _registrar_log("financeiro_contas_receber_medicao_cancelada", f"Medição cancelada. Medição: {medicao.id}.")
+    return True, "Medição cancelada com sucesso."
+
+
+def caminho_anexo_medicao(medicao):
+    if not medicao or not medicao.anexo_path:
+        return None
+    caminho = os.path.abspath(medicao.anexo_path)
+    pasta_base = os.path.abspath(os.path.join(current_app.instance_path, "financeiro", "medicoes"))
     if not caminho.startswith(pasta_base):
         return None
     if not os.path.exists(caminho):

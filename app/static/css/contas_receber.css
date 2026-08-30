@@ -137,3 +137,17 @@
 .contas-receber-notas-table .acoes-botoes {
     min-width: 170px;
 }
+
+
+.contas-receber-contratos-table {
+    min-width: 1760px;
+}
+
+.contas-receber-medicoes-table {
+    min-width: 1820px;
+}
+
+.contas-receber-contratos-table .acoes-botoes,
+.contas-receber-medicoes-table .acoes-botoes {
+    min-width: 260px;
+}

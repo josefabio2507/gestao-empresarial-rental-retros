@@ -6,6 +6,8 @@ from app.extensions import db
 from app.models import (
     FinanceiroContaReceberBaixa,
     FinanceiroContaReceberTitulo,
+    FinanceiroContratoCliente,
+    FinanceiroContratoMedicao,
     FinanceiroNotaFiscalEmitida,
     Modulo,
     PermissaoUsuarioModulo,
@@ -64,6 +66,10 @@ class SeedFinanceiroContasReceberDevTestCase(unittest.TestCase):
         self.assertGreaterEqual(FinanceiroNotaFiscalEmitida.query.filter(FinanceiroNotaFiscalEmitida.numero_nota.like("%TESTE%")).count(), 6)
         self.assertIsNotNone(FinanceiroNotaFiscalEmitida.query.filter_by(numero_nota="NFSE-TESTE-1005", status_financeiro="Título gerado").first())
         self.assertIsNotNone(FinanceiroContaReceberTitulo.query.filter_by(numero_documento="CR-TESTE-0001", status="Recebido").first())
+        self.assertGreaterEqual(FinanceiroContratoCliente.query.filter(FinanceiroContratoCliente.numero_contrato.like("CTR-TESTE-CR-%")).count(), 4)
+        self.assertGreaterEqual(FinanceiroContratoMedicao.query.filter(FinanceiroContratoMedicao.numero_medicao.like("MED-TESTE-CR-%")).count(), 5)
+        self.assertIsNotNone(FinanceiroContratoMedicao.query.filter_by(numero_medicao="MED-TESTE-CR-004", status_financeiro="Título gerado").first())
+        self.assertIsNotNone(FinanceiroContratoMedicao.query.filter_by(numero_medicao="MED-TESTE-CR-005", status_medicao="Cancelada").first())
         self.assertGreater(FinanceiroContaReceberBaixa.query.filter_by(status="Ativa").count(), 0)
         self.assertGreater(FinanceiroContaReceberBaixa.query.filter_by(status="Estornada").count(), 0)
         self.assertGreater(
@@ -73,9 +79,13 @@ class SeedFinanceiroContasReceberDevTestCase(unittest.TestCase):
 
         executar_seed(self.app)
         total_notas = FinanceiroNotaFiscalEmitida.query.count()
+        total_contratos = FinanceiroContratoCliente.query.count()
+        total_medicoes = FinanceiroContratoMedicao.query.count()
         self.assertEqual(total_titulos, FinanceiroContaReceberTitulo.query.count())
         self.assertEqual(total_baixas, FinanceiroContaReceberBaixa.query.count())
         self.assertEqual(total_notas, FinanceiroNotaFiscalEmitida.query.count())
+        self.assertEqual(total_contratos, FinanceiroContratoCliente.query.count())
+        self.assertEqual(total_medicoes, FinanceiroContratoMedicao.query.count())
 
     def test_seed_demo_preserva_listboxs_e_tooltips_do_contas_a_receber(self):
         executar_seed(self.app)
@@ -92,6 +102,8 @@ class SeedFinanceiroContasReceberDevTestCase(unittest.TestCase):
         self.assertIn(b"listbox-10-linhas", dashboard.data)
         self.assertIn("Soma dos recebimentos ativos registrados dentro do mês selecionado.".encode(), dashboard.data)
         self.assertIn("Soma dos títulos com vencimento dentro do mês selecionado".encode(), dashboard.data)
+        self.assertIn("Contratos ativos".encode("utf-8"), dashboard.data)
+        self.assertIn("Medições pendentes".encode("utf-8"), dashboard.data)
 
         titulos = self.client.get("/financeiro/contas-a-receber/titulos")
         self.assertEqual(200, titulos.status_code)
@@ -105,6 +117,18 @@ class SeedFinanceiroContasReceberDevTestCase(unittest.TestCase):
         self.assertIn(b"Recebimentos / Baixas", detalhe.data)
         self.assertIn(b"listbox-10-linhas", detalhe.data)
         self.assertIn(b"Baixar", detalhe.data)
+
+
+
+        contratos = self.client.get("/financeiro/contas-a-receber/contratos")
+        self.assertEqual(200, contratos.status_code)
+        self.assertIn(b"listbox-10-linhas", contratos.data)
+        self.assertIn(b"CTR-TESTE-CR-001", contratos.data)
+
+        medicoes = self.client.get("/financeiro/contas-a-receber/medicoes")
+        self.assertEqual(200, medicoes.status_code)
+        self.assertIn(b"listbox-10-linhas", medicoes.data)
+        self.assertIn(b"MED-TESTE-CR-001", medicoes.data)
 
         sem_comprovante = self.client.get("/financeiro/contas-a-receber/titulos?comprovante=sem")
         self.assertEqual(200, sem_comprovante.status_code)

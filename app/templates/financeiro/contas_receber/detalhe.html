@@ -41,8 +41,8 @@
             </section>
             <section>
                 <h3>Contrato e medição</h3>
-                <p><strong>Contrato vinculado:</strong> {{ titulo.contrato_id or '-' }}</p>
-                <p><strong>Medição vinculada:</strong> {{ titulo.medicao_id or '-' }}</p>
+                <p><strong>Contrato vinculado:</strong> {% if titulo.contrato %}<a href="{{ url_for('financeiro_contas_receber.contrato_detalhe', contrato_id=titulo.contrato.id) }}">{{ titulo.contrato.numero_contrato }}</a>{% else %}-{% endif %}</p>
+                <p><strong>Medição vinculada:</strong> {% if titulo.medicao %}<a href="{{ url_for('financeiro_contas_receber.medicao_detalhe', medicao_id=titulo.medicao.id) }}">{{ titulo.medicao.numero_medicao }}</a>{% else %}-{% endif %}</p>
             </section>
             <section>
                 <h3>Valores</h3>
@@ -70,6 +70,20 @@
         <h3>Observações</h3>
         <p>{{ titulo.observacoes or 'Sem observações.' }}</p>
     </div>
+
+    <section class="table-card">
+        <h2>Contrato / Medição Vinculada</h2>
+        {% if titulo.contrato or titulo.medicao %}
+            <div class="listbox-10-linhas contas-receber-listbox">
+                <table class="table contas-receber-table-mini">
+                    <thead><tr><th>Contrato</th><th>Cliente</th><th>Medição</th><th>Competência</th><th>Período medido</th><th>Valor medição</th><th>Nota</th><th>Ações</th></tr></thead>
+                    <tbody><tr><td>{{ titulo.contrato.numero_contrato if titulo.contrato else '-' }}</td><td>{{ titulo.contrato.cliente_nome_snapshot if titulo.contrato else titulo.cliente_nome_snapshot }}</td><td>{{ titulo.medicao.numero_medicao if titulo.medicao else '-' }}</td><td>{{ titulo.medicao.competencia if titulo.medicao else '-' }}</td><td>{% if titulo.medicao %}{{ formatar_data_brasil(titulo.medicao.periodo_inicio) }} a {{ formatar_data_brasil(titulo.medicao.periodo_fim) }}{% else %}-{% endif %}</td><td>{{ formatar_moeda_brl(titulo.medicao.valor_liquido_medido) if titulo.medicao else '-' }}</td><td>{{ titulo.nota_emitida.numero_nota if titulo.nota_emitida else '-' }}</td><td>{% if titulo.contrato %}<a class="btn btn-secondary" href="{{ url_for('financeiro_contas_receber.contrato_detalhe', contrato_id=titulo.contrato.id) }}">Abrir contrato</a>{% endif %}{% if titulo.medicao %}<a class="btn btn-secondary" href="{{ url_for('financeiro_contas_receber.medicao_detalhe', medicao_id=titulo.medicao.id) }}">Abrir medição</a>{% endif %}{% if titulo.nota_emitida %}<a class="btn btn-secondary" href="{{ url_for('financeiro_contas_receber.nota_emitida_detalhe', nota_id=titulo.nota_emitida.id) }}">Abrir nota</a>{% endif %}</td></tr></tbody>
+                </table>
+            </div>
+        {% else %}
+            <p>Nenhum contrato ou medição vinculada.</p>
+        {% endif %}
+    </section>
 
     <section class="table-card">
         <h2>Nota Fiscal Emitida Vinculada</h2>

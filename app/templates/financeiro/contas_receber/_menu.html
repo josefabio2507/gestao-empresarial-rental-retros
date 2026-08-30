@@ -8,6 +8,12 @@
     {% if pode_ver_notas is not defined or pode_ver_notas %}
         <a class="submodule-tab {{ 'active' if aba_ativa == 'notas' else '' }}" href="{{ url_for('financeiro_contas_receber.notas_emitidas') }}">Notas Emitidas</a>
     {% endif %}
+    {% if pode_ver_contratos is not defined or pode_ver_contratos %}
+        <a class="submodule-tab {{ 'active' if aba_ativa == 'contratos' else '' }}" href="{{ url_for('financeiro_contas_receber.contratos') }}">Contratos</a>
+    {% endif %}
+    {% if pode_ver_medicoes is not defined or pode_ver_medicoes %}
+        <a class="submodule-tab {{ 'active' if aba_ativa == 'medicoes' else '' }}" href="{{ url_for('financeiro_contas_receber.medicoes') }}">Medições</a>
+    {% endif %}
     <span class="submodule-tab disabled" title="Recebimentos será implementado em missão futura.">Recebimentos</span>
     <span class="submodule-tab disabled" title="Inadimplência será implementada em missão futura.">Inadimplência</span>
     <span class="submodule-tab disabled" title="Relatórios serão implementados em missão futura.">Relatórios</span>
