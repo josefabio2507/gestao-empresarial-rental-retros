@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% set aba_ativa = aba %}
+{% block content %}
+<section class="page">
+    <div class="top-bar"><div><span class="page-kicker">Financeiro &gt; Fluxo de Caixa &gt; {{ titulo }}</span><h1>{{ titulo }}</h1><p>Resumo agrupado por {{ agrupamento_nome }}.</p></div><a class="btn btn-secondary" href="{{ url_for('financeiro.index') }}">Voltar ao Financeiro</a></div>
+    {% include "financeiro/fluxo_caixa/_menu.html" %}
+    {% include "financeiro/fluxo_caixa/_filtros.html" %}
+    <section class="table-card"><h2>{{ titulo }}</h2><div class="listbox-10-linhas table-responsive"><table class="table fluxo-caixa-visao-table"><thead><tr><th>{{ primeira_coluna }}</th><th>Período</th><th>Entradas previstas</th><th>Saídas previstas</th><th>Saldo previsto</th><th>Entradas realizadas</th><th>Saídas realizadas</th><th>Saldo realizado</th><th>Saldo acumulado previsto</th><th>Saldo acumulado realizado</th></tr></thead><tbody>{% for linha in visao.linhas %}<tr><td>{{ linha.label }}</td><td>{{ valor_coluna(linha,'periodo_inicio') }} a {{ valor_coluna(linha,'periodo_fim') }}</td><td>{{ valor_coluna(linha,'entradas_previstas') }}</td><td>{{ valor_coluna(linha,'saidas_previstas') }}</td><td>{{ valor_coluna(linha,'saldo_previsto') }}</td><td>{{ valor_coluna(linha,'entradas_realizadas') }}</td><td>{{ valor_coluna(linha,'saidas_realizadas') }}</td><td>{{ valor_coluna(linha,'saldo_realizado') }}</td><td>{{ valor_coluna(linha,'saldo_acumulado_previsto') }}</td><td>{{ valor_coluna(linha,'saldo_acumulado_realizado') }}</td></tr>{% else %}<tr><td class="empty-state" colspan="10">Nenhum resumo encontrado para os filtros informados.</td></tr>{% endfor %}</tbody></table></div></section>
+    {% for linha in visao.linhas %}<section class="table-card"><h2>Movimentos - {{ linha.label }}</h2>{% set movimentos = linha.movimentos %}{% include "financeiro/fluxo_caixa/_movimentos_table.html" %}</section>{% endfor %}
+</section>
+{% endblock %}

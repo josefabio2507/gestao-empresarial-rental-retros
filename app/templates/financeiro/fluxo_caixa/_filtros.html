@@ -1,0 +1,23 @@
+<form class="filter-card" method="GET">
+    <div class="filter-grid">
+        <div class="form-group"><label for="data_inicio">Data inicial</label><input id="data_inicio" name="data_inicio" type="date" value="{{ filtros.data_inicio }}"></div>
+        <div class="form-group"><label for="data_fim">Data final</label><input id="data_fim" name="data_fim" type="date" value="{{ filtros.data_fim }}"></div>
+        <div class="form-group"><label for="tipo">Tipo</label><select id="tipo" name="tipo">{% for valor, label in opcoes.tipos %}<option value="{{ valor }}" {{ 'selected' if filtros.tipo == valor else '' }}>{{ label }}</option>{% endfor %}</select></div>
+        <div class="form-group"><label for="natureza">Natureza</label><select id="natureza" name="natureza">{% for valor, label in opcoes.naturezas %}<option value="{{ valor }}" {{ 'selected' if filtros.natureza == valor else '' }}>{{ label }}</option>{% endfor %}</select></div>
+        <div class="form-group"><label for="origem">Origem</label><select id="origem" name="origem"><option value="">Todas</option>{% for valor, label in opcoes.origens %}<option value="{{ valor }}" {{ 'selected' if filtros.origem == valor else '' }}>{{ label }}</option>{% endfor %}</select></div>
+        <div class="form-group"><label for="cliente">Cliente</label><input id="cliente" name="cliente" value="{{ filtros.cliente }}"></div>
+        <div class="form-group"><label for="fornecedor">Fornecedor</label><input id="fornecedor" name="fornecedor" value="{{ filtros.fornecedor }}"></div>
+        <div class="form-group"><label for="status">Status</label><select id="status" name="status"><option value="">Todos</option>{% for item in opcoes.status %}<option value="{{ item }}" {{ 'selected' if filtros.status == item else '' }}>{{ item }}</option>{% endfor %}</select></div>
+        <div class="form-group"><label for="centro_custo_id">Centro de custo</label><select id="centro_custo_id" name="centro_custo_id"><option value="">Todos</option>{% for centro in opcoes.centros_custo %}<option value="{{ centro.id }}" {{ 'selected' if filtros.centro_custo_id == centro.id else '' }}>{{ centro.codigo or '-' }} - {{ centro.nome }}</option>{% endfor %}</select></div>
+        <div class="form-group"><label for="forma">Forma</label><select id="forma" name="forma"><option value="">Todas</option>{% for item in opcoes.formas %}<option value="{{ item }}" {{ 'selected' if filtros.forma == item else '' }}>{{ item }}</option>{% endfor %}</select></div>
+        <div class="form-group"><label for="conta">Conta/descrição</label><input id="conta" name="conta" value="{{ filtros.conta }}"></div>
+        <div class="form-group"><label for="documento">Documento</label><input id="documento" name="documento" value="{{ filtros.documento }}"></div>
+        <div class="form-group"><label for="nota_fiscal">Nota fiscal</label><input id="nota_fiscal" name="nota_fiscal" value="{{ filtros.nota_fiscal }}"></div>
+        <div class="form-group"><label for="ordem_compra">Ordem de compra</label><input id="ordem_compra" name="ordem_compra" value="{{ filtros.ordem_compra }}"></div>
+    </div>
+    <div class="form-actions">
+        <button class="btn btn-primary" type="submit">Aplicar filtros</button>
+        <a class="btn btn-secondary" href="{{ limpar_url }}">Limpar</a>
+        {% if pode_exportar %}<a class="btn btn-secondary" href="{{ exportar_url }}">Exportar CSV</a>{% endif %}
+    </div>
+</form>

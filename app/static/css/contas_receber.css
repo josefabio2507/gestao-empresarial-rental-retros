@@ -169,3 +169,16 @@
 .contas-receber-relatorios-table .acoes-botoes {
     min-width: 250px;
 }
+
+.fluxo-caixa-listbox {
+    overflow-x: auto;
+    overflow-y: auto;
+}
+
+.fluxo-caixa-table {
+    min-width: 2200px;
+}
+
+.fluxo-caixa-visao-table {
+    min-width: 1500px;
+}

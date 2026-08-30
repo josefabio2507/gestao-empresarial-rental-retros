@@ -16,12 +16,16 @@ from app.models import (
     FinanceiroContaReceberCobranca,
     FinanceiroContaReceberLoteBaixa,
     FinanceiroContaReceberTitulo,
+    FinanceiroContaPagarBaixa,
+    FinanceiroContaPagarLoteBaixa,
+    FinanceiroContaPagarTitulo,
     FinanceiroContratoCliente,
     FinanceiroContratoMedicao,
     FinanceiroNotaFiscalEmitida,
     Modulo,
     NivelAcesso,
     PermissaoUsuarioModulo,
+    SuprimentosFornecedor,
     Usuario,
 )
 from app.services.financeiro_contas_receber_service import (
@@ -415,6 +419,152 @@ def criar_cobranca_demo(item, usuario):
         return None
     return cobranca
 
+
+
+def conceder_permissao_modulo(usuario, modulo):
+    if not usuario or not modulo:
+        return
+    permissao = PermissaoUsuarioModulo.query.filter_by(usuario_id=usuario.id, modulo_id=modulo.id).first()
+    if not permissao:
+        permissao = PermissaoUsuarioModulo(usuario_id=usuario.id, modulo_id=modulo.id)
+        db.session.add(permissao)
+    permissao.pode_visualizar = True
+    permissao.pode_criar = True
+    permissao.pode_editar = True
+    permissao.pode_excluir = True
+    permissao.pode_exportar = True
+    permissao.ativo = True
+    permissao.garantir_visualizacao()
+
+
+def criar_titulo_fluxo_receber(documento, usuario, centros, cliente, vencimento, valor, status="Agendado"):
+    titulo = FinanceiroContaReceberTitulo.query.filter_by(numero_documento=documento).first()
+    if titulo:
+        recalcular_recebimento_titulo(titulo, usuario=usuario)
+        return titulo
+    dados = {
+        "cliente_nome_snapshot": cliente,
+        "cliente_cnpj_cpf_snapshot": "90909090000190",
+        "cliente_email_financeiro_snapshot": "financeiro@teste-fluxo.local",
+        "cliente_telefone_snapshot": "13999990000",
+        "descricao": f"TESTE FLUXO - {documento}",
+        "numero_documento": documento,
+        "numero_nota_fiscal": documento.replace("CR", "NF"),
+        "origem_lancamento": "Manual",
+        "competencia": "2026-08",
+        "data_emissao": "2026-08-30",
+        "data_vencimento": vencimento,
+        "valor_original": valor,
+        "valor_desconto": "0.00",
+        "valor_acrescimo": "0.00",
+        "valor_juros_multa": "0.00",
+        "valor_recebido": "0.00",
+        "parcela_numero": "1",
+        "total_parcelas": "1",
+        "centro_custo_id": str(centros[0].id),
+        "status": status,
+        "observacoes": "TESTE FLUXO - dado ficticio local para Fluxo de Caixa.",
+    }
+    sucesso, mensagem, titulo, _ = salvar_titulo_receber(dados, usuario=usuario)
+    if not sucesso:
+        print(f"Falha ao criar título TESTE FLUXO {documento}: {mensagem}")
+        return None
+    return titulo
+
+
+def criar_fornecedor_fluxo():
+    return obter_ou_criar(
+        SuprimentosFornecedor,
+        {"cnpj_cpf": "90909090000191"},
+        {"razao_social": "FORNECEDOR TESTE FLUXO LTDA", "nome_fantasia": "TESTE FLUXO", "tipo_pessoa": "juridica", "email": "fornecedor@teste-fluxo.local", "telefone": "13999990001", "ativo": True},
+    )
+
+
+def criar_titulo_fluxo_pagar(documento, fornecedor, centro, vencimento, valor, status="Agendado"):
+    titulo = FinanceiroContaPagarTitulo.query.filter_by(numero_documento=documento).first()
+    if titulo:
+        return titulo
+    titulo = FinanceiroContaPagarTitulo(
+        fornecedor_id=fornecedor.id,
+        fornecedor_nome_snapshot=fornecedor.razao_social,
+        fornecedor_cnpj_cpf_snapshot=fornecedor.cnpj_cpf,
+        descricao=f"TESTE FLUXO - {documento}",
+        numero_documento=documento,
+        numero_nfe=documento.replace("CP", "NFE"),
+        origem_lancamento="Manual",
+        tipo_pagamento="Faturado",
+        forma_pagamento="Pix",
+        competencia=date(2026, 8, 1),
+        data_emissao=date(2026, 8, 30),
+        data_vencimento=date.fromisoformat(vencimento),
+        valor_original=Decimal(valor),
+        valor_desconto=Decimal("0.00"),
+        valor_acrescimo=Decimal("0.00"),
+        valor_juros_multa=Decimal("0.00"),
+        valor_pago=Decimal("0.00"),
+        parcela_numero=1,
+        total_parcelas=1,
+        centro_custo_id=centro.id,
+        status=status,
+        observacoes="TESTE FLUXO - dado ficticio local para Fluxo de Caixa.",
+    )
+    db.session.add(titulo)
+    db.session.commit()
+    return titulo
+
+
+def criar_baixa_fluxo_pagar(titulo, valor, observacoes, data_pagamento="2026-08-30", lote=None):
+    if not titulo:
+        return None
+    existente = FinanceiroContaPagarBaixa.query.filter_by(titulo_id=titulo.id, observacoes=observacoes).first()
+    if existente:
+        return existente
+    baixa = FinanceiroContaPagarBaixa(
+        titulo_id=titulo.id,
+        lote_baixa_id=lote.id if lote else None,
+        data_pagamento=date.fromisoformat(data_pagamento),
+        valor_pago=Decimal(valor),
+        forma_pagamento="Pix",
+        conta_pagamento_descricao="Banco TESTE FLUXO - Conta Pagamento",
+        observacoes=observacoes,
+        status="Ativa",
+    )
+    titulo.valor_pago = (Decimal(titulo.valor_pago or 0) + Decimal(valor)).quantize(Decimal("0.01"))
+    titulo.data_pagamento = baixa.data_pagamento
+    titulo.status = "Pago" if titulo.valor_pago >= titulo.valor_liquido_previsto else "Pago parcialmente"
+    db.session.add(baixa)
+    db.session.commit()
+    return baixa
+
+
+def criar_dados_fluxo_demo(usuario, centros):
+    departamento = Departamento.query.filter_by(slug="financeiro").first()
+    modulo_fluxo = Modulo.query.filter_by(departamento_id=departamento.id, slug="fluxo_de_caixa").first() if departamento else None
+    conceder_permissao_modulo(usuario, modulo_fluxo)
+    cliente = "Cliente TESTE FLUXO LTDA"
+    entrada_prevista = criar_titulo_fluxo_receber("CR-TESTE-FLUXO-001", usuario, centros, cliente, "2026-09-03", "12000.00")
+    entrada_realizada = criar_titulo_fluxo_receber("CR-TESTE-FLUXO-002", usuario, centros, cliente, "2026-08-30", "8000.00")
+    entrada_parcial = criar_titulo_fluxo_receber("CR-TESTE-FLUXO-003", usuario, centros, cliente, "2026-09-04", "15000.00")
+    criar_baixa_demo("CR-TESTE-FLUXO-002", usuario, "8000.00", "Pix", "Banco TESTE FLUXO - Conta Recebimento", "TESTE FLUXO - entrada realizada", "2026-08-30", com_comprovante=True)
+    criar_baixa_demo("CR-TESTE-FLUXO-003", usuario, "5000.00", "Pix", "Banco TESTE FLUXO - Conta Recebimento", "TESTE FLUXO - entrada parcial", "2026-08-30", com_comprovante=True)
+    for titulo in [entrada_prevista, entrada_realizada, entrada_parcial]:
+        if titulo:
+            recalcular_recebimento_titulo(titulo, usuario=usuario)
+    fornecedor = criar_fornecedor_fluxo()
+    db.session.flush()
+    saida_prevista = criar_titulo_fluxo_pagar("CP-TESTE-FLUXO-001", fornecedor, centros[0], "2026-09-03", "6500.00")
+    saida_realizada = criar_titulo_fluxo_pagar("CP-TESTE-FLUXO-002", fornecedor, centros[0], "2026-08-30", "4000.00")
+    saida_parcial = criar_titulo_fluxo_pagar("CP-TESTE-FLUXO-003", fornecedor, centros[0], "2026-09-04", "10000.00")
+    saida_negativa = criar_titulo_fluxo_pagar("CP-TESTE-FLUXO-004", fornecedor, centros[0], "2026-09-05", "30000.00")
+    criar_baixa_fluxo_pagar(saida_realizada, "4000.00", "TESTE FLUXO - saída realizada")
+    criar_baixa_fluxo_pagar(saida_parcial, "3000.00", "TESTE FLUXO - saída parcial")
+    lote = FinanceiroContaPagarLoteBaixa.query.filter_by(observacoes="TESTE FLUXO - lote de pagamento ficticio").first()
+    if not lote:
+        lote = FinanceiroContaPagarLoteBaixa(data_pagamento=date(2026, 8, 30), forma_pagamento="Pix", conta_pagamento_descricao="Banco TESTE FLUXO - Conta Pagamento", observacoes="TESTE FLUXO - lote de pagamento ficticio", total_titulos=1, valor_total_baixado=Decimal("1000.00"), status="Ativo")
+        db.session.add(lote)
+        db.session.commit()
+    criar_baixa_fluxo_pagar(saida_negativa, "1000.00", "TESTE FLUXO - pagamento em lote", lote=lote)
+
 def executar_seed(app=None):
     app = app or create_app()
     if not ambiente_local_liberado(app):
@@ -452,6 +602,7 @@ def executar_seed(app=None):
         if "financeiro_contas_receber_cobrancas" in sa_inspect(db.engine).get_table_names():
             for item in COBRANCAS_TESTE_CR:
                 criar_cobranca_demo(item, usuario)
+        criar_dados_fluxo_demo(usuario, centros)
         db.session.commit()
         print("Dados fictícios de Contas a Receber criados com sucesso.")
         print("Dados fictícios já existem. Nenhum registro duplicado foi criado quando aplicável.")

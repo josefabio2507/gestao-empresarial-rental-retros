@@ -1,0 +1,6 @@
+<div class="listbox-10-linhas table-responsive fluxo-caixa-listbox">
+    <table class="table fluxo-caixa-table">
+        <thead><tr><th>Data</th><th>Tipo</th><th>Natureza</th><th>Origem</th><th>Descrição</th><th>Cliente/Fornecedor</th><th>Documento</th><th>Nota fiscal</th><th>Valor previsto</th><th>Valor realizado</th><th>Saldo</th><th>Status</th><th>Centro de custo</th><th>Forma</th><th>Conta</th><th>Ações</th></tr></thead>
+        <tbody>{% for mov in movimentos %}<tr><td>{{ valor_coluna(mov, 'data') }}</td><td>{{ mov.tipo }}</td><td>{{ mov.natureza }}</td><td>{{ mov.origem }}</td><td>{{ mov.descricao }}</td><td>{{ mov.pessoa }}</td><td>{{ mov.documento or '-' }}</td><td>{{ mov.nota_fiscal or '-' }}</td><td>{{ valor_coluna(mov, 'valor_previsto') }}</td><td>{{ valor_coluna(mov, 'valor_realizado') }}</td><td>{{ valor_coluna(mov, 'saldo') }}</td><td>{{ mov.status }}</td><td>{{ mov.centro_custo or '-' }}</td><td>{{ mov.forma or '-' }}</td><td>{{ mov.conta or '-' }}</td><td>{% if mov.link_endpoint %}<a class="btn btn-secondary" href="{{ url_for(mov.link_endpoint, **mov.link_kwargs) }}">Abrir origem</a>{% else %}-{% endif %}</td></tr>{% else %}<tr><td class="empty-state" colspan="16">Nenhum movimento encontrado para os filtros informados.</td></tr>{% endfor %}</tbody>
+    </table>
+</div>
