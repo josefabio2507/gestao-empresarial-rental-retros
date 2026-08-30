@@ -22,6 +22,18 @@ from app.services.financeiro_relatorios_service import (
     periodo_valido,
     valor_coluna,
 )
+from app.services.financeiro_fluxo_caixa_service import (
+    dashboard_fluxo_caixa,
+    filtros_padrao_fluxo,
+    filtros_para_template_fluxo,
+    gerar_csv_movimentos,
+    movimentos_fluxo_caixa,
+    nome_arquivo_fluxo,
+    opcoes_fluxo_caixa,
+    periodo_valido_fluxo,
+    valor_coluna_fluxo,
+    visao_fluxo_caixa,
+)
 from app.services.logs_service import registrar_log
 from app.services.permissoes_service import usuario_tem_permissao
 
@@ -35,6 +47,7 @@ def index():
         "financeiro/index.html",
         pode_ver_contas_pagar=usuario_tem_permissao(current_user, "financeiro", "contas_a_pagar", "visualizar"),
         pode_ver_contas_receber=usuario_tem_permissao(current_user, "financeiro", "contas_a_receber", "visualizar"),
+        pode_ver_fluxo_caixa=usuario_tem_permissao(current_user, "financeiro", "fluxo_de_caixa", "visualizar"),
         pode_ver_relatorios=usuario_tem_permissao(current_user, "financeiro", "relatorios", "visualizar"),
     )
 
@@ -106,6 +119,101 @@ def exportar_relatorio():
         conteudo,
         mimetype="text/csv; charset=utf-8",
         headers={"Content-Disposition": "attachment; filename={}".format(nome_arquivo_relatorio(relatorio["tipo"]))},
+    )
+
+
+
+def _contexto_fluxo_caixa():
+    filtros = filtros_padrao_fluxo(request.args)
+    if not periodo_valido_fluxo(filtros):
+        flash("A data inicial nao pode ser maior que a data final.", "warning")
+        filtros = filtros_padrao_fluxo({})
+    return filtros, filtros_para_template_fluxo(filtros), opcoes_fluxo_caixa(), usuario_tem_permissao(current_user, "financeiro", "fluxo_de_caixa", "exportar")
+
+
+@financeiro_bp.route("/fluxo-caixa")
+@login_required
+@module_permission_required("financeiro", "fluxo_de_caixa", "visualizar")
+def fluxo_caixa_dashboard():
+    filtros, filtros_template, opcoes, pode_exportar = _contexto_fluxo_caixa()
+    return render_template(
+        "financeiro/fluxo_caixa/dashboard.html",
+        dados=dashboard_fluxo_caixa(filtros),
+        filtros=filtros_template,
+        opcoes=opcoes,
+        pode_exportar=pode_exportar,
+        valor_coluna=valor_coluna_fluxo,
+    )
+
+
+@financeiro_bp.route("/fluxo-caixa/movimentos")
+@login_required
+@module_permission_required("financeiro", "fluxo_de_caixa", "visualizar")
+def fluxo_caixa_movimentos():
+    filtros, filtros_template, opcoes, pode_exportar = _contexto_fluxo_caixa()
+    return render_template(
+        "financeiro/fluxo_caixa/movimentos.html",
+        movimentos=movimentos_fluxo_caixa(filtros),
+        filtros=filtros_template,
+        opcoes=opcoes,
+        pode_exportar=pode_exportar,
+        valor_coluna=valor_coluna_fluxo,
+    )
+
+
+def _renderizar_visao_fluxo(periodo, titulo, aba, primeira_coluna, agrupamento_nome, limpar_endpoint):
+    filtros, filtros_template, opcoes, pode_exportar = _contexto_fluxo_caixa()
+    return render_template(
+        "financeiro/fluxo_caixa/visao.html",
+        visao=visao_fluxo_caixa(periodo, filtros),
+        filtros=filtros_template,
+        opcoes=opcoes,
+        pode_exportar=pode_exportar,
+        valor_coluna=valor_coluna_fluxo,
+        titulo=titulo,
+        aba=aba,
+        primeira_coluna=primeira_coluna,
+        agrupamento_nome=agrupamento_nome,
+        limpar_url=url_for(limpar_endpoint),
+        exportar_url=url_for("financeiro.exportar_fluxo_caixa", **request.args),
+    )
+
+
+@financeiro_bp.route("/fluxo-caixa/diario")
+@login_required
+@module_permission_required("financeiro", "fluxo_de_caixa", "visualizar")
+def fluxo_caixa_diario():
+    return _renderizar_visao_fluxo("dia", "Visão Diária", "diaria", "Data", "dia", "financeiro.fluxo_caixa_diario")
+
+
+@financeiro_bp.route("/fluxo-caixa/semanal")
+@login_required
+@module_permission_required("financeiro", "fluxo_de_caixa", "visualizar")
+def fluxo_caixa_semanal():
+    return _renderizar_visao_fluxo("semana", "Visão Semanal", "semanal", "Semana", "semana", "financeiro.fluxo_caixa_semanal")
+
+
+@financeiro_bp.route("/fluxo-caixa/mensal")
+@login_required
+@module_permission_required("financeiro", "fluxo_de_caixa", "visualizar")
+def fluxo_caixa_mensal():
+    return _renderizar_visao_fluxo("mes", "Visão Mensal", "mensal", "Mês/Ano", "mês", "financeiro.fluxo_caixa_mensal")
+
+
+@financeiro_bp.route("/fluxo-caixa/exportar")
+@login_required
+@module_permission_required("financeiro", "fluxo_de_caixa", "exportar")
+def exportar_fluxo_caixa():
+    filtros = filtros_padrao_fluxo(request.args)
+    if not periodo_valido_fluxo(filtros):
+        flash("Informe um periodo valido.", "warning")
+        return redirect(url_for("financeiro.fluxo_caixa_movimentos"))
+    movimentos = movimentos_fluxo_caixa(filtros)
+    registrar_log("financeiro_fluxo_caixa_exportado", "Movimentos do Fluxo de Caixa exportados.")
+    return Response(
+        gerar_csv_movimentos(movimentos),
+        mimetype="text/csv; charset=utf-8",
+        headers={"Content-Disposition": "attachment; filename={}".format(nome_arquivo_fluxo("movimentos"))},
     )
 
 

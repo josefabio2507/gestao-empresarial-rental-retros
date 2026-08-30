@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% set aba_ativa = "movimentos" %}
+{% block content %}
+<section class="page">
+    <div class="top-bar"><div><span class="page-kicker">Financeiro &gt; Fluxo de Caixa &gt; Movimentos</span><h1>Movimentos do Fluxo de Caixa</h1><p>Entradas e saídas consolidadas em uma única listagem.</p></div><a class="btn btn-secondary" href="{{ url_for('financeiro.index') }}">Voltar ao Financeiro</a></div>
+    {% include "financeiro/fluxo_caixa/_menu.html" %}
+    {% set limpar_url = url_for('financeiro.fluxo_caixa_movimentos') %}{% set exportar_url = url_for('financeiro.exportar_fluxo_caixa', **request.args) %}{% include "financeiro/fluxo_caixa/_filtros.html" %}
+    <section class="table-card"><h2>Movimentos</h2>{% include "financeiro/fluxo_caixa/_movimentos_table.html" %}</section>
+</section>
+{% endblock %}

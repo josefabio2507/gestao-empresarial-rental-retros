@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% set aba_ativa = "dashboard" %}
+{% block content %}
+<section class="page">
+    <div class="top-bar"><div><span class="page-kicker">Financeiro &gt; Fluxo de Caixa &gt; Dashboard</span><h1>Fluxo de Caixa</h1><p>Consolidação de entradas e saídas previstas e realizadas.</p></div><a class="btn btn-secondary" href="{{ url_for('financeiro.index') }}">Voltar ao Financeiro</a></div>
+    {% include "financeiro/fluxo_caixa/_menu.html" %}
+    {% set limpar_url = url_for('financeiro.fluxo_caixa_dashboard') %}{% set exportar_url = url_for('financeiro.exportar_fluxo_caixa', **request.args) %}{% include "financeiro/fluxo_caixa/_filtros.html" %}
+    {% set cards = [
+        ('Saldo previsto do período', dados.cards.saldo_previsto, 'Entradas previstas menos saídas previstas no período filtrado.'),
+        ('Saldo realizado do período', dados.cards.saldo_realizado, 'Entradas já recebidas menos saídas já pagas no período filtrado.'),
+        ('Entradas previstas', dados.cards.entradas_previstas, 'Soma dos títulos a receber ainda não recebidos, com vencimento no período.'),
+        ('Saídas previstas', dados.cards.saidas_previstas, 'Soma dos títulos a pagar ainda não pagos, com vencimento no período.'),
+        ('Entradas realizadas', dados.cards.entradas_realizadas, 'Soma das baixas de recebimento ativas registradas no período.'),
+        ('Saídas realizadas', dados.cards.saidas_realizadas, 'Soma das baixas de pagamento ativas registradas no período.'),
+        ('Contas a receber vencidas', dados.cards.contas_receber_vencidas, 'Entradas previstas vencidas com saldo em aberto.'),
+        ('Contas a pagar vencidas', dados.cards.contas_pagar_vencidas, 'Saídas previstas vencidas com saldo em aberto.'),
+        ('Saldo próximos 7 dias', dados.cards.saldo_7_dias, 'Entradas previstas menos saídas previstas nos próximos 7 dias.'),
+        ('Saldo próximos 30 dias', dados.cards.saldo_30_dias, 'Entradas previstas menos saídas previstas nos próximos 30 dias.'),
+        ('Maior entrada prevista', dados.cards.maior_entrada_prevista, 'Maior recebível previsto no período filtrado.'),
+        ('Maior saída prevista', dados.cards.maior_saida_prevista, 'Maior desembolso previsto no período filtrado.'),
+        ('Diferença previsto x realizado', dados.cards.diferenca_previsto_realizado, 'Compara o saldo financeiro previsto com o saldo efetivamente realizado.')
+    ] %}
+    <div class="stat-grid">{% for titulo, valor, ajuda in cards %}<div class="stat-card stat-card-help dashboard-info-card" tabindex="0" title="{{ ajuda }}"><span>{{ titulo }}</span><strong>{{ valor_coluna({'valor': valor}, 'valor') }}</strong><small class="stat-help" role="tooltip">{{ ajuda }}</small></div>{% endfor %}</div>
+    <div class="dashboard-grid">
+        {% for titulo, chave in [('Próximas entradas','proximas_entradas'),('Próximas saídas','proximas_saidas'),('Maiores entradas previstas','maiores_entradas'),('Maiores saídas previstas','maiores_saidas'),('Entradas realizadas recentes','entradas_realizadas'),('Saídas realizadas recentes','saidas_realizadas'),('Dias com saldo negativo previsto','dias_saldo_negativo')] %}
+        <section class="table-card"><h2>{{ titulo }}</h2>{% set movimentos = dados.tabelas[chave] %}{% include "financeiro/fluxo_caixa/_movimentos_table.html" %}</section>
+        {% endfor %}
+        <section class="table-card"><h2>Resumo por mês</h2><div class="listbox-10-linhas table-responsive"><table class="table"><thead><tr><th>Mês</th><th>Entradas previstas</th><th>Saídas previstas</th><th>Saldo previsto</th><th>Entradas realizadas</th><th>Saídas realizadas</th><th>Saldo realizado</th></tr></thead><tbody>{% for linha in dados.tabelas.resumo_mes %}<tr><td>{{ linha.label }}</td><td>{{ valor_coluna(linha,'entradas_previstas') }}</td><td>{{ valor_coluna(linha,'saidas_previstas') }}</td><td>{{ valor_coluna(linha,'saldo_previsto') }}</td><td>{{ valor_coluna(linha,'entradas_realizadas') }}</td><td>{{ valor_coluna(linha,'saidas_realizadas') }}</td><td>{{ valor_coluna(linha,'saldo_realizado') }}</td></tr>{% else %}<tr><td class="empty-state" colspan="7">Nenhum resumo encontrado.</td></tr>{% endfor %}</tbody></table></div></section>
+    </div>
+</section>
+{% endblock %}

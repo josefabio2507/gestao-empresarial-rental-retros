@@ -33,6 +33,17 @@
         </a>
         {% endif %}
 
+
+        {% if pode_ver_fluxo_caixa %}
+        <a class="module-card module-card-link" href="{{ url_for('financeiro.fluxo_caixa_dashboard') }}">
+            <span class="module-card-icon">F</span>
+            <h2>Fluxo de Caixa</h2>
+            <p>Entradas, saídas, previsto, realizado e visões por período.</p>
+            <span class="badge badge-success">Ativo</span>
+            <span class="module-status">Acessar fluxo</span>
+        </a>
+        {% endif %}
+
         {% if pode_ver_relatorios %}
         <a class="module-card module-card-link" href="{{ url_for('financeiro.relatorios') }}">
             <span class="module-card-icon">R</span>
