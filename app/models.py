@@ -2874,6 +2874,7 @@ class SuprimentosCotacaoProposta(db.Model):
     unidade_medida_snapshot = db.Column(db.String(20), nullable=False)
     quantidade_snapshot = db.Column(db.Numeric(12, 3), nullable=False)
     preco_unitario = db.Column(db.Numeric(12, 2), nullable=False)
+    valor_frete = db.Column(db.Numeric(12, 2), default=0, nullable=False)
     prazo_entrega_dias = db.Column(db.Integer, nullable=True)
     condicao_pagamento = db.Column(db.String(160), nullable=True)
     observacoes = db.Column(db.Text, nullable=True)
@@ -2914,6 +2915,10 @@ class SuprimentosCotacaoProposta(db.Model):
             name="ck_suprimentos_cotacao_propostas_preco_unitario",
         ),
         db.CheckConstraint(
+            "valor_frete >= 0",
+            name="ck_suprimentos_cotacao_propostas_valor_frete",
+        ),
+        db.CheckConstraint(
             "prazo_entrega_dias is null or prazo_entrega_dias >= 0",
             name="ck_suprimentos_cotacao_propostas_prazo",
         ),
@@ -2921,7 +2926,7 @@ class SuprimentosCotacaoProposta(db.Model):
 
     @property
     def valor_total(self):
-        return self.quantidade_snapshot * self.preco_unitario
+        return (self.quantidade_snapshot * self.preco_unitario) + (self.valor_frete or 0)
 
     def __repr__(self):
         return (
@@ -3351,6 +3356,7 @@ class SuprimentosOrdemCompraItem(db.Model):
     unidade_medida_snapshot = db.Column(db.String(20), nullable=False)
     quantidade = db.Column(db.Numeric(12, 3), nullable=False)
     preco_unitario = db.Column(db.Numeric(12, 2), nullable=False)
+    valor_frete = db.Column(db.Numeric(12, 2), default=0, nullable=False)
     prazo_entrega_dias = db.Column(db.Integer, nullable=True)
     observacoes = db.Column(db.Text, nullable=True)
 
@@ -3393,6 +3399,10 @@ class SuprimentosOrdemCompraItem(db.Model):
             name="ck_suprimentos_oc_itens_preco_unitario",
         ),
         db.CheckConstraint(
+            "valor_frete >= 0",
+            name="ck_suprimentos_oc_itens_valor_frete",
+        ),
+        db.CheckConstraint(
             "prazo_entrega_dias is null or prazo_entrega_dias >= 0",
             name="ck_suprimentos_oc_itens_prazo",
         ),
@@ -3400,7 +3410,7 @@ class SuprimentosOrdemCompraItem(db.Model):
 
     @property
     def valor_total(self):
-        return self.quantidade * self.preco_unitario
+        return (self.quantidade * self.preco_unitario) + (self.valor_frete or 0)
 
     @property
     def quantidade_recebida(self):
@@ -3766,3 +3776,4 @@ class SegurancaTrabalhoEntregaEpi(db.Model):
 
     def __repr__(self):
         return f"<SegurancaTrabalhoEntregaEpi colaborador={self.colaborador_id} item={self.item_id}>"
+
