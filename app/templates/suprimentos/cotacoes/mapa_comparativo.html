@@ -68,6 +68,7 @@
                     <tr>
                         <th>Fornecedor</th>
                         <th>Preco unit.</th>
+                        <th>Frete</th>
                         <th>Total</th>
                         <th>Prazo</th>
                         <th>Condicao</th>
@@ -83,6 +84,7 @@
                             <td class="{% if linha.menor_preco %}comparison-highlight{% endif %}">
                                 {{ formatar_moeda_brl(proposta.preco_unitario) }}
                             </td>
+                            <td>{{ formatar_moeda_brl(proposta.valor_frete) }}</td>
                             <td class="{% if linha.menor_total %}comparison-highlight{% endif %}">
                                 {{ formatar_moeda_brl(linha.valor_total) }}
                             </td>
@@ -126,7 +128,7 @@
                         </tr>
                     {% else %}
                         <tr>
-                            <td class="empty-state" colspan="7">Nenhuma proposta registrada para este item.</td>
+                            <td class="empty-state" colspan="8">Nenhuma proposta registrada para este item.</td>
                         </tr>
                     {% endfor %}
                 </tbody>
@@ -215,3 +217,4 @@
     </div>
 </section>
 {% endblock %}
+

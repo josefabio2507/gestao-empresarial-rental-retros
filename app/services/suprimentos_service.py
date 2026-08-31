@@ -2820,6 +2820,7 @@ def gerar_mensagem_ordem_compra_fornecedor(ordem):
             f"- {item.item_descricao_snapshot} | Qtd: "
             f"{formatar_decimal_brasil(item.quantidade)} {item.unidade_medida_snapshot} | "
             f"Unit.: {formatar_moeda_brl(item.preco_unitario)} | "
+            f"Frete: {formatar_moeda_brl(item.valor_frete)} | "
             f"Total: {formatar_moeda_brl(item.valor_total)}"
         )
         if item.prazo_entrega_dias is not None:
@@ -3112,7 +3113,7 @@ def gerar_mensagem_whatsapp_aprovacao_cotacao(cotacao):
             linhas.append(
                 f"- {proposta.item_descricao_snapshot} | Qtd: "
                 f"{formatar_decimal_brasil(proposta.quantidade_snapshot)} "
-                f"{proposta.unidade_medida_snapshot} | Total: {formatar_moeda_brl(proposta.valor_total)}"
+                f"{proposta.unidade_medida_snapshot} | Frete: {formatar_moeda_brl(proposta.valor_frete)} | Total: {formatar_moeda_brl(proposta.valor_total)}"
             )
     else:
         linhas.append("- Nenhum item selecionado")
@@ -3200,6 +3201,7 @@ def salvar_proposta_cotacao(form_data, cotacao):
     requisicao_item_id = inteiro_ou_none(form_data.get("requisicao_item_id"))
     fornecedor_id = inteiro_ou_none(form_data.get("fornecedor_id"))
     preco_unitario = decimal_ou_none(form_data.get("preco_unitario"))
+    valor_frete = decimal_ou_none(form_data.get("valor_frete")) or Decimal("0.00")
     prazo_entrega_dias = inteiro_ou_none(form_data.get("prazo_entrega_dias"))
     condicao_pagamento = texto_maiusculo(form_data.get("condicao_pagamento")) or None
     observacoes = texto_maiusculo(form_data.get("observacoes")) or None
@@ -3225,6 +3227,9 @@ def salvar_proposta_cotacao(form_data, cotacao):
     if preco_unitario is None or preco_unitario < 0:
         return False, "Preco unitario deve ser maior ou igual a zero.", None
 
+    if valor_frete < 0:
+        return False, "Valor do frete deve ser maior ou igual a zero.", None
+
     if prazo_entrega_dias is not None and prazo_entrega_dias < 0:
         return False, "Prazo de entrega nao pode ser negativo.", None
 
@@ -3247,6 +3252,7 @@ def salvar_proposta_cotacao(form_data, cotacao):
         unidade_medida_snapshot=requisicao_item.unidade_medida_snapshot,
         quantidade_snapshot=requisicao_item.quantidade,
         preco_unitario=preco_unitario,
+        valor_frete=valor_frete,
         prazo_entrega_dias=prazo_entrega_dias,
         condicao_pagamento=condicao_pagamento,
         observacoes=observacoes,
@@ -3555,6 +3561,7 @@ def gerar_ordens_compra_cotacao(cotacao, usuario, form_data=None):
                     unidade_medida_snapshot=proposta.unidade_medida_snapshot,
                     quantidade=proposta.quantidade_snapshot,
                     preco_unitario=proposta.preco_unitario,
+                    valor_frete=proposta.valor_frete or Decimal("0.00"),
                     prazo_entrega_dias=proposta.prazo_entrega_dias,
                     observacoes=proposta.observacoes,
                 )
@@ -3951,3 +3958,4 @@ def consultar_cnpj_publico(cnpj):
         return False, "Consulta retornou dados incompletos.", None
 
     return True, "CNPJ consultado com sucesso.", dados_normalizados
+

@@ -53,6 +53,7 @@
                             <tr>
                                 <th>Fornecedor</th>
                                 <th>Preco unit.</th>
+                                <th>Frete</th>
                                 <th>Total</th>
                                 <th>Prazo</th>
                                 <th>Condicao</th>
@@ -66,6 +67,7 @@
                                     <tr class="comparison-row-best">
                                         <td>{{ proposta.fornecedor_razao_social_snapshot }}</td>
                                         <td>{{ formatar_moeda_brl(proposta.preco_unitario) }}</td>
+                                        <td>{{ formatar_moeda_brl(proposta.valor_frete) }}</td>
                                         <td>{{ formatar_moeda_brl(linha.valor_total) }}</td>
                                         <td>{{ proposta.prazo_entrega_dias if proposta.prazo_entrega_dias is not none else "-" }}</td>
                                         <td>{{ proposta.condicao_pagamento or "-" }}</td>
@@ -107,3 +109,4 @@
     {% endif %}
 </section>
 {% endblock %}
+

@@ -95,6 +95,13 @@
                     </div>
                 </div>
                 <div class="form-group">
+                    <label for="valor_frete">Frete</label>
+                    <div class="input-prefix-row">
+                        <span>R$</span>
+                        <input id="valor_frete" name="valor_frete" inputmode="decimal" value="0,00">
+                    </div>
+                </div>
+                <div class="form-group">
                     <label for="prazo_entrega_dias">Prazo entrega dias</label>
                     <input id="prazo_entrega_dias" name="prazo_entrega_dias">
                 </div>
@@ -121,6 +128,7 @@
                     <th>Item</th>
                     <th>Qtd.</th>
                     <th>Preco unit.</th>
+                    <th>Frete</th>
                     <th>Total</th>
                     <th>Prazo</th>
                     <th>Condicao</th>
@@ -134,6 +142,7 @@
                         <td>{{ proposta.item_descricao_snapshot }}</td>
                         <td>{{ proposta.quantidade_snapshot }} {{ proposta.unidade_medida_snapshot }}</td>
                         <td>{{ formatar_moeda_brl(proposta.preco_unitario) }}</td>
+                        <td>{{ formatar_moeda_brl(proposta.valor_frete) }}</td>
                         <td>{{ formatar_moeda_brl(proposta.valor_total) }}</td>
                         <td>{{ proposta.prazo_entrega_dias if proposta.prazo_entrega_dias is not none else "-" }}</td>
                         <td>{{ proposta.condicao_pagamento or "-" }}</td>
@@ -146,7 +155,7 @@
                         {% endif %}
                     </tr>
                 {% else %}
-                    <tr><td class="empty-state" colspan="{{ 8 if cotacao.pode_editar else 7 }}">Nenhuma proposta registrada.</td></tr>
+                    <tr><td class="empty-state" colspan="{{ 9 if cotacao.pode_editar else 8 }}">Nenhuma proposta registrada.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
@@ -167,3 +176,4 @@
     </div>
 </section>
 {% endblock %}
+
