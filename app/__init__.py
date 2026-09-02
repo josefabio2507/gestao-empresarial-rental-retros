@@ -48,6 +48,7 @@ def create_app():
     from app.financeiro.routes import financeiro_bp
     from app.financeiro.contas_pagar.routes import financeiro_contas_pagar_bp
     from app.financeiro.contas_receber.routes import financeiro_contas_receber_bp
+    from app.financeiro.clientes.routes import financeiro_clientes_bp
     from app.fiscal.routes import fiscal_bp
     from app.suprimentos.routes import suprimentos_bp
     from app.suprimentos.fornecedores.routes import suprimentos_fornecedores_bp
@@ -84,6 +85,7 @@ def create_app():
     app.register_blueprint(financeiro_bp, url_prefix="/financeiro")
     app.register_blueprint(financeiro_contas_pagar_bp, url_prefix="/financeiro/contas-a-pagar")
     app.register_blueprint(financeiro_contas_receber_bp, url_prefix="/financeiro/contas-a-receber")
+    app.register_blueprint(financeiro_clientes_bp, url_prefix="/financeiro/clientes")
     app.register_blueprint(fiscal_bp, url_prefix="/fiscal")
     app.register_blueprint(suprimentos_bp, url_prefix="/suprimentos")
     app.register_blueprint(suprimentos_fornecedores_bp, url_prefix="/suprimentos/fornecedores")

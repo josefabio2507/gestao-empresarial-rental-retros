@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/contas_receber.css') }}">
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Financeiro &gt; Clientes &gt; Detalhe</span>
+            <h1>{{ cliente.razao_social }}</h1>
+            <p>{{ cliente.nome_fantasia or 'Cliente cadastrado no Financeiro.' }}</p>
+        </div>
+        <div class="actions">
+            {% if pode_editar %}<a class="btn btn-primary" href="{{ url_for('financeiro_clientes.editar', cliente_id=cliente.id) }}">Editar</a>{% endif %}
+            {% if pode_inativar %}<form class="inline-form" method="POST" action="{{ url_for('financeiro_clientes.status', cliente_id=cliente.id) }}"><button class="btn btn-warning" type="submit">{{ 'Inativar' if cliente.ativo else 'Reativar' }}</button></form>{% endif %}
+            <a class="btn btn-secondary" href="{{ url_for('financeiro_clientes.listar') }}">Voltar</a>
+        </div>
+    </div>
+
+    <div class="details-card">
+        <p><strong>Tipo:</strong> {{ 'Pessoa Jurídica' if cliente.tipo_pessoa == 'juridica' else 'Pessoa Física' }}</p>
+        <p><strong>CNPJ/CPF:</strong> {{ cliente.cnpj_cpf or cliente.cnpj_cpf_normalizado }}</p>
+        <p><strong>Inscrição Estadual:</strong> {{ cliente.inscricao_estadual or '-' }}</p>
+        <p><strong>Inscrição Municipal:</strong> {{ cliente.inscricao_municipal or '-' }}</p>
+        <p><strong>E-mail financeiro:</strong> {{ cliente.email_financeiro or '-' }}</p>
+        <p><strong>Telefone principal:</strong> {{ cliente.telefone_principal or '-' }}</p>
+        <p><strong>Contato:</strong> {{ cliente.contato_responsavel or '-' }} {{ ('- ' ~ cliente.cargo_contato) if cliente.cargo_contato else '' }}</p>
+        <p><strong>Endereço:</strong> {{ cliente.endereco or '-' }}, {{ cliente.numero or '-' }} {{ cliente.complemento or '' }} - {{ cliente.bairro or '-' }} - {{ cliente.cidade or '-' }}/{{ cliente.uf or '-' }} - CEP {{ cliente.cep or '-' }}</p>
+        <p><strong>Condição padrão:</strong> {{ cliente.condicao_recebimento_padrao or '-' }} | Prazo: {{ cliente.prazo_vencimento_padrao if cliente.prazo_vencimento_padrao is not none else '-' }} dias</p>
+        <p><strong>Status:</strong> <span class="badge {{ 'badge-success' if cliente.ativo else 'badge-danger' }}">{{ 'Ativo' if cliente.ativo else 'Inativo' }}</span></p>
+        <p><strong>Observações:</strong> {{ cliente.observacoes or '-' }}</p>
+    </div>
+
+    <h2>Títulos a Receber Vinculados</h2>
+    <div class="table-card table-responsive listbox-10-linhas clientes-listbox"><table class="table clientes-table"><thead><tr><th>ID</th><th>Documento</th><th>Descrição</th><th>Vencimento</th><th>Valor</th><th>Saldo</th><th>Status</th><th>Ações</th></tr></thead><tbody>{% for titulo in vinculos.titulos %}<tr><td>{{ titulo.id }}</td><td>{{ titulo.numero_documento or '-' }}</td><td>{{ titulo.descricao }}</td><td>{{ formatar_data_brasil(titulo.data_vencimento) }}</td><td>{{ formatar_moeda_brl(titulo.valor_liquido) }}</td><td>{{ formatar_moeda_brl(titulo.saldo_aberto) }}</td><td>{{ titulo.status_visual() }}</td><td><a class="btn btn-secondary" href="{{ url_for('financeiro_contas_receber.detalhe', titulo_id=titulo.id) }}">Ver título</a></td></tr>{% else %}<tr><td class="empty-state" colspan="8">Nenhum título vinculado.</td></tr>{% endfor %}</tbody></table></div>
+
+    <h2>Notas Emitidas Vinculadas</h2>
+    <div class="table-card table-responsive listbox-10-linhas clientes-listbox"><table class="table clientes-table"><thead><tr><th>ID</th><th>Número</th><th>Tipo</th><th>Emissão</th><th>Valor</th><th>Status fiscal</th><th>Status financeiro</th><th>Ações</th></tr></thead><tbody>{% for nota in vinculos.notas %}<tr><td>{{ nota.id }}</td><td>{{ nota.numero_nota }}</td><td>{{ nota.tipo_nota }}</td><td>{{ formatar_data_brasil(nota.data_emissao) }}</td><td>{{ formatar_moeda_brl(nota.valor_total) }}</td><td>{{ nota.status_fiscal }}</td><td>{{ nota.status_financeiro }}</td><td><a class="btn btn-secondary" href="{{ url_for('financeiro_contas_receber.nota_emitida_detalhe', nota_id=nota.id) }}">Ver nota</a></td></tr>{% else %}<tr><td class="empty-state" colspan="8">Nenhuma nota vinculada.</td></tr>{% endfor %}</tbody></table></div>
+
+    <h2>Contratos Vinculados</h2>
+    <div class="table-card table-responsive listbox-10-linhas clientes-listbox"><table class="table clientes-table"><thead><tr><th>ID</th><th>Número</th><th>Início</th><th>Fim</th><th>Valor</th><th>Status</th><th>Medições</th><th>Ações</th></tr></thead><tbody>{% for contrato in vinculos.contratos %}<tr><td>{{ contrato.id }}</td><td>{{ contrato.numero_contrato }}</td><td>{{ formatar_data_brasil(contrato.data_inicio) }}</td><td>{{ formatar_data_brasil(contrato.data_fim) }}</td><td>{{ formatar_moeda_brl(contrato.valor_contratual) }}</td><td>{{ contrato.status }}</td><td>{{ contrato.quantidade_medicoes }}</td><td><a class="btn btn-secondary" href="{{ url_for('financeiro_contas_receber.contrato_detalhe', contrato_id=contrato.id) }}">Ver contrato</a></td></tr>{% else %}<tr><td class="empty-state" colspan="8">Nenhum contrato vinculado.</td></tr>{% endfor %}</tbody></table></div>
+
+    <h2>Medições Vinculadas</h2>
+    <div class="table-card table-responsive listbox-10-linhas clientes-listbox"><table class="table clientes-table"><thead><tr><th>ID</th><th>Número</th><th>Contrato</th><th>Competência</th><th>Data</th><th>Valor</th><th>Status</th><th>Ações</th></tr></thead><tbody>{% for medicao in vinculos.medicoes %}<tr><td>{{ medicao.id }}</td><td>{{ medicao.numero_medicao }}</td><td>{{ medicao.contrato.numero_contrato if medicao.contrato else '-' }}</td><td>{{ medicao.competencia }}</td><td>{{ formatar_data_brasil(medicao.data_medicao) }}</td><td>{{ formatar_moeda_brl(medicao.valor_liquido_medido) }}</td><td>{{ medicao.status_medicao }}</td><td><a class="btn btn-secondary" href="{{ url_for('financeiro_contas_receber.medicao_detalhe', medicao_id=medicao.id) }}">Ver medição</a></td></tr>{% else %}<tr><td class="empty-state" colspan="8">Nenhuma medição vinculada.</td></tr>{% endfor %}</tbody></table></div>
+</section>
+{% endblock %}

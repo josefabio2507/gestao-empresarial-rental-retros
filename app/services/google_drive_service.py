@@ -1,4 +1,5 @@
 import json
+import time
 from io import BytesIO
 
 from flask import current_app
@@ -28,14 +29,66 @@ def erro_cota_storage_service_account(exc):
         or "service accounts don't have storage quota" in mensagem
     )
 
+def erro_temporario_google_drive(exc):
+    mensagem = str(exc).lower()
+    return (
+        "rate limit" in mensagem
+        or "ratelimit" in mensagem
+        or "user rate limit exceeded" in mensagem
+        or "backend error" in mensagem
+        or "internal error" in mensagem
+        or "timeout" in mensagem
+        or "429" in mensagem
+        or "500" in mensagem
+        or "502" in mensagem
+        or "503" in mensagem
+        or "504" in mensagem
+    )
 
 def mensagem_cota_storage_service_account():
     return (
-        "O Google Drive recusou o upload porque a conta de servico nao possui cota de armazenamento. "
-        "Configure GOOGLE_DRIVE_EVIDENCIAS_OC_FOLDER_ID com uma pasta dentro de um Drive compartilhado "
-        "e adicione a conta de servico como membro desse Drive."
+        "O Google Drive recusou o upload por falta de cota de armazenamento na conta conectada. "
+        "Se estiver usando conta de servico, configure GOOGLE_DRIVE_EVIDENCIAS_OC_FOLDER_ID com uma pasta "
+        "dentro de um Drive compartilhado e adicione a conta de servico como membro desse Drive."
     )
 
+def mensagem_erro_upload_google_drive(exc, chave_config_pasta, descricao_arquivo="arquivo"):
+    mensagem = str(exc).lower()
+
+    if erro_cota_storage_service_account(exc):
+        return mensagem_cota_storage_service_account().replace(
+            "GOOGLE_DRIVE_EVIDENCIAS_OC_FOLDER_ID",
+            chave_config_pasta,
+        )
+
+    if "file not found" in mensagem or "notfound" in mensagem or "404" in mensagem:
+        return (
+            f"O Google Drive nao encontrou a pasta configurada em {chave_config_pasta}. "
+            "Confira se o ID da pasta esta correto e se a conta conectada tem acesso a ela."
+        )
+
+    if (
+        "insufficientfilepermissions" in mensagem
+        or "insufficient permissions" in mensagem
+        or "forbidden" in mensagem
+        or "403" in mensagem
+    ):
+        return (
+            f"O Google Drive recusou o envio do {descricao_arquivo} por falta de permissao na pasta "
+            f"configurada em {chave_config_pasta}. Compartilhe a pasta com a conta conectada ao sistema "
+            "ou use uma pasta de um Drive compartilhado."
+        )
+
+    if "invalid_grant" in mensagem or "unauthorized" in mensagem or "401" in mensagem:
+        return (
+            "A credencial do Google Drive usada pelo sistema nao esta autorizada. "
+            "Atualize as credenciais OAuth/refresh token ou a conta de servico configurada."
+        )
+
+    return (
+        f"Nao foi possivel enviar o {descricao_arquivo} para o Google Drive. "
+        f"Confira as credenciais e o compartilhamento da pasta configurada em {chave_config_pasta}."
+    )
 
 def carregar_credenciais_service_account(scopes=None):
     try:
@@ -156,26 +209,37 @@ def upload_arquivo_google_drive(service, folder_id, nome_arquivo, conteudo, mime
             "Bibliotecas do Google Drive não instaladas."
         ) from exc
 
-    media = MediaIoBaseUpload(
-        BytesIO(conteudo),
-        mimetype=mime_type,
-        resumable=False,
-    )
+
     metadados = {
         "name": nome_arquivo,
         "parents": [folder_id],
     }
 
-    return (
-        service.files()
-        .create(
-            body=metadados,
-            media_body=media,
-            fields=GOOGLE_DRIVE_UPLOAD_FIELDS,
-            supportsAllDrives=True,
+    ultima_excecao = None
+    for tentativa in range(3):
+        media = MediaIoBaseUpload(
+            BytesIO(conteudo),
+            mimetype=mime_type,
+            resumable=False,
         )
-        .execute()
-    )
+        try:
+            return (
+                service.files()
+                .create(
+                    body=metadados,
+                    media_body=media,
+                    fields=GOOGLE_DRIVE_UPLOAD_FIELDS,
+                    supportsAllDrives=True,
+                )
+                .execute()
+            )
+        except Exception as exc:
+            ultima_excecao = exc
+            if not erro_temporario_google_drive(exc) or tentativa == 2:
+                raise
+            time.sleep(2 ** tentativa)
+
+    raise ultima_excecao
 
 
 def _escapar_query_drive(valor):

@@ -7,8 +7,7 @@ from app.services.google_drive_service import (
     GOOGLE_DRIVE_UPLOAD_SCOPES,
     GoogleDriveConfiguracaoErro,
     criar_google_drive_client_upload,
-    erro_cota_storage_service_account,
-    mensagem_cota_storage_service_account,
+    mensagem_erro_upload_google_drive,
     upload_arquivo_google_drive,
 )
 
@@ -59,17 +58,16 @@ def _upload_fiscal_drive(caminho, chave_config_pasta, mime_type, drive_service=N
     except GoogleDriveConfiguracaoErro as exc:
         return False, str(exc)
     except Exception as exc:
-        if erro_cota_storage_service_account(exc):
-            return False, mensagem_cota_storage_service_account().replace(
-                "GOOGLE_DRIVE_EVIDENCIAS_OC_FOLDER_ID",
-                chave_config_pasta,
-            )
         current_app.logger.exception(
             "[fiscal_drive] Falha ao enviar arquivo fiscal ao Google Drive. Pasta config: %s. Arquivo: %s",
             chave_config_pasta,
             nome_arquivo,
         )
-        return False, "Nao foi possivel enviar o arquivo fiscal ao Google Drive. Confira as credenciais e o compartilhamento da pasta."
+        return False, mensagem_erro_upload_google_drive(
+            exc,
+            chave_config_pasta,
+            descricao_arquivo="arquivo fiscal",
+        )
 
     current_app.logger.warning(
         "[fiscal_drive] Arquivo fiscal enviado ao Drive. Pasta config: %s. Nome: %s. Drive file ID: %s",

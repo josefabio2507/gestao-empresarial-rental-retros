@@ -7,6 +7,7 @@ from app.models import (
     FinanceiroContaReceberBaixa,
     FinanceiroContaReceberCobranca,
     FinanceiroContaReceberTitulo,
+    FinanceiroCliente,
     FinanceiroContratoCliente,
     FinanceiroContratoMedicao,
     FinanceiroNotaFiscalEmitida,
@@ -61,6 +62,8 @@ class SeedFinanceiroContasReceberDevTestCase(unittest.TestCase):
 
         total_titulos = FinanceiroContaReceberTitulo.query.count()
         total_baixas = FinanceiroContaReceberBaixa.query.count()
+        self.assertGreaterEqual(FinanceiroCliente.query.count(), 5)
+        self.assertIsNotNone(FinanceiroCliente.query.filter_by(cnpj_cpf_normalizado="11222333000181").first())
         self.assertGreaterEqual(total_titulos, 15)
         self.assertGreaterEqual(total_baixas, 4)
         self.assertGreaterEqual(FinanceiroContaReceberCobranca.query.count(), 4)

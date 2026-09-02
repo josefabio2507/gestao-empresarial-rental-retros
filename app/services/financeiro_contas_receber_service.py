@@ -9,7 +9,7 @@ from sqlalchemy import func, or_
 from sqlalchemy.orm import joinedload
 
 from app.extensions import db
-from app.models import CentroCusto, Equipe, FinanceiroContaReceberBaixa, FinanceiroContaReceberLoteBaixa, FinanceiroContaReceberTitulo, FinanceiroNotaFiscalEmitida, FinanceiroContratoCliente, FinanceiroContratoMedicao, FinanceiroContaReceberCobranca
+from app.models import CentroCusto, Equipe, FinanceiroContaReceberBaixa, FinanceiroContaReceberLoteBaixa, FinanceiroCliente, FinanceiroContaReceberTitulo, FinanceiroNotaFiscalEmitida, FinanceiroContratoCliente, FinanceiroContratoMedicao, FinanceiroContaReceberCobranca
 from app.utils.datas import agora_brasil
 
 
@@ -157,11 +157,29 @@ def formatar_data_brasil(valor):
     return valor.strftime("%d/%m/%Y") if valor else "-"
 
 
+
+def _aplicar_cliente_cadastrado(registro, dados):
+    cliente_id = inteiro_ou_none(dados.get("cliente_id"))
+    if not cliente_id:
+        registro.cliente_id = None
+        return None
+    cliente = db.session.get(FinanceiroCliente, cliente_id)
+    if not cliente or not cliente.ativo:
+        registro.cliente_id = None
+        return None
+    registro.cliente_id = cliente.id
+    registro.cliente_nome_snapshot = cliente.razao_social
+    registro.cliente_cnpj_cpf_snapshot = cliente.cnpj_cpf_normalizado
+    registro.cliente_email_financeiro_snapshot = cliente.email_financeiro or ""
+    registro.cliente_telefone_snapshot = cliente.telefone_principal or ""
+    return cliente
+
 def _aplicar_dados(titulo, form_data, usuario=None, novo=False):
-    titulo.cliente_nome_snapshot = texto_maiusculo(form_data.get("cliente_nome_snapshot"))
-    titulo.cliente_cnpj_cpf_snapshot = somente_digitos(form_data.get("cliente_cnpj_cpf_snapshot"))
-    titulo.cliente_email_financeiro_snapshot = texto(form_data.get("cliente_email_financeiro_snapshot")).lower()
-    titulo.cliente_telefone_snapshot = somente_digitos(form_data.get("cliente_telefone_snapshot"))
+    if not _aplicar_cliente_cadastrado(titulo, form_data):
+        titulo.cliente_nome_snapshot = texto_maiusculo(form_data.get("cliente_nome_snapshot"))
+        titulo.cliente_cnpj_cpf_snapshot = somente_digitos(form_data.get("cliente_cnpj_cpf_snapshot"))
+        titulo.cliente_email_financeiro_snapshot = texto(form_data.get("cliente_email_financeiro_snapshot")).lower()
+        titulo.cliente_telefone_snapshot = somente_digitos(form_data.get("cliente_telefone_snapshot"))
     titulo.descricao = texto_maiusculo(form_data.get("descricao"))
     titulo.numero_documento = texto_maiusculo(form_data.get("numero_documento"))
     titulo.numero_nota_fiscal = texto_maiusculo(form_data.get("numero_nota_fiscal"))
@@ -1026,10 +1044,11 @@ def _aplicar_dados_nota(nota, dados, usuario=None, novo=False):
     nota.serie = texto_maiusculo(dados.get("serie")) or None
     nota.chave_acesso = texto_maiusculo(dados.get("chave_acesso")) or None
     nota.codigo_verificacao_nfse = texto_maiusculo(dados.get("codigo_verificacao_nfse")) or None
-    nota.cliente_nome_snapshot = texto_maiusculo(dados.get("cliente_nome_snapshot"))
-    nota.cliente_cnpj_cpf_snapshot = somente_digitos(dados.get("cliente_cnpj_cpf_snapshot"))
-    nota.cliente_email_financeiro_snapshot = texto(dados.get("cliente_email_financeiro_snapshot")).lower()
-    nota.cliente_telefone_snapshot = somente_digitos(dados.get("cliente_telefone_snapshot"))
+    if not _aplicar_cliente_cadastrado(nota, dados):
+        nota.cliente_nome_snapshot = texto_maiusculo(dados.get("cliente_nome_snapshot"))
+        nota.cliente_cnpj_cpf_snapshot = somente_digitos(dados.get("cliente_cnpj_cpf_snapshot"))
+        nota.cliente_email_financeiro_snapshot = texto(dados.get("cliente_email_financeiro_snapshot")).lower()
+        nota.cliente_telefone_snapshot = somente_digitos(dados.get("cliente_telefone_snapshot"))
     nota.data_emissao = data_ou_none(dados.get("data_emissao"))
     nota.competencia = texto(dados.get("competencia"))
     nota.descricao = texto_maiusculo(dados.get("descricao"))
@@ -1231,6 +1250,7 @@ def gerar_titulos_da_nota(nota, dados, usuario=None):
     for indice, valor in enumerate(valores, start=1):
         vencimento = _adicionar_meses(primeiro_vencimento, indice - 1)
         titulo = FinanceiroContaReceberTitulo(
+            cliente_id=nota.cliente_id,
             cliente_nome_snapshot=nota.cliente_nome_snapshot,
             cliente_cnpj_cpf_snapshot=nota.cliente_cnpj_cpf_snapshot,
             cliente_email_financeiro_snapshot=nota.cliente_email_financeiro_snapshot,
@@ -1360,10 +1380,11 @@ def salvar_contrato_cliente(dados, contrato=None, usuario=None):
     contrato = contrato or FinanceiroContratoCliente()
     novo = contrato.id is None
     contrato.numero_contrato = texto_maiusculo(dados.get("numero_contrato"))
-    contrato.cliente_nome_snapshot = texto_maiusculo(dados.get("cliente_nome_snapshot"))
-    contrato.cliente_cnpj_cpf_snapshot = somente_digitos(dados.get("cliente_cnpj_cpf_snapshot"))
-    contrato.cliente_email_financeiro_snapshot = texto(dados.get("cliente_email_financeiro_snapshot")).lower()
-    contrato.cliente_telefone_snapshot = somente_digitos(dados.get("cliente_telefone_snapshot"))
+    if not _aplicar_cliente_cadastrado(contrato, dados):
+        contrato.cliente_nome_snapshot = texto_maiusculo(dados.get("cliente_nome_snapshot"))
+        contrato.cliente_cnpj_cpf_snapshot = somente_digitos(dados.get("cliente_cnpj_cpf_snapshot"))
+        contrato.cliente_email_financeiro_snapshot = texto(dados.get("cliente_email_financeiro_snapshot")).lower()
+        contrato.cliente_telefone_snapshot = somente_digitos(dados.get("cliente_telefone_snapshot"))
     contrato.descricao_objeto = texto_maiusculo(dados.get("descricao_objeto"))
     contrato.data_inicio = data_ou_none(dados.get("data_inicio"))
     contrato.data_fim = data_ou_none(dados.get("data_fim"))
@@ -1652,6 +1673,7 @@ def gerar_titulos_da_medicao(medicao, dados, usuario=None):
     for indice, valor in enumerate(valores, start=1):
         vencimento = _adicionar_meses(primeiro_vencimento, indice - 1)
         titulo = FinanceiroContaReceberTitulo(
+            cliente_id=contrato.cliente_id,
             cliente_nome_snapshot=contrato.cliente_nome_snapshot,
             cliente_cnpj_cpf_snapshot=contrato.cliente_cnpj_cpf_snapshot,
             cliente_email_financeiro_snapshot=contrato.cliente_email_financeiro_snapshot,

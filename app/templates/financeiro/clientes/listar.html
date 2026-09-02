@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/contas_receber.css') }}">
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Financeiro &gt; Clientes</span>
+            <h1>Clientes</h1>
+            <p>Cadastro central para títulos, notas emitidas, contratos e medições.</p>
+        </div>
+        <div class="actions">
+            {% if pode_criar %}<a class="btn btn-primary" href="{{ url_for('financeiro_clientes.novo') }}">+ Novo Cliente</a>{% endif %}
+            <a class="btn btn-secondary" href="{{ url_for('financeiro.index') }}">Voltar</a>
+        </div>
+    </div>
+
+    <form class="filter-card" method="GET">
+        <div class="form-grid">
+            <div class="form-group"><label for="razao_social">Razão Social</label><input id="razao_social" name="razao_social" value="{{ filtros.get('razao_social', '') }}"></div>
+            <div class="form-group"><label for="nome_fantasia">Nome Fantasia</label><input id="nome_fantasia" name="nome_fantasia" value="{{ filtros.get('nome_fantasia', '') }}"></div>
+            <div class="form-group"><label for="cnpj_cpf">CNPJ/CPF</label><input id="cnpj_cpf" name="cnpj_cpf" value="{{ filtros.get('cnpj_cpf', '') }}"></div>
+            <div class="form-group"><label for="cidade">Cidade</label><input id="cidade" name="cidade" value="{{ filtros.get('cidade', '') }}"></div>
+            <div class="form-group"><label for="uf">UF</label><input id="uf" name="uf" maxlength="2" value="{{ filtros.get('uf', '') }}"></div>
+            <div class="form-group"><label for="email">E-mail</label><input id="email" name="email" value="{{ filtros.get('email', '') }}"></div>
+            <div class="form-group"><label for="telefone">Telefone</label><input id="telefone" name="telefone" value="{{ filtros.get('telefone', '') }}"></div>
+            <div class="form-group"><label for="status">Status</label><select id="status" name="status"><option value="">Todos</option><option value="ativos" {{ 'selected' if filtros.get('status') == 'ativos' else '' }}>Ativos</option><option value="inativos" {{ 'selected' if filtros.get('status') == 'inativos' else '' }}>Inativos</option></select></div>
+        </div>
+        <div class="form-actions"><button class="btn btn-primary" type="submit">Pesquisar</button><a class="btn btn-secondary" href="{{ url_for('financeiro_clientes.listar') }}">Limpar</a></div>
+    </form>
+
+    <div class="table-card table-responsive listbox-10-linhas clientes-listbox">
+        <table class="table clientes-table">
+            <thead><tr><th>ID</th><th>Razão Social</th><th>Nome Fantasia</th><th>CNPJ/CPF</th><th>IE</th><th>IM</th><th>E-mail financeiro</th><th>Telefone</th><th>Cidade/UF</th><th>Condição padrão</th><th>Status</th><th>Ações</th></tr></thead>
+            <tbody>
+                {% for cliente in clientes %}
+                <tr>
+                    <td>{{ cliente.id }}</td><td>{{ cliente.razao_social }}</td><td>{{ cliente.nome_fantasia or '-' }}</td><td>{{ cliente.cnpj_cpf or cliente.cnpj_cpf_normalizado }}</td><td>{{ cliente.inscricao_estadual or '-' }}</td><td>{{ cliente.inscricao_municipal or '-' }}</td><td>{{ cliente.email_financeiro or '-' }}</td><td>{{ cliente.telefone_principal or '-' }}</td><td>{{ cliente.cidade or '-' }}/{{ cliente.uf or '-' }}</td><td>{{ cliente.condicao_recebimento_padrao or '-' }}</td><td><span class="badge {{ 'badge-success' if cliente.ativo else 'badge-danger' }}">{{ 'Ativo' if cliente.ativo else 'Inativo' }}</span></td>
+                    <td class="col-acoes"><div class="acoes-botoes"><a class="btn btn-secondary" href="{{ url_for('financeiro_clientes.detalhes', cliente_id=cliente.id) }}">Ver</a>{% if pode_editar %}<a class="btn btn-primary" href="{{ url_for('financeiro_clientes.editar', cliente_id=cliente.id) }}">Editar</a>{% endif %}{% if pode_inativar %}<form class="inline-form" method="POST" action="{{ url_for('financeiro_clientes.status', cliente_id=cliente.id) }}"><button class="btn btn-warning" type="submit">{{ 'Inativar' if cliente.ativo else 'Reativar' }}</button></form>{% endif %}</div></td>
+                </tr>
+                {% else %}<tr><td class="empty-state" colspan="12">Nenhum cliente encontrado para os filtros informados.</td></tr>{% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

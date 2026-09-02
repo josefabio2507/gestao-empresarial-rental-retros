@@ -53,8 +53,7 @@ from app.services.google_drive_service import (
     GOOGLE_DRIVE_UPLOAD_SCOPES,
     GoogleDriveConfiguracaoErro,
     criar_google_drive_client_upload,
-    erro_cota_storage_service_account,
-    mensagem_cota_storage_service_account,
+    mensagem_erro_upload_google_drive,
     upload_arquivo_google_drive,
 )
 
@@ -467,9 +466,11 @@ def salvar_evidencia_item_ordem_compra(
             return False, str(exc), evidencia
         except Exception as exc:
             current_app.logger.exception("Falha ao enviar evidencia de OC para o Google Drive.")
-            if erro_cota_storage_service_account(exc):
-                return False, mensagem_cota_storage_service_account(), evidencia
-            return False, "Nao foi possivel enviar a foto para o Google Drive.", evidencia
+            return False, mensagem_erro_upload_google_drive(
+                exc,
+                "GOOGLE_DRIVE_EVIDENCIAS_OC_FOLDER_ID",
+                descricao_arquivo="foto",
+            ), evidencia
 
     if not evidencia:
         evidencia = SuprimentosOrdemCompraItemEvidencia(
@@ -3958,4 +3959,3 @@ def consultar_cnpj_publico(cnpj):
         return False, "Consulta retornou dados incompletos.", None
 
     return True, "CNPJ consultado com sucesso.", dados_normalizados
-

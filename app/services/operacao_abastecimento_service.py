@@ -10,8 +10,7 @@ from app.services.google_drive_service import (
     GOOGLE_DRIVE_UPLOAD_SCOPES,
     GoogleDriveConfiguracaoErro,
     criar_google_drive_client_upload,
-    erro_cota_storage_service_account,
-    mensagem_cota_storage_service_account,
+    mensagem_erro_upload_google_drive,
     upload_arquivo_google_drive,
 )
 from app.services.operacao_pool_service import decimal_ou_none, texto, veiculos_vinculados_ao_colaborador
@@ -126,18 +125,17 @@ def _upload_cupom(arquivo, veiculo, data_abastecimento, drive_service=None):
         return None, str(exc)
     except Exception as exc:
         current_app.logger.exception("Falha ao enviar cupom de abastecimento para o Google Drive.")
-        if erro_cota_storage_service_account(exc):
-            return None, mensagem_cota_storage_service_account()
-        return None, "Nao foi possivel enviar o cupom para o Google Drive."
+        return None, mensagem_erro_upload_google_drive(
+            exc,
+            "GOOGLE_DRIVE_CUPONS_ABASTECIMENTO_FOLDER_ID",
+            descricao_arquivo="cupom",
+        )
 
     return {
         "id": arquivo_drive.get("id"),
         "nome": arquivo_drive.get("name") or _nome_arquivo_cupom(veiculo, data_abastecimento),
         "link": arquivo_drive.get("webViewLink") or arquivo_drive.get("webContentLink"),
     }, None
-
-
-
 
 def _lista_form(form_data, campo):
     if hasattr(form_data, "getlist"):

@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/contas_receber.css') }}">
+<section class="page">
+    <div class="top-bar"><div><span class="page-kicker">Financeiro &gt; Clientes &gt; {{ 'Novo Cliente' if modo == 'novo' else 'Editar Cliente' }}</span><h1>{{ 'Novo Cliente' if modo == 'novo' else 'Editar Cliente' }}</h1><p>Base central de clientes para o Contas a Receber.</p></div><a class="btn btn-secondary" href="{{ url_for('financeiro_clientes.listar') }}">Voltar</a></div>
+    <form class="form-card" method="POST">
+        <div class="form-grid">
+            <div class="form-group"><label for="tipo_pessoa">Tipo de pessoa</label><select id="tipo_pessoa" name="tipo_pessoa">{% set tipo = cliente.tipo_pessoa if cliente else 'juridica' %}<option value="juridica" {{ 'selected' if tipo == 'juridica' else '' }}>Pessoa Jurídica</option><option value="fisica" {{ 'selected' if tipo == 'fisica' else '' }}>Pessoa Física</option></select></div>
+            <div class="form-group"><label for="cnpj_cpf">CNPJ/CPF</label><div class="input-action-row"><input id="cnpj_cpf" name="cnpj_cpf" required maxlength="18" value="{{ cliente.cnpj_cpf if cliente else '' }}"><button class="btn btn-secondary" type="button" data-cnpj-lookup data-url="{{ url_for('financeiro_clientes.consultar_cnpj') }}">Pesquisar CNPJ</button></div><small id="cnpj_lookup_status" class="form-help"></small></div>
+            <div class="form-group"><label for="razao_social">Razão Social/Nome</label><input id="razao_social" name="razao_social" required maxlength="180" data-uppercase value="{{ cliente.razao_social if cliente else '' }}"></div>
+            <div class="form-group"><label for="nome_fantasia">Nome Fantasia</label><input id="nome_fantasia" name="nome_fantasia" maxlength="180" data-uppercase value="{{ cliente.nome_fantasia if cliente else '' }}"></div>
+            <div class="form-group"><label for="inscricao_estadual">Inscrição Estadual</label><input id="inscricao_estadual" name="inscricao_estadual" maxlength="40" data-uppercase value="{{ cliente.inscricao_estadual if cliente else '' }}"></div>
+            <div class="form-group"><label for="inscricao_municipal">Inscrição Municipal</label><input id="inscricao_municipal" name="inscricao_municipal" maxlength="40" data-uppercase value="{{ cliente.inscricao_municipal if cliente else '' }}"></div>
+            <div class="form-group"><label for="email_financeiro">E-mail financeiro</label><input id="email_financeiro" name="email_financeiro" type="email" maxlength="150" value="{{ cliente.email_financeiro if cliente else '' }}"></div>
+            <div class="form-group"><label for="email_alternativo">E-mail alternativo</label><input id="email_alternativo" name="email_alternativo" type="email" maxlength="150" value="{{ cliente.email_alternativo if cliente else '' }}"></div>
+            <div class="form-group"><label for="telefone_principal">Telefone principal</label><input id="telefone_principal" name="telefone_principal" maxlength="30" value="{{ cliente.telefone_principal if cliente else '' }}"></div>
+            <div class="form-group"><label for="telefone_alternativo">Telefone alternativo</label><input id="telefone_alternativo" name="telefone_alternativo" maxlength="30" value="{{ cliente.telefone_alternativo if cliente else '' }}"></div>
+            <div class="form-group"><label for="contato_responsavel">Contato responsável</label><input id="contato_responsavel" name="contato_responsavel" maxlength="120" data-uppercase value="{{ cliente.contato_responsavel if cliente else '' }}"></div>
+            <div class="form-group"><label for="cargo_contato">Cargo do contato</label><input id="cargo_contato" name="cargo_contato" maxlength="120" data-uppercase value="{{ cliente.cargo_contato if cliente else '' }}"></div>
+            <div class="form-group"><label for="endereco">Endereço</label><input id="endereco" name="endereco" maxlength="255" data-uppercase value="{{ cliente.endereco if cliente else '' }}"></div>
+            <div class="form-group"><label for="numero">Número</label><input id="numero" name="numero" maxlength="30" value="{{ cliente.numero if cliente else '' }}"></div>
+            <div class="form-group"><label for="complemento">Complemento</label><input id="complemento" name="complemento" maxlength="120" data-uppercase value="{{ cliente.complemento if cliente else '' }}"></div>
+            <div class="form-group"><label for="bairro">Bairro</label><input id="bairro" name="bairro" maxlength="120" data-uppercase value="{{ cliente.bairro if cliente else '' }}"></div>
+            <div class="form-group"><label for="cidade">Cidade</label><input id="cidade" name="cidade" maxlength="120" data-uppercase value="{{ cliente.cidade if cliente else '' }}"></div>
+            <div class="form-group"><label for="uf">UF</label><input id="uf" name="uf" maxlength="2" data-uppercase value="{{ cliente.uf if cliente else '' }}"></div>
+            <div class="form-group"><label for="cep">CEP</label><input id="cep" name="cep" maxlength="20" value="{{ cliente.cep if cliente else '' }}"></div>
+            <div class="form-group"><label for="condicao_recebimento_padrao">Condição padrão de recebimento</label><input id="condicao_recebimento_padrao" name="condicao_recebimento_padrao" maxlength="120" value="{{ cliente.condicao_recebimento_padrao if cliente else '' }}"></div>
+            <div class="form-group"><label for="prazo_vencimento_padrao">Prazo padrão de vencimento</label><input id="prazo_vencimento_padrao" name="prazo_vencimento_padrao" type="number" min="0" value="{{ cliente.prazo_vencimento_padrao if cliente and cliente.prazo_vencimento_padrao is not none else '' }}"></div>
+            <div class="form-group"><label for="ativo">Status</label><select id="ativo" name="ativo"><option value="1" {{ 'selected' if not cliente or cliente.ativo else '' }}>Ativo</option><option value="0" {{ 'selected' if cliente and not cliente.ativo else '' }}>Inativo</option></select></div>
+        </div>
+        <div class="form-group"><label for="observacoes">Observações</label><textarea id="observacoes" name="observacoes" rows="4" data-uppercase>{{ cliente.observacoes if cliente else '' }}</textarea></div>
+        <div class="form-actions"><button class="btn btn-primary" type="submit">Salvar</button><a class="btn btn-secondary" href="{{ url_for('financeiro_clientes.listar') }}">Cancelar</a></div>
+    </form>
+</section>
+<script>
+(function(){
+  const btn = document.querySelector('[data-cnpj-lookup]');
+  if (!btn) return;
+  btn.addEventListener('click', async function(){
+    const campo = document.getElementById('cnpj_cpf');
+    const status = document.getElementById('cnpj_lookup_status');
+    status.textContent = 'Consultando CNPJ...';
+    try {
+      const resp = await fetch(btn.dataset.url + '?cnpj=' + encodeURIComponent(campo.value));
+      const payload = await resp.json();
+      status.textContent = payload.mensagem || (resp.ok ? 'Cliente localizado com sucesso.' : 'Não foi possível consultar o CNPJ. Preencha os dados manualmente.');
+      if (!resp.ok || !payload.dados) return;
+      const d = payload.dados;
+      if (d.razao_social) document.getElementById('razao_social').value = d.razao_social;
+      if (d.nome_fantasia) document.getElementById('nome_fantasia').value = d.nome_fantasia;
+      if (d.email) document.getElementById('email_financeiro').value = d.email;
+      if (d.telefone) document.getElementById('telefone_principal').value = d.telefone;
+      if (d.endereco) document.getElementById('endereco').value = d.endereco;
+      if (d.cidade) document.getElementById('cidade').value = d.cidade;
+      if (d.uf) document.getElementById('uf').value = d.uf;
+    } catch (e) { status.textContent = 'Não foi possível consultar o CNPJ. Preencha os dados manualmente.'; }
+  });
+})();
+</script>
+{% endblock %}

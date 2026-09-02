@@ -20,6 +20,7 @@ DEPARTAMENTOS_BASE = [
         "modulos": [
             ("Contas a Pagar", "contas_a_pagar", "Vencimentos e aprovações"),
             ("Contas a Receber", "contas_a_receber", "Clientes e recebimentos"),
+            ("Clientes", "clientes", "Cadastro central de clientes financeiros"),
             ("Fluxo de Caixa", "fluxo_de_caixa", "Entradas e saídas"),
             ("Orçamentos", "orcamentos", "Planejamento e previsão"),
             ("Faturamento", "faturamento", "Emissão e acompanhamento"),
