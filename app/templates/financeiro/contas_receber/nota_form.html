@@ -7,6 +7,7 @@
     {% include "financeiro/contas_receber/_menu.html" %}
     <form class="form-card" method="POST" enctype="multipart/form-data">
         <div class="form-grid">
+            <div class="form-group"><label for="cliente_id">Cliente cadastrado</label><select id="cliente_id" name="cliente_id" data-cliente-select><option value="">Preenchimento manual</option>{% for cliente in clientes %}<option value="{{ cliente.id }}" data-razao="{{ cliente.razao_social }}" data-documento="{{ cliente.cnpj_cpf_normalizado }}" data-email="{{ cliente.email_financeiro or '' }}" data-telefone="{{ cliente.telefone_principal or '' }}" data-condicao="{{ cliente.condicao_recebimento_padrao or '' }}" {{ 'selected' if nota and nota.cliente_id == cliente.id else '' }}>{{ cliente.razao_social }} - {{ cliente.cnpj_cpf_normalizado }}</option>{% endfor %}</select></div>
             <div class="form-group"><label for="tipo_nota">Tipo da nota</label><select id="tipo_nota" name="tipo_nota">{% for tipo in tipos_nota %}<option value="{{ tipo }}" {{ 'selected' if (nota and nota.tipo_nota == tipo) or (not nota and tipo == 'NFS-e') else '' }}>{{ tipo }}</option>{% endfor %}</select></div>
             <div class="form-group"><label for="numero_nota">Número da nota</label><input id="numero_nota" name="numero_nota" required maxlength="80" data-uppercase value="{{ nota.numero_nota if nota else '' }}"></div>
             <div class="form-group"><label for="serie">Série</label><input id="serie" name="serie" maxlength="30" data-uppercase value="{{ nota.serie if nota and nota.serie else '' }}"></div>
@@ -37,4 +38,21 @@
         <div class="form-actions"><button class="btn btn-primary" type="submit">Salvar</button><a class="btn btn-secondary" href="{{ url_for('financeiro_contas_receber.notas_emitidas') }}">Cancelar</a></div>
     </form>
 </section>
+
+<script>
+(function(){
+  const select = document.querySelector('[data-cliente-select]');
+  if (!select) return;
+  function setValue(id, value) { const el = document.getElementById(id); if (el && value !== undefined && value !== null) el.value = value; }
+  select.addEventListener('change', function(){
+    const opt = select.options[select.selectedIndex];
+    if (!opt || !opt.dataset.razao) return;
+    setValue('cliente_nome_snapshot', opt.dataset.razao);
+    setValue('cliente_cnpj_cpf_snapshot', opt.dataset.documento);
+    setValue('cliente_email_financeiro_snapshot', opt.dataset.email);
+    setValue('cliente_telefone_snapshot', opt.dataset.telefone);
+    setValue('condicao_recebimento', opt.dataset.condicao);
+  });
+})();
+</script>
 {% endblock %}

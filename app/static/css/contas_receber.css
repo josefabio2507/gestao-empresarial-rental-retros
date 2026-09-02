@@ -182,3 +182,12 @@
 .fluxo-caixa-visao-table {
     min-width: 1500px;
 }
+
+.clientes-listbox {
+    overflow-x: auto;
+    overflow-y: auto;
+}
+
+.clientes-table {
+    min-width: 1600px;
+}

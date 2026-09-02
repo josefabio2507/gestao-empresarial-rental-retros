@@ -47,6 +47,7 @@ def index():
         "financeiro/index.html",
         pode_ver_contas_pagar=usuario_tem_permissao(current_user, "financeiro", "contas_a_pagar", "visualizar"),
         pode_ver_contas_receber=usuario_tem_permissao(current_user, "financeiro", "contas_a_receber", "visualizar"),
+        pode_ver_clientes=usuario_tem_permissao(current_user, "financeiro", "clientes", "visualizar"),
         pode_ver_fluxo_caixa=usuario_tem_permissao(current_user, "financeiro", "fluxo_de_caixa", "visualizar"),
         pode_ver_relatorios=usuario_tem_permissao(current_user, "financeiro", "relatorios", "visualizar"),
     )

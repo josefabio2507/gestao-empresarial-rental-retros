@@ -12,6 +12,7 @@ from app.models import (
     CentroCusto,
     Departamento,
     Equipe,
+    FinanceiroCliente,
     FinanceiroContaReceberBaixa,
     FinanceiroContaReceberCobranca,
     FinanceiroContaReceberLoteBaixa,
@@ -49,11 +50,19 @@ USUARIO_DEMO_EMAIL = "financeiro.receber.demo@rentalretros.local"
 USUARIO_DEMO_SENHA = "Demo@12345"
 
 CLIENTES_TESTE_CR = [
-    ("Cliente TESTE CR - Santos Logística Ltda", "12345678000190", "financeiro@santoslogistica.test", "1333330001"),
-    ("Cliente TESTE CR - Porto Serviços Integrados Ltda", "23456789000180", "financeiro@portoservicos.test", "1333330002"),
-    ("Cliente TESTE CR - Guarujá Manutenção Ferroviária Ltda", "34567890000170", "financeiro@guarujamf.test", "1333330003"),
-    ("Cliente TESTE CR - Terminal Atlântico Operações S.A.", "45678901000160", "financeiro@terminalatlantico.test", "1333330004"),
-    ("Cliente TESTE CR - Baixada Infraestrutura Ltda", "56789012000150", "financeiro@baixadainfra.test", "1333330005"),
+    ("Cliente TESTE CR - Santos Logística Ltda", "11222333000181", "financeiro@santoslogistica.test", "1333330001"),
+    ("Cliente TESTE CR - Porto Serviços Integrados Ltda", "22333444000181", "financeiro@portoservicos.test", "1333330002"),
+    ("Cliente TESTE CR - Guarujá Manutenção Ferroviária Ltda", "33444555000181", "financeiro@guarujamf.test", "1333330003"),
+    ("Cliente TESTE CR - Terminal Atlântico Operações S.A.", "44555666000181", "financeiro@terminalatlantico.test", "1333330004"),
+    ("Cliente TESTE CR - Baixada Infraestrutura Ltda", "55666777000181", "financeiro@baixadainfra.test", "1333330005"),
+]
+
+CLIENTES_CADASTRO_TESTE = [
+    ("juridica", "11.222.333/0001-81", "11222333000181", "TESTE CLIENTE Santos Logística Ltda", "Santos Logística", "financeiro@santoslogistica.test", "1333330001", "Santos", "SP", "30 dias", 30, True),
+    ("juridica", "22.333.444/0001-81", "22333444000181", "TESTE CLIENTE Porto Serviços Integrados Ltda", "Porto Serviços", "financeiro@portoservicos.test", "1333330002", "Guarujá", "SP", "15 dias", 15, True),
+    ("juridica", "44.555.666/0001-81", "44555666000181", "TESTE CLIENTE Terminal Atlântico Operações S.A.", "Terminal Atlântico", "financeiro@terminalatlantico.test", "1333330004", "Santos", "SP", "30 dias", 30, True),
+    ("juridica", "55.666.777/0001-81", "55666777000181", "TESTE CLIENTE Baixada Infraestrutura Ltda", "Baixada Infra", "financeiro@baixadainfra.test", "1333330005", "Cubatão", "SP", "45 dias", 45, True),
+    ("juridica", "66.777.888/0001-81", "66777888000181", "TESTE CLIENTE Inativo Ltda", "Cliente Inativo", "financeiro@clienteinativo.test", "1333330006", "Santos", "SP", "30 dias", 30, False),
 ]
 
 TITULOS_TESTE_CR = [
@@ -75,13 +84,13 @@ TITULOS_TESTE_CR = [
 ]
 
 NOTAS_TESTE_CR = [
-    ("NFS-e", "NFSE-TESTE-1001", "", "Cliente TESTE CR - Santos Logística Ltda", "12345678000190", "financeiro@santoslogistica.test", "1333330001", "2026-08-01", "2026-08", "TESTE CR - Prestação de serviço operacional", "15000.00", "2026-08-10", "1", "Emitida", "Não integrado"),
-    ("NFS-e", "NFSE-TESTE-1002", "", "Cliente TESTE CR - Porto Serviços Integrados Ltda", "23456789000180", "financeiro@portoservicos.test", "1333330002", "2026-08-03", "2026-08", "TESTE CR - Serviços de limpeza industrial", "22000.00", "2026-08-20", "2", "Emitida", "Não integrado"),
-    ("NFS-e", "NFSE-TESTE-1003", "", "Cliente TESTE CR - Guarujá Manutenção Ferroviária Ltda", "34567890000170", "financeiro@guarujamf.test", "1333330003", "2026-07-01", "2026-07", "TESTE CR - Manutenção ferroviária corretiva", "18400.00", "2026-07-15", "1", "Emitida", "Não integrado"),
-    ("Fatura", "FAT-TESTE-2001", "A", "Cliente TESTE CR - Terminal Atlântico Operações S.A.", "45678901000160", "financeiro@terminalatlantico.test", "1333330004", "2026-09-01", "2026-09", "TESTE CR - Locação de equipe operacional", "30000.00", "2026-09-10", "3", "Emitida", "Não integrado"),
-    ("NFS-e", "NFSE-TESTE-1004", "", "Cliente TESTE CR - Baixada Infraestrutura Ltda", "56789012000150", "financeiro@baixadainfra.test", "1333330005", "2026-08-07", "2026-08", "TESTE CR - Serviços administrativos compartilhados", "6700.00", "2026-08-28", "1", "Emitida", "Não integrado"),
-    ("NFS-e", "NFSE-TESTE-1005", "", "Cliente TESTE CR - Santos Logística Ltda", "12345678000190", "financeiro@santoslogistica.test", "1333330001", "2026-08-09", "2026-08", "TESTE CR - Nota já integrada", "2500.00", "2026-08-31", "1", "Emitida", "Não integrado"),
-    ("NFS-e", "NFSE-TESTE-1006", "", "Cliente TESTE CR - Porto Serviços Integrados Ltda", "23456789000180", "financeiro@portoservicos.test", "1333330002", "2026-08-11", "2026-08", "TESTE CR - Nota cancelada para bloqueio", "1200.00", "2026-08-30", "1", "Cancelada", "Cancelado"),
+    ("NFS-e", "NFSE-TESTE-1001", "", "Cliente TESTE CR - Santos Logística Ltda", "11222333000181", "financeiro@santoslogistica.test", "1333330001", "2026-08-01", "2026-08", "TESTE CR - Prestação de serviço operacional", "15000.00", "2026-08-10", "1", "Emitida", "Não integrado"),
+    ("NFS-e", "NFSE-TESTE-1002", "", "Cliente TESTE CR - Porto Serviços Integrados Ltda", "22333444000181", "financeiro@portoservicos.test", "1333330002", "2026-08-03", "2026-08", "TESTE CR - Serviços de limpeza industrial", "22000.00", "2026-08-20", "2", "Emitida", "Não integrado"),
+    ("NFS-e", "NFSE-TESTE-1003", "", "Cliente TESTE CR - Guarujá Manutenção Ferroviária Ltda", "33444555000181", "financeiro@guarujamf.test", "1333330003", "2026-07-01", "2026-07", "TESTE CR - Manutenção ferroviária corretiva", "18400.00", "2026-07-15", "1", "Emitida", "Não integrado"),
+    ("Fatura", "FAT-TESTE-2001", "A", "Cliente TESTE CR - Terminal Atlântico Operações S.A.", "44555666000181", "financeiro@terminalatlantico.test", "1333330004", "2026-09-01", "2026-09", "TESTE CR - Locação de equipe operacional", "30000.00", "2026-09-10", "3", "Emitida", "Não integrado"),
+    ("NFS-e", "NFSE-TESTE-1004", "", "Cliente TESTE CR - Baixada Infraestrutura Ltda", "55666777000181", "financeiro@baixadainfra.test", "1333330005", "2026-08-07", "2026-08", "TESTE CR - Serviços administrativos compartilhados", "6700.00", "2026-08-28", "1", "Emitida", "Não integrado"),
+    ("NFS-e", "NFSE-TESTE-1005", "", "Cliente TESTE CR - Santos Logística Ltda", "11222333000181", "financeiro@santoslogistica.test", "1333330001", "2026-08-09", "2026-08", "TESTE CR - Nota já integrada", "2500.00", "2026-08-31", "1", "Emitida", "Não integrado"),
+    ("NFS-e", "NFSE-TESTE-1006", "", "Cliente TESTE CR - Porto Serviços Integrados Ltda", "22333444000181", "financeiro@portoservicos.test", "1333330002", "2026-08-11", "2026-08", "TESTE CR - Nota cancelada para bloqueio", "1200.00", "2026-08-30", "1", "Cancelada", "Cancelado"),
 ]
 
 
@@ -185,6 +194,39 @@ def criar_cadastros_auxiliares_demo():
     db.session.flush()
     return centros, equipes
 
+
+
+def criar_clientes_financeiros_demo(usuario):
+    clientes_por_documento = {}
+    for tipo, documento, normalizado, razao, fantasia, email, telefone, cidade, uf, condicao, prazo, ativo in CLIENTES_CADASTRO_TESTE:
+        cliente = FinanceiroCliente.query.filter_by(cnpj_cpf_normalizado=normalizado).first()
+        if not cliente:
+            cliente = FinanceiroCliente(cnpj_cpf_normalizado=normalizado, criado_por_usuario_id=getattr(usuario, "id", None))
+            db.session.add(cliente)
+        cliente.tipo_pessoa = tipo
+        cliente.cnpj_cpf = documento
+        cliente.razao_social = razao
+        cliente.nome_fantasia = fantasia
+        cliente.email_financeiro = email
+        cliente.telefone_principal = telefone
+        cliente.cidade = cidade
+        cliente.uf = uf
+        cliente.condicao_recebimento_padrao = condicao
+        cliente.prazo_vencimento_padrao = prazo
+        cliente.ativo = ativo
+        cliente.atualizado_por_usuario_id = getattr(usuario, "id", None)
+        clientes_por_documento[normalizado] = cliente
+    db.session.flush()
+    return clientes_por_documento
+
+
+def vincular_clientes_financeiros_demo(clientes_por_documento):
+    for modelo in [FinanceiroContaReceberTitulo, FinanceiroNotaFiscalEmitida, FinanceiroContratoCliente]:
+        for registro in modelo.query.all():
+            documento = getattr(registro, "cliente_cnpj_cpf_snapshot", None)
+            cliente = clientes_por_documento.get(documento)
+            if cliente:
+                registro.cliente_id = cliente.id
 
 def criar_titulo_demo(item, usuario, centros, equipes):
     documento, cliente_idx, descricao, nf, origem, competencia, emissao, vencimento, valor, status = item
@@ -579,6 +621,7 @@ def executar_seed(app=None):
         _, modulo, modulo_relatorios = garantir_financeiro_contas_receber()
         usuario = criar_usuario_demo(modulo, modulo_relatorios)
         centros, equipes = criar_cadastros_auxiliares_demo()
+        clientes_por_documento = criar_clientes_financeiros_demo(usuario)
         for item in TITULOS_TESTE_CR:
             criar_titulo_demo(item, usuario, centros, equipes)
         criar_baixa_demo("CR-TESTE-0011", usuario, "4000.00", "Pix", "Banco TESTE CR - Conta Corrente", "Recebimento parcial fictício para teste", "2026-08-13", com_comprovante=True)
@@ -602,6 +645,7 @@ def executar_seed(app=None):
         if "financeiro_contas_receber_cobrancas" in sa_inspect(db.engine).get_table_names():
             for item in COBRANCAS_TESTE_CR:
                 criar_cobranca_demo(item, usuario)
+        vincular_clientes_financeiros_demo(clientes_por_documento)
         criar_dados_fluxo_demo(usuario, centros)
         db.session.commit()
         print("Dados fictícios de Contas a Receber criados com sucesso.")

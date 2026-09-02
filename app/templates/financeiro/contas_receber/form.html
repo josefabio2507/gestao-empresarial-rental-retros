@@ -15,6 +15,7 @@
 
     <form class="form-card" method="POST">
         <div class="form-grid">
+            <div class="form-group"><label for="cliente_id">Cliente cadastrado</label><select id="cliente_id" name="cliente_id" data-cliente-select><option value="">Preenchimento manual</option>{% for cliente in clientes %}<option value="{{ cliente.id }}" data-razao="{{ cliente.razao_social }}" data-documento="{{ cliente.cnpj_cpf_normalizado }}" data-email="{{ cliente.email_financeiro or '' }}" data-telefone="{{ cliente.telefone_principal or '' }}" data-condicao="{{ cliente.condicao_recebimento_padrao or '' }}" {{ 'selected' if titulo and titulo.cliente_id == cliente.id else '' }}>{{ cliente.razao_social }} - {{ cliente.cnpj_cpf_normalizado }}</option>{% endfor %}</select></div>
             <div class="form-group"><label for="cliente_nome_snapshot">Cliente</label><input id="cliente_nome_snapshot" name="cliente_nome_snapshot" maxlength="180" required data-uppercase value="{{ titulo.cliente_nome_snapshot if titulo else '' }}"></div>
             <div class="form-group"><label for="cliente_cnpj_cpf_snapshot">CNPJ/CPF do cliente</label><input id="cliente_cnpj_cpf_snapshot" name="cliente_cnpj_cpf_snapshot" maxlength="20" value="{{ titulo.cliente_cnpj_cpf_snapshot if titulo else '' }}"></div>
             <div class="form-group"><label for="cliente_email_financeiro_snapshot">E-mail financeiro</label><input id="cliente_email_financeiro_snapshot" name="cliente_email_financeiro_snapshot" type="email" maxlength="150" value="{{ titulo.cliente_email_financeiro_snapshot if titulo else '' }}"></div>
@@ -48,4 +49,21 @@
         </div>
     </form>
 </section>
+
+<script>
+(function(){
+  const select = document.querySelector('[data-cliente-select]');
+  if (!select) return;
+  function setValue(id, value) { const el = document.getElementById(id); if (el && value !== undefined && value !== null) el.value = value; }
+  select.addEventListener('change', function(){
+    const opt = select.options[select.selectedIndex];
+    if (!opt || !opt.dataset.razao) return;
+    setValue('cliente_nome_snapshot', opt.dataset.razao);
+    setValue('cliente_cnpj_cpf_snapshot', opt.dataset.documento);
+    setValue('cliente_email_financeiro_snapshot', opt.dataset.email);
+    setValue('cliente_telefone_snapshot', opt.dataset.telefone);
+    setValue('condicao_recebimento', opt.dataset.condicao);
+  });
+})();
+</script>
 {% endblock %}

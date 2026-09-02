@@ -1,19 +1,20 @@
 import unittest
 from unittest.mock import patch
 
-from app import create_app
+from flask import Flask
 from app.services.google_drive_service import (
     GOOGLE_DRIVE_UPLOAD_SCOPES,
     GOOGLE_OAUTH_TOKEN_URI,
     carregar_credenciais_oauth,
     credenciais_oauth_configuradas,
     criar_google_drive_client_upload,
+    mensagem_erro_upload_google_drive,
 )
 
 
 class GoogleDriveServiceTestCase(unittest.TestCase):
     def setUp(self):
-        self.app = create_app()
+        self.app = Flask(__name__)
         self.app.config.update(
             TESTING=True,
             GOOGLE_OAUTH_CLIENT_ID="",
@@ -89,5 +90,34 @@ class GoogleDriveServiceTestCase(unittest.TestCase):
         service_account.assert_not_called()
 
 
+    def test_mensagem_upload_identifica_pasta_nao_encontrada(self):
+        mensagem = mensagem_erro_upload_google_drive(
+            Exception("<HttpError 404 File not found: pasta-cupons>"),
+            "GOOGLE_DRIVE_CUPONS_ABASTECIMENTO_FOLDER_ID",
+            descricao_arquivo="cupom",
+        )
+
+        self.assertIn("nao encontrou a pasta", mensagem)
+        self.assertIn("GOOGLE_DRIVE_CUPONS_ABASTECIMENTO_FOLDER_ID", mensagem)
+
+    def test_mensagem_upload_identifica_falta_de_permissao(self):
+        mensagem = mensagem_erro_upload_google_drive(
+            Exception("<HttpError 403 insufficientFilePermissions>"),
+            "GOOGLE_DRIVE_CUPONS_ABASTECIMENTO_FOLDER_ID",
+            descricao_arquivo="cupom",
+        )
+
+        self.assertIn("falta de permissao", mensagem)
+        self.assertIn("GOOGLE_DRIVE_CUPONS_ABASTECIMENTO_FOLDER_ID", mensagem)
+
+    def test_mensagem_upload_identifica_token_expirado_ou_revogado(self):
+        mensagem = mensagem_erro_upload_google_drive(
+            Exception("invalid_grant: Token has been expired or revoked."),
+            "GOOGLE_DRIVE_CUPONS_ABASTECIMENTO_FOLDER_ID",
+            descricao_arquivo="cupom",
+        )
+
+        self.assertIn("credencial do Google Drive", mensagem)
+        self.assertIn("refresh token", mensagem)
 if __name__ == "__main__":
     unittest.main()

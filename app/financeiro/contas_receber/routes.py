@@ -1,6 +1,7 @@
 from flask import abort, flash, redirect, render_template, request, send_file, url_for
 from flask_login import current_user, login_required
 
+from app.services.financeiro_clientes_service import clientes_ativos
 from app.services.financeiro_contas_receber_service import (
     FORMAS_RECEBIMENTO,
     ORIGENS_LANCAMENTO,
@@ -92,6 +93,7 @@ def _contexto_formulario():
         "origens_lancamento": ORIGENS_LANCAMENTO,
         "centros_custo": buscar_centros_custo_ativos(),
         "equipes": buscar_equipes_ativas(),
+        "clientes": clientes_ativos(),
     }
 
 
@@ -242,6 +244,7 @@ def nova_nota_emitida():
         tipos_nota=TIPOS_NOTA_EMITIDA,
         status_fiscais=STATUS_FISCAIS_NOTA_EMITIDA,
         status_financeiros=STATUS_FINANCEIROS_NOTA_EMITIDA,
+        clientes=clientes_ativos(),
         pode_criar=True,
         pode_ver_notas=True,
     )
@@ -295,6 +298,7 @@ def editar_nota_emitida(nota_id):
         tipos_nota=TIPOS_NOTA_EMITIDA,
         status_fiscais=STATUS_FISCAIS_NOTA_EMITIDA,
         status_financeiros=STATUS_FINANCEIROS_NOTA_EMITIDA,
+        clientes=clientes_ativos(),
         pode_criar=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "criar"),
         pode_ver_notas=True,
     )
@@ -729,6 +733,7 @@ def novo_contrato():
         periodicidades=PERIODICIDADES_MEDICAO,
         centros_custo=buscar_centros_custo_ativos(),
         equipes=buscar_equipes_ativas(),
+        clientes=clientes_ativos(),
         pode_criar=True,
         pode_ver_notas=True,
         pode_ver_contratos=True,
@@ -782,6 +787,7 @@ def editar_contrato(contrato_id):
         periodicidades=PERIODICIDADES_MEDICAO,
         centros_custo=buscar_centros_custo_ativos(),
         equipes=buscar_equipes_ativas(),
+        clientes=clientes_ativos(),
         pode_criar=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "criar"),
         pode_ver_notas=True,
         pode_ver_contratos=True,

@@ -728,10 +728,62 @@ class LogAcesso(db.Model):
         return f"<LogAcesso {self.acao}>"
 
 
+class FinanceiroCliente(db.Model):
+    __tablename__ = "financeiro_clientes"
+
+    id = db.Column(db.Integer, primary_key=True)
+    tipo_pessoa = db.Column(db.String(20), nullable=False, default="juridica")
+    cnpj_cpf = db.Column(db.String(20), nullable=False)
+    cnpj_cpf_normalizado = db.Column(db.String(14), nullable=False, unique=True, index=True)
+    razao_social = db.Column(db.String(180), nullable=False, index=True)
+    nome_fantasia = db.Column(db.String(180), nullable=True, index=True)
+    inscricao_estadual = db.Column(db.String(40), nullable=True)
+    inscricao_municipal = db.Column(db.String(40), nullable=True)
+    email_financeiro = db.Column(db.String(150), nullable=True)
+    email_alternativo = db.Column(db.String(150), nullable=True)
+    telefone_principal = db.Column(db.String(30), nullable=True)
+    telefone_alternativo = db.Column(db.String(30), nullable=True)
+    contato_responsavel = db.Column(db.String(120), nullable=True)
+    cargo_contato = db.Column(db.String(120), nullable=True)
+    endereco = db.Column(db.String(255), nullable=True)
+    numero = db.Column(db.String(30), nullable=True)
+    complemento = db.Column(db.String(120), nullable=True)
+    bairro = db.Column(db.String(120), nullable=True)
+    cidade = db.Column(db.String(120), nullable=True, index=True)
+    uf = db.Column(db.String(2), nullable=True, index=True)
+    cep = db.Column(db.String(20), nullable=True)
+    condicao_recebimento_padrao = db.Column(db.String(120), nullable=True)
+    prazo_vencimento_padrao = db.Column(db.Integer, nullable=True)
+    observacoes = db.Column(db.Text, nullable=True)
+    ativo = db.Column(db.Boolean, default=True, nullable=False, index=True)
+    criado_por_usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=True)
+    atualizado_por_usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=True)
+    inativado_por_usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=True)
+    inativado_em = db.Column(db.DateTime, nullable=True)
+    motivo_inativacao = db.Column(db.Text, nullable=True)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
+    atualizado_em = db.Column(db.DateTime, default=agora_brasil, onupdate=agora_brasil, nullable=False)
+
+    criado_por = db.relationship("Usuario", foreign_keys=[criado_por_usuario_id])
+    atualizado_por = db.relationship("Usuario", foreign_keys=[atualizado_por_usuario_id])
+    inativado_por = db.relationship("Usuario", foreign_keys=[inativado_por_usuario_id])
+
+    __table_args__ = (
+        db.CheckConstraint("tipo_pessoa in ('juridica', 'fisica')", name="ck_fin_clientes_tipo_pessoa"),
+        db.CheckConstraint(
+            "prazo_vencimento_padrao is null or prazo_vencimento_padrao >= 0",
+            name="ck_fin_clientes_prazo_vencimento",
+        ),
+    )
+
+    def __repr__(self):
+        return f"<FinanceiroCliente {self.id} {self.razao_social}>"
+
 class FinanceiroContaReceberTitulo(db.Model):
     __tablename__ = "financeiro_contas_receber_titulos"
 
     id = db.Column(db.Integer, primary_key=True)
+    cliente_id = db.Column(db.Integer, db.ForeignKey("financeiro_clientes.id"), nullable=True, index=True)
     cliente_nome_snapshot = db.Column(db.String(180), nullable=False, index=True)
     cliente_cnpj_cpf_snapshot = db.Column(db.String(20), nullable=True, index=True)
     cliente_email_financeiro_snapshot = db.Column(db.String(150), nullable=True)
@@ -801,6 +853,7 @@ class FinanceiroContaReceberTitulo(db.Model):
         nullable=False,
     )
 
+    cliente = db.relationship("FinanceiroCliente", foreign_keys=[cliente_id])
     centro_custo = db.relationship("CentroCusto")
     sub_centro_custo_equipe = db.relationship("Equipe")
     nota_emitida = db.relationship("FinanceiroNotaFiscalEmitida", back_populates="titulos")
@@ -874,6 +927,7 @@ class FinanceiroNotaFiscalEmitida(db.Model):
     __tablename__ = "financeiro_notas_fiscais_emitidas"
 
     id = db.Column(db.Integer, primary_key=True)
+    cliente_id = db.Column(db.Integer, db.ForeignKey("financeiro_clientes.id"), nullable=True, index=True)
     tipo_nota = db.Column(db.String(30), nullable=False, index=True)
     numero_nota = db.Column(db.String(80), nullable=False, index=True)
     serie = db.Column(db.String(30), nullable=True, index=True)
@@ -919,6 +973,7 @@ class FinanceiroNotaFiscalEmitida(db.Model):
     atualizado_em = db.Column(db.DateTime, default=agora_brasil, onupdate=agora_brasil, nullable=False)
 
     titulos = db.relationship("FinanceiroContaReceberTitulo", back_populates="nota_emitida", order_by="FinanceiroContaReceberTitulo.parcela_numero.asc(), FinanceiroContaReceberTitulo.id.asc()")
+    cliente = db.relationship("FinanceiroCliente", foreign_keys=[cliente_id])
     contrato = db.relationship("FinanceiroContratoCliente", back_populates="notas_emitidas")
     medicao = db.relationship("FinanceiroContratoMedicao", back_populates="notas_emitidas", foreign_keys=[medicao_id])
     criado_por = db.relationship("Usuario", foreign_keys=[criado_por_usuario_id])
@@ -971,6 +1026,7 @@ class FinanceiroContratoCliente(db.Model):
     __tablename__ = "financeiro_contratos_clientes"
 
     id = db.Column(db.Integer, primary_key=True)
+    cliente_id = db.Column(db.Integer, db.ForeignKey("financeiro_clientes.id"), nullable=True, index=True)
     numero_contrato = db.Column(db.String(80), nullable=False, index=True)
     cliente_nome_snapshot = db.Column(db.String(180), nullable=False, index=True)
     cliente_cnpj_cpf_snapshot = db.Column(db.String(20), nullable=False, index=True)
@@ -996,6 +1052,7 @@ class FinanceiroContratoCliente(db.Model):
     motivo_cancelamento = db.Column(db.Text, nullable=True)
     criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
     atualizado_em = db.Column(db.DateTime, default=agora_brasil, onupdate=agora_brasil, nullable=False)
+    cliente = db.relationship("FinanceiroCliente", foreign_keys=[cliente_id])
 
     centro_custo = db.relationship("CentroCusto")
     sub_centro_custo_equipe = db.relationship("Equipe")
@@ -3776,4 +3833,3 @@ class SegurancaTrabalhoEntregaEpi(db.Model):
 
     def __repr__(self):
         return f"<SegurancaTrabalhoEntregaEpi colaborador={self.colaborador_id} item={self.item_id}>"
-
