@@ -1,9 +1,5 @@
-import os
-import uuid
-
-from flask import abort, current_app, flash, redirect, render_template, request, send_file, session, url_for
+from flask import abort, flash, redirect, render_template, request, send_file, url_for
 from flask_login import current_user, login_required
-from werkzeug.datastructures import FileStorage
 
 from app.decorators import module_permission_required
 from app.models import SuprimentosOrdemCompra
@@ -47,8 +43,6 @@ from app.services.financeiro_contas_pagar_service import (
     salvar_titulo,
     status_financeiro_xml,
     titulos_ativos_documento_fiscal,
-    analisar_importacao_legado,
-    importar_titulos_legado,
 )
 from app.services.financeiro_relatorios_service import (
     dashboard_avancado,
@@ -202,54 +196,6 @@ def novo():
         modo="novo",
         opcoes=buscar_opcoes_formulario(),
     )
-
-
-@financeiro_contas_pagar_bp.route("/importar-legado", methods=["GET", "POST"])
-@login_required
-@module_permission_required("financeiro", "contas_a_pagar", "criar")
-def importar_legado():
-    linhas, erros = [], []
-    if request.method == "POST":
-        arquivo = request.files.get("arquivo")
-        caminho_temporario = session.get("importacao_legado_arquivo")
-        confirmar = request.form.get("confirmar") == "1"
-        arquivo_aberto = None
-        try:
-            if arquivo and arquivo.filename:
-                pasta_importacoes = os.path.join(current_app.instance_path, "financeiro", "importacoes_legado")
-                os.makedirs(pasta_importacoes, exist_ok=True)
-                if caminho_temporario and os.path.isfile(caminho_temporario):
-                    os.remove(caminho_temporario)
-                caminho_temporario = os.path.join(pasta_importacoes, f"{uuid.uuid4().hex}.xlsx")
-                arquivo.save(caminho_temporario)
-                session["importacao_legado_arquivo"] = caminho_temporario
-            elif caminho_temporario and os.path.isfile(caminho_temporario):
-                arquivo_aberto = open(caminho_temporario, "rb")
-                arquivo = FileStorage(stream=arquivo_aberto, filename="importacao_legado.xlsx")
-            else:
-                flash("Selecione a planilha simplificada do legado.", "warning")
-                return render_template("financeiro/contas_pagar/importar_legado.html", linhas=linhas, erros=erros)
-
-            linhas, erros = analisar_importacao_legado(arquivo)
-            if confirmar:
-                criados = importar_titulos_legado([i for i in linhas if not i["problemas"]], usuario=current_user)
-                registrar_log("financeiro_contas_pagar_legado_importado", f"Importação de legado concluída. Títulos criados: {len(criados)}.")
-                flash(f"Importação concluída: {len(criados)} título(s) criado(s).", "success")
-                session.pop("importacao_legado_arquivo", None)
-                if caminho_temporario and os.path.isfile(caminho_temporario):
-                    os.remove(caminho_temporario)
-                return redirect(url_for("financeiro_contas_pagar.titulos", origem_lancamento="Legado"))
-        except (OSError, ValueError) as exc:
-            flash(str(exc) if isinstance(exc, ValueError) else "Não foi possível preparar a planilha para importação.", "danger")
-        except Exception:
-            # Evita página 500 e mantém a prévia disponível para correção/reenvio.
-            current_app.logger.exception("Falha na importação de títulos do legado")
-            flash("A importação não pôde ser concluída. Verifique as pendências da prévia e tente novamente.", "danger")
-        finally:
-            if arquivo_aberto:
-                arquivo_aberto.close()
-    return render_template("financeiro/contas_pagar/importar_legado.html", linhas=linhas, erros=erros)
-
 
 
 @financeiro_contas_pagar_bp.route("/agendamentos-oc")
