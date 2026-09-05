@@ -15,7 +15,7 @@
         <p><strong>Data do pagamento:</strong> {{ lote.data_pagamento.strftime("%d/%m/%Y") }}</p>
         <p><strong>Forma de pagamento:</strong> {{ lote.forma_pagamento }}</p>
         <p><strong>Conta de pagamento:</strong> {{ lote.conta_pagamento_descricao or "-" }}</p>
-        <p><strong>Valor total baixado:</strong> R$ {{ "%.2f"|format(lote.valor_total_baixado)|replace('.', ',') }}</p>
+        <p><strong>Valor total baixado:</strong> {{ formatar_moeda_brl(lote.valor_total_baixado) }}</p>
         <p><strong>Quantidade de titulos:</strong> {{ lote.total_titulos }}</p>
         <p><strong>Usuario:</strong> {{ lote.criado_por.nome if lote.criado_por else "-" }}</p>
         <p><strong>Registro:</strong> {{ lote.criado_em.strftime("%d/%m/%Y %H:%M") if lote.criado_em else "-" }}</p>
@@ -34,7 +34,7 @@
                         <td>{{ baixa.titulo.fornecedor_nome_snapshot if baixa.titulo else "-" }}</td>
                         <td>{{ baixa.titulo.numero_documento if baixa.titulo else "-" }}</td>
                         <td>{{ baixa.titulo.data_vencimento.strftime("%d/%m/%Y") if baixa.titulo and baixa.titulo.data_vencimento else "-" }}</td>
-                        <td>R$ {{ "%.2f"|format(baixa.valor_pago)|replace('.', ',') }}</td>
+                        <td>{{ formatar_moeda_brl(baixa.valor_pago) }}</td>
                         <td>{{ baixa.status }}</td>
                         <td>{{ baixa.titulo.status_exibicao() if baixa.titulo else "-" }}</td>
                         <td>{% if baixa.titulo %}<a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.detalhes', titulo_id=baixa.titulo_id) }}">Ver titulo</a>{% else %}-{% endif %}</td>

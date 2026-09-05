@@ -24,9 +24,9 @@
         <p><strong>Fechamento:</strong> {{ fatura.data_fechamento.strftime("%d/%m/%Y") }}</p>
         <p><strong>Vencimento:</strong> {{ fatura.data_vencimento.strftime("%d/%m/%Y") }}</p>
         <p><strong>Status:</strong> <span class="badge {{ 'badge-danger' if status_view in ['Vencida', 'Cancelada'] else 'badge-success' if status_view == 'Paga' else 'badge-warning' }}">{{ status_view }}</span></p>
-        <p><strong>Valor total:</strong> R$ {{ "%.2f"|format(fatura.valor_total)|replace('.', ',') }}</p>
-        <p><strong>Valor pago:</strong> R$ {{ "%.2f"|format(fatura.valor_pago)|replace('.', ',') }}</p>
-        <p><strong>Saldo em aberto:</strong> R$ {{ "%.2f"|format(saldo_fatura if saldo_fatura > 0 else 0)|replace('.', ',') }}</p>
+        <p><strong>Valor total:</strong> {{ formatar_moeda_brl(fatura.valor_total) }}</p>
+        <p><strong>Valor pago:</strong> {{ formatar_moeda_brl(fatura.valor_pago) }}</p>
+        <p><strong>Saldo em aberto:</strong> {{ formatar_moeda_brl(saldo_fatura if saldo_fatura > 0 else 0) }}</p>
         <p><strong>Titulos pagos:</strong> {{ pagos|length }}</p>
         <p><strong>Titulos parciais:</strong> {{ parciais|length }}</p>
         <p><strong>Titulos em aberto:</strong> {{ abertos|length }}</p>
@@ -45,9 +45,9 @@
                         <td>{{ titulo.descricao }}</td>
                         <td>{{ titulo.numero_documento or "-" }}</td>
                         <td>{{ titulo.parcela_numero }}/{{ titulo.total_parcelas }}</td>
-                        <td>R$ {{ "%.2f"|format(titulo.valor_original)|replace('.', ',') }}</td>
-                        <td>R$ {{ "%.2f"|format(titulo.valor_pago)|replace('.', ',') }}</td>
-                        <td>R$ {{ "%.2f"|format(calcular_saldo_titulo(titulo))|replace('.', ',') }}</td>
+                        <td>{{ formatar_moeda_brl(titulo.valor_original) }}</td>
+                        <td>{{ formatar_moeda_brl(titulo.valor_pago) }}</td>
+                        <td>{{ formatar_moeda_brl(calcular_saldo_titulo(titulo)) }}</td>
                         <td>{{ titulo.status_exibicao() }}</td>
                         <td>{{ titulo.ordem_compra.numero if titulo.ordem_compra else "-" }}</td>
                         <td>{{ titulo.fiscal_documento_id or "-" }}</td>

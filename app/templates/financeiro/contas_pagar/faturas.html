@@ -39,8 +39,8 @@
                         <td>{{ fatura.competencia_formatada }}</td>
                         <td>{{ fatura.data_fechamento.strftime("%d/%m/%Y") }}</td>
                         <td>{{ fatura.data_vencimento.strftime("%d/%m/%Y") }}</td>
-                        <td>R$ {{ "%.2f"|format(fatura.valor_total)|replace('.', ',') }}</td>
-                        <td>R$ {{ "%.2f"|format(fatura.valor_pago)|replace('.', ',') }}</td>
+                        <td>{{ formatar_moeda_brl(fatura.valor_total) }}</td>
+                        <td>{{ formatar_moeda_brl(fatura.valor_pago) }}</td>
                         {% set status_view = fatura.status_exibicao() %}
                         <td><span class="badge {{ 'badge-danger' if status_view in ['Vencida', 'Cancelada'] else 'badge-success' if status_view == 'Paga' else 'badge-warning' }}">{{ status_view }}</span></td>
                         <td>{{ fatura.titulos|length }}</td>

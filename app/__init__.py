@@ -1,11 +1,24 @@
 from flask import Flask
 from config import Config
 from app.extensions import db, migrate, login_manager
+from decimal import Decimal, InvalidOperation
+
+
+def _formatar_moeda_brl(valor):
+    if valor is None:
+        return "-"
+    try:
+        numero = Decimal(str(valor)).quantize(Decimal("0.01"))
+    except (InvalidOperation, TypeError, ValueError):
+        return "-"
+    texto = f"{numero:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    return f"R$ {texto}"
 
 
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
+    app.jinja_env.globals["formatar_moeda_brl"] = _formatar_moeda_brl
 
     # Inicialização das extensões
     db.init_app(app)
