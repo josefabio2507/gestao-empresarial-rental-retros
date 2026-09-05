@@ -3,6 +3,7 @@ from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 import os
 import re
+import time
 
 from flask import current_app
 from sqlalchemy import func
@@ -62,6 +63,9 @@ STATUS_FATURA = ["Aberta", "Fechada", "Agendada", "Paga", "Vencida", "Cancelada"
 STATUS_FATURA_EDITAVEIS = ["Aberta", "Fechada", "Agendada"]
 STATUS_BAIXA = ["Ativa", "Cancelada", "Estornada"]
 COLUNAS_IMPORTACAO_LEGADO = ["ID", "Fornecedor", "Descrição", "Documento", "Data", "Valor", "Centro de Custo"]
+LIMITE_IMPORTACAO_LEGADO = 1800
+TAMANHO_LOTE_IMPORTACAO_LEGADO = 100
+PAUSA_LOTE_IMPORTACAO_LEGADO_SEGUNDOS = 5
 EXTENSOES_COMPROVANTE = {"pdf", "jpg", "jpeg", "png", "webp"}
 MAX_COMPROVANTE_BYTES = 10 * 1024 * 1024
 STATUS_XML_FINANCEIRO = [
@@ -115,9 +119,14 @@ def analisar_importacao_legado(arquivo):
     linhas, erros, ids = [], [], set()
     fornecedores = {normalizar_texto(f.razao_social): f for f in SuprimentosFornecedor.query.all()}
     centros = {normalizar_texto(c.nome): c for c in CentroCusto.query.all()}
+    registros_lidos = 0
     for numero, valores in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
         if not any(v not in (None, "") for v in valores):
             continue
+        if registros_lidos >= LIMITE_IMPORTACAO_LEGADO:
+            erros.append({"linha": numero, "mensagem": f"Limite de {LIMITE_IMPORTACAO_LEGADO} registros atingido; as linhas seguintes não foram consideradas."})
+            break
+        registros_lidos += 1
         if len(valores) != 7:
             erros.append({"linha": numero, "mensagem": "Quantidade de colunas inválida."})
             continue
@@ -147,18 +156,33 @@ def analisar_importacao_legado(arquivo):
 def importar_titulos_legado(linhas, usuario=None):
     criados = []
     try:
-        for item in linhas:
-            if item.get("problemas"): continue
-            titulo = FinanceiroContaPagarTitulo(
-                id_legado=item["id_legado"], fornecedor_id=item["fornecedor"].id if item.get("fornecedor") else None,
-                fornecedor_nome_snapshot=item["fornecedor_nome"], descricao=item["descricao"], numero_documento=item["documento"],
-                origem_lancamento="Legado", tipo_pagamento="Faturado", forma_pagamento="Outro", data_vencimento=item["vencimento"],
-                valor_original=item["valor"], valor_desconto=0, valor_acrescimo=0, valor_juros_multa=0, valor_pago=0,
-                status="A vencer", centro_custo_id=item["centro"].id if item.get("centro") else None,
-                criado_por_usuario_id=getattr(usuario, "id", None), atualizado_por_usuario_id=getattr(usuario, "id", None),
-                observacoes="Importado do sistema legado. Situação financeira ainda não conferida.")
-            db.session.add(titulo); criados.append(titulo)
-        db.session.commit()
+        linhas_validas = [item for item in (linhas or []) if not item.get("problemas")][:LIMITE_IMPORTACAO_LEGADO]
+        for inicio in range(0, len(linhas_validas), TAMANHO_LOTE_IMPORTACAO_LEGADO):
+            lote = linhas_validas[inicio:inicio + TAMANHO_LOTE_IMPORTACAO_LEGADO]
+            ids_lote = {item["id_legado"] for item in lote if item.get("id_legado")}
+            ids_existentes = {
+                valor for (valor,) in FinanceiroContaPagarTitulo.query.filter(
+                    FinanceiroContaPagarTitulo.origem_lancamento == "Legado",
+                    FinanceiroContaPagarTitulo.id_legado.in_(ids_lote),
+                ).with_entities(FinanceiroContaPagarTitulo.id_legado).all()
+            } if ids_lote else set()
+            for item in lote:
+                if item.get("id_legado") in ids_existentes:
+                    continue
+                titulo = FinanceiroContaPagarTitulo(
+                    id_legado=item["id_legado"], fornecedor_id=item["fornecedor"].id if item.get("fornecedor") else None,
+                    fornecedor_nome_snapshot=item["fornecedor_nome"], descricao=item["descricao"], numero_documento=item["documento"],
+                    origem_lancamento="Legado", tipo_pagamento="Faturado", forma_pagamento="Outro", data_vencimento=item["vencimento"],
+                    valor_original=item["valor"], valor_desconto=0, valor_acrescimo=0, valor_juros_multa=0, valor_pago=0,
+                    status="A vencer", centro_custo_id=item["centro"].id if item.get("centro") else None,
+                    criado_por_usuario_id=getattr(usuario, "id", None), atualizado_por_usuario_id=getattr(usuario, "id", None),
+                    observacoes="Importado do sistema legado. Situação financeira ainda não conferida.")
+                db.session.add(titulo)
+                criados.append(titulo)
+                ids_existentes.add(item.get("id_legado"))
+            db.session.commit()
+            if inicio + TAMANHO_LOTE_IMPORTACAO_LEGADO < len(linhas_validas):
+                time.sleep(PAUSA_LOTE_IMPORTACAO_LEGADO_SEGUNDOS)
     except Exception:
         db.session.rollback(); raise
     return criados
