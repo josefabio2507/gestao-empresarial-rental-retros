@@ -1,13 +1,13 @@
 """adiciona rastreio e origem para importacao de contas a pagar legado
 
 Revision ID: g7c9e1a2b3d4
-Revises: f40a6b8c9d2e
+Revises: b8e1c2d3f4a5, f40a6b8c9d2e
 """
 from alembic import op
 import sqlalchemy as sa
 
 revision = "g7c9e1a2b3d4"
-down_revision = "f40a6b8c9d2e"
+down_revision = ("b8e1c2d3f4a5", "f40a6b8c9d2e")
 branch_labels = None
 depends_on = None
 
