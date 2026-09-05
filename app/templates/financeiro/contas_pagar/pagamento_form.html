@@ -15,10 +15,10 @@
         <p><strong>Titulo:</strong> #{{ titulo.id }}</p>
         <p><strong>Fornecedor:</strong> {{ titulo.fornecedor_nome_snapshot }}</p>
         <p><strong>Documento:</strong> {{ titulo.numero_documento or titulo.numero_nfe or "-" }}</p>
-        <p><strong>Valor original:</strong> R$ {{ "%.2f"|format(titulo.valor_original)|replace('.', ',') }}</p>
-        <p><strong>Valor liquido:</strong> R$ {{ "%.2f"|format(titulo.valor_liquido_previsto)|replace('.', ',') }}</p>
-        <p><strong>Valor ja pago:</strong> R$ {{ "%.2f"|format(titulo.valor_pago)|replace('.', ',') }}</p>
-        <p><strong>Saldo em aberto:</strong> R$ {{ "%.2f"|format(saldo)|replace('.', ',') }}</p>
+        <p><strong>Valor original:</strong> {{ formatar_moeda_brl(titulo.valor_original) }}</p>
+        <p><strong>Valor liquido:</strong> {{ formatar_moeda_brl(titulo.valor_liquido_previsto) }}</p>
+        <p><strong>Valor ja pago:</strong> {{ formatar_moeda_brl(titulo.valor_pago) }}</p>
+        <p><strong>Saldo em aberto:</strong> {{ formatar_moeda_brl(saldo) }}</p>
     </div>
 
     <form class="form-card" method="POST" enctype="multipart/form-data">

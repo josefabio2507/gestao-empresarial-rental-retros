@@ -65,9 +65,9 @@
                         <td>{{ titulo.cartao_credito.identificacao_segura if titulo.cartao_credito else "-" }}</td>
                         <td>{% if titulo.fatura_cartao %}<a href="{{ url_for('financeiro_contas_pagar.detalhes_fatura', fatura_id=titulo.fatura_cartao.id) }}">{{ titulo.fatura_cartao.competencia_formatada }}</a>{% else %}-{% endif %}</td>
                         <td>{{ titulo.data_vencimento.strftime("%d/%m/%Y") }}</td>
-                        <td>R$ {{ "%.2f"|format(titulo.valor_original)|replace('.', ',') }}</td>
-                        <td>R$ {{ "%.2f"|format(titulo.valor_pago)|replace('.', ',') }}</td>
-                        <td>R$ {{ "%.2f"|format(titulo.saldo_aberto)|replace('.', ',') }}</td>
+                        <td>{{ formatar_moeda_brl(titulo.valor_original) }}</td>
+                        <td>{{ formatar_moeda_brl(titulo.valor_pago) }}</td>
+                        <td>{{ formatar_moeda_brl(titulo.saldo_aberto) }}</td>
                         {% set status_view = titulo.status_exibicao() %}
                         <td><span class="badge {{ 'badge-danger' if status_view in ['Vencido', 'Cancelado'] else 'badge-success' if status_view == 'Pago' else 'badge-warning' }}">{{ status_view }}</span></td>
                         <td class="col-acoes">

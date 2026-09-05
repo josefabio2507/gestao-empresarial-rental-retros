@@ -53,7 +53,8 @@ STATUS_NAO_PREVISAO = ["Pago", "Cancelado", "Estornado"]
 
 def moeda(valor):
     valor = Decimal(valor or 0).quantize(Decimal("0.01"))
-    return f"R$ {valor:.2f}".replace(".", ",")
+    texto = f"{valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    return f"R$ {texto}"
 
 
 def valor_decimal(valor):

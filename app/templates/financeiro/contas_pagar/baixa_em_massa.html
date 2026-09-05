@@ -24,7 +24,7 @@
 
         <div class="form-actions">
             <strong>{{ titulos|length }} titulo(s)</strong>
-            <span>Saldo selecionado: R$ {{ "%.2f"|format(total_saldo)|replace('.', ',') }}</span>
+            <span>Saldo selecionado: {{ formatar_moeda_brl(total_saldo) }}</span>
             <button class="btn btn-secondary" type="button" data-preencher-saldos>Preencher todos com saldo em aberto</button>
         </div>
 
@@ -43,9 +43,9 @@
                             <td>{{ titulo.numero_documento or "-" }}</td>
                             <td>{{ titulo.numero_nfe or "-" }}</td>
                             <td>{{ titulo.data_vencimento.strftime("%d/%m/%Y") }}</td>
-                            <td>R$ {{ "%.2f"|format(titulo.valor_original)|replace('.', ',') }}</td>
-                            <td>R$ {{ "%.2f"|format(titulo.valor_pago)|replace('.', ',') }}</td>
-                            <td>R$ {{ "%.2f"|format(saldo)|replace('.', ',') }}</td>
+                            <td>{{ formatar_moeda_brl(titulo.valor_original) }}</td>
+                            <td>{{ formatar_moeda_brl(titulo.valor_pago) }}</td>
+                            <td>{{ formatar_moeda_brl(saldo) }}</td>
                             <td><input name="valor_baixa_{{ titulo.id }}" value="{{ "%.2f"|format(saldo)|replace('.', ',') }}" data-saldo-original="{{ saldo }}" required></td>
                             <td>{{ titulo.status_exibicao() }}</td>
                         </tr>

@@ -39,7 +39,7 @@
                         <td>{{ cartao.titular_responsavel or "-" }}</td>
                         <td>Dia {{ cartao.dia_fechamento }}</td>
                         <td>Dia {{ cartao.dia_vencimento }}</td>
-                        <td>{{ "R$ %.2f"|format(cartao.limite)|replace('.', ',') if cartao.limite is not none else "-" }}</td>
+                        <td>{{ formatar_moeda_brl(cartao.limite) }}</td>
                         <td><span class="badge {{ 'badge-success' if cartao.ativo else 'badge-danger' }}">{{ "Ativo" if cartao.ativo else "Inativo" }}</span></td>
                         <td class="col-acoes">
                             <div class="acoes-botoes">

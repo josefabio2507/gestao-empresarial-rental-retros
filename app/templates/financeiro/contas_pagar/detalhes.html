@@ -34,10 +34,10 @@
         <p><strong>Competencia:</strong> {{ titulo.competencia.strftime("%m/%Y") if titulo.competencia else "-" }}</p>
         <p><strong>Parcela:</strong> {{ titulo.parcela_numero }}/{{ titulo.total_parcelas }}</p>
         <p><strong>Centro de custo:</strong> {{ titulo.centro_custo.nome if titulo.centro_custo else "-" }}</p>
-        <p><strong>Valor original:</strong> R$ {{ "%.2f"|format(titulo.valor_original)|replace('.', ',') }}</p>
-        <p><strong>Valor liquido:</strong> R$ {{ "%.2f"|format(titulo.valor_liquido_previsto)|replace('.', ',') }}</p>
-        <p><strong>Valor pago:</strong> R$ {{ "%.2f"|format(titulo.valor_pago)|replace('.', ',') }}</p>
-        <p><strong>Saldo em aberto:</strong> R$ {{ "%.2f"|format(saldo)|replace('.', ',') }}</p>
+        <p><strong>Valor original:</strong> {{ formatar_moeda_brl(titulo.valor_original) }}</p>
+        <p><strong>Valor liquido:</strong> {{ formatar_moeda_brl(titulo.valor_liquido_previsto) }}</p>
+        <p><strong>Valor pago:</strong> {{ formatar_moeda_brl(titulo.valor_pago) }}</p>
+        <p><strong>Saldo em aberto:</strong> {{ formatar_moeda_brl(saldo) }}</p>
         <p><strong>Data de pagamento:</strong> {{ titulo.data_pagamento.strftime("%d/%m/%Y") if titulo.data_pagamento else "-" }}</p>
         <p><strong>Observacoes:</strong> {{ titulo.observacoes or "-" }}</p>
     </div>
@@ -52,7 +52,7 @@
                 {% for baixa in titulo.baixas %}
                     <tr>
                         <td>{{ baixa.data_pagamento.strftime("%d/%m/%Y") }}</td>
-                        <td>R$ {{ "%.2f"|format(baixa.valor_pago)|replace('.', ',') }}</td>
+                        <td>{{ formatar_moeda_brl(baixa.valor_pago) }}</td>
                         <td>{{ baixa.forma_pagamento }}</td>
                         <td>{{ baixa.conta_pagamento_descricao or "-" }}</td>
                         <td>{{ baixa.observacoes or baixa.motivo_cancelamento or "-" }}</td>
