@@ -241,6 +241,10 @@ def importar_legado():
                 return redirect(url_for("financeiro_contas_pagar.titulos", origem_lancamento="Legado"))
         except (OSError, ValueError) as exc:
             flash(str(exc) if isinstance(exc, ValueError) else "Não foi possível preparar a planilha para importação.", "danger")
+        except Exception:
+            # Evita página 500 e mantém a prévia disponível para correção/reenvio.
+            current_app.logger.exception("Falha na importação de títulos do legado")
+            flash("A importação não pôde ser concluída. Verifique as pendências da prévia e tente novamente.", "danger")
         finally:
             if arquivo_aberto:
                 arquivo_aberto.close()
