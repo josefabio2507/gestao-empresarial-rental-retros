@@ -2177,6 +2177,7 @@ class FinanceiroContaPagarTitulo(db.Model):
     __tablename__ = "financeiro_contas_pagar_titulos"
 
     id = db.Column(db.Integer, primary_key=True)
+    id_legado = db.Column(db.String(80), nullable=True, index=True)
     fornecedor_id = db.Column(
         db.Integer,
         db.ForeignKey("suprimentos_fornecedores.id"),
@@ -2283,7 +2284,7 @@ class FinanceiroContaPagarTitulo(db.Model):
 
     __table_args__ = (
         db.CheckConstraint(
-            "origem_lancamento in ('Manual', 'Ordem de Compra', 'XML Fiscal', 'Cartao de Credito')",
+            "origem_lancamento in ('Manual', 'Ordem de Compra', 'XML Fiscal', 'Cartao de Credito', 'Legado')",
             name="ck_financeiro_cp_origem_lancamento",
         ),
         db.CheckConstraint(

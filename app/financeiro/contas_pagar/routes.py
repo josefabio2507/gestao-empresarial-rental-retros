@@ -43,6 +43,8 @@ from app.services.financeiro_contas_pagar_service import (
     salvar_titulo,
     status_financeiro_xml,
     titulos_ativos_documento_fiscal,
+    analisar_importacao_legado,
+    importar_titulos_legado,
 )
 from app.services.financeiro_relatorios_service import (
     dashboard_avancado,
@@ -196,6 +198,28 @@ def novo():
         modo="novo",
         opcoes=buscar_opcoes_formulario(),
     )
+
+
+@financeiro_contas_pagar_bp.route("/importar-legado", methods=["GET", "POST"])
+@login_required
+@module_permission_required("financeiro", "contas_a_pagar", "criar")
+def importar_legado():
+    linhas, erros = [], []
+    if request.method == "POST":
+        arquivo = request.files.get("arquivo")
+        if not arquivo or not arquivo.filename:
+            flash("Selecione a planilha simplificada do legado.", "warning")
+        else:
+            try:
+                linhas, erros = analisar_importacao_legado(arquivo)
+                if request.form.get("confirmar") == "1":
+                    criados = importar_titulos_legado([i for i in linhas if not i["problemas"]], usuario=current_user)
+                    registrar_log("financeiro_contas_pagar_legado_importado", f"Importação de legado concluída. Títulos criados: {len(criados)}.")
+                    flash(f"Importação concluída: {len(criados)} título(s) criado(s).", "success")
+                    return redirect(url_for("financeiro_contas_pagar.titulos", origem_lancamento="Legado"))
+            except ValueError as exc:
+                flash(str(exc), "danger")
+    return render_template("financeiro/contas_pagar/importar_legado.html", linhas=linhas, erros=erros)
 
 
 
