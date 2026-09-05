@@ -2371,7 +2371,7 @@ class FinanceiroContaPagarLoteBaixa(db.Model):
         db.CheckConstraint("valor_total_baixado >= 0", name="ck_fin_cp_lote_valor_total"),
         db.CheckConstraint("status in ('Ativo', 'Cancelado', 'Estornado')", name="ck_fin_cp_lote_status"),
         db.CheckConstraint(
-            "forma_pagamento in ('Boleto', 'Pix', 'Transferencia', 'Deposito', 'Cartao de Credito', 'Outro')",
+            "forma_pagamento in ('Boleto', 'Pix', 'Transferencia', 'Deposito', 'Cartao de Credito', 'Outro', 'Diversas')",
             name="ck_fin_cp_lote_forma_pagamento",
         ),
     )
