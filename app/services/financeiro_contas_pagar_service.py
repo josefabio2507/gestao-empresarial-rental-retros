@@ -460,8 +460,8 @@ def registrar_baixa_em_massa(dados, arquivo=None, usuario=None):
 
     try:
         data_pagamento = parse_data(dados.get("data_pagamento"), obrigatorio=True, nome_campo="Data do pagamento")
-        forma_pagamento = dados.get("forma_pagamento") or ""
-        if forma_pagamento not in FORMAS_PAGAMENTO:
+        forma_padrao = dados.get("forma_pagamento") or ""
+        if forma_padrao and forma_padrao not in FORMAS_PAGAMENTO:
             raise ValueError("Forma de pagamento invalida.")
 
         itens = []
@@ -470,18 +470,24 @@ def registrar_baixa_em_massa(dados, arquivo=None, usuario=None):
             if not titulo_elegivel_baixa(titulo):
                 _registrar_log("financeiro_lote_baixa_titulo_rejeitado", f"Titulo rejeitado no lote por inelegibilidade. Titulo: {titulo.id}.")
                 raise ValueError("Um ou mais titulos nao estao elegiveis para baixa.")
+            forma_pagamento = dados.get(f"forma_pagamento_{titulo.id}") or forma_padrao or titulo.forma_pagamento or ""
+            if forma_pagamento not in FORMAS_PAGAMENTO:
+                raise ValueError(f"Forma de pagamento invalida para o titulo {titulo.id}.")
             valor = parse_decimal(dados.get(f"valor_baixa_{titulo.id}"), obrigatorio=True, nome_campo="Valor a baixar")
             if valor <= 0:
                 raise ValueError("Valor a baixar deve ser maior que zero.")
             saldo = calcular_saldo_titulo(titulo)
             if valor > saldo:
                 raise ValueError("O valor informado excede o saldo de um dos titulos.")
-            itens.append((titulo, valor))
+            itens.append((titulo, valor, forma_pagamento))
             valor_total += valor
+
+        formas_lote = {forma for _, _, forma in itens}
+        forma_pagamento_lote = next(iter(formas_lote)) if len(formas_lote) == 1 else "Diversas"
 
         lote = FinanceiroContaPagarLoteBaixa(
             data_pagamento=data_pagamento,
-            forma_pagamento=forma_pagamento,
+            forma_pagamento=forma_pagamento_lote,
             conta_pagamento_descricao=normalizar_texto(dados.get("conta_pagamento_descricao"), upper=False) or None,
             observacoes=normalizar_texto(dados.get("observacoes"), upper=False) or None,
             total_titulos=len(itens),
@@ -495,7 +501,7 @@ def registrar_baixa_em_massa(dados, arquivo=None, usuario=None):
 
         faturas_afetadas = set()
         baixas = []
-        for titulo, valor in itens:
+        for titulo, valor, forma_pagamento in itens:
             baixa = FinanceiroContaPagarBaixa(
                 titulo_id=titulo.id,
                 lote_baixa_id=lote.id,

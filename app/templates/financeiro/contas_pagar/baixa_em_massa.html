@@ -16,7 +16,6 @@
     <form class="form-card" method="POST" enctype="multipart/form-data">
         <div class="form-grid">
             <div class="form-group"><label for="data_pagamento">Data do pagamento</label><input id="data_pagamento" name="data_pagamento" type="date" required></div>
-            <div class="form-group"><label for="forma_pagamento">Forma de pagamento</label><select id="forma_pagamento" name="forma_pagamento" required><option value="">Selecione</option>{% for forma in formas_pagamento %}<option value="{{ forma }}">{{ forma }}</option>{% endfor %}</select></div>
             <div class="form-group"><label for="conta_pagamento_descricao">Conta de pagamento</label><input id="conta_pagamento_descricao" name="conta_pagamento_descricao" placeholder="Ex.: Banco, caixa ou origem"></div>
             <div class="form-group"><label for="comprovante">Comprovante unico</label><input id="comprovante" name="comprovante" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp"><small>PDF, JPG, JPEG, PNG ou WEBP ate 10 MB.</small></div>
             <div class="form-group full-span"><label for="observacoes">Observacao geral</label><textarea id="observacoes" name="observacoes" rows="3"></textarea></div>
@@ -31,7 +30,7 @@
         <div class="table-card table-responsive listbox-5-linhas">
             <table class="table financeiro-contas-pagar-table">
                 <thead>
-                    <tr><th>Remover</th><th>ID</th><th>Fornecedor</th><th>Documento</th><th>NF-e</th><th>Vencimento</th><th>Valor original</th><th>Valor ja pago</th><th>Saldo em aberto</th><th>Valor a baixar</th><th>Status atual</th></tr>
+                    <tr><th>Remover</th><th>ID</th><th>Fornecedor</th><th>Documento</th><th>NF-e</th><th>Vencimento</th><th>Valor original</th><th>Valor ja pago</th><th>Saldo em aberto</th><th>Valor a baixar</th><th>Forma de pagamento</th><th>Status atual</th></tr>
                 </thead>
                 <tbody>
                     {% for titulo in titulos %}
@@ -47,6 +46,7 @@
                             <td>{{ formatar_moeda_brl(titulo.valor_pago) }}</td>
                             <td>{{ formatar_moeda_brl(saldo) }}</td>
                             <td><input name="valor_baixa_{{ titulo.id }}" value="{{ "%.2f"|format(saldo)|replace('.', ',') }}" data-saldo-original="{{ saldo }}" required></td>
+                            <td><select name="forma_pagamento_{{ titulo.id }}" required>{% for forma in formas_pagamento %}<option value="{{ forma }}" {{ "selected" if titulo.forma_pagamento == forma else "" }}>{{ forma }}</option>{% endfor %}</select></td>
                             <td>{{ titulo.status_exibicao() }}</td>
                         </tr>
                     {% endfor %}
