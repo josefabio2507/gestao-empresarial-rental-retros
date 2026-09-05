@@ -27,6 +27,7 @@ ORIGENS_LANCAMENTO = [
     "Ordem de Compra",
     "XML Fiscal",
     "Cartao de Credito",
+    "Legado",
 ]
 TIPOS_PAGAMENTO = ["Faturado", "Cartao de Credito"]
 FORMAS_PAGAMENTO = [
@@ -60,6 +61,7 @@ STATUS_FINAIS = ["Pago", "Cancelado", "Estornado"]
 STATUS_FATURA = ["Aberta", "Fechada", "Agendada", "Paga", "Vencida", "Cancelada"]
 STATUS_FATURA_EDITAVEIS = ["Aberta", "Fechada", "Agendada"]
 STATUS_BAIXA = ["Ativa", "Cancelada", "Estornada"]
+COLUNAS_IMPORTACAO_LEGADO = ["ID", "Fornecedor", "Descrição", "Documento", "Data", "Valor", "Centro de Custo"]
 EXTENSOES_COMPROVANTE = {"pdf", "jpg", "jpeg", "png", "webp"}
 MAX_COMPROVANTE_BYTES = 10 * 1024 * 1024
 STATUS_XML_FINANCEIRO = [
@@ -93,6 +95,73 @@ def normalizar_texto(valor, upper=True):
     if upper:
         return valor.upper()
     return valor
+
+
+def analisar_importacao_legado(arquivo):
+    """Lê a planilha simplificada e retorna linhas válidas e erros sem gravar."""
+    try:
+        import openpyxl
+    except ImportError as exc:
+        raise ValueError("A importação de planilhas requer a biblioteca openpyxl.") from exc
+    try:
+        arquivo.stream.seek(0)
+        wb = openpyxl.load_workbook(arquivo.stream, read_only=True, data_only=True)
+        ws = wb.active
+        cabecalho = [str(v or "").strip() for v in next(ws.iter_rows(values_only=True))]
+    except Exception as exc:
+        raise ValueError("Não foi possível ler a planilha Excel.") from exc
+    if cabecalho != COLUNAS_IMPORTACAO_LEGADO:
+        raise ValueError("A planilha deve conter exatamente as colunas: " + ", ".join(COLUNAS_IMPORTACAO_LEGADO) + ".")
+    linhas, erros, ids = [], [], set()
+    fornecedores = {normalizar_texto(f.razao_social): f for f in SuprimentosFornecedor.query.all()}
+    centros = {normalizar_texto(c.nome): c for c in CentroCusto.query.all()}
+    for numero, valores in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+        if not any(v not in (None, "") for v in valores):
+            continue
+        if len(valores) != 7:
+            erros.append({"linha": numero, "mensagem": "Quantidade de colunas inválida."})
+            continue
+        legado, fornecedor_nome, descricao, documento, vencimento, valor, centro_nome = valores
+        chave = str(legado).strip() if legado not in (None, "") else ""
+        problemas = []
+        if not chave: problemas.append("ID obrigatório")
+        elif chave in ids: problemas.append("ID legado repetido na planilha")
+        else: ids.add(chave)
+        fornecedor_nome = normalizar_texto(fornecedor_nome)
+        descricao = normalizar_texto(descricao)
+        if not fornecedor_nome: problemas.append("Fornecedor obrigatório")
+        if not descricao: problemas.append("Descrição obrigatória")
+        if not vencimento: problemas.append("Data de vencimento obrigatória")
+        if valor is None or valor <= 0: problemas.append("Valor deve ser maior que zero")
+        fornecedor = fornecedores.get(fornecedor_nome)
+        centro = centros.get(normalizar_texto(centro_nome)) if centro_nome else None
+        existente = FinanceiroContaPagarTitulo.query.filter_by(id_legado=chave, origem_lancamento="Legado").first() if chave else None
+        if existente: problemas.append(f"ID já importado no título {existente.id}")
+        if hasattr(vencimento, "date"): vencimento = vencimento.date()
+        linhas.append({"linha": numero, "id_legado": chave, "fornecedor_nome": fornecedor_nome, "descricao": descricao,
+            "documento": str(documento).strip() if documento not in (None, "") else None, "vencimento": vencimento,
+            "valor": valor, "centro_nome": centro_nome, "fornecedor": fornecedor, "centro": centro, "problemas": problemas})
+    return linhas, erros
+
+
+def importar_titulos_legado(linhas, usuario=None):
+    criados = []
+    try:
+        for item in linhas:
+            if item.get("problemas"): continue
+            titulo = FinanceiroContaPagarTitulo(
+                id_legado=item["id_legado"], fornecedor_id=item["fornecedor"].id if item.get("fornecedor") else None,
+                fornecedor_nome_snapshot=item["fornecedor_nome"], descricao=item["descricao"], numero_documento=item["documento"],
+                origem_lancamento="Legado", tipo_pagamento="Faturado", forma_pagamento="Outro", data_vencimento=item["vencimento"],
+                valor_original=item["valor"], valor_desconto=0, valor_acrescimo=0, valor_juros_multa=0, valor_pago=0,
+                status="A vencer", centro_custo_id=item["centro"].id if item.get("centro") else None,
+                criado_por_usuario_id=getattr(usuario, "id", None), atualizado_por_usuario_id=getattr(usuario, "id", None),
+                observacoes="Importado do sistema legado. Situação financeira ainda não conferida.")
+            db.session.add(titulo); criados.append(titulo)
+        db.session.commit()
+    except Exception:
+        db.session.rollback(); raise
+    return criados
 
 
 def parse_data(valor, obrigatorio=False, nome_campo="Data"):
