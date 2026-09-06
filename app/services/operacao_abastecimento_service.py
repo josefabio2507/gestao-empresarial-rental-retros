@@ -188,10 +188,8 @@ def _sincronizar_custos_extras(abastecimento, form_data, usuario):
 
         if not any([categoria, descricao, quantidade, valor_unitario, observacao, custo_id]):
             continue
-        if categoria not in CATEGORIAS_CUSTO_EXTRA:
-            return False, "Categoria do custo extra e obrigatoria."
-        if not descricao:
-            return False, "Descricao do custo extra e obrigatoria."
+        if categoria and categoria not in CATEGORIAS_CUSTO_EXTRA:
+            return False, "Categoria do custo extra invalida."
         if quantidade is None or quantidade <= 0:
             return False, "Quantidade do custo extra deve ser maior que zero."
         if valor_unitario is None or valor_unitario < 0:
@@ -210,8 +208,8 @@ def _sincronizar_custos_extras(abastecimento, form_data, usuario):
         if custo.status != STATUS_CUSTO_EXTRA_ATIVO:
             continue
 
-        custo.categoria = categoria
-        custo.descricao = descricao
+        custo.categoria = categoria or None
+        custo.descricao = descricao or None
         custo.quantidade = quantidade
         custo.valor_unitario = _moeda(valor_unitario)
         custo.valor_total = _calcular_valor_total_extra(quantidade, custo.valor_unitario)

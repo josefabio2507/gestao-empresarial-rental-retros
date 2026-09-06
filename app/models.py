@@ -460,8 +460,8 @@ class OperacaoAbastecimentoCustoExtra(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     abastecimento_id = db.Column(db.Integer, db.ForeignKey("operacao_abastecimentos.id"), nullable=False, index=True)
-    categoria = db.Column(db.String(80), nullable=False, index=True)
-    descricao = db.Column(db.String(255), nullable=False)
+    categoria = db.Column(db.String(80), nullable=True, index=True)
+    descricao = db.Column(db.String(255), nullable=True)
     quantidade = db.Column(db.Numeric(12, 3), nullable=False)
     valor_unitario = db.Column(db.Numeric(12, 2), nullable=False)
     valor_total = db.Column(db.Numeric(12, 2), nullable=False)
