@@ -1796,6 +1796,10 @@ class Restaurante(db.Model):
         "ItemCardapio",
         back_populates="restaurante"
     )
+    fretes_refeicao = db.relationship(
+        "FretePedidoRefeicao",
+        back_populates="restaurante",
+    )
 
     def __repr__(self):
         return f"<Restaurante {self.nome}>"
@@ -1878,6 +1882,23 @@ class PedidoRefeicao(db.Model):
 
     def __repr__(self):
         return f"<PedidoRefeicao {self.numero_pedido}>"
+
+
+class FretePedidoRefeicao(db.Model):
+    __tablename__ = "fretes_pedido_refeicao"
+
+    id = db.Column(db.Integer, primary_key=True)
+    data = db.Column(db.Date, nullable=False, index=True)
+    restaurante_id = db.Column(db.Integer, db.ForeignKey("restaurantes.id"), nullable=False, index=True)
+    valor = db.Column(db.Numeric(10, 2), nullable=False)
+    ativo = db.Column(db.Boolean, default=True, nullable=False, index=True)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
+    atualizado_em = db.Column(db.DateTime, default=agora_brasil, onupdate=agora_brasil, nullable=False)
+
+    restaurante = db.relationship("Restaurante", back_populates="fretes_refeicao")
+
+    def __repr__(self):
+        return f"<FretePedidoRefeicao {self.data} {self.valor}>"
 
 class ConsumoRefeicao(db.Model):
     __tablename__ = "consumos_refeicao"

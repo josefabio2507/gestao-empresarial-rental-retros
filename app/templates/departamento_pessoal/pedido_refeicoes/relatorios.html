@@ -143,11 +143,24 @@
                     <strong>{{ formatar_moeda(relatorio.valor_bebidas) }}</strong>
                 </div>
                 <div class="stat-card">
+                    <span>Fretes</span>
+                    <strong>{{ relatorio.quantidade_fretes }} · {{ formatar_moeda(relatorio.valor_fretes) }}</strong>
+                </div>
+                <div class="stat-card">
                     <span>Total geral</span>
                     <strong>{{ formatar_moeda(relatorio.total_geral) }}</strong>
                 </div>
             </div>
         </div>
+
+        {% if relatorio.fretes %}
+        <div class="details-card">
+            <h2>Serviços de entrega (fretes)</h2>
+            <div class="table-card table-card-inner table-responsive"><table class="table"><thead><tr><th>Data</th><th>Restaurante</th><th>Valor</th></tr></thead><tbody>
+            {% for frete in relatorio.fretes %}<tr><td>{{ formatar_data(frete.data) }}</td><td>{{ frete.restaurante.nome }}</td><td>{{ formatar_moeda(frete.valor) }}</td></tr>{% endfor %}
+            </tbody></table></div>
+        </div>
+        {% endif %}
 
         {% if relatorio.grupos %}
             {% for grupo in relatorio.grupos %}

@@ -12,7 +12,23 @@
         <a class="btn btn-secondary" href="{{ url_for('pedido_refeicoes.pedidos') }}">
             Voltar
         </a>
+        {% if pode_cadastrar_frete %}
+            <button class="btn btn-primary" type="button" onclick="document.getElementById('cadastro-frete').showModal()">+ Cadastrar frete</button>
+        {% endif %}
     </div>
+
+    {% if pode_cadastrar_frete %}
+    <dialog id="cadastro-frete" class="details-card">
+        <h2>Cadastrar serviço de entrega (frete)</h2>
+        <form method="POST" action="{{ url_for('pedido_refeicoes.novo_frete_pedido', pedido_id=pedido.id) }}" class="filter-grid">
+            <div class="form-group"><label for="frete_data">Data</label><input id="frete_data" name="data" type="date" value="{{ pedido.data_pedido.isoformat() }}" required></div>
+            <div class="form-group"><label for="frete_restaurante">Restaurante</label><select id="frete_restaurante" name="restaurante_id" required>{% for restaurante in restaurantes_frete %}<option value="{{ restaurante.id }}" {% if restaurante.id == pedido.restaurante_id %}selected{% endif %}>{{ restaurante.nome }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="frete_valor">Valor do frete</label><input id="frete_valor" name="valor" inputmode="decimal" placeholder="0,00" required></div>
+            <div class="form-actions"><button class="btn btn-primary" type="submit">Salvar frete</button><a class="btn btn-secondary" href="{{ url_for('pedido_refeicoes.fretes') }}">Gestão de fretes</a></div>
+        </form>
+        <button class="btn btn-secondary" type="button" onclick="document.getElementById('cadastro-frete').close()">Cancelar</button>
+    </dialog>
+    {% endif %}
 
     <div class="details-card">
         <div class="stat-grid">

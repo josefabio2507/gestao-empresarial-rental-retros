@@ -11,6 +11,7 @@ from app.models import (
     PedidoRefeicao,
     Colaborador,
     ConsumoRefeicao,
+    FretePedidoRefeicao,
 )
 
 
@@ -341,6 +342,57 @@ def alterar_status_item_cardapio(item):
         return True, "Item de cardápio ativado com sucesso."
 
     return True, "Item de cardápio inativado com sucesso."
+
+
+def buscar_fretes(ativos_apenas=False, data_inicial=None, data_final=None, restaurante_id=None):
+    query = FretePedidoRefeicao.query.join(Restaurante)
+    if ativos_apenas:
+        query = query.filter(FretePedidoRefeicao.ativo.is_(True))
+    if data_inicial:
+        inicio = converter_data(data_inicial) if isinstance(data_inicial, str) else data_inicial
+        if inicio:
+            query = query.filter(FretePedidoRefeicao.data >= inicio)
+    if data_final:
+        fim = converter_data(data_final) if isinstance(data_final, str) else data_final
+        if fim:
+            query = query.filter(FretePedidoRefeicao.data <= fim)
+    if restaurante_id:
+        query = query.filter(FretePedidoRefeicao.restaurante_id == restaurante_id)
+    return query.order_by(FretePedidoRefeicao.data.desc(), Restaurante.nome.asc(), FretePedidoRefeicao.id.desc()).all()
+
+
+def buscar_frete_por_id(frete_id):
+    return FretePedidoRefeicao.query.get(frete_id)
+
+
+def salvar_frete(data, restaurante_id, valor, frete=None):
+    data_convertida = converter_data(data)
+    if not data_convertida:
+        return False, "Data do frete é obrigatória.", frete
+    try:
+        restaurante_id = int(restaurante_id)
+    except (TypeError, ValueError):
+        return False, "Restaurante é obrigatório.", frete
+    restaurante = Restaurante.query.filter_by(id=restaurante_id, ativo=True).first()
+    if not restaurante:
+        return False, "Restaurante ativo não encontrado.", frete
+    valor_convertido = converter_preco(valor)
+    if valor_convertido is None or valor_convertido <= 0:
+        return False, "Valor do frete deve ser maior que zero.", frete
+    frete = frete or FretePedidoRefeicao()
+    frete.data = data_convertida
+    frete.restaurante_id = restaurante_id
+    frete.valor = valor_convertido
+    frete.ativo = True
+    db.session.add(frete)
+    db.session.commit()
+    return True, "Frete salvo com sucesso.", frete
+
+
+def alterar_status_frete(frete):
+    frete.ativo = not frete.ativo
+    db.session.commit()
+    return True, "Frete ativado com sucesso." if frete.ativo else "Frete inativado com sucesso."
 
 STATUS_PEDIDO_ABERTO = "Aberto"
 STATUS_PEDIDO_FECHADO = "Fechado"
@@ -1639,7 +1691,14 @@ def montar_relatorio_refeicoes(
 
     resumo_totais = calcular_resumo_totais_relatorio(pedidos)
     resumo_pedidos = calcular_resumo_pedidos_relatorio(pedidos)
-    total_geral = resumo_totais["valor_refeicoes"] + resumo_totais["valor_bebidas"]
+    fretes = buscar_fretes(
+        ativos_apenas=True,
+        data_inicial=data_inicial,
+        data_final=data_final,
+        restaurante_id=restaurante_id or None,
+    )
+    total_fretes = sum((frete.valor or Decimal("0.00") for frete in fretes), Decimal("0.00"))
+    total_geral = resumo_totais["valor_refeicoes"] + resumo_totais["valor_bebidas"] + total_fretes
 
     return {
         "periodo": {
@@ -1655,6 +1714,9 @@ def montar_relatorio_refeicoes(
         "valor_refeicoes": resumo_totais["valor_refeicoes"],
         "quantidade_bebidas": resumo_totais["quantidade_bebidas"],
         "valor_bebidas": resumo_totais["valor_bebidas"],
+        "fretes": fretes,
+        "quantidade_fretes": len(fretes),
+        "valor_fretes": total_fretes,
         "quantidade_pedidos": len(pedidos),
         "resumo_pedidos": resumo_pedidos,
     }

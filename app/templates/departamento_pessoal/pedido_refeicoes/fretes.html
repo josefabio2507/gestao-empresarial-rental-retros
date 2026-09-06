@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page">
+  <div class="top-bar"><div><span class="page-kicker">Pedido de Refeições</span><h1>Gestão de fretes</h1><p>Cadastre e inative custos de serviço de entrega.</p></div><a class="btn btn-secondary" href="{{ url_for('pedido_refeicoes.index') }}">Voltar</a></div>
+  <div class="details-card">
+    <h2>{{ 'Editar frete' if modo == 'editar' else 'Novo frete' }}</h2>
+    <form method="POST" class="filter-grid" action="{{ url_for('pedido_refeicoes.editar_frete', frete_id=frete.id) if frete else url_for('pedido_refeicoes.fretes') }}">
+      <div class="form-group"><label for="data">Data</label><input id="data" name="data" type="date" value="{{ frete.data.isoformat() if frete else '' }}" required></div>
+      <div class="form-group"><label for="restaurante_id">Restaurante</label><select id="restaurante_id" name="restaurante_id" required><option value="">Selecione</option>{% for restaurante in restaurantes %}<option value="{{ restaurante.id }}" {% if frete and frete.restaurante_id == restaurante.id %}selected{% endif %}>{{ restaurante.nome }}</option>{% endfor %}</select></div>
+      <div class="form-group"><label for="valor">Valor do frete</label><input id="valor" name="valor" inputmode="decimal" value="{{ frete.valor if frete else '' }}" placeholder="0,00" required></div>
+      <div class="form-actions"><button class="btn btn-primary" type="submit">Salvar</button>{% if frete %}<a class="btn btn-secondary" href="{{ url_for('pedido_refeicoes.fretes') }}">Cancelar</a>{% endif %}</div>
+    </form>
+  </div>
+  <div class="details-card"><h2>Fretes cadastrados</h2><div class="table-card table-card-inner table-responsive"><table class="table"><thead><tr><th>Data</th><th>Restaurante</th><th>Valor</th><th>Status</th><th>Ações</th></tr></thead><tbody>
+    {% for item in fretes %}<tr><td>{{ item.data.strftime('%d/%m/%Y') }}</td><td>{{ item.restaurante.nome }}</td><td>{{ formatar_moeda(item.valor) }}</td><td>{{ 'Ativo' if item.ativo else 'Inativo' }}</td><td class="col-acoes"><a class="btn btn-secondary" href="{{ url_for('pedido_refeicoes.editar_frete', frete_id=item.id) }}">Editar</a><a class="btn btn-warning" href="{{ url_for('pedido_refeicoes.alterar_status_frete_rota', frete_id=item.id) }}">{{ 'Inativar' if item.ativo else 'Ativar' }}</a></td></tr>{% else %}<tr><td colspan="5" class="empty-state">Nenhum frete cadastrado.</td></tr>{% endfor %}
+  </tbody></table></div></div>
+</section>
+{% endblock %}
