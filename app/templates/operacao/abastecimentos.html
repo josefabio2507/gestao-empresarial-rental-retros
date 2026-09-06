@@ -52,6 +52,7 @@
                     <th>Veículo</th>
                     <th>Combustível</th>
                     <th>Litros</th>
+                    <th>Preço por litro</th>
                     <th>Total combustível</th>
                     <th>Total geral</th>
                     <th>Status NF</th>
@@ -66,6 +67,7 @@
                         <td>{{ abastecimento.veiculo.identificacao if abastecimento.veiculo else '-' }}</td>
                         <td>{{ abastecimento.tipo_combustivel }}</td>
                         <td>{{ (abastecimento.qtd_litros|string).replace('.', ',') }}</td>
+                        <td>{{ formatar_moeda_brl(abastecimento.preco) }}</td>
                         <td>{{ formatar_moeda_brl(abastecimento.valor_total_combustivel) }}</td>
                         <td>{{ formatar_moeda_brl(abastecimento.valor_total_geral) }}</td>
                         <td>{{ abastecimento.status_conferencia_nota_fiscal }}</td>
@@ -84,7 +86,7 @@
                         </td>
                     </tr>
                 {% else %}
-                    <tr><td class="empty-state" colspan="9">Nenhum abastecimento registrado.</td></tr>
+                    <tr><td class="empty-state" colspan="10">Nenhum abastecimento registrado.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
