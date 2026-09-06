@@ -40,7 +40,7 @@
                 <input id="qtd_litros" name="qtd_litros" required inputmode="decimal" placeholder="0,00" value="{{ (abastecimento.qtd_litros|string).replace('.', ',') if abastecimento else '' }}">
             </div>
             <div class="form-group">
-                <label for="preco">Total combustível (R$)</label>
+                <label for="preco">Preço por litro (R$)</label>
                 <input id="preco" name="preco" required inputmode="decimal" placeholder="R$ 0,00" value="{{ (abastecimento.preco|string).replace('.', ',') if abastecimento else '' }}">
             </div>
             <div class="form-group">

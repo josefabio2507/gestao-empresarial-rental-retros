@@ -416,7 +416,8 @@ class OperacaoAbastecimento(db.Model):
 
     @property
     def valor_total_combustivel(self):
-        return self.preco or 0
+        """Total do combustível: quantidade abastecida multiplicada pelo preço unitário."""
+        return ((self.qtd_litros or 0) * (self.preco or 0)).quantize(Decimal("0.01"))
 
     @property
     def custos_extras_ativos(self):

@@ -84,7 +84,7 @@ def linhas_abastecimento(veiculo, inicio=None, fim=None):
     linhas = []
     total = Decimal("0")
     for registro in registros:
-        valor = decimal_zero(registro.preco)
+        valor = decimal_zero(registro.valor_total_combustivel)
         total += valor
         linhas.append(
             {
