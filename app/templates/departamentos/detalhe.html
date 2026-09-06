@@ -16,6 +16,15 @@
 
     {% if modulos_liberados %}
         <div class="modules-grid">
+            {% if departamento.slug == "operacao" %}
+                <a class="module-card module-card-link" href="{{ url_for('veiculos_equipamentos.index') }}">
+                    <span class="module-card-icon">V</span>
+                    <h2>Gestão de Veículos e EGPs</h2>
+                    <p>Cadastro e consulta de veículos, máquinas e equipamentos operacionais.</p>
+                    <span class="badge badge-success">Liberado</span>
+                    <span class="module-status">Acessar gestão de veículos</span>
+                </a>
+            {% endif %}
             {% set navegacao = namespace(refeicoes_exibido=false) %}
             {% for modulo in modulos_liberados %}
                 {% set modulo_slug = (modulo.slug or "")|lower %}
@@ -48,7 +57,9 @@
                     ]
                 ) %}
 
-                {% if modulo_refeicoes %}
+                {% if departamento.slug == "operacao" %}
+                    {# Os módulos de Operação são exibidos dentro de Gestão de Veículos e EGPs. #}
+                {% elif modulo_refeicoes %}
                     {% if not navegacao.refeicoes_exibido %}
                         <a class="module-card module-card-link" href="{{ url_for('pedido_refeicoes.index') }}">
                             <span class="module-card-icon">P</span>
@@ -124,45 +135,6 @@
                         <p>{{ modulo.descricao or "Entrega e controle de EPIs e uniformes." }}</p>
                         <span class="badge badge-success">Liberado</span>
                         <span class="module-status">Acessar modulo</span>
-                    </a>
-
-                {% elif departamento.slug == "operacao" and modulo_slug in ["gestao_veiculos_epgs", "veiculos_equipamentos", "pool_veiculos", "abastecimento", "multas_transito", "impostos_taxas", "central_custos"] %}
-                    {% if modulo_slug == "veiculos_equipamentos" %}
-                        {% set destino_operacao = url_for('veiculos_equipamentos.listar') %}
-                        {% set icone_operacao = "V" %}
-                        {% set status_operacao = "Acessar cadastro" %}
-                    {% elif modulo_slug == "pool_veiculos" %}
-                        {% set destino_operacao = url_for('operacao.pool') %}
-                        {% set icone_operacao = "P" %}
-                        {% set status_operacao = "Acessar pool" %}
-                    {% elif modulo_slug == "abastecimento" %}
-                        {% set destino_operacao = url_for('operacao.abastecimentos') %}
-                        {% set icone_operacao = "A" %}
-                        {% set status_operacao = "Acessar abastecimento" %}
-                    {% elif modulo_slug == "multas_transito" %}
-                        {% set destino_operacao = url_for('operacao.multas_transito') %}
-                        {% set icone_operacao = "M" %}
-                        {% set status_operacao = "Acessar multas" %}
-                    {% elif modulo_slug == "impostos_taxas" %}
-                        {% set destino_operacao = url_for('operacao.impostos_taxas') %}
-                        {% set icone_operacao = "I" %}
-                        {% set status_operacao = "Acessar impostos" %}
-                    {% elif modulo_slug == "central_custos" %}
-                        {% set destino_operacao = url_for('operacao.central_custos') %}
-                        {% set icone_operacao = "C" %}
-                        {% set status_operacao = "Acessar custos" %}
-                    {% else %}
-                        {% set destino_operacao = url_for('veiculos_equipamentos.index') %}
-                        {% set icone_operacao = "V" %}
-                        {% set status_operacao = "Acessar modulo" %}
-                    {% endif %}
-
-                    <a class="module-card module-card-link" href="{{ destino_operacao }}">
-                        <span class="module-card-icon">{{ icone_operacao }}</span>
-                        <h2>{{ modulo.nome }}</h2>
-                        <p>{{ modulo.descricao or "Cadastro e consulta de veículos, máquinas e equipamentos operacionais." }}</p>
-                        <span class="badge badge-success">Liberado</span>
-                        <span class="module-status">{{ status_operacao }}</span>
                     </a>
 
                 {% elif departamento.slug == "financeiro" and modulo_slug == "contas_a_pagar" %}
