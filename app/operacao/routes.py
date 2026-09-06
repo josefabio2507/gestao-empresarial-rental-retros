@@ -69,7 +69,6 @@ from app.services.operacao_permissoes_service import (
     MODULO_POOL_VEICULOS,
     MODULO_VEICULOS_EQUIPAMENTOS,
     permissoes_cards_gestao,
-    usuario_tem_algum_submodulo_gestao,
     usuario_tem_permissao_operacao,
 )
 from app.services.suprimentos_service import formatar_moeda_brl
@@ -81,12 +80,12 @@ STATUS_POOL = [STATUS_DISPONIVEL, STATUS_EM_USO, STATUS_INDISPONIVEL]
 @operacao_bp.route("/")
 @login_required
 def index():
-    pode_acessar_gestao_veiculos = usuario_tem_algum_submodulo_gestao(current_user)
+    """Ponto único do departamento Operação.
 
-    return render_template(
-        "operacao/index.html",
-        pode_acessar_gestao_veiculos=pode_acessar_gestao_veiculos,
-    )
+    O menu consolidado em /departamentos/operacao é a tela oficial; este
+    endereço permanece como atalho compatível para links antigos.
+    """
+    return redirect(url_for("departamentos.detalhe_departamento", slug_departamento="operacao"))
 
 
 @operacao_bp.route("/status")
