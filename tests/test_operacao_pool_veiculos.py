@@ -556,7 +556,7 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
                 ("data_abastecimento", "2026-08-29"),
                 ("tipo_combustivel", "Diesel S10"),
                 ("qtd_litros", "20,00"),
-                ("preco", "300,00"),
+                ("preco", "15,00"),
                 ("numero_nota_fiscal", "NF-123"),
                 ("chave_acesso_nfe", "12345678901234567890123456789012345678901234"),
                 ("valor_total_nota_fiscal", "362,50"),
@@ -745,7 +745,7 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         self.assertIn(b"Multas", resposta.data)
         self.assertIn(b"Impostos e Taxas", resposta.data)
         self.assertIn(b"Gasolina comum", resposta.data)
-        self.assertIn(b"R$ 123,45", resposta.data)
+        self.assertIn(b"R$ 2.469,00", resposta.data)
         self.assertIn(b"Ver", resposta.data)
 
         detalhe = self.client.get(f"/operacao/abastecimentos/{abastecimento.id}/ver")
