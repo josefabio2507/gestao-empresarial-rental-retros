@@ -50,6 +50,9 @@
                 <span class="badge badge-success">Disponível</span>
             </a>
         {% endif %}
+        {% if pode_gestao_fretes %}
+            <a class="module-card module-card-link" href="{{ url_for('pedido_refeicoes.fretes') }}"><h2>Gestão de fretes</h2><p>Cadastre e inative custos de entrega.</p></a>
+        {% endif %}
 
         {% if pode_visualizar_historico_colaborador %}
             <a class="module-card module-card-link" href="{{ url_for('pedido_refeicoes.historico_colaborador') }}">

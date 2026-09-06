@@ -64,6 +64,10 @@ from app.departamento_pessoal.pedido_refeicoes.services import (
     montar_relatorio_refeicoes,
     montar_historico_colaborador_refeicoes,
     status_relatorio_opcoes,
+    buscar_fretes,
+    buscar_frete_por_id,
+    salvar_frete,
+    alterar_status_frete,
 )
 
 
@@ -106,6 +110,11 @@ def pode_acessar_submodulo_refeicoes(modulo_slug, acao="visualizar"):
     )
 
 
+def usuario_gestor_ou_admin():
+    nivel = getattr(current_user, "nivel_acesso", None)
+    return bool(getattr(current_user, "is_admin", False) or (nivel and (nivel.slug or "").lower() in {"gestor", "administrador"}))
+
+
 def pode_visualizar_algum_submodulo_refeicoes():
     return any(
         pode_acessar_submodulo_refeicoes(modulo_slug, "visualizar")
@@ -142,6 +151,7 @@ def index():
         pode_visualizar_pedidos=pode_visualizar_pedidos,
         pode_visualizar_relatorios=pode_visualizar_relatorios,
         pode_visualizar_historico_colaborador=pode_visualizar_historico_colaborador,
+        pode_gestao_fretes=usuario_gestor_ou_admin(),
     )
     
 
@@ -605,7 +615,77 @@ def detalhes_pedido(pedido_id):
         pedido_pode_enviar_whatsapp=pedido_pode_enviar_whatsapp,
         pedido_enviado_com_correcao_permitida=pedido_enviado_com_correcao_permitida,
         pedido_pode_ser_cancelado=pedido_pode_ser_cancelado,
+        pode_cadastrar_frete=usuario_gestor_ou_admin(),
+        restaurantes_frete=buscar_restaurantes_ativos(),
     )
+
+
+@pedido_refeicoes_bp.route("/fretes", methods=["GET", "POST"])
+@login_required
+def fretes():
+    if not usuario_gestor_ou_admin():
+        flash("Apenas Gestor e Administrador podem gerenciar fretes.", "danger")
+        return redirect(url_for("main.acesso_negado"))
+    frete_edicao = None
+    if request.method == "POST":
+        sucesso, mensagem, frete = salvar_frete(
+            request.form.get("data"), request.form.get("restaurante_id"), request.form.get("valor"),
+        )
+        if sucesso:
+            registrar_log("frete_refeicao_criado", f"Frete de refeição criado. ID: {frete.id}.")
+            flash(mensagem, "success")
+            return redirect(url_for("pedido_refeicoes.fretes"))
+        flash(mensagem, "danger")
+    return render_template("departamento_pessoal/pedido_refeicoes/fretes.html", fretes=buscar_fretes(), restaurantes=buscar_restaurantes(), frete=frete_edicao, modo="novo", formatar_moeda=formatar_moeda)
+
+
+@pedido_refeicoes_bp.route("/fretes/<int:frete_id>/editar", methods=["GET", "POST"])
+@login_required
+def editar_frete(frete_id):
+    if not usuario_gestor_ou_admin():
+        flash("Apenas Gestor e Administrador podem gerenciar fretes.", "danger")
+        return redirect(url_for("main.acesso_negado"))
+    frete = buscar_frete_por_id(frete_id)
+    if not frete:
+        flash("Frete não encontrado.", "warning")
+        return redirect(url_for("pedido_refeicoes.fretes"))
+    if request.method == "POST":
+        sucesso, mensagem, _ = salvar_frete(request.form.get("data"), request.form.get("restaurante_id"), request.form.get("valor"), frete=frete)
+        if sucesso:
+            flash(mensagem, "success")
+            return redirect(url_for("pedido_refeicoes.fretes"))
+        flash(mensagem, "danger")
+    return render_template("departamento_pessoal/pedido_refeicoes/fretes.html", fretes=buscar_fretes(), restaurantes=buscar_restaurantes(), frete=frete, modo="editar", formatar_moeda=formatar_moeda)
+
+
+@pedido_refeicoes_bp.route("/fretes/<int:frete_id>/status")
+@login_required
+def alterar_status_frete_rota(frete_id):
+    if not usuario_gestor_ou_admin():
+        flash("Apenas Gestor e Administrador podem gerenciar fretes.", "danger")
+        return redirect(url_for("main.acesso_negado"))
+    frete = buscar_frete_por_id(frete_id)
+    if not frete:
+        flash("Frete não encontrado.", "warning")
+        return redirect(url_for("pedido_refeicoes.fretes"))
+    _, mensagem = alterar_status_frete(frete)
+    flash(mensagem, "success")
+    return redirect(url_for("pedido_refeicoes.fretes"))
+
+
+@pedido_refeicoes_bp.route("/pedidos/<int:pedido_id>/fretes/novo", methods=["POST"])
+@login_required
+def novo_frete_pedido(pedido_id):
+    if not usuario_gestor_ou_admin():
+        flash("Apenas Gestor e Administrador podem cadastrar fretes.", "danger")
+        return redirect(url_for("main.acesso_negado"))
+    pedido = buscar_pedido_por_id(pedido_id)
+    if not pedido:
+        flash("Pedido não encontrado.", "warning")
+        return redirect(url_for("pedido_refeicoes.pedidos"))
+    sucesso, mensagem, _ = salvar_frete(request.form.get("data"), request.form.get("restaurante_id"), request.form.get("valor"))
+    flash(mensagem, "success" if sucesso else "danger")
+    return redirect(url_for("pedido_refeicoes.detalhes_pedido", pedido_id=pedido_id))
 
 @pedido_refeicoes_bp.route("/pedidos/<int:pedido_id>/editar", methods=["GET", "POST"])
 @module_permission_required(DEPARTAMENTO_PESSOAL_SLUG, MODULO_REFEICOES_PEDIDOS, "editar")
@@ -902,6 +982,11 @@ def gerar_pdf_relatorio_refeicoes(relatorio, filtros):
             formatar_moeda(relatorio["valor_bebidas"]),
         ],
         [
+            "Fretes",
+            str(relatorio["quantidade_fretes"]),
+            formatar_moeda(relatorio["valor_fretes"]),
+        ],
+        [
             "Total geral",
             "",
             formatar_moeda(relatorio["total_geral"]),
@@ -911,7 +996,7 @@ def gerar_pdf_relatorio_refeicoes(relatorio, filtros):
         ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
         ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
         ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-        ("FONTNAME", (0, 3), (-1, 3), "Helvetica-Bold"),
+        ("FONTNAME", (0, 4), (-1, 4), "Helvetica-Bold"),
         ("FONTSIZE", (0, 0), (-1, -1), 9),
         ("ALIGN", (1, 1), (-1, -1), "RIGHT"),
     ]))
