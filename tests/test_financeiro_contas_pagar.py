@@ -156,6 +156,23 @@ class FinanceiroContasPagarTestCase(unittest.TestCase):
         self.assertEqual(302, novo.status_code)
         self.assertIn("/acesso-negado", novo.headers["Location"])
 
+    def test_exporta_titulos_filtrados_em_pdf(self):
+        self._autenticar(self.admin)
+        self.client.post(
+            "/financeiro/contas-a-pagar/novo",
+            data=self._dados_titulo(),
+        )
+
+        resposta = self.client.get(
+            "/financeiro/contas-a-pagar/titulos/exportar-pdf"
+            "?vencimento_inicio=2026-08-30&vencimento_fim=2026-08-30"
+        )
+
+        self.assertEqual(200, resposta.status_code)
+        self.assertTrue(resposta.data.startswith(b"%PDF-"))
+        self.assertIn("application/pdf", resposta.headers["Content-Type"])
+        self.assertIn("relatorio_titulos_a_pagar_", resposta.headers["Content-Disposition"])
+
     def test_cria_edita_filtra_e_cancela_titulo_manual(self):
         self._autenticar(self.admin)
 

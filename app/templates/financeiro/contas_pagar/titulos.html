@@ -31,6 +31,7 @@
         </div>
         <div class="form-actions">
             <button class="btn btn-primary" type="submit">Pesquisar</button>
+            <button class="btn btn-secondary" type="submit" formaction="{{ url_for('financeiro_contas_pagar.exportar_titulos_pdf') }}" formmethod="get">Gerar PDF</button>
             <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.titulos') }}">Limpar</a>
         </div>
     </form>

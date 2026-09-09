@@ -52,6 +52,10 @@ from app.services.financeiro_relatorios_service import (
     periodo_valido,
     valor_coluna,
 )
+from app.services.financeiro_relatorios_pdf_service import (
+    gerar_pdf_titulos,
+    nome_arquivo_titulos_pdf,
+)
 from app.services.suprimentos_service import (
     buscar_agendamentos_oc_contas_pagar,
     buscar_por_id,
@@ -175,6 +179,24 @@ def titulos():
         status_titulo=STATUS_TITULO,
         titulo_elegivel_baixa=titulo_elegivel_baixa,
         calcular_saldo_titulo=calcular_saldo_titulo,
+    )
+
+
+@financeiro_contas_pagar_bp.route("/titulos/exportar-pdf")
+@login_required
+@module_permission_required("financeiro", "contas_a_pagar", "visualizar")
+def exportar_titulos_pdf():
+    titulos = listar_titulos(request.args)
+    pdf_buffer = gerar_pdf_titulos(titulos, request.args)
+    registrar_log(
+        "financeiro_contas_pagar_titulos_pdf_exportado",
+        "Relatorio de titulos a pagar exportado em PDF.",
+    )
+    return send_file(
+        pdf_buffer,
+        as_attachment=True,
+        download_name=nome_arquivo_titulos_pdf(),
+        mimetype="application/pdf",
     )
 
 
