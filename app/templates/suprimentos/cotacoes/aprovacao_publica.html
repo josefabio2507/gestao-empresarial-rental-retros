@@ -34,6 +34,28 @@
             {% endif %}
         </div>
 
+        {% if fretes_por_fornecedor %}
+            <div class="table-card table-responsive">
+                <h2>Frete por fornecedor</h2>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Fornecedor</th>
+                            <th>Frete da proposta</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for frete in fretes_por_fornecedor %}
+                            <tr>
+                                <td>{{ frete.fornecedor }}</td>
+                                <td>{{ formatar_moeda_brl(frete.valor_frete) }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% endif %}
+
         {% if mapa %}
             {% for grupo in mapa.grupos %}
                 <div class="table-card table-responsive comparison-card">
@@ -53,8 +75,7 @@
                             <tr>
                                 <th>Fornecedor</th>
                                 <th>Preco unit.</th>
-                                <th>Frete</th>
-                                <th>Total</th>
+                                <th>Subtotal do item</th>
                                 <th>Prazo</th>
                                 <th>Condicao</th>
                                 <th>Selecao</th>
@@ -67,8 +88,7 @@
                                     <tr class="comparison-row-best">
                                         <td>{{ proposta.fornecedor_razao_social_snapshot }}</td>
                                         <td>{{ formatar_moeda_brl(proposta.preco_unitario) }}</td>
-                                        <td>{{ formatar_moeda_brl(proposta.valor_frete) }}</td>
-                                        <td>{{ formatar_moeda_brl(linha.valor_total) }}</td>
+                                        <td>{{ formatar_moeda_brl(linha.valor_subtotal) }}</td>
                                         <td>{{ proposta.prazo_entrega_dias if proposta.prazo_entrega_dias is not none else "-" }}</td>
                                         <td>{{ proposta.condicao_pagamento or "-" }}</td>
                                         <td><span class="badge badge-success">Selecionada</span></td>

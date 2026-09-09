@@ -43,6 +43,74 @@
         {% endif %}
     </div>
 
+    {% if mapa.frete %}
+        <div class="table-card table-responsive comparison-card">
+            <div class="section-header">
+                <div>
+                    <h2>Frete</h2>
+                    <p>
+                        Quantidade: 1 {{ mapa.frete.unidade }}
+                    </p>
+                </div>
+                <div class="comparison-summary">
+                    <span>Menor frete: <strong>{{ formatar_moeda_brl(mapa.frete.menor_frete) }}</strong></span>
+                </div>
+            </div>
+
+            <table class="table comparison-table">
+                <thead>
+                    <tr>
+                        <th>Fornecedor</th>
+                        <th>Preco unit.</th>
+                        <th>Subtotal do item</th>
+                        <th>Prazo</th>
+                        <th>Condicao</th>
+                        <th>Destaques</th>
+                        <th>Selecao</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for linha in mapa.frete.linhas %}
+                        <tr class="{% if linha.selecionada %}comparison-row-best{% endif %}">
+                            <td>{{ linha.fornecedor }}</td>
+                            <td class="{% if linha.menor_preco %}comparison-highlight{% endif %}">
+                                {{ formatar_moeda_brl(linha.valor_frete) }}
+                            </td>
+                            <td class="{% if linha.menor_total %}comparison-highlight{% endif %}">
+                                {{ formatar_moeda_brl(linha.valor_frete) }}
+                            </td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>
+                                <div class="comparison-tags">
+                                    {% if linha.selecionada %}<span class="badge badge-success">Selecionada</span>{% endif %}
+                                    {% if linha.menor_preco %}<span class="badge badge-success">Menor frete</span>{% endif %}
+                                    {% if not linha.selecionada and not linha.menor_preco %}
+                                        <span class="module-status">-</span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td class="comparison-select-cell">
+                                {% if cotacao.pode_editar %}
+                                    <form method="POST" action="{{ url_for('suprimentos_cotacoes.selecionar_vencedor', cotacao_id=cotacao.id) }}">
+                                        <input type="hidden" name="frete_fornecedor_id" value="{{ linha.fornecedor_id }}">
+                                        <button class="btn btn-primary" type="submit">
+                                            {{ "Selecionado" if linha.selecionada else "Selecionar" }}
+                                        </button>
+                                    </form>
+                                {% elif linha.selecionada %}
+                                    <strong>Selecionada</strong>
+                                {% else %}
+                                    <span class="module-status">-</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endif %}
+
     {% for grupo in mapa.grupos %}
         <div class="table-card table-responsive comparison-card">
             <div class="section-header">
@@ -57,7 +125,7 @@
                 {% if grupo.propostas %}
                     <div class="comparison-summary">
                         <span>Menor preco: <strong>{{ formatar_moeda_brl(grupo.menor_preco) }}</strong></span>
-                        <span>Menor total: <strong>{{ formatar_moeda_brl(grupo.menor_total) }}</strong></span>
+                        <span>Menor subtotal: <strong>{{ formatar_moeda_brl(grupo.menor_total) }}</strong></span>
                         <span>Menor prazo: <strong>{{ grupo.menor_prazo if grupo.menor_prazo is not none else "-" }} dias</strong></span>
                     </div>
                 {% endif %}
@@ -68,8 +136,7 @@
                     <tr>
                         <th>Fornecedor</th>
                         <th>Preco unit.</th>
-                        <th>Frete</th>
-                        <th>Total</th>
+                        <th>Subtotal do item</th>
                         <th>Prazo</th>
                         <th>Condicao</th>
                         <th>Destaques</th>
@@ -84,9 +151,8 @@
                             <td class="{% if linha.menor_preco %}comparison-highlight{% endif %}">
                                 {{ formatar_moeda_brl(proposta.preco_unitario) }}
                             </td>
-                            <td>{{ formatar_moeda_brl(proposta.valor_frete) }}</td>
                             <td class="{% if linha.menor_total %}comparison-highlight{% endif %}">
-                                {{ formatar_moeda_brl(linha.valor_total) }}
+                                {{ formatar_moeda_brl(linha.valor_subtotal) }}
                             </td>
                             <td class="{% if linha.menor_prazo %}comparison-highlight{% endif %}">
                                 {{ proposta.prazo_entrega_dias if proposta.prazo_entrega_dias is not none else "-" }}
@@ -96,7 +162,7 @@
                                 <div class="comparison-tags">
                                     {% if proposta.selecionada %}<span class="badge badge-success">Selecionada</span>{% endif %}
                                     {% if linha.menor_preco %}<span class="badge badge-success">Menor preco</span>{% endif %}
-                                    {% if linha.menor_total %}<span class="badge badge-success">Menor total</span>{% endif %}
+                                    {% if linha.menor_total %}<span class="badge badge-success">Menor subtotal</span>{% endif %}
                                     {% if linha.menor_prazo %}<span class="badge badge-warning">Menor prazo</span>{% endif %}
                                     {% if not proposta.selecionada and not linha.menor_preco and not linha.menor_total and not linha.menor_prazo %}
                                         <span class="module-status">-</span>
@@ -128,7 +194,7 @@
                         </tr>
                     {% else %}
                         <tr>
-                            <td class="empty-state" colspan="8">Nenhuma proposta registrada para este item.</td>
+                            <td class="empty-state" colspan="7">Nenhuma proposta registrada para este item.</td>
                         </tr>
                     {% endfor %}
                 </tbody>

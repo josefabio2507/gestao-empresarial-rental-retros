@@ -2,7 +2,7 @@ from flask import flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from app.decorators import module_permission_required
-from app.models import SuprimentosCotacao, SuprimentosCotacaoProposta
+from app.models import FinanceiroCartaoCredito, SuprimentosCotacao, SuprimentosCotacaoProposta
 from app.services.logs_service import registrar_log
 from app.services.suprimentos_service import (
     STATUS_COTACAO_ABERTA,
@@ -15,6 +15,7 @@ from app.services.suprimentos_service import (
     aprovar_cotacao_por_link_publico,
     buscar_cotacoes,
     buscar_cotacao_por_token_aprovacao_publica,
+    buscar_fornecedores_ativos,
     buscar_por_id,
     cancelar_cotacao,
     encerrar_cotacao,
@@ -22,9 +23,10 @@ from app.services.suprimentos_service import (
     enviar_email_solicitacao_cotacao_fornecedor,
     formatar_moeda_brl,
     formatar_decimal_brasil,
+    FORMAS_PAGAMENTO_FINANCEIRO_OC,
     fornecedor_disponivel_para_cotacao,
     fornecedores_disponiveis_para_cotacao,
-    fornecedores_disponiveis_para_requisicao_item,
+    grupos_propostas_detalhes_cotacao,
     gerar_link_whatsapp_aprovacao_cotacao,
     gerar_link_whatsapp_solicitacao_cotacao_fornecedor,
     montar_mapa_comparativo_cotacao,
@@ -34,8 +36,10 @@ from app.services.suprimentos_service import (
     reprovar_cotacao_por_link_publico,
     requisicoes_disponiveis_para_cotacao,
     remover_proposta_cotacao,
+    resumo_fretes_por_fornecedor_cotacao,
     salvar_cotacao,
-    salvar_proposta_cotacao,
+    salvar_propostas_cotacao,
+    selecionar_frete_fornecedor_cotacao,
     selecionar_proposta_vencedora,
     usuario_pode_aprovar_cotacao_alcada,
     valor_total_propostas_selecionadas,
@@ -75,13 +79,28 @@ def selecionar_vencedor(cotacao_id):
         flash("Cotacao nao encontrada.", "warning")
         return redirect(url_for("suprimentos_cotacoes.listar"))
 
-    sucesso, mensagem, proposta = selecionar_proposta_vencedora(request.form, cotacao, current_user)
+    if request.form.get("frete_fornecedor_id"):
+        sucesso, mensagem, frete = selecionar_frete_fornecedor_cotacao(
+            request.form,
+            cotacao,
+            current_user,
+        )
+        proposta = None
+    else:
+        sucesso, mensagem, proposta = selecionar_proposta_vencedora(request.form, cotacao, current_user)
+        frete = None
 
     if sucesso:
-        registrar_log(
-            "suprimentos_cotacao_vencedor_selecionado",
-            f"Proposta vencedora selecionada. Cotacao ID: {cotacao.id}. Proposta ID: {proposta.id}.",
-        )
+        if proposta:
+            registrar_log(
+                "suprimentos_cotacao_vencedor_selecionado",
+                f"Proposta vencedora selecionada. Cotacao ID: {cotacao.id}. Proposta ID: {proposta.id}.",
+            )
+        else:
+            registrar_log(
+                "suprimentos_cotacao_frete_selecionado",
+                f"Frete selecionado. Cotacao ID: {cotacao.id}. Fornecedor ID: {frete['fornecedor_id']}.",
+            )
 
     flash(mensagem, "success" if sucesso else "danger")
     return redirect(url_for("suprimentos_cotacoes.mapa_comparativo", cotacao_id=cotacao.id))
@@ -196,6 +215,7 @@ def aprovacao_publica(token):
             nome_subcentro_equipe_requisicao=nome_subcentro_equipe_requisicao,
             nome_subcentro_veiculo_requisicao=nome_subcentro_veiculo_requisicao,
             valor_total_selecionado=None,
+            fretes_por_fornecedor=[],
         )
 
     if request.method == "POST":
@@ -229,6 +249,7 @@ def aprovacao_publica(token):
             nome_subcentro_equipe_requisicao=nome_subcentro_equipe_requisicao,
             nome_subcentro_veiculo_requisicao=nome_subcentro_veiculo_requisicao,
             valor_total_selecionado=valor_total_propostas_selecionadas(cotacao),
+            fretes_por_fornecedor=resumo_fretes_por_fornecedor_cotacao(cotacao),
             decisao_concluida=sucesso,
         )
 
@@ -243,6 +264,7 @@ def aprovacao_publica(token):
         nome_subcentro_equipe_requisicao=nome_subcentro_equipe_requisicao,
         nome_subcentro_veiculo_requisicao=nome_subcentro_veiculo_requisicao,
         valor_total_selecionado=valor_total_propostas_selecionadas(cotacao),
+        fretes_por_fornecedor=resumo_fretes_por_fornecedor_cotacao(cotacao),
         decisao_concluida=False,
     )
 
@@ -337,17 +359,21 @@ def detalhes(cotacao_id):
         flash("Cotacao nao encontrada.", "warning")
         return redirect(url_for("suprimentos_cotacoes.listar"))
 
-    fornecedores_por_item = {
-        item.id: fornecedores_disponiveis_para_requisicao_item(item)
-        for item in cotacao.requisicao.itens
-    }
-
     return render_template(
         "suprimentos/cotacoes/detalhes.html",
         cotacao=cotacao,
-        fornecedores_por_item=fornecedores_por_item,
+        fornecedores_registrados=buscar_fornecedores_ativos(),
         fornecedores_cotacao=fornecedores_disponiveis_para_cotacao(cotacao),
+        formas_pagamento=FORMAS_PAGAMENTO_FINANCEIRO_OC,
+        cartoes_credito=(
+            FinanceiroCartaoCredito.query
+            .filter_by(ativo=True)
+            .order_by(FinanceiroCartaoCredito.nome.asc())
+            .all()
+        ),
+        grupos_propostas=grupos_propostas_detalhes_cotacao(cotacao),
         formatar_moeda_brl=formatar_moeda_brl,
+        formatar_decimal_brasil=formatar_decimal_brasil,
     )
 
 
@@ -367,6 +393,7 @@ def mapa_comparativo(cotacao_id):
         mapa=montar_mapa_comparativo_cotacao(cotacao),
         formatar_moeda_brl=formatar_moeda_brl,
         formatar_decimal_brasil=formatar_decimal_brasil,
+        fretes_por_fornecedor=resumo_fretes_por_fornecedor_cotacao(cotacao),
         valor_total_selecionado=valor_total_propostas_selecionadas(cotacao),
         usuario_pode_aprovar=usuario_pode_aprovar_cotacao_alcada(cotacao, current_user),
     )
@@ -410,10 +437,13 @@ def adicionar_proposta(cotacao_id):
         flash("Cotacao nao encontrada.", "warning")
         return redirect(url_for("suprimentos_cotacoes.listar"))
 
-    sucesso, mensagem, proposta = salvar_proposta_cotacao(request.form, cotacao)
+    sucesso, mensagem, propostas = salvar_propostas_cotacao(request.form, cotacao)
 
     if sucesso:
-        registrar_log("suprimentos_cotacao_proposta_criada", f"Proposta registrada. ID: {proposta.id}.")
+        registrar_log(
+            "suprimentos_cotacao_proposta_criada",
+            f"Propostas registradas em lote. Cotacao ID: {cotacao.id}. Itens: {len(propostas)}.",
+        )
 
     flash(mensagem, "success" if sucesso else "danger")
     return redirect(url_for("suprimentos_cotacoes.detalhes", cotacao_id=cotacao.id))

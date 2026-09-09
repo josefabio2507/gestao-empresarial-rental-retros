@@ -57,7 +57,7 @@
 
     {% if ordem.status != "Cancelada" and not ordem.titulos_financeiros %}
         <form class="form-card" method="POST" action="{{ url_for('suprimentos_ordens_compra.preparar_financeiro', ordem_id=ordem.id) }}">
-            <h2>Preparar Contas a Pagar</h2>
+            <h2>Preparacao Financeira</h2>
             <div class="form-grid">
                 <div class="form-group">
                     <label for="tipo_pagamento_financeiro">Tipo de pagamento</label>
@@ -186,8 +186,7 @@
                     <th>Saldo</th>
                     <th>Unidade</th>
                     <th>Preco unit.</th>
-                    <th>Frete</th>
-                    <th>Total</th>
+                    <th>Subtotal do item</th>
                     <th>Prazo</th>
                     <th>Evidencia</th>
                     <th>Observacoes</th>
@@ -204,8 +203,7 @@
                         <td>{{ formatar_decimal_brasil(item.saldo_receber) }}</td>
                         <td>{{ item.unidade_medida_snapshot }}</td>
                         <td>{{ formatar_moeda_brl(item.preco_unitario) }}</td>
-                        <td>{{ formatar_moeda_brl(item.valor_frete) }}</td>
-                        <td>{{ formatar_moeda_brl(item.valor_total) }}</td>
+                        <td>{{ formatar_moeda_brl(item.valor_subtotal) }}</td>
                         <td>{{ item.prazo_entrega_dias if item.prazo_entrega_dias is not none else "-" }}</td>
                         <td>
                             {% set status_evidencia = status_evidencia_item_oc(item) %}
@@ -223,7 +221,7 @@
                         </td>
                     </tr>
                 {% else %}
-                    <tr><td class="empty-state" colspan="12">Nenhum item encontrado.</td></tr>
+                    <tr><td class="empty-state" colspan="11">Nenhum item encontrado.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
@@ -321,6 +319,8 @@
     </div>
 
     <div class="details-card">
+        <p><strong>Subtotal dos itens:</strong> {{ formatar_moeda_brl(ordem.valor_subtotal_itens) }}</p>
+        <p><strong>Frete da O.C.:</strong> {{ formatar_moeda_brl(ordem.valor_frete_total) }}</p>
         <p><strong>Total da ordem:</strong> {{ formatar_moeda_brl(ordem.valor_total) }}</p>
         <p><strong>Proxima etapa:</strong> os dados acima alimentam o Contas a Pagar.</p>
     </div>

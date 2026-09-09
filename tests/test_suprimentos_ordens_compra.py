@@ -307,6 +307,99 @@ class SuprimentosOrdensCompraTestCase(unittest.TestCase):
         self.assertEqual(1, ordem.quantidade_parcelas)
         self.assertEqual([], ordem.parcelas_financeiras)
 
+    def test_gera_ordem_compra_com_pagamento_da_proposta(self):
+        cartao = FinanceiroCartaoCredito(
+            nome="Cartao Compras",
+            banco="Banco Teste",
+            ultimos_4_digitos="4321",
+            dia_fechamento=10,
+            dia_vencimento=20,
+            ativo=True,
+        )
+        db.session.add(cartao)
+        db.session.commit()
+
+        cotacao = self._criar_cotacao_aprovada()
+        proposta = cotacao.propostas[0]
+        proposta.forma_pagamento = "Cartao de Credito"
+        proposta.cartao_credito_id = cartao.id
+        db.session.commit()
+
+        sucesso, mensagem, ordens = gerar_ordens_compra_cotacao(cotacao, self.admin)
+
+        self.assertTrue(sucesso, mensagem)
+        self.assertEqual("Cartao de Credito", ordens[0].forma_pagamento_financeiro)
+        self.assertEqual("Cartao de Credito", ordens[0].tipo_pagamento_financeiro)
+        self.assertEqual(cartao.id, ordens[0].cartao_credito_id)
+
+    def test_gera_ordem_compra_com_frete_unico_por_fornecedor(self):
+        item_2 = SuprimentosItem(
+            codigo_interno="PEC-002",
+            descricao="FILTRO DE AR",
+            categoria_id=self.categoria.id,
+            unidade_medida_id=self.unidade.id,
+            centro_custo_padrao_id=self.centro.id,
+            tipo="peca",
+            item_estocavel=True,
+            ativo=True,
+        )
+        db.session.add(item_2)
+        db.session.flush()
+        db.session.add(
+            SuprimentosFornecedorItem(
+                fornecedor_id=self.fornecedor.id,
+                item_id=item_2.id,
+                ativo=True,
+                fornecedor_preferencial=True,
+            )
+        )
+        db.session.commit()
+
+        _, _, requisicao = salvar_requisicao_compra(
+            {"centro_custo_id": str(self.centro.id), "justificativa": "Comprar filtros"},
+            self.admin,
+        )
+        adicionar_item_requisicao({"item_id": str(self.item.id), "quantidade": "2"}, requisicao)
+        adicionar_item_requisicao({"item_id": str(item_2.id), "quantidade": "3"}, requisicao)
+        enviar_requisicao_compra(requisicao)
+        _, _, cotacao = salvar_cotacao({"requisicao_id": str(requisicao.id)}, self.admin)
+        item_a, item_b = requisicao.itens
+
+        _, _, proposta_a = salvar_proposta_cotacao(
+            {
+                "requisicao_item_id": str(item_a.id),
+                "fornecedor_id": str(self.fornecedor.id),
+                "preco_unitario": "10,00",
+                "valor_frete": "25,00",
+            },
+            cotacao,
+        )
+        _, _, proposta_b = salvar_proposta_cotacao(
+            {
+                "requisicao_item_id": str(item_b.id),
+                "fornecedor_id": str(self.fornecedor.id),
+                "preco_unitario": "20,00",
+                "valor_frete": "30,00",
+            },
+            cotacao,
+        )
+        selecionar_proposta_vencedora({"proposta_id": str(proposta_a.id)}, cotacao, self.admin)
+        selecionar_proposta_vencedora({"proposta_id": str(proposta_b.id)}, cotacao, self.admin)
+        enviar_cotacao_para_aprovacao(cotacao, self.admin)
+        aprovar_cotacao(cotacao, self.admin, {"observacoes_aprovacao": "aprovado"})
+
+        sucesso, _, ordens = gerar_ordens_compra_cotacao(cotacao, self.admin)
+
+        self.assertTrue(sucesso)
+        ordem = ordens[0]
+        self.assertEqual(Decimal("80.00"), ordem.valor_subtotal_itens)
+        self.assertEqual(Decimal("30.00"), ordem.valor_frete_total)
+        self.assertEqual(Decimal("110.00"), ordem.valor_total)
+        self.assertEqual(
+            [Decimal("30.00"), Decimal("0.00")],
+            [item.valor_frete for item in sorted(ordem.itens, key=lambda ordem_item: ordem_item.item_descricao_snapshot)],
+        )
+
     def test_gera_ordem_compra_com_preparacao_financeira(self):
         cotacao = self._criar_cotacao_aprovada()
 

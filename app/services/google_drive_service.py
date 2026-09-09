@@ -47,7 +47,7 @@ def erro_temporario_google_drive(exc):
 
 def mensagem_cota_storage_service_account():
     return (
-        "O Google Drive recusou o upload por falta de cota de armazenamento na conta conectada. "
+        "O Google Drive recusou o upload porque a conta de servico nao possui cota de armazenamento. "
         "Se estiver usando conta de servico, configure GOOGLE_DRIVE_EVIDENCIAS_OC_FOLDER_ID com uma pasta "
         "dentro de um Drive compartilhado e adicione a conta de servico como membro desse Drive."
     )

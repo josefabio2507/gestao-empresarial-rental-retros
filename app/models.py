@@ -2790,6 +2790,12 @@ class SuprimentosCotacao(db.Model):
         index=True,
     )
     observacoes_aprovacao = db.Column(db.Text, nullable=True)
+    frete_fornecedor_id = db.Column(
+        db.Integer,
+        db.ForeignKey("suprimentos_fornecedores.id"),
+        nullable=True,
+        index=True,
+    )
     aprovacao_publica_token_hash = db.Column(db.String(64), nullable=True, unique=True, index=True)
     aprovacao_publica_expira_em = db.Column(db.DateTime, nullable=True, index=True)
     aprovacao_publica_usado_em = db.Column(db.DateTime, nullable=True)
@@ -2808,6 +2814,7 @@ class SuprimentosCotacao(db.Model):
     aprovador = db.relationship("Usuario", foreign_keys=[aprovador_usuario_id])
     alcada_aprovacao = db.relationship("SuprimentosAlcadaAprovacao")
     reprovada_por = db.relationship("Usuario", foreign_keys=[reprovada_por_usuario_id])
+    frete_fornecedor = db.relationship("SuprimentosFornecedor", foreign_keys=[frete_fornecedor_id])
     propostas = db.relationship(
         "SuprimentosCotacaoProposta",
         back_populates="cotacao",
@@ -2957,6 +2964,13 @@ class SuprimentosCotacaoProposta(db.Model):
     valor_frete = db.Column(db.Numeric(12, 2), default=0, nullable=False)
     prazo_entrega_dias = db.Column(db.Integer, nullable=True)
     condicao_pagamento = db.Column(db.String(160), nullable=True)
+    forma_pagamento = db.Column(db.String(30), nullable=True, index=True)
+    cartao_credito_id = db.Column(
+        db.Integer,
+        db.ForeignKey("financeiro_cartoes_credito.id"),
+        nullable=True,
+        index=True,
+    )
     observacoes = db.Column(db.Text, nullable=True)
     selecionada = db.Column(db.Boolean, default=False, nullable=False, index=True)
     justificativa_selecao = db.Column(db.Text, nullable=True)
@@ -2981,6 +2995,7 @@ class SuprimentosCotacaoProposta(db.Model):
     fornecedor = db.relationship("SuprimentosFornecedor")
     requisicao_item = db.relationship("SuprimentosRequisicaoCompraItem")
     item = db.relationship("SuprimentosItem")
+    cartao_credito = db.relationship("FinanceiroCartaoCredito")
     selecionada_por = db.relationship("Usuario")
 
     __table_args__ = (
@@ -3005,8 +3020,12 @@ class SuprimentosCotacaoProposta(db.Model):
     )
 
     @property
+    def valor_subtotal(self):
+        return self.quantidade_snapshot * self.preco_unitario
+
+    @property
     def valor_total(self):
-        return (self.quantidade_snapshot * self.preco_unitario) + (self.valor_frete or 0)
+        return self.valor_subtotal + (self.valor_frete or 0)
 
     def __repr__(self):
         return (
@@ -3143,6 +3162,14 @@ class SuprimentosOrdemCompra(db.Model):
             name="ck_suprimentos_ordens_compra_qtd_parcelas",
         ),
     )
+
+    @property
+    def valor_subtotal_itens(self):
+        return sum((item.valor_subtotal for item in self.itens), start=0)
+
+    @property
+    def valor_frete_total(self):
+        return sum((item.valor_frete or 0 for item in self.itens), start=0)
 
     @property
     def valor_total(self):
@@ -3489,8 +3516,12 @@ class SuprimentosOrdemCompraItem(db.Model):
     )
 
     @property
+    def valor_subtotal(self):
+        return self.quantidade * self.preco_unitario
+
+    @property
     def valor_total(self):
-        return (self.quantidade * self.preco_unitario) + (self.valor_frete or 0)
+        return self.valor_subtotal + (self.valor_frete or 0)
 
     @property
     def quantidade_recebida(self):

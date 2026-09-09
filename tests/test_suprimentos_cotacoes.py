@@ -7,6 +7,7 @@ from app.models import (
     CentroCusto,
     Departamento,
     Equipe,
+    FinanceiroCartaoCredito,
     Modulo,
     NivelAcesso,
     PermissaoUsuarioModulo,
@@ -43,12 +44,15 @@ from app.services.suprimentos_service import (
     gerar_mensagem_whatsapp_aprovacao_cotacao,
     gerar_mensagem_solicitacao_cotacao_fornecedor,
     enviar_requisicao_compra,
+    grupos_propostas_detalhes_cotacao,
     montar_mapa_comparativo_cotacao,
     reprovar_cotacao,
     salvar_cotacao,
     salvar_proposta_cotacao,
+    salvar_propostas_cotacao,
     salvar_requisicao_compra,
     selecionar_proposta_vencedora,
+    valor_total_propostas_selecionadas,
 )
 
 
@@ -323,7 +327,67 @@ class SuprimentosCotacoesTestCase(unittest.TestCase):
         self.assertEqual("Ja existe proposta deste fornecedor para este item.", mensagem)
         self.assertEqual(1, SuprimentosCotacaoProposta.query.count())
 
-    def test_bloqueia_fornecedor_sem_vinculo_com_item(self):
+    def test_frete_da_proposta_e_unico_por_fornecedor(self):
+        item_2 = SuprimentosItem(
+            codigo_interno="PEC-002",
+            descricao="FILTRO DE AR",
+            categoria_id=self.categoria.id,
+            unidade_medida_id=self.unidade.id,
+            centro_custo_padrao_id=self.centro.id,
+            tipo="peca",
+            item_estocavel=True,
+            ativo=True,
+        )
+        db.session.add(item_2)
+        db.session.flush()
+        db.session.add(
+            SuprimentosFornecedorItem(
+                fornecedor_id=self.fornecedor.id,
+                item_id=item_2.id,
+                ativo=True,
+                fornecedor_preferencial=True,
+            )
+        )
+        db.session.commit()
+
+        _, _, requisicao = salvar_requisicao_compra(
+            {"centro_custo_id": str(self.centro.id), "justificativa": "Comprar filtros"},
+            self.admin,
+        )
+        adicionar_item_requisicao({"item_id": str(self.item.id), "quantidade": "2"}, requisicao)
+        adicionar_item_requisicao({"item_id": str(item_2.id), "quantidade": "3"}, requisicao)
+        enviar_requisicao_compra(requisicao)
+        _, _, cotacao = salvar_cotacao({"requisicao_id": str(requisicao.id)}, self.admin)
+        item_a, item_b = requisicao.itens
+
+        _, _, proposta_a = salvar_proposta_cotacao(
+            {
+                "requisicao_item_id": str(item_a.id),
+                "fornecedor_id": str(self.fornecedor.id),
+                "preco_unitario": "10,00",
+                "valor_frete": "25,00",
+            },
+            cotacao,
+        )
+        _, _, proposta_b = salvar_proposta_cotacao(
+            {
+                "requisicao_item_id": str(item_b.id),
+                "fornecedor_id": str(self.fornecedor.id),
+                "preco_unitario": "20,00",
+                "valor_frete": "30,00",
+            },
+            cotacao,
+        )
+
+        self.assertEqual(Decimal("30.00"), proposta_a.valor_frete)
+        self.assertEqual(Decimal("0.00"), proposta_b.valor_frete)
+
+        selecionar_proposta_vencedora({"proposta_id": str(proposta_a.id)}, cotacao, self.admin)
+        selecionar_proposta_vencedora({"proposta_id": str(proposta_b.id)}, cotacao, self.admin)
+
+        self.assertEqual(Decimal("110.00"), valor_total_propostas_selecionadas(cotacao))
+
+    def test_cria_vinculo_automatico_para_fornecedor_sem_vinculo_com_item(self):
         fornecedor_sem_vinculo = SuprimentosFornecedor(
             razao_social="SEM VINCULO LTDA",
             tipo_pessoa="juridica",
@@ -348,8 +412,137 @@ class SuprimentosCotacoesTestCase(unittest.TestCase):
             cotacao,
         )
 
+        self.assertTrue(sucesso, mensagem)
+        vinculo = SuprimentosFornecedorItem.query.filter_by(
+            fornecedor_id=fornecedor_sem_vinculo.id,
+            item_id=self.item.id,
+        ).first()
+        self.assertIsNotNone(vinculo)
+        self.assertTrue(vinculo.ativo)
+
+    def test_registra_proposta_em_lote_e_cria_vinculos_ausentes(self):
+        item_2 = SuprimentosItem(
+            codigo_interno="PEC-002",
+            descricao="FILTRO DE AR",
+            categoria_id=self.categoria.id,
+            unidade_medida_id=self.unidade.id,
+            centro_custo_padrao_id=self.centro.id,
+            tipo="peca",
+            item_estocavel=True,
+            ativo=True,
+        )
+        db.session.add(item_2)
+        db.session.flush()
+        requisicao = salvar_requisicao_compra(
+            {
+                "centro_custo_id": str(self.centro.id),
+                "justificativa": "Comprar filtros em lote",
+            },
+            self.admin,
+        )[2]
+        adicionar_item_requisicao({"item_id": str(self.item.id), "quantidade": "2"}, requisicao)
+        adicionar_item_requisicao({"item_id": str(item_2.id), "quantidade": "3"}, requisicao)
+        enviar_requisicao_compra(requisicao)
+        _, _, cotacao = salvar_cotacao({"requisicao_id": str(requisicao.id)}, self.admin)
+        item_a, item_b = requisicao.itens
+
+        sucesso, mensagem, propostas = salvar_propostas_cotacao(
+            {
+                "fornecedor_id": str(self.fornecedor.id),
+                f"preco_unitario_{item_a.id}": "10,00",
+                f"preco_unitario_{item_b.id}": "20,00",
+                "valor_frete": "25,00",
+                "prazo_entrega_dias": "5",
+                "condicao_pagamento": "30 dias",
+            },
+            cotacao,
+        )
+
+        self.assertTrue(sucesso, mensagem)
+        self.assertEqual(2, len(propostas))
+        self.assertEqual(2, SuprimentosCotacaoProposta.query.filter_by(cotacao_id=cotacao.id).count())
+        self.assertEqual(Decimal("25.00"), propostas[0].valor_frete)
+        self.assertEqual(Decimal("0.00"), propostas[1].valor_frete)
+        self.assertIsNotNone(
+            SuprimentosFornecedorItem.query.filter_by(
+                fornecedor_id=self.fornecedor.id,
+                item_id=item_2.id,
+            ).first()
+        )
+
+    def test_registro_em_lote_bloqueia_propostas_abertas_sem_aprovacao(self):
+        _, _, cotacao = salvar_cotacao(
+            {"requisicao_id": str(self.requisicao.id)},
+            self.admin,
+        )
+        dados = {
+            "fornecedor_id": str(self.fornecedor.id),
+            f"preco_unitario_{self.requisicao_item.id}": "10,00",
+        }
+        sucesso, mensagem, _ = salvar_propostas_cotacao(dados, cotacao)
+        self.assertTrue(sucesso, mensagem)
+
+        sucesso, mensagem, _ = salvar_propostas_cotacao(dados, cotacao)
+
         self.assertFalse(sucesso)
-        self.assertEqual("Fornecedor nao esta vinculado ao item selecionado.", mensagem)
+        self.assertIn("Ja existe proposta deste fornecedor", mensagem)
+        self.assertEqual(1, SuprimentosCotacaoProposta.query.filter_by(cotacao_id=cotacao.id).count())
+
+    def test_registro_em_lote_salva_forma_e_cartao_de_credito(self):
+        cartao = FinanceiroCartaoCredito(
+            nome="Cartao Compras",
+            banco="Banco Teste",
+            ultimos_4_digitos="4321",
+            dia_fechamento=10,
+            dia_vencimento=20,
+            ativo=True,
+        )
+        db.session.add(cartao)
+        db.session.commit()
+
+        _, _, cotacao = salvar_cotacao(
+            {"requisicao_id": str(self.requisicao.id)},
+            self.admin,
+        )
+        sucesso, mensagem, propostas = salvar_propostas_cotacao(
+            {
+                "fornecedor_id": str(self.fornecedor.id),
+                f"preco_unitario_{self.requisicao_item.id}": "15,00",
+                "forma_pagamento": "Cartao de Credito",
+                "cartao_credito_id": str(cartao.id),
+            },
+            cotacao,
+        )
+
+        self.assertTrue(sucesso, mensagem)
+        self.assertEqual("Cartao de Credito", propostas[0].forma_pagamento)
+        self.assertEqual(cartao.id, propostas[0].cartao_credito_id)
+
+    def test_registro_em_lote_substitui_proposta_selecionada_sem_bloquear(self):
+        _, _, cotacao = salvar_cotacao(
+            {"requisicao_id": str(self.requisicao.id)},
+            self.admin,
+        )
+        dados = {
+            "fornecedor_id": str(self.fornecedor.id),
+            f"preco_unitario_{self.requisicao_item.id}": "10,00",
+        }
+        _, _, propostas = salvar_propostas_cotacao(dados, cotacao)
+        proposta = propostas[0]
+        selecionar_proposta_vencedora({"proposta_id": str(proposta.id)}, cotacao, self.admin)
+
+        sucesso, mensagem, propostas_atualizadas = salvar_propostas_cotacao(
+            {
+                **dados,
+                f"preco_unitario_{self.requisicao_item.id}": "12,00",
+            },
+            cotacao,
+        )
+
+        self.assertTrue(sucesso, mensagem)
+        self.assertEqual(1, len(propostas_atualizadas))
+        self.assertEqual(Decimal("12.00"), propostas_atualizadas[0].preco_unitario)
+        self.assertFalse(propostas_atualizadas[0].selecionada)
 
     def test_nao_encerra_sem_proposta_e_encerra_com_proposta(self):
         _, _, cotacao = salvar_cotacao(
@@ -413,6 +606,39 @@ class SuprimentosCotacoesTestCase(unittest.TestCase):
         self.assertIn(b"R$ 15,50", resposta.data)
         self.assertIn(b"R$ 31,00", resposta.data)
 
+    def test_detalhes_exibe_frete_como_item_e_total_por_fornecedor(self):
+        self._liberar_usuario(visualizar=True, editar=True)
+        self._autenticar(self.usuario)
+        _, _, cotacao = salvar_cotacao(
+            {"requisicao_id": str(self.requisicao.id)},
+            self.admin,
+        )
+        salvar_proposta_cotacao(
+            {
+                "requisicao_item_id": str(self.requisicao_item.id),
+                "fornecedor_id": str(self.fornecedor.id),
+                "preco_unitario": "15,00",
+                "valor_frete": "25,00",
+            },
+            cotacao,
+        )
+
+        grupos = grupos_propostas_detalhes_cotacao(cotacao)
+        self.assertEqual(1, len(grupos))
+        self.assertEqual("Frete", grupos[0]["linhas"][-1]["descricao"])
+        self.assertEqual(Decimal("1"), grupos[0]["linhas"][-1]["quantidade"])
+        self.assertEqual(Decimal("55.00"), grupos[0]["total"])
+
+        resposta = self.client.get(f"/suprimentos/cotacoes/{cotacao.id}")
+
+        self.assertEqual(200, resposta.status_code)
+        self.assertIn(b"<th>Total da proposta</th>", resposta.data)
+        self.assertNotIn(b"<h2>Frete por fornecedor</h2>", resposta.data)
+        self.assertNotIn(b"<th>Frete da proposta</th>", resposta.data)
+        self.assertIn(b">Frete</td>", resposta.data)
+        self.assertIn(b">1 UN</td>", resposta.data)
+        self.assertIn(b"R$ 55,00", resposta.data)
+
     def test_detalhes_mostra_envio_para_fornecedores(self):
         _, _, cotacao = salvar_cotacao(
             {"requisicao_id": str(self.requisicao.id)},
@@ -427,6 +653,26 @@ class SuprimentosCotacoesTestCase(unittest.TestCase):
         self.assertIn(b"Enviar WhatsApp", resposta.data)
         self.assertIn(b"Enviar e-mail", resposta.data)
         self.assertIn(b"FORNECEDOR TESTE LTDA", resposta.data)
+
+    def test_detalhes_exibe_fornecedor_ativo_no_registro_da_proposta(self):
+        fornecedor_sem_vinculo = SuprimentosFornecedor(
+            razao_social="FORNECEDOR CADASTRADO LTDA",
+            tipo_pessoa="juridica",
+            cnpj_cpf="50873397000156",
+            ativo=True,
+        )
+        db.session.add(fornecedor_sem_vinculo)
+        db.session.commit()
+        _, _, cotacao = salvar_cotacao(
+            {"requisicao_id": str(self.requisicao.id)},
+            self.admin,
+        )
+        self._autenticar(self.admin)
+
+        resposta = self.client.get(f"/suprimentos/cotacoes/{cotacao.id}")
+
+        self.assertEqual(200, resposta.status_code)
+        self.assertIn(b"FORNECEDOR CADASTRADO LTDA", resposta.data)
 
     def test_gera_mensagem_whatsapp_para_fornecedor_receber_proposta(self):
         _, _, cotacao = salvar_cotacao(
@@ -582,8 +828,59 @@ class SuprimentosCotacoesTestCase(unittest.TestCase):
         self.assertEqual(200, resposta.status_code)
         self.assertIn(b"Mapa comparativo", resposta.data)
         self.assertIn(b"Menor preco", resposta.data)
-        self.assertIn(b"Menor total", resposta.data)
+        self.assertIn(b"Menor subtotal", resposta.data)
         self.assertIn(b"Enviar via WhatsApp para aprovacao", resposta.data)
+
+    def test_mapa_comparativo_exibe_e_seleciona_frete(self):
+        self._liberar_usuario(visualizar=True, editar=True)
+        self._autenticar(self.usuario)
+        _, _, cotacao = salvar_cotacao(
+            {"requisicao_id": str(self.requisicao.id)},
+            self.admin,
+        )
+        salvar_proposta_cotacao(
+            {
+                "requisicao_item_id": str(self.requisicao_item.id),
+                "fornecedor_id": str(self.fornecedor.id),
+                "preco_unitario": "15,50",
+                "valor_frete": "25,00",
+            },
+            cotacao,
+        )
+        salvar_proposta_cotacao(
+            {
+                "requisicao_item_id": str(self.requisicao_item.id),
+                "fornecedor_id": str(self.fornecedor_b.id),
+                "preco_unitario": "14,00",
+                "valor_frete": "10,00",
+            },
+            cotacao,
+        )
+
+        mapa = montar_mapa_comparativo_cotacao(cotacao)
+        self.assertEqual(Decimal("10.00"), mapa["frete"]["menor_frete"])
+        self.assertEqual(2, len(mapa["frete"]["linhas"]))
+
+        resposta = self.client.get(f"/suprimentos/cotacoes/{cotacao.id}/mapa-comparativo")
+
+        self.assertEqual(200, resposta.status_code)
+        self.assertIn(b"<h2>Frete</h2>", resposta.data)
+        self.assertIn(b"Quantidade: 1 UN", resposta.data)
+        self.assertIn(b"Menor frete", resposta.data)
+        self.assertIn(b"name=\"frete_fornecedor_id\"", resposta.data)
+
+        resposta = self.client.post(
+            f"/suprimentos/cotacoes/{cotacao.id}/selecionar-vencedor",
+            data={"frete_fornecedor_id": str(self.fornecedor_b.id)},
+        )
+
+        self.assertEqual(302, resposta.status_code)
+        db.session.refresh(cotacao)
+        self.assertEqual(self.fornecedor_b.id, cotacao.frete_fornecedor_id)
+
+        resposta = self.client.get(f"/suprimentos/cotacoes/{cotacao.id}/mapa-comparativo")
+        self.assertIn(b"Frete selecionado com sucesso", resposta.data)
+        self.assertIn(b"Selecionada", resposta.data)
 
     def test_seleciona_vencedor_e_exige_justificativa_quando_nao_e_menor_preco(self):
         _, _, cotacao = salvar_cotacao(
