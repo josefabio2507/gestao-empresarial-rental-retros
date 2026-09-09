@@ -1199,6 +1199,8 @@ def salvar_requisicao_compra(form_data, usuario, requisicao=None):
     centro_custo_id = inteiro_ou_none(form_data.get("centro_custo_id"))
     sub_centro_custo_equipe_id = inteiro_ou_none(form_data.get("sub_centro_custo_equipe_id"))
     sub_centro_custo_veiculo_id = inteiro_ou_none(form_data.get("sub_centro_custo_veiculo_id"))
+    equipe_id = inteiro_ou_none(form_data.get("equipe_id"))
+    veiculo_placa = texto_maiusculo(form_data.get("veiculo_placa")) or None
     centro_custo_busca = texto(form_data.get("centro_custo_busca"))
     sub_centro_custo_equipe_busca = texto(form_data.get("sub_centro_custo_equipe_busca"))
     sub_centro_custo_veiculo_busca = texto(form_data.get("sub_centro_custo_veiculo_busca"))
@@ -1253,6 +1255,8 @@ def salvar_requisicao_compra(form_data, usuario, requisicao=None):
     requisicao.centro_custo_id = centro_custo_id
     requisicao.sub_centro_custo_equipe_id = sub_centro_custo_equipe_id
     requisicao.sub_centro_custo_veiculo_id = sub_centro_custo_veiculo_id
+    requisicao.equipe_id = equipe_id
+    requisicao.veiculo_placa = veiculo_placa
     requisicao.justificativa = justificativa
     requisicao.observacoes = observacoes
     db.session.commit()
@@ -2811,6 +2815,8 @@ def gerar_mensagem_ordem_compra_fornecedor(ordem):
         f"CNPJ/CPF: {ordem.fornecedor_cnpj_cpf_snapshot or '-'}",
         f"Condicao de pagamento: {ordem.condicao_pagamento_snapshot or '-'}",
         f"Previsao de vencimento: {ordem.previsao_vencimento.strftime('%d/%m/%Y') if ordem.previsao_vencimento else '-'}",
+        f"Subtotal dos itens: {formatar_moeda_brl(ordem.valor_subtotal_itens)}",
+        f"Frete da OC: {formatar_moeda_brl(ordem.valor_frete_total)}",
         f"Total da OC: {formatar_moeda_brl(ordem.valor_total)}",
         "",
         "*Itens:*",
@@ -2821,8 +2827,7 @@ def gerar_mensagem_ordem_compra_fornecedor(ordem):
             f"- {item.item_descricao_snapshot} | Qtd: "
             f"{formatar_decimal_brasil(item.quantidade)} {item.unidade_medida_snapshot} | "
             f"Unit.: {formatar_moeda_brl(item.preco_unitario)} | "
-            f"Frete: {formatar_moeda_brl(item.valor_frete)} | "
-            f"Total: {formatar_moeda_brl(item.valor_total)}"
+            f"Subtotal: {formatar_moeda_brl(item.valor_subtotal)}"
         )
         if item.prazo_entrega_dias is not None:
             linhas.append(f"  Prazo: {item.prazo_entrega_dias} dias")
@@ -2926,10 +2931,172 @@ def enviar_email_ordem_compra_fornecedor(ordem):
 
 
 def valor_total_propostas_selecionadas(cotacao):
-    return sum(
-        (Decimal(proposta.valor_total) for proposta in cotacao.propostas if proposta.selecionada),
+    selecionadas = [proposta for proposta in cotacao.propostas if proposta.selecionada]
+    subtotal_itens = sum(
+        (Decimal(proposta.valor_subtotal) for proposta in selecionadas),
         Decimal("0.00"),
     )
+    if cotacao.frete_fornecedor_id:
+        frete_fornecedores = valor_frete_proposta_fornecedor(cotacao, cotacao.frete_fornecedor_id)
+    else:
+        frete_fornecedores = sum(
+            (
+                valor_frete_proposta_fornecedor(cotacao, fornecedor_id)
+                for fornecedor_id in {proposta.fornecedor_id for proposta in selecionadas}
+            ),
+            Decimal("0.00"),
+        )
+    return subtotal_itens + frete_fornecedores
+
+
+def valor_frete_proposta_fornecedor(cotacao, fornecedor_id):
+    if not cotacao or not fornecedor_id:
+        return Decimal("0.00")
+
+    propostas = sorted(
+        (
+            proposta
+            for proposta in cotacao.propostas
+            if proposta.fornecedor_id == fornecedor_id
+        ),
+        key=lambda proposta: proposta.id,
+    )
+    for proposta in propostas:
+        valor_frete = Decimal(proposta.valor_frete or 0)
+        if valor_frete > 0:
+            return valor_frete
+
+    return Decimal("0.00")
+
+
+def resumo_fretes_por_fornecedor_cotacao(cotacao):
+    resumo = {}
+    if not cotacao:
+        return []
+
+    for proposta in cotacao.propostas:
+        dados = resumo.setdefault(
+            proposta.fornecedor_id,
+            {
+                "fornecedor_id": proposta.fornecedor_id,
+                "fornecedor": proposta.fornecedor_razao_social_snapshot,
+                "valor_frete": Decimal("0.00"),
+            },
+        )
+        valor_frete = Decimal(proposta.valor_frete or 0)
+        if dados["valor_frete"] == 0 and valor_frete > 0:
+            dados["valor_frete"] = valor_frete
+
+    return sorted(
+        (dados for dados in resumo.values() if dados["valor_frete"] > 0),
+        key=lambda item: item["fornecedor"],
+    )
+
+
+def opcoes_frete_por_fornecedor_cotacao(cotacao):
+    fornecedores = {}
+    if not cotacao:
+        return []
+
+    for proposta in cotacao.propostas:
+        fornecedores.setdefault(
+            proposta.fornecedor_id,
+            {
+                "fornecedor_id": proposta.fornecedor_id,
+                "fornecedor": proposta.fornecedor_razao_social_snapshot,
+            },
+        )
+
+    opcoes = []
+    for fornecedor_id, dados in fornecedores.items():
+        dados["valor_frete"] = valor_frete_proposta_fornecedor(cotacao, fornecedor_id)
+        opcoes.append(dados)
+
+    return sorted(opcoes, key=lambda item: item["fornecedor"])
+
+
+def validar_pagamento_proposta(form_data):
+    forma_pagamento = texto(form_data.get("forma_pagamento")) or "Boleto"
+    if forma_pagamento not in FORMAS_PAGAMENTO_FINANCEIRO_OC:
+        return False, "Forma de pagamento invalida.", None, None
+
+    cartao_credito_id = inteiro_ou_none(form_data.get("cartao_credito_id"))
+    if forma_pagamento == "Cartao de Credito":
+        if not cartao_credito_id:
+            return False, "Selecione o cartao de credito.", None, None
+
+        cartao = FinanceiroCartaoCredito.query.get(cartao_credito_id)
+        if not cartao or not cartao.ativo:
+            return False, "Selecione um cartao de credito ativo.", None, None
+    else:
+        cartao_credito_id = None
+
+    return True, "", forma_pagamento, cartao_credito_id
+
+
+def grupos_propostas_detalhes_cotacao(cotacao):
+    grupos_por_fornecedor = {}
+    if not cotacao:
+        return []
+
+    for proposta in sorted(
+        cotacao.propostas,
+        key=lambda item: (item.fornecedor_id, item.id),
+    ):
+        grupo = grupos_por_fornecedor.setdefault(
+            proposta.fornecedor_id,
+            {
+                "fornecedor": proposta.fornecedor_razao_social_snapshot,
+                "propostas": [],
+            },
+        )
+        grupo["propostas"].append(proposta)
+
+    grupos = []
+    for grupo in sorted(grupos_por_fornecedor.values(), key=lambda item: item["fornecedor"]):
+        linhas = [
+            {
+                "tipo": "item",
+                "proposta": proposta,
+                "descricao": proposta.item_descricao_snapshot,
+                "quantidade": proposta.quantidade_snapshot,
+                "unidade": proposta.unidade_medida_snapshot,
+                "preco_unitario": proposta.preco_unitario,
+                "subtotal": proposta.valor_subtotal,
+                "prazo": proposta.prazo_entrega_dias,
+                "condicao": proposta.condicao_pagamento,
+                "forma_pagamento": proposta.forma_pagamento,
+                "cartao_credito": proposta.cartao_credito,
+                "proposta_id": proposta.id,
+            }
+            for proposta in grupo["propostas"]
+        ]
+        valor_frete = valor_frete_proposta_fornecedor(cotacao, grupo["propostas"][0].fornecedor_id)
+        linhas.append(
+            {
+                "tipo": "frete",
+                "proposta": None,
+                "descricao": "Frete",
+                "quantidade": Decimal("1"),
+                "unidade": "UN",
+                "preco_unitario": valor_frete,
+                "subtotal": valor_frete,
+                "prazo": None,
+                "condicao": None,
+                "forma_pagamento": None,
+                "cartao_credito": None,
+                "proposta_id": None,
+            }
+        )
+
+        grupo["linhas"] = linhas
+        grupo["total"] = sum(
+            (Decimal(linha["subtotal"] or 0) for linha in linhas),
+            Decimal("0.00"),
+        )
+        grupos.append(grupo)
+
+    return grupos
 
 
 def categorias_propostas_selecionadas(cotacao):
@@ -3114,10 +3281,24 @@ def gerar_mensagem_whatsapp_aprovacao_cotacao(cotacao):
             linhas.append(
                 f"- {proposta.item_descricao_snapshot} | Qtd: "
                 f"{formatar_decimal_brasil(proposta.quantidade_snapshot)} "
-                f"{proposta.unidade_medida_snapshot} | Frete: {formatar_moeda_brl(proposta.valor_frete)} | Total: {formatar_moeda_brl(proposta.valor_total)}"
+                f"{proposta.unidade_medida_snapshot} | Unit.: {formatar_moeda_brl(proposta.preco_unitario)} | "
+                f"Subtotal: {formatar_moeda_brl(proposta.valor_subtotal)}"
             )
     else:
         linhas.append("- Nenhum item selecionado")
+
+    fretes_selecionados = [
+        dados
+        for dados in resumo_fretes_por_fornecedor_cotacao(cotacao)
+        if any(
+            proposta.selecionada and proposta.fornecedor_id == dados["fornecedor_id"]
+            for proposta in cotacao.propostas
+        )
+    ]
+    if fretes_selecionados:
+        linhas.extend(["", "*Frete por fornecedor:*"])
+        for dados in fretes_selecionados:
+            linhas.append(f"- {dados['fornecedor']}: {formatar_moeda_brl(dados['valor_frete'])}")
 
     linhas.extend(
         [
@@ -3195,6 +3376,144 @@ def fornecedores_disponiveis_para_requisicao_item(requisicao_item):
     )
 
 
+def garantir_vinculo_fornecedor_item(fornecedor_id, item_id):
+    vinculo = SuprimentosFornecedorItem.query.filter_by(
+        fornecedor_id=fornecedor_id,
+        item_id=item_id,
+    ).first()
+
+    if vinculo:
+        vinculo.ativo = True
+        return vinculo
+
+    vinculo = SuprimentosFornecedorItem(
+        fornecedor_id=fornecedor_id,
+        item_id=item_id,
+        ativo=True,
+    )
+    db.session.add(vinculo)
+    return vinculo
+
+
+def salvar_propostas_cotacao(form_data, cotacao):
+    if not cotacao.pode_editar:
+        return False, "Somente cotacoes abertas podem receber propostas.", []
+
+    fornecedor_id = inteiro_ou_none(form_data.get("fornecedor_id"))
+    fornecedor = buscar_por_id(SuprimentosFornecedor, fornecedor_id)
+    itens = sorted(cotacao.requisicao.itens, key=lambda item: item.id) if cotacao.requisicao else []
+
+    if not itens:
+        return False, "A requisicao nao possui itens para cotar.", []
+
+    if not fornecedor or not fornecedor.ativo:
+        return False, "Fornecedor e obrigatorio.", []
+
+    pagamento_valido, mensagem_pagamento, forma_pagamento, cartao_credito_id = validar_pagamento_proposta(form_data)
+    if not pagamento_valido:
+        return False, mensagem_pagamento, []
+
+    precos = {}
+    for item in itens:
+        preco_unitario = decimal_ou_none(form_data.get(f"preco_unitario_{item.id}"))
+        if preco_unitario is None or preco_unitario < 0:
+            return (
+                False,
+                f"Informe um preco unitario valido para o item {item.item_descricao_snapshot}.",
+                [],
+            )
+        precos[item.id] = preco_unitario
+
+    valor_frete = decimal_ou_none(form_data.get("valor_frete")) or Decimal("0.00")
+    prazo_entrega_dias = inteiro_ou_none(form_data.get("prazo_entrega_dias"))
+    condicao_pagamento = texto_maiusculo(form_data.get("condicao_pagamento")) or None
+    observacoes = texto_maiusculo(form_data.get("observacoes")) or None
+
+    if valor_frete < 0:
+        return False, "Valor do frete deve ser maior ou igual a zero.", []
+
+    if prazo_entrega_dias is not None and prazo_entrega_dias < 0:
+        return False, "Prazo de entrega nao pode ser negativo.", []
+
+    item_ids = [item.id for item in itens]
+    propostas_existentes = (
+        SuprimentosCotacaoProposta.query
+        .filter(
+            SuprimentosCotacaoProposta.cotacao_id == cotacao.id,
+            SuprimentosCotacaoProposta.fornecedor_id == fornecedor.id,
+            SuprimentosCotacaoProposta.requisicao_item_id.in_(item_ids),
+            SuprimentosCotacaoProposta.ativo.is_(True),
+        )
+        .all()
+    )
+    propostas_existentes_por_item = {
+        proposta.requisicao_item_id: proposta
+        for proposta in propostas_existentes
+    }
+    propostas_abertas = [
+        proposta
+        for proposta in propostas_existentes
+        if cotacao.status == STATUS_COTACAO_ABERTA and not proposta.selecionada
+    ]
+
+    if propostas_abertas:
+        if len(propostas_abertas) == 1:
+            return False, "Ja existe proposta deste fornecedor para este item.", []
+        itens_bloqueados = ", ".join(
+            proposta.item_descricao_snapshot
+            for proposta in propostas_abertas
+        )
+        return (
+            False,
+            f"Ja existem propostas abertas e sem aprovacao para os itens: {itens_bloqueados}.",
+            [],
+        )
+
+    propostas = []
+    try:
+        for indice, item in enumerate(itens):
+            garantir_vinculo_fornecedor_item(fornecedor.id, item.item_id)
+            proposta = propostas_existentes_por_item.get(item.id)
+
+            if proposta is None:
+                proposta = SuprimentosCotacaoProposta(
+                    cotacao_id=cotacao.id,
+                    fornecedor_id=fornecedor.id,
+                    requisicao_item_id=item.id,
+                    item_id=item.item_id,
+                    ativo=True,
+                )
+                db.session.add(proposta)
+
+            proposta.fornecedor_razao_social_snapshot = fornecedor.razao_social
+            proposta.item_descricao_snapshot = item.item_descricao_snapshot
+            proposta.unidade_medida_snapshot = item.unidade_medida_snapshot
+            proposta.quantidade_snapshot = item.quantidade
+            proposta.preco_unitario = precos[item.id]
+            proposta.valor_frete = valor_frete if indice == 0 else Decimal("0.00")
+            proposta.prazo_entrega_dias = prazo_entrega_dias
+            proposta.condicao_pagamento = condicao_pagamento
+            proposta.forma_pagamento = forma_pagamento
+            proposta.cartao_credito_id = cartao_credito_id
+            proposta.observacoes = observacoes
+
+            if proposta.selecionada:
+                proposta.selecionada = False
+                proposta.justificativa_selecao = None
+                proposta.selecionada_por_usuario_id = None
+                proposta.selecionada_em = None
+
+            propostas.append(proposta)
+
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("Falha ao registrar propostas em lote.")
+        return False, "Nao foi possivel registrar as propostas. Tente novamente.", []
+
+    return True, "Propostas registradas com sucesso.", propostas
+
+
 def salvar_proposta_cotacao(form_data, cotacao):
     if not cotacao.pode_editar:
         return False, "Somente cotacoes abertas podem receber propostas.", None
@@ -3216,14 +3535,15 @@ def salvar_proposta_cotacao(form_data, cotacao):
     if not fornecedor or not fornecedor.ativo:
         return False, "Fornecedor e obrigatorio.", None
 
+    pagamento_valido, mensagem_pagamento, forma_pagamento, cartao_credito_id = validar_pagamento_proposta(form_data)
+    if not pagamento_valido:
+        return False, mensagem_pagamento, None
+
     vinculo = SuprimentosFornecedorItem.query.filter_by(
         fornecedor_id=fornecedor.id,
         item_id=requisicao_item.item_id,
         ativo=True,
     ).first()
-
-    if not vinculo:
-        return False, "Fornecedor nao esta vinculado ao item selecionado.", None
 
     if preco_unitario is None or preco_unitario < 0:
         return False, "Preco unitario deve ser maior ou igual a zero.", None
@@ -3243,6 +3563,21 @@ def salvar_proposta_cotacao(form_data, cotacao):
     if existente:
         return False, "Ja existe proposta deste fornecedor para este item.", None
 
+    garantir_vinculo_fornecedor_item(fornecedor.id, requisicao_item.item_id)
+
+    propostas_mesmo_fornecedor = (
+        SuprimentosCotacaoProposta.query
+        .filter_by(cotacao_id=cotacao.id, fornecedor_id=fornecedor.id)
+        .order_by(SuprimentosCotacaoProposta.id.asc())
+        .all()
+    )
+
+    valor_frete_proposta = valor_frete
+    if propostas_mesmo_fornecedor:
+        if valor_frete > 0:
+            propostas_mesmo_fornecedor[0].valor_frete = valor_frete
+        valor_frete_proposta = Decimal("0.00")
+
     proposta = SuprimentosCotacaoProposta(
         cotacao_id=cotacao.id,
         fornecedor_id=fornecedor.id,
@@ -3253,9 +3588,11 @@ def salvar_proposta_cotacao(form_data, cotacao):
         unidade_medida_snapshot=requisicao_item.unidade_medida_snapshot,
         quantidade_snapshot=requisicao_item.quantidade,
         preco_unitario=preco_unitario,
-        valor_frete=valor_frete,
+        valor_frete=valor_frete_proposta,
         prazo_entrega_dias=prazo_entrega_dias,
         condicao_pagamento=condicao_pagamento,
+        forma_pagamento=forma_pagamento,
+        cartao_credito_id=cartao_credito_id,
         observacoes=observacoes,
         ativo=True,
     )
@@ -3271,6 +3608,35 @@ def remover_proposta_cotacao(cotacao, proposta):
 
     if proposta.cotacao_id != cotacao.id:
         return False, "Proposta nao pertence a cotacao."
+
+    valor_frete_removido = Decimal(proposta.valor_frete or 0)
+    if valor_frete_removido > 0:
+        proxima_proposta = (
+            SuprimentosCotacaoProposta.query
+            .filter(
+                SuprimentosCotacaoProposta.cotacao_id == proposta.cotacao_id,
+                SuprimentosCotacaoProposta.fornecedor_id == proposta.fornecedor_id,
+                SuprimentosCotacaoProposta.id != proposta.id,
+            )
+            .order_by(SuprimentosCotacaoProposta.id.asc())
+            .first()
+        )
+        if proxima_proposta:
+            proxima_proposta.valor_frete = valor_frete_removido
+
+    if cotacao.frete_fornecedor_id == proposta.fornecedor_id:
+        existe_outra_proposta = (
+            SuprimentosCotacaoProposta.query
+            .filter(
+                SuprimentosCotacaoProposta.cotacao_id == proposta.cotacao_id,
+                SuprimentosCotacaoProposta.fornecedor_id == proposta.fornecedor_id,
+                SuprimentosCotacaoProposta.id != proposta.id,
+            )
+            .first()
+            is not None
+        )
+        if not existe_outra_proposta:
+            cotacao.frete_fornecedor_id = None
 
     db.session.delete(proposta)
     db.session.commit()
@@ -3347,6 +3713,38 @@ def selecionar_proposta_vencedora(form_data, cotacao, usuario):
     return True, "Proposta vencedora selecionada com sucesso.", proposta
 
 
+def selecionar_frete_fornecedor_cotacao(form_data, cotacao, usuario):
+    if not cotacao.pode_editar:
+        return False, "Somente cotacoes abertas ou reprovadas podem ter frete selecionado.", None
+
+    fornecedor_id = inteiro_ou_none(form_data.get("frete_fornecedor_id"))
+    if not fornecedor_id:
+        return False, "Selecione uma proposta de frete.", None
+
+    opcao = next(
+        (
+            item
+            for item in opcoes_frete_por_fornecedor_cotacao(cotacao)
+            if item["fornecedor_id"] == fornecedor_id
+        ),
+        None,
+    )
+    if not opcao:
+        return False, "Fornecedor de frete nao encontrado nesta cotacao.", None
+
+    cotacao.frete_fornecedor_id = fornecedor_id
+
+    if cotacao.status == STATUS_COTACAO_REPROVADA:
+        cotacao.status = STATUS_COTACAO_ABERTA
+        cotacao.reprovada_em = None
+        cotacao.reprovada_por_usuario_id = None
+        cotacao.observacoes_aprovacao = None
+        sincronizar_status_requisicao_por_cotacao(cotacao)
+
+    db.session.commit()
+    return True, "Frete selecionado com sucesso.", opcao
+
+
 def enviar_cotacao_para_aprovacao(cotacao, usuario):
     if not cotacao.pode_editar:
         return False, "Somente cotacoes abertas ou reprovadas podem ser enviadas para aprovacao."
@@ -3363,6 +3761,10 @@ def enviar_cotacao_para_aprovacao(cotacao, usuario):
 
     if itens_sem_vencedor:
         return False, "Selecione uma proposta vencedora para todos os itens antes de enviar para aprovacao."
+
+    fornecedores_vencedores = {proposta.fornecedor_id for proposta in selecionadas.values()}
+    if cotacao.frete_fornecedor_id and cotacao.frete_fornecedor_id not in fornecedores_vencedores:
+        return False, "A proposta de frete selecionada precisa pertencer a um fornecedor vencedor."
 
     alcada = encontrar_alcada_para_cotacao(cotacao)
 
@@ -3518,16 +3920,43 @@ def gerar_ordens_compra_cotacao(cotacao, usuario, form_data=None):
     for proposta in selecionadas:
         propostas_por_fornecedor.setdefault(proposta.fornecedor_id, []).append(proposta)
 
+    if cotacao.frete_fornecedor_id and cotacao.frete_fornecedor_id not in propostas_por_fornecedor:
+        return False, "A proposta de frete selecionada precisa pertencer a um fornecedor vencedor.", []
+
     ordens = []
 
     for fornecedor_id, propostas in sorted(propostas_por_fornecedor.items()):
         fornecedor = propostas[0].fornecedor
+        valor_frete_fornecedor = valor_frete_proposta_fornecedor(cotacao, fornecedor_id)
+        if cotacao.frete_fornecedor_id:
+            valor_frete_fornecedor = (
+                valor_frete_fornecedor
+                if fornecedor_id == cotacao.frete_fornecedor_id
+                else Decimal("0.00")
+            )
         condicoes = sorted(
             {
                 proposta.condicao_pagamento
                 for proposta in propostas
                 if proposta.condicao_pagamento
             }
+        )
+        formas_pagamento = {
+            proposta.forma_pagamento
+            for proposta in propostas
+            if proposta.forma_pagamento
+        }
+        cartoes_credito = {
+            proposta.cartao_credito_id
+            for proposta in propostas
+            if proposta.cartao_credito_id
+        }
+        forma_pagamento = next(iter(formas_pagamento)) if len(formas_pagamento) == 1 else None
+        cartao_credito_id = next(iter(cartoes_credito)) if len(cartoes_credito) == 1 else None
+        tipo_pagamento_financeiro = (
+            "Cartao de Credito"
+            if forma_pagamento == "Cartao de Credito"
+            else None
         )
         ordem = SuprimentosOrdemCompra(
             numero=gerar_numero_ordem_compra(),
@@ -3538,6 +3967,9 @@ def gerar_ordens_compra_cotacao(cotacao, usuario, form_data=None):
             fornecedor_razao_social_snapshot=fornecedor.razao_social,
             fornecedor_cnpj_cpf_snapshot=fornecedor.cnpj_cpf,
             condicao_pagamento_snapshot=" | ".join(condicoes) if condicoes else None,
+            tipo_pagamento_financeiro=tipo_pagamento_financeiro,
+            forma_pagamento_financeiro=forma_pagamento,
+            cartao_credito_id=cartao_credito_id if forma_pagamento == "Cartao de Credito" else None,
             status=STATUS_ORDEM_COMPRA_GERADA,
             status_financeiro=STATUS_FINANCEIRO_PENDENTE,
             previsao_vencimento=previsao_vencimento,
@@ -3549,7 +3981,7 @@ def gerar_ordens_compra_cotacao(cotacao, usuario, form_data=None):
         db.session.add(ordem)
         db.session.flush()
 
-        for proposta in sorted(propostas, key=lambda item: item.item_descricao_snapshot):
+        for indice, proposta in enumerate(sorted(propostas, key=lambda item: item.item_descricao_snapshot)):
             requisicao_item = proposta.requisicao_item
             db.session.add(
                 SuprimentosOrdemCompraItem(
@@ -3562,7 +3994,7 @@ def gerar_ordens_compra_cotacao(cotacao, usuario, form_data=None):
                     unidade_medida_snapshot=proposta.unidade_medida_snapshot,
                     quantidade=proposta.quantidade_snapshot,
                     preco_unitario=proposta.preco_unitario,
-                    valor_frete=proposta.valor_frete or Decimal("0.00"),
+                    valor_frete=valor_frete_fornecedor if indice == 0 else Decimal("0.00"),
                     prazo_entrega_dias=proposta.prazo_entrega_dias,
                     observacoes=proposta.observacoes,
                 )
@@ -3827,7 +4259,7 @@ def montar_mapa_comparativo_cotacao(cotacao):
         )
 
         menor_preco = min((proposta.preco_unitario for proposta in propostas), default=None)
-        menor_total = min((proposta.valor_total for proposta in propostas), default=None)
+        menor_total = min((proposta.valor_subtotal for proposta in propostas), default=None)
         prazos_informados = [
             proposta.prazo_entrega_dias
             for proposta in propostas
@@ -3839,7 +4271,7 @@ def montar_mapa_comparativo_cotacao(cotacao):
 
         for proposta in propostas:
             destaque_preco = proposta.preco_unitario == menor_preco if menor_preco is not None else False
-            destaque_total = proposta.valor_total == menor_total if menor_total is not None else False
+            destaque_total = proposta.valor_subtotal == menor_total if menor_total is not None else False
             destaque_prazo = (
                 proposta.prazo_entrega_dias == menor_prazo
                 if menor_prazo is not None and proposta.prazo_entrega_dias is not None
@@ -3849,7 +4281,8 @@ def montar_mapa_comparativo_cotacao(cotacao):
             linhas.append(
                 {
                     "proposta": proposta,
-                    "valor_total": proposta.valor_total,
+                    "valor_subtotal": proposta.valor_subtotal,
+                    "valor_total": proposta.valor_subtotal,
                     "menor_preco": destaque_preco,
                     "menor_total": destaque_total,
                     "menor_prazo": destaque_prazo,
@@ -3873,11 +4306,34 @@ def montar_mapa_comparativo_cotacao(cotacao):
         if propostas:
             totais["itens_com_proposta"] += 1
 
+    frete = None
+    opcoes_frete = opcoes_frete_por_fornecedor_cotacao(cotacao)
+    if opcoes_frete:
+        menor_frete = min(opcao["valor_frete"] for opcao in opcoes_frete)
+        frete_linhas = []
+        for opcao in opcoes_frete:
+            menor = opcao["valor_frete"] == menor_frete
+            frete_linhas.append(
+                {
+                    **opcao,
+                    "menor_preco": menor,
+                    "menor_total": menor,
+                    "selecionada": cotacao.frete_fornecedor_id == opcao["fornecedor_id"],
+                }
+            )
+        frete = {
+            "quantidade": Decimal("1"),
+            "unidade": "UN",
+            "linhas": frete_linhas,
+            "menor_frete": menor_frete,
+        }
+
     totais["itens_sem_proposta"] = totais["itens"] - totais["itens_com_proposta"]
 
     return {
         "cotacao": cotacao,
         "grupos": grupos,
+        "frete": frete,
         "totais": totais,
     }
 

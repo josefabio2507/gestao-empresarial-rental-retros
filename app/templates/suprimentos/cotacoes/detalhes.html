@@ -64,38 +64,48 @@
 
         <form class="form-card" method="POST" action="{{ url_for('suprimentos_cotacoes.adicionar_proposta', cotacao_id=cotacao.id) }}">
             <h2>Registrar proposta</h2>
-            <div class="form-grid">
-                <div class="form-group">
-                    <label for="requisicao_item_busca">Item da requisicao</label>
-                    <input id="requisicao_item_busca" list="itens_requisicao_lista" data-datalist-target="requisicao_item_id" required autocomplete="off">
-                    <input type="hidden" id="requisicao_item_id" name="requisicao_item_id">
-                    <datalist id="itens_requisicao_lista">
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Codigo</th>
+                            <th>Item</th>
+                            <th>Quantidade</th>
+                            <th>Unidade</th>
+                            <th>Preco unitario</th>
+                        </tr>
+                    </thead>
+                    <tbody>
                         {% for item in cotacao.requisicao.itens %}
-                            <option value="{{ item.item_codigo_snapshot or '-' }} - {{ item.item_descricao_snapshot }} - {{ item.quantidade }} {{ item.unidade_medida_snapshot }}" data-value="{{ item.id }}"></option>
+                            <tr>
+                                <td>{{ item.item_codigo_snapshot or "-" }}</td>
+                                <td>{{ item.item_descricao_snapshot }}</td>
+                                <td>{{ item.quantidade }}</td>
+                                <td>{{ item.unidade_medida_snapshot }}</td>
+                                <td>
+                                    <div class="input-prefix-row">
+                                        <span>R$</span>
+                                        <input id="preco_unitario_{{ item.id }}" name="preco_unitario_{{ item.id }}" inputmode="decimal" min="0" required>
+                                    </div>
+                                </td>
+                            </tr>
                         {% endfor %}
-                    </datalist>
-                </div>
+                    </tbody>
+                </table>
+            </div>
+            <div class="form-grid">
                 <div class="form-group">
                     <label for="fornecedor_busca">Fornecedor</label>
                     <input id="fornecedor_busca" list="fornecedores_proposta_lista" data-datalist-target="fornecedor_id" required autocomplete="off">
                     <input type="hidden" id="fornecedor_id" name="fornecedor_id">
                     <datalist id="fornecedores_proposta_lista">
-                        {% for item in cotacao.requisicao.itens %}
-                            {% for fornecedor in fornecedores_por_item[item.id] %}
-                                <option value="{{ item.item_descricao_snapshot }} - {{ fornecedor.razao_social }}" data-value="{{ fornecedor.id }}" data-item-id="{{ item.id }}"></option>
-                            {% endfor %}
+                        {% for fornecedor in fornecedores_registrados %}
+                            <option value="{{ fornecedor.razao_social }}" data-value="{{ fornecedor.id }}"></option>
                         {% endfor %}
                     </datalist>
                 </div>
                 <div class="form-group">
-                    <label for="preco_unitario">Preco unitario</label>
-                    <div class="input-prefix-row">
-                        <span>R$</span>
-                        <input id="preco_unitario" name="preco_unitario" inputmode="decimal" required>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label for="valor_frete">Frete</label>
+                    <label for="valor_frete">Frete da proposta</label>
                     <div class="input-prefix-row">
                         <span>R$</span>
                         <input id="valor_frete" name="valor_frete" inputmode="decimal" value="0,00">
@@ -108,6 +118,24 @@
                 <div class="form-group">
                     <label for="condicao_pagamento">Condicao de pagamento</label>
                     <input id="condicao_pagamento" name="condicao_pagamento" maxlength="160" data-uppercase>
+                </div>
+                <div class="form-group">
+                    <label for="forma_pagamento">Forma de pagamento</label>
+                    <select id="forma_pagamento" name="forma_pagamento" required>
+                        <option value="">Selecione</option>
+                        {% for forma in formas_pagamento %}
+                            <option value="{{ forma }}">{{ forma }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group" id="cartao_credito_group" hidden>
+                    <label for="cartao_credito_id">Cartao de credito</label>
+                    <select id="cartao_credito_id" name="cartao_credito_id">
+                        <option value="">Selecione</option>
+                        {% for cartao in cartoes_credito %}
+                            <option value="{{ cartao.id }}">{{ cartao.nome }} | {{ cartao.ultimos_4_digitos or "-" }}</option>
+                        {% endfor %}
+                    </select>
                 </div>
             </div>
             <div class="form-group">
@@ -128,34 +156,48 @@
                     <th>Item</th>
                     <th>Qtd.</th>
                     <th>Preco unit.</th>
-                    <th>Frete</th>
-                    <th>Total</th>
+                    <th>Subtotal do item</th>
+                    <th>Total da proposta</th>
                     <th>Prazo</th>
                     <th>Condicao</th>
+                    <th>Forma de pagamento</th>
+                    <th>Cartao</th>
                     {% if cotacao.pode_editar %}<th>Acoes</th>{% endif %}
                 </tr>
             </thead>
             <tbody>
-                {% for proposta in cotacao.propostas %}
-                    <tr>
-                        <td>{{ proposta.fornecedor_razao_social_snapshot }}</td>
-                        <td>{{ proposta.item_descricao_snapshot }}</td>
-                        <td>{{ proposta.quantidade_snapshot }} {{ proposta.unidade_medida_snapshot }}</td>
-                        <td>{{ formatar_moeda_brl(proposta.preco_unitario) }}</td>
-                        <td>{{ formatar_moeda_brl(proposta.valor_frete) }}</td>
-                        <td>{{ formatar_moeda_brl(proposta.valor_total) }}</td>
-                        <td>{{ proposta.prazo_entrega_dias if proposta.prazo_entrega_dias is not none else "-" }}</td>
-                        <td>{{ proposta.condicao_pagamento or "-" }}</td>
-                        {% if cotacao.pode_editar %}
-                            <td class="col-acoes">
-                                <form class="inline-form" method="POST" action="{{ url_for('suprimentos_cotacoes.remover_proposta', cotacao_id=cotacao.id, proposta_id=proposta.id) }}">
-                                    <button class="btn btn-warning" type="submit">Remover</button>
-                                </form>
-                            </td>
-                        {% endif %}
-                    </tr>
+                {% for grupo in grupos_propostas %}
+                    {% for linha in grupo.linhas %}
+                        <tr>
+                            {% if loop.first %}
+                                <td rowspan="{{ grupo.linhas|length }}">{{ grupo.fornecedor }}</td>
+                            {% endif %}
+                            <td>{{ linha.descricao }}</td>
+                            <td>{{ "1" if linha.tipo == "frete" else formatar_decimal_brasil(linha.quantidade) }} {{ linha.unidade }}</td>
+                            <td>{{ formatar_moeda_brl(linha.preco_unitario) }}</td>
+                            <td>{{ formatar_moeda_brl(linha.subtotal) }}</td>
+                            {% if loop.first %}
+                                <td rowspan="{{ grupo.linhas|length }}">{{ formatar_moeda_brl(grupo.total) }}</td>
+                            {% endif %}
+                            <td>{{ linha.prazo if linha.prazo is not none else "-" }}</td>
+                            <td>{{ linha.condicao or "-" }}</td>
+                            <td>{{ linha.forma_pagamento or "-" }}</td>
+                            <td>{{ linha.cartao_credito.nome ~ " | " ~ (linha.cartao_credito.ultimos_4_digitos or "-") if linha.cartao_credito else "-" }}</td>
+                            {% if cotacao.pode_editar %}
+                                <td class="col-acoes">
+                                    {% if linha.proposta_id %}
+                                        <form class="inline-form" method="POST" action="{{ url_for('suprimentos_cotacoes.remover_proposta', cotacao_id=cotacao.id, proposta_id=linha.proposta_id) }}">
+                                            <button class="btn btn-warning" type="submit">Remover</button>
+                                        </form>
+                                    {% else %}
+                                        <span class="module-status">-</span>
+                                    {% endif %}
+                                </td>
+                            {% endif %}
+                        </tr>
+                    {% endfor %}
                 {% else %}
-                    <tr><td class="empty-state" colspan="{{ 9 if cotacao.pode_editar else 8 }}">Nenhuma proposta registrada.</td></tr>
+                    <tr><td class="empty-state" colspan="{{ 11 if cotacao.pode_editar else 10 }}">Nenhuma proposta registrada.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
@@ -175,5 +217,24 @@
         <a class="btn btn-secondary" href="{{ url_for('suprimentos_cotacoes.listar') }}">Voltar</a>
     </div>
 </section>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const formaPagamento = document.getElementById("forma_pagamento");
+    const cartaoGroup = document.getElementById("cartao_credito_group");
+    const cartaoSelect = document.getElementById("cartao_credito_id");
+
+    if (!formaPagamento || !cartaoGroup || !cartaoSelect) return;
+
+    function atualizarCartao() {
+        const exigeCartao = formaPagamento.value === "Cartao de Credito";
+        cartaoGroup.hidden = !exigeCartao;
+        cartaoSelect.required = exigeCartao;
+        if (!exigeCartao) cartaoSelect.value = "";
+    }
+
+    formaPagamento.addEventListener("change", atualizarCartao);
+    atualizarCartao();
+});
+</script>
 {% endblock %}
 
