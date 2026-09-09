@@ -225,6 +225,7 @@ def novo_abastecimento(veiculo_id):
         equipe=vinculo.equipe or vinculo.colaborador.equipe,
         tipos_combustivel=TIPOS_COMBUSTIVEL,
         categorias_custo_extra=CATEGORIAS_CUSTO_EXTRA,
+        tipo_leitura=tipo_leitura_padrao_veiculo(veiculo),
         data_padrao=data_padrao_form(),
         modo="novo",
     )
@@ -283,6 +284,7 @@ def editar_abastecimento(abastecimento_id):
         equipe=abastecimento.equipe,
         tipos_combustivel=TIPOS_COMBUSTIVEL,
         categorias_custo_extra=CATEGORIAS_CUSTO_EXTRA,
+        tipo_leitura=tipo_leitura_padrao_veiculo(abastecimento.veiculo),
         data_padrao=abastecimento.data_abastecimento.isoformat(),
         modo="editar",
     )

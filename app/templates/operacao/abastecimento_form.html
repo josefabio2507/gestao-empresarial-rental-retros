@@ -44,6 +44,10 @@
                 <input id="preco" name="preco" required inputmode="decimal" placeholder="R$ 0,00" value="{{ (abastecimento.preco|string).replace('.', ',') if abastecimento else '' }}">
             </div>
             <div class="form-group">
+                <label for="leitura_abastecimento">{{ 'Horímetro' if tipo_leitura == 'horimetro' else 'Hodômetro' }}</label>
+                <input id="leitura_abastecimento" name="leitura_abastecimento" required inputmode="decimal" placeholder="0,00">
+            </div>
+            <div class="form-group">
                 <label for="cupom_fiscal">Cupom fiscal</label>
                 <input id="cupom_fiscal" name="cupom_fiscal" type="file" accept="image/*" capture="environment" {% if modo != 'editar' %}required{% endif %}>
                 {% if abastecimento and abastecimento.cupom_link %}
