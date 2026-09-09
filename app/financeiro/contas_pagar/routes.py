@@ -186,7 +186,11 @@ def titulos():
 @login_required
 @module_permission_required("financeiro", "contas_a_pagar", "visualizar")
 def exportar_titulos_pdf():
-    titulos = listar_titulos(request.args)
+    titulos = [
+        titulo
+        for titulo in listar_titulos(request.args)
+        if titulo.status not in ("Cancelado", "Estornado")
+    ]
     pdf_buffer = gerar_pdf_titulos(titulos, request.args)
     registrar_log(
         "financeiro_contas_pagar_titulos_pdf_exportado",

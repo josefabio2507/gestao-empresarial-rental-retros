@@ -1,3 +1,5 @@
+from io import BytesIO
+from unittest.mock import patch
 import unittest
 
 from app import create_app
@@ -172,6 +174,38 @@ class FinanceiroContasPagarTestCase(unittest.TestCase):
         self.assertTrue(resposta.data.startswith(b"%PDF-"))
         self.assertIn("application/pdf", resposta.headers["Content-Type"])
         self.assertIn("relatorio_titulos_a_pagar_", resposta.headers["Content-Disposition"])
+
+    def test_pdf_nao_inclui_titulos_cancelados(self):
+        self._autenticar(self.admin)
+        sucesso, mensagem, ativo = salvar_titulo(
+            self._dados_titulo(descricao="Titulo ativo", numero_documento="ATIVO"),
+            usuario=self.admin,
+        )
+        self.assertTrue(sucesso, mensagem)
+        sucesso, mensagem, cancelado = salvar_titulo(
+            self._dados_titulo(descricao="Titulo cancelado", numero_documento="CANCELADO"),
+            usuario=self.admin,
+        )
+        self.assertTrue(sucesso, mensagem)
+        cancelado.status = "Cancelado"
+        db.session.commit()
+
+        capturados = {}
+
+        def gerar_pdf_fake(titulos, filtros):
+            capturados["titulos"] = list(titulos)
+            return BytesIO(b"%PDF- teste")
+
+        with patch(
+            "app.financeiro.contas_pagar.routes.gerar_pdf_titulos",
+            side_effect=gerar_pdf_fake,
+        ):
+            resposta = self.client.get("/financeiro/contas-a-pagar/titulos/exportar-pdf")
+
+        ids = [titulo.id for titulo in capturados["titulos"]]
+        self.assertEqual(200, resposta.status_code)
+        self.assertIn(ativo.id, ids)
+        self.assertNotIn(cancelado.id, ids)
 
     def test_cria_edita_filtra_e_cancela_titulo_manual(self):
         self._autenticar(self.admin)
