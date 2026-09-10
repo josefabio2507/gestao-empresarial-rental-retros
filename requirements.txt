@@ -19,3 +19,4 @@ signxml
 pyOpenSSL
 requests
 brazilfiscalreport
+openpyxl>=3.1.5,<4

@@ -43,6 +43,9 @@
     </div>
 
     <h2>Pagamentos / Baixas</h2>
+    {% if titulo.valor_pago_legado %}
+    <div class="details-card"><p>Pagamento informado no sistema anterior: <strong>{{ formatar_moeda_brl(titulo.valor_pago_legado) }}</strong>. A planilha não informa a data nem o comprovante desse pagamento. Esse valor já está incluído no total pago.</p></div>
+    {% endif %}
     <div class="table-card table-responsive listbox-5-linhas">
         <table class="table financeiro-contas-pagar-table">
             <thead>

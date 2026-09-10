@@ -2060,6 +2060,24 @@ class CentroCusto(db.Model):
     def __repr__(self):
         return f"<CentroCusto {self.codigo or ''} {self.nome}>"
 
+class FinanceiroImportacaoCartao(db.Model):
+    __tablename__ = "financeiro_importacoes_cartao"
+
+    id = db.Column(db.String(36), primary_key=True)
+    usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=False, index=True)
+    arquivo_nome = db.Column(db.String(255), nullable=False)
+    dados = db.Column(db.JSON, nullable=False)
+    mapeamento = db.Column(db.JSON, nullable=False, default=dict)
+    cursor = db.Column(db.Integer, nullable=False, default=0)
+    importados = db.Column(db.Integer, nullable=False, default=0)
+    ignorados = db.Column(db.Integer, nullable=False, default=0)
+    pendentes = db.Column(db.Integer, nullable=False, default=0)
+    iniciado = db.Column(db.Boolean, nullable=False, default=False)
+    concluido = db.Column(db.Boolean, nullable=False, default=False)
+    proximo_lote_em = db.Column(db.DateTime, nullable=True)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
+
+
 class FinanceiroCartaoCredito(db.Model):
     __tablename__ = "financeiro_cartoes_credito"
 
@@ -2200,6 +2218,8 @@ class FinanceiroContaPagarTitulo(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     id_legado = db.Column(db.String(80), nullable=True, index=True)
+    chave_legado_cartao = db.Column(db.String(100), nullable=True)
+    valor_pago_legado = db.Column(db.Numeric(12, 2), nullable=False, default=0, server_default="0")
     fornecedor_id = db.Column(
         db.Integer,
         db.ForeignKey("suprimentos_fornecedores.id"),
@@ -2305,6 +2325,7 @@ class FinanceiroContaPagarTitulo(db.Model):
     atualizado_por = db.relationship("Usuario", foreign_keys=[atualizado_por_usuario_id])
 
     __table_args__ = (
+        db.UniqueConstraint("chave_legado_cartao", name="uq_fin_titulo_chave_legado_cartao"),
         db.CheckConstraint(
             "origem_lancamento in ('Manual', 'Ordem de Compra', 'XML Fiscal', 'Cartao de Credito', 'Legado')",
             name="ck_financeiro_cp_origem_lancamento",

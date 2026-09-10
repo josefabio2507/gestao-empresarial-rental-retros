@@ -20,6 +20,7 @@
             <button class="btn btn-primary" type="submit">Pesquisar</button>
             <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.cartoes') }}">Limpar</a>
             <a class="btn btn-primary" href="{{ url_for('financeiro_contas_pagar.novo_cartao') }}">Novo cartao</a>
+            {% if pode_importar %}<a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.importar_cartao_legado') }}">Importar compras do legado</a>{% endif %}
         </div>
     </form>
 
