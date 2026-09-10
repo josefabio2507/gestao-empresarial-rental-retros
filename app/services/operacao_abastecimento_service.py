@@ -13,7 +13,13 @@ from app.services.google_drive_service import (
     mensagem_erro_upload_google_drive,
     upload_arquivo_google_drive,
 )
-from app.services.operacao_pool_service import decimal_ou_none, texto, veiculos_vinculados_ao_colaborador
+from app.services.operacao_pool_service import (
+    decimal_ou_none,
+    registrar_leitura,
+    texto,
+    tipo_leitura_padrao_veiculo,
+    veiculos_vinculados_ao_colaborador,
+)
 from app.services.permissoes_service import usuario_eh_administrador
 from app.services.suprimentos_service import _normalizar_imagem_para_jpg
 from app.utils.datas import agora_brasil
@@ -257,6 +263,8 @@ def salvar_abastecimento(form_data, files_data, usuario, veiculo=None, abastecim
     tipo_combustivel = texto(form_data.get("tipo_combustivel"))
     qtd_litros = decimal_ou_none(form_data.get("qtd_litros"))
     preco = decimal_ou_none(form_data.get("preco"))
+    tipo_leitura = tipo_leitura_padrao_veiculo(veiculo)
+    leitura_abastecimento = texto(form_data.get("leitura_abastecimento"))
     arquivo_cupom = files_data.get("cupom_fiscal") if files_data else None
     valor_total_nota_fiscal = decimal_ou_none(form_data.get("valor_total_nota_fiscal"))
     numero_nota_fiscal = texto(form_data.get("numero_nota_fiscal"))
@@ -270,18 +278,14 @@ def salvar_abastecimento(form_data, files_data, usuario, veiculo=None, abastecim
         return False, "Quantidade de litros e obrigatoria.", abastecimento
     if preco is None or preco < 0:
         return False, "Preco e obrigatorio.", abastecimento
+    if decimal_ou_none(leitura_abastecimento) is None:
+        return False, "Leitura de hodometro/horimetro e obrigatoria.", abastecimento
     if not abastecimento and not (arquivo_cupom and texto(arquivo_cupom.filename)):
         return False, "Foto do cupom fiscal e obrigatoria.", abastecimento
     if valor_total_nota_fiscal is not None and valor_total_nota_fiscal < 0:
         return False, "Valor total da nota fiscal deve ser maior ou igual a zero.", abastecimento
     if chave_acesso_nfe and len(chave_acesso_nfe) != 44:
         return False, "Chave de acesso da NF-e deve conter 44 digitos.", abastecimento
-
-    upload = None
-    if arquivo_cupom and texto(arquivo_cupom.filename):
-        upload, erro = _upload_cupom(arquivo_cupom, veiculo, data_abastecimento, drive_service=drive_service)
-        if erro:
-            return False, erro, abastecimento
 
     if not abastecimento:
         abastecimento = OperacaoAbastecimento(
@@ -304,6 +308,25 @@ def salvar_abastecimento(form_data, files_data, usuario, veiculo=None, abastecim
     abastecimento.observacoes = texto(form_data.get("observacoes")) or None
     abastecimento.vinculo_id = vinculo.id
     abastecimento.equipe_id = equipe.id if equipe else None
+
+    sucesso_leitura, erro_leitura, _ = registrar_leitura(
+        veiculo,
+        tipo_leitura,
+        leitura_abastecimento,
+        origem="abastecimento",
+        usuario=usuario,
+        vinculo=vinculo,
+    )
+    if not sucesso_leitura:
+        db.session.rollback()
+        return False, erro_leitura, abastecimento
+
+    upload = None
+    if arquivo_cupom and texto(arquivo_cupom.filename):
+        upload, erro = _upload_cupom(arquivo_cupom, veiculo, data_abastecimento, drive_service=drive_service)
+        if erro:
+            db.session.rollback()
+            return False, erro, abastecimento
 
     if upload:
         abastecimento.cupom_drive_file_id = upload["id"]

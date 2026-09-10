@@ -519,6 +519,7 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
                 "tipo_combustivel": "Diesel S10",
                 "qtd_litros": "12,50",
                 "preco": "345,67",
+                "leitura_abastecimento": "999001",
                 "observacoes": "cupom fiscal fotografado",
             },
             {"cupom_fiscal": self._arquivo_imagem()},
@@ -539,6 +540,9 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         self.assertEqual("pasta-cupons", drive.files().uploads[0]["body"]["parents"][0])
         self.assertTrue(abastecimento.cupom_nome_arquivo.startswith("ABAST-RET001-20260823-"))
         self.assertEqual(1, OperacaoAbastecimento.query.count())
+        leitura = OperacaoLeituraAtivo.query.filter_by(veiculo_id=veiculo.id, origem="abastecimento").one()
+        self.assertEqual("odometro", leitura.tipo)
+        self.assertEqual("999001.00", str(leitura.leitura))
 
     def test_salva_abastecimento_com_custos_extras_e_conferencia_nf(self):
         veiculo = self._criar_veiculo("RET777", "RETRO COM EXTRAS")
@@ -557,6 +561,7 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
                 ("tipo_combustivel", "Diesel S10"),
                 ("qtd_litros", "20,00"),
                 ("preco", "15,00"),
+                ("leitura_abastecimento", "999002"),
                 ("numero_nota_fiscal", "NF-123"),
                 ("chave_acesso_nfe", "12345678901234567890123456789012345678901234"),
                 ("valor_total_nota_fiscal", "362,50"),
@@ -662,11 +667,33 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         self.assertIn(b'value="Diesel S10"', resposta.data)
         self.assertIn(b'value="Etanol aditivado"', resposta.data)
         self.assertIn(b'value="Gasolina Premium"', resposta.data)
+        self.assertIn(b'name="leitura_abastecimento"', resposta.data)
+        self.assertIn(b"required", resposta.data)
+        self.assertIn("Hodômetro".encode("utf-8"), resposta.data)
         self.assertNotIn(b'value="Diesel"', resposta.data)
         self.assertNotIn(b'value="Gasolina"', resposta.data)
         self.assertNotIn(b'value="Arla 32"', resposta.data)
         self.assertIn(b"Motorista Um", resposta.data)
         self.assertIn(b"Operacao", resposta.data)
+
+    def test_formulario_abastecimento_maquina_exibe_horimetro_obrigatorio(self):
+        veiculo = self._criar_veiculo("MAQ303", "RETROESCAVADEIRA ABASTECIMENTO", "Maquina")
+        self.usuario.colaborador_id = self.motorista.id
+        db.session.commit()
+        vincular_responsavel(
+            {"colaborador_id": str(self.motorista.id), "tipo_leitura": "horimetro", "leitura_inicial": "10"},
+            usuario=self.admin,
+            veiculo=veiculo,
+        )
+        self._liberar_usuario("abastecimento", criar=True)
+        self._autenticar(self.usuario)
+
+        resposta = self.client.get(f"/operacao/abastecimentos/veiculos/{veiculo.id}/novo")
+
+        self.assertEqual(200, resposta.status_code)
+        self.assertIn(b'name="leitura_abastecimento"', resposta.data)
+        self.assertIn(b"required", resposta.data)
+        self.assertIn("Horímetro".encode("utf-8"), resposta.data)
 
     def test_bloqueia_combustivel_fora_da_lista(self):
         veiculo = self._criar_veiculo("CAR404", "CAMINHAO COMBUSTIVEL")
@@ -694,6 +721,36 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         self.assertEqual("Tipo de combustivel invalido.", mensagem)
         self.assertIsNone(abastecimento)
         self.assertNotIn("Diesel", TIPOS_COMBUSTIVEL)
+
+    def test_bloqueia_abastecimento_sem_leitura_obrigatoria(self):
+        veiculo = self._criar_veiculo("CAR405", "CAMINHAO SEM LEITURA")
+        self.usuario.colaborador_id = self.motorista.id
+        db.session.commit()
+        vincular_responsavel(
+            {"colaborador_id": str(self.motorista.id), "tipo_leitura": "odometro", "leitura_inicial": "10"},
+            usuario=self.admin,
+            veiculo=veiculo,
+        )
+
+        drive = FakeDriveService()
+        sucesso, mensagem, abastecimento = salvar_abastecimento(
+            {
+                "data_abastecimento": "2026-08-23",
+                "tipo_combustivel": "Diesel S10",
+                "qtd_litros": "10,00",
+                "preco": "50,00",
+            },
+            {"cupom_fiscal": self._arquivo_imagem()},
+            self.usuario,
+            veiculo=veiculo,
+            drive_service=drive,
+        )
+
+        self.assertFalse(sucesso)
+        self.assertEqual("Leitura de hodometro/horimetro e obrigatoria.", mensagem)
+        self.assertIsNone(abastecimento)
+        self.assertEqual(0, OperacaoAbastecimento.query.count())
+        self.assertEqual(0, len(drive.files().uploads))
 
     def test_central_custos_filtra_ativos_por_padrao(self):
         veiculo_ativo = self._criar_veiculo("CAR501", "CAMINHAO ATIVO")
@@ -726,6 +783,7 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
                 "tipo_combustivel": "Gasolina comum",
                 "qtd_litros": "20,00",
                 "preco": "123,45",
+                "leitura_abastecimento": "999003",
             },
             {"cupom_fiscal": self._arquivo_imagem()},
             self.usuario,
