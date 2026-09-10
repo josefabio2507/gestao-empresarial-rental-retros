@@ -259,7 +259,7 @@ def recalcular_pagamento_titulo(titulo, usuario=None):
     if titulo.status in ("Cancelado", "Estornado"):
         return
 
-    total_pago = _somar_baixas_ativas(titulo)
+    total_pago = _somar_baixas_ativas(titulo) + valor_decimal(titulo.valor_pago_legado)
     valor_liquido = valor_decimal(titulo.valor_liquido_previsto)
     status_anterior = titulo.status
 
@@ -1271,6 +1271,11 @@ def _desvincular_fatura_anterior(titulo):
 
 def vincular_titulo_a_fatura_cartao(titulo, usuario=None):
     fatura_anterior = titulo.fatura_cartao
+    # Parcelas historicas pertencem a fatura informada, nao ao ciclo da compra original.
+    if titulo.chave_legado_cartao and fatura_anterior:
+        if titulo.tipo_pagamento != "Cartao de Credito" or titulo.cartao_credito_id != fatura_anterior.cartao_credito_id:
+            raise ValueError("O cartao da parcela legada nao pode ser alterado por esta tela.")
+        return fatura_anterior, fatura_anterior
     if titulo.tipo_pagamento != "Cartao de Credito":
         _desvincular_fatura_anterior(titulo)
         titulo.cartao_credito_id = None
@@ -1387,6 +1392,12 @@ def salvar_titulo(dados, titulo=None, usuario=None):
         titulo.centro_custo_id = parse_int(dados.get("centro_custo_id"), padrao=0, nome_campo="Centro de custo") or None
         titulo.cartao_credito_id = parse_int(dados.get("cartao_credito_id"), padrao=0, nome_campo="Cartao de credito") or None
         titulo.status = status
+        if titulo.chave_legado_cartao:
+            titulo.origem_lancamento = "Legado"
+            titulo.forma_pagamento = "Cartao de Credito"
+            if valor_decimal(titulo.valor_liquido_previsto) < valor_decimal(titulo.valor_pago_legado):
+                raise ValueError("O valor liquido nao pode ser menor que o pagamento historico do legado.")
+            recalcular_pagamento_titulo(titulo, usuario=usuario)
         titulo.observacoes = normalizar_texto(dados.get("observacoes")) or None
         titulo.atualizado_por_usuario_id = getattr(usuario, "id", None)
         if not titulo.id:
