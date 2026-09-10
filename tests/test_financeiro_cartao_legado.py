@@ -118,6 +118,7 @@ class ImportacaoCartaoLegadoTest(unittest.TestCase):
         job = self.criar([linha(i) for i in range(201)])
         primeiro = svc.processar_lote(job.id, self.usuario.id, 0)
         self.assertEqual(primeiro["importados"], 100)
+        self.assertGreaterEqual(job.proximo_lote_em, datetime.utcnow() + timedelta(seconds=9))
         repetido = svc.processar_lote(job.id, self.usuario.id, 0)
         self.assertEqual(repetido["processados"], 100)
         pausado = svc.processar_lote(job.id, self.usuario.id, 100)
