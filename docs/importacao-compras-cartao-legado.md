@@ -9,7 +9,7 @@ Implementação local. Não executar publicação ou deploy sem nova solicitaç�
 3. Confira a ligação entre o final de cada cartão e seu cadastro. Se faltar um cartão, cadastre-o com banco, fechamento e vencimento corretos. O importador não inventa esses dados.
 4. Se alterar os vínculos, clique em **Validar cartões**.
 5. Confira os totais, as pendências e a prévia. A prévia mostra 100 linhas, mas o processamento abrange a planilha inteira.
-6. Clique em **Confirmar importação das linhas aptas**. A cada 100 linhas processadas, há uma pausa de 5 segundos.
+6. Clique em **Confirmar importação das linhas aptas**. A cada 100 linhas processadas, há uma pausa de 10 segundos.
 7. Ao final, confira os contadores e baixe o relatório de pendências. Uma importação interrompida pode ser retomada em **Importações recentes**, sem reenviar o arquivo.
 
 ## Campos e regras

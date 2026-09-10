@@ -37,7 +37,7 @@
     {% endif %}
     {% if not job.concluido %}
     <div class="details-card">
-        <p>Serão processadas até 100 linhas por lote, com pausa de 5 segundos. Linhas com pendências não serão gravadas. IDs já importados serão ignorados. Mantenha esta página aberta; se fechar, você poderá retomar.</p>
+        <p>Serão processadas até 100 linhas por lote, com pausa de 10 segundos. Linhas com pendências não serão gravadas. IDs já importados serão ignorados. Mantenha esta página aberta; se fechar, você poderá retomar.</p>
         {% if sem_cartao %}<p>Vincule os cartões acima e clique em Validar cartões para liberar a importação.</p>{% endif %}
         <button class="btn btn-primary" id="confirmar" type="button" {{ 'disabled' if sem_cartao else '' }}>{{ 'Retomar importação' if job.iniciado else 'Confirmar importação das linhas aptas' }}</button>
     </div>
@@ -75,8 +75,8 @@
                     document.getElementById('barra').value = cursor;
                     document.getElementById('progresso').textContent = `${cursor} de ${result.total} processadas. ${result.importados} importadas, ${result.ignorados} já existentes, ${result.pendentes} pendentes.`;
                     if (result.concluido) { window.location.reload(); break; }
-                    message.textContent = 'Lote salvo. Aguardando 5 segundos para continuar…';
-                    await new Promise(resolve => setTimeout(resolve, 5000));
+                    message.textContent = 'Lote salvo. Aguardando 10 segundos para continuar…';
+                    await new Promise(resolve => setTimeout(resolve, 10000));
                     message.textContent = 'Importando próximo lote…';
                 }
             } catch (error) {
