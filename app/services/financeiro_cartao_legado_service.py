@@ -307,9 +307,6 @@ def processar_lote(job_id, usuario_id, cursor):
     if not adquirido:
         db.session.rollback()
         return resumo(job)
-    if any(not r.get("cartao_id") for r in job.dados if not r["erros_base"]):
-        db.session.rollback()
-        raise ValueError("Vincule todos os cartões e clique em Validar cartões antes de confirmar.")
     linhas = [dict(r) for r in job.dados]
     fim = min(cursor + TAMANHO_LOTE, len(linhas))
     cache = {"cartoes": {}, "faturas": {}}

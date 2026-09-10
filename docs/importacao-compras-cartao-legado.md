@@ -12,6 +12,8 @@ Implementação local. Não executar publicação ou deploy sem nova solicitaç�
 6. Clique em **Confirmar importação das linhas aptas**. A cada 100 linhas processadas, há uma pausa de 10 segundos.
 7. Ao final, confira os contadores e baixe o relatório de pendências. Uma importação interrompida pode ser retomada em **Importações recentes**, sem reenviar o arquivo.
 
+Cartões ainda não vinculados não bloqueiam as demais compras. As linhas correspondentes ficam no relatório de pendências e somente as linhas aptas são importadas.
+
 ## Campos e regras
 
 - Uma linha gera somente a parcela informada, sem criar novamente as demais parcelas da compra.
