@@ -151,11 +151,25 @@ class ImportacaoCartaoLegadoTest(unittest.TestCase):
         db.session.commit()
         job = self.criar([linha()])
         self.assertEqual(svc.resumo(job)["aptas"], 0)
-        with self.assertRaises(ValueError):
-            svc.processar_lote(job.id, self.usuario.id, 0)
+        self.assertEqual(svc.resumo(job)["pendencias"], 1)
         svc.atualizar_mapeamento(job, {"cartao_0903": str(outro.id)})
         svc.processar_lote(job.id, self.usuario.id, 0)
         self.assertEqual(FinanceiroContaPagarTitulo.query.one().cartao_credito_id, outro.id)
+
+    def test_cartao_nao_vinculado_nao_bloqueia_linhas_aptas(self):
+        job = self.criar([linha(), linha(2, **{"3": 8887})])
+        self.assertEqual(svc.resumo(job)["aptas"], 1)
+        resultado = svc.processar_lote(job.id, self.usuario.id, 0)
+        self.assertEqual(resultado["importados"], 1)
+        self.assertEqual(resultado["pendentes"], 1)
+        self.assertTrue(resultado["concluido"])
+        self.assertEqual(FinanceiroContaPagarTitulo.query.one().id_legado, "1")
+
+        job_tela = self.criar([linha(3), linha(4, **{"3": 8887})])
+        resposta = self.client.get(f"/financeiro/contas-a-pagar/cartoes/importar-legado/{job_tela.id}")
+        html = resposta.get_data(as_text=True)
+        self.assertIn("As linhas dos cartões ainda não vinculados ficarão nas pendências", html)
+        self.assertNotRegex(html, r'id="confirmar"[^>]*disabled')
 
     def test_fatura_cancelada_nao_recebe_compra(self):
         db.session.add(FinanceiroCartaoFatura(cartao_credito_id=self.cartao.id, competencia=date(2025, 11, 1), data_fechamento=date(2025, 11, 10), data_vencimento=date(2025, 11, 20), status="Cancelada"))

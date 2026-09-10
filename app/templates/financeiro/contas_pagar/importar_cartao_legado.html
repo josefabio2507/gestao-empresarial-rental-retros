@@ -38,8 +38,8 @@
     {% if not job.concluido %}
     <div class="details-card">
         <p>Serão processadas até 100 linhas por lote, com pausa de 10 segundos. Linhas com pendências não serão gravadas. IDs já importados serão ignorados. Mantenha esta página aberta; se fechar, você poderá retomar.</p>
-        {% if sem_cartao %}<p>Vincule os cartões acima e clique em Validar cartões para liberar a importação.</p>{% endif %}
-        <button class="btn btn-primary" id="confirmar" type="button" {{ 'disabled' if sem_cartao else '' }}>{{ 'Retomar importação' if job.iniciado else 'Confirmar importação das linhas aptas' }}</button>
+        {% if sem_cartao %}<p>As linhas dos cartões ainda não vinculados ficarão nas pendências. Você já pode importar as linhas aptas ou selecionar outros cartões e clicar em Validar cartões.</p>{% endif %}
+        <button class="btn btn-primary" id="confirmar" type="button" {{ 'disabled' if sem_linhas_aptas else '' }}>{{ 'Retomar importação' if job.iniciado else 'Confirmar importação das linhas aptas' }}</button>
     </div>
     {% endif %}
     {% set pendencias = job.dados | selectattr('erros') | list %}

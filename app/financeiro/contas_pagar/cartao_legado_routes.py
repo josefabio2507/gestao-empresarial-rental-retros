@@ -65,10 +65,12 @@ def previa_cartao_legado(job_id):
             db.session.rollback()
             flash(str(exc), "warning")
         return redirect(url_for("financeiro_contas_pagar.previa_cartao_legado", job_id=job.id))
+    dados_resumo = service.resumo(job)
     return render_template("financeiro/contas_pagar/importar_cartao_legado.html", job=job,
-        resumo=service.resumo(job), finais=sorted({r["final"] for r in job.dados}),
+        resumo=dados_resumo, finais=sorted({r["final"] for r in job.dados}),
         cartoes=service.cartoes_disponiveis(), csrf=generate_csrf(),
-        sem_cartao=any(not r.get("cartao_id") for r in job.dados if not r["erros_base"]))
+        sem_cartao=any(not r.get("cartao_id") for r in job.dados if not r["erros_base"]),
+        sem_linhas_aptas=dados_resumo["aptas"] == 0)
 
 
 @bp.route("/cartoes/importar-legado/<job_id>/lote", methods=["POST"])
