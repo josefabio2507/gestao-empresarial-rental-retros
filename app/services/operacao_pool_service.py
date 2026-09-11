@@ -85,7 +85,7 @@ def buscar_veiculos_pool(termo=None, status=None, tipo=None):
         joinedload(OperacaoVeiculoEquipamento.vinculos_responsaveis).joinedload(
             OperacaoVeiculoResponsavel.colaborador
         )
-    )
+    ).filter(OperacaoVeiculoEquipamento.ativo.is_(True))
 
     termo = texto_maiusculo(termo)
     if termo:

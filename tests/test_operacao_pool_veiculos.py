@@ -367,6 +367,17 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         self.assertEqual(STATUS_DISPONIVEL, veiculo.status_operacional)
         self.assertIsNone(veiculo.motivo_indisponibilidade)
 
+    def test_listagem_nao_exibe_veiculo_inativo(self):
+        veiculo_ativo = self._criar_veiculo("ATIVO001", "VEICULO ATIVO")
+        veiculo_inativo = self._criar_veiculo("INATIVO001", "VEICULO INATIVO")
+        veiculo_inativo.ativo = False
+        db.session.commit()
+
+        veiculos = buscar_veiculos_pool()
+
+        self.assertIn(veiculo_ativo, veiculos)
+        self.assertNotIn(veiculo_inativo, veiculos)
+
     def test_historico_oculta_corrigir_para_usuario_comum(self):
         veiculo = self._criar_veiculo()
         _, _, vinculo = vincular_responsavel(
@@ -440,6 +451,7 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         self.assertIn(b"Pool de Veiculos", resposta.data)
         self.assertIn(b"href=\"/operacao/gestao-veiculos-epgs/\"", resposta.data)
         self.assertIn(b"Vincular", resposta.data)
+        self.assertIn(b"listbox-10-linhas", resposta.data)
         self.assertNotIn(b"Editar", resposta.data)
         self.assertNotIn(b"/editar", resposta.data)
 

@@ -241,6 +241,8 @@ class OperacaoVeiculosEpgsTestCase(unittest.TestCase):
             self.assertEqual(200, resposta.status_code)
             self.assertIn(registro.identificacao.encode(), resposta.data)
 
+        self.assertIn(b"listbox-10-linhas", resposta.data)
+
     def test_seed_inicial_cria_25_registros_sem_duplicar(self):
         executar_seed()
         self.assertEqual(25, OperacaoVeiculoEquipamento.query.count())
