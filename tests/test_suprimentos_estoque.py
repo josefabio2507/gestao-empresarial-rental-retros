@@ -191,10 +191,26 @@ class SuprimentosEstoqueTestCase(unittest.TestCase):
 
         self.assertEqual(200, resposta.status_code)
         self.assertIn(b"Estoque", resposta.data)
+        self.assertIn(b"listbox-10-linhas", resposta.data)
+        self.assertIn(b'aria-label="Lista de materiais em estoque"', resposta.data)
+        self.assertIn(b"Exportar PDF", resposta.data)
         self.assertIn(b"FILTRO DE OLEO", resposta.data)
         self.assertIn(b"2,000", resposta.data)
         self.assertIn(b"Abaixo do minimo", resposta.data)
         self.assertNotIn(b"SERVICO DE CALIBRAGEM", resposta.data)
+
+    def test_exporta_estoque_filtrado_em_pdf(self):
+        self._liberar_usuario()
+        self._autenticar(self.usuario)
+
+        resposta = self.client.get(
+            f"/suprimentos/estoque/exportar-pdf?categoria_id={self.categoria.id}&abaixo_minimo=1"
+        )
+
+        self.assertEqual(200, resposta.status_code)
+        self.assertTrue(resposta.data.startswith(b"%PDF-"))
+        self.assertIn("application/pdf", resposta.headers["Content-Type"])
+        self.assertIn("relatorio_estoque_materiais_", resposta.headers["Content-Disposition"])
 
     def test_card_estoque_no_departamento_aponta_para_estoque(self):
         self._liberar_usuario()

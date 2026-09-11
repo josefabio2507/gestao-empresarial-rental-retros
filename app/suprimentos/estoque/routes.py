@@ -1,10 +1,14 @@
 from datetime import date
 
-from flask import flash, redirect, render_template, request, url_for
+from flask import flash, redirect, render_template, request, send_file, url_for
 from flask_login import current_user, login_required
 
 from app.decorators import module_permission_required
 from app.services.logs_service import registrar_log
+from app.services.suprimentos_estoque_pdf_service import (
+    gerar_pdf_estoque_materiais,
+    nome_arquivo_estoque_pdf,
+)
 from app.services.suprimentos_service import (
     CLASSE_CENTRO_CUSTO_EQUIPES,
     buscar_categorias_ativas,
@@ -34,6 +38,29 @@ def listar():
         categorias=buscar_categorias_ativas(),
         filtros=request.args,
         formatar_decimal_brasil=formatar_decimal_brasil,
+    )
+
+
+@suprimentos_estoque_bp.route("/exportar-pdf")
+@login_required
+@module_permission_required("suprimentos", "estoque", "visualizar")
+def exportar_pdf():
+    categorias = buscar_categorias_ativas()
+    itens = buscar_saldos_estoque(
+        request.args.get("descricao"),
+        request.args.get("categoria_id"),
+        request.args.get("abaixo_minimo"),
+    )
+    pdf_buffer = gerar_pdf_estoque_materiais(itens, request.args, categorias)
+    registrar_log(
+        "suprimentos_estoque_pdf_exportado",
+        "Relatorio de estoque de materiais exportado em PDF.",
+    )
+    return send_file(
+        pdf_buffer,
+        as_attachment=True,
+        download_name=nome_arquivo_estoque_pdf(),
+        mimetype="application/pdf",
     )
 
 
