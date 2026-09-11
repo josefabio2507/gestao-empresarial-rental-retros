@@ -387,6 +387,8 @@ class OperacaoAbastecimento(db.Model):
     equipe_id = db.Column(db.Integer, db.ForeignKey("equipes.id"), nullable=True, index=True)
     usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=False, index=True)
     data_abastecimento = db.Column(db.Date, nullable=False, index=True)
+    tipo_leitura = db.Column(db.String(20), nullable=False, default="odometro")
+    leitura_atual = db.Column(db.Numeric(12, 2), nullable=False, default=0)
     tipo_combustivel = db.Column(db.String(40), nullable=False, index=True)
     qtd_litros = db.Column(db.Numeric(12, 3), nullable=False)
     preco = db.Column(db.Numeric(12, 2), nullable=False)
@@ -448,6 +450,11 @@ class OperacaoAbastecimento(db.Model):
             "tipo_combustivel in ('Diesel S10', 'Etanol', 'Etanol aditivado', 'Gasolina comum', 'Gasolina aditivada', 'Gasolina Premium')",
             name="ck_operacao_abastecimentos_tipo_combustivel",
         ),
+        db.CheckConstraint(
+            "tipo_leitura in ('odometro', 'horimetro')",
+            name="ck_operacao_abastecimentos_tipo_leitura",
+        ),
+        db.CheckConstraint("leitura_atual >= 0", name="ck_operacao_abastecimentos_leitura_atual"),
         db.CheckConstraint("qtd_litros > 0", name="ck_operacao_abastecimentos_qtd_litros"),
         db.CheckConstraint("preco >= 0", name="ck_operacao_abastecimentos_preco"),
     )

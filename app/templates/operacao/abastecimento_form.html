@@ -27,6 +27,11 @@
                 <input value="{{ equipe.nome if equipe else 'Sem equipe vinculada' }}" readonly>
             </div>
             <div class="form-group">
+                <label for="leitura_atual">{{ 'Horímetro' if vinculo.tipo_leitura == 'horimetro' else 'Hodômetro' }}</label>
+                <input id="leitura_atual" name="leitura_atual" required inputmode="decimal" placeholder="{{ '0,00 h' if vinculo.tipo_leitura == 'horimetro' else '0,00 km' }}" value="{{ (abastecimento.leitura_atual|string).replace('.', ',') if abastecimento else '' }}">
+                <small>{{ 'Informe o horímetro atual do equipamento.' if vinculo.tipo_leitura == 'horimetro' else 'Informe o hodômetro atual do veículo.' }}</small>
+            </div>
+            <div class="form-group">
                 <label for="tipo_combustivel">Tipo de Combustível</label>
                 <select id="tipo_combustivel" name="tipo_combustivel" required>
                     <option value="">Selecione</option>
