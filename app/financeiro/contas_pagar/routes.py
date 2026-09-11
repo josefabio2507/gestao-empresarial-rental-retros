@@ -66,7 +66,6 @@ from app.services.suprimentos_service import (
 )
 from app.services.logs_service import registrar_log
 from app.financeiro.contas_pagar import financeiro_contas_pagar_bp
-from app.financeiro.contas_pagar import cartao_legado_routes  # noqa: F401
 
 
 @financeiro_contas_pagar_bp.route("/")
@@ -321,11 +320,9 @@ def reativar_agendamento_xml(documento_id):
 @login_required
 @module_permission_required("financeiro", "contas_a_pagar", "visualizar")
 def cartoes():
-    from app.services.permissoes_service import usuario_tem_permissao
     return render_template(
         "financeiro/contas_pagar/cartoes.html",
         cartoes=listar_cartoes(request.args),
-        pode_importar=usuario_tem_permissao(current_user, "financeiro", "contas_a_pagar", "criar"),
         filtros=request.args,
     )
 
