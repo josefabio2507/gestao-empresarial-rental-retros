@@ -1327,15 +1327,10 @@ def salvar_titulo(dados, titulo=None, usuario=None):
     try:
         fornecedor_id = parse_int(dados.get("fornecedor_id"), padrao=0, nome_campo="Fornecedor")
         fornecedor = SuprimentosFornecedor.query.get(fornecedor_id) if fornecedor_id else None
-        fornecedor_nome = normalizar_texto(dados.get("fornecedor_nome_snapshot"))
-        fornecedor_documento = normalizar_documento(dados.get("fornecedor_cnpj_cpf_snapshot"))
-
-        if fornecedor:
-            fornecedor_nome = fornecedor.razao_social
-            fornecedor_documento = fornecedor.cnpj_cpf or fornecedor_documento
-
-        if not fornecedor_nome:
-            raise ValueError("Fornecedor ou nome do fornecedor e obrigatorio.")
+        if not fornecedor or not fornecedor.ativo:
+            raise ValueError("Selecione um fornecedor cadastrado e ativo.")
+        fornecedor_nome = fornecedor.razao_social
+        fornecedor_documento = fornecedor.cnpj_cpf
 
         descricao = normalizar_texto(dados.get("descricao"))
         if not descricao:

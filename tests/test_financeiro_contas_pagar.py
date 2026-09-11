@@ -262,6 +262,41 @@ class FinanceiroContasPagarTestCase(unittest.TestCase):
         self.assertFalse(sucesso)
         self.assertEqual("Parcela atual nao pode ser maior que total de parcelas.", mensagem)
 
+    def test_formulario_busca_fornecedor_e_preenche_dados_do_cadastro(self):
+        self._autenticar(self.admin)
+
+        resposta = self.client.get("/financeiro/contas-a-pagar/novo")
+
+        self.assertEqual(200, resposta.status_code)
+        self.assertIn(b'id="fornecedor_busca"', resposta.data)
+        self.assertIn(b'data-datalist-target="fornecedor_id"', resposta.data)
+        self.assertIn(b'data-documento="11222333000181"', resposta.data)
+        self.assertIn(b'id="fornecedor_nome_snapshot"', resposta.data)
+        self.assertIn(b'readonly', resposta.data)
+
+    def test_titulo_exige_fornecedor_cadastrado_e_ignora_snapshots_enviados(self):
+        sucesso, mensagem, _ = salvar_titulo(
+            self._dados_titulo(
+                fornecedor_id="999999",
+                fornecedor_nome_snapshot="FORNECEDOR FORA DA LISTA",
+                fornecedor_cnpj_cpf_snapshot="12345678901",
+            ),
+            usuario=self.admin,
+        )
+        self.assertFalse(sucesso)
+        self.assertEqual("Selecione um fornecedor cadastrado e ativo.", mensagem)
+
+        sucesso, mensagem, titulo = salvar_titulo(
+            self._dados_titulo(
+                fornecedor_nome_snapshot="NOME ADULTERADO",
+                fornecedor_cnpj_cpf_snapshot="12345678901",
+            ),
+            usuario=self.admin,
+        )
+        self.assertTrue(sucesso, mensagem)
+        self.assertEqual(self.fornecedor.razao_social, titulo.fornecedor_nome_snapshot)
+        self.assertEqual(self.fornecedor.cnpj_cpf, titulo.fornecedor_cnpj_cpf_snapshot)
+
     def test_dashboard_contabiliza_titulos(self):
         sucesso, mensagem, _ = salvar_titulo(
             self._dados_titulo(status="Aguardando conferencia"),

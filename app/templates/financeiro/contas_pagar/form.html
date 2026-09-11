@@ -15,16 +15,28 @@
         <h2>Fornecedor</h2>
         <div class="form-grid">
             <div class="form-group">
-                <label for="fornecedor_id">Fornecedor cadastrado</label>
-                <select id="fornecedor_id" name="fornecedor_id">
-                    <option value="">Informar manualmente</option>
+                <label for="fornecedor_busca">Fornecedor cadastrado</label>
+                {% set fornecedor_selecionado = (opcoes.fornecedores | selectattr('id', 'equalto', titulo.fornecedor_id) | first) if titulo and titulo.fornecedor_id else none %}
+                <input
+                    id="fornecedor_busca"
+                    type="search"
+                    list="fornecedores_cadastrados"
+                    value="{{ fornecedor_selecionado.razao_social if fornecedor_selecionado else '' }}"
+                    placeholder="Digite para buscar um fornecedor"
+                    autocomplete="off"
+                    data-datalist-target="fornecedor_id"
+                    required
+                >
+                <input id="fornecedor_id" name="fornecedor_id" type="hidden" value="{{ fornecedor_selecionado.id if fornecedor_selecionado else '' }}">
+                <datalist id="fornecedores_cadastrados">
                     {% for fornecedor in opcoes.fornecedores %}
-                        <option value="{{ fornecedor.id }}" {{ "selected" if titulo and titulo.fornecedor_id == fornecedor.id else "" }}>{{ fornecedor.razao_social }}</option>
+                        <option value="{{ fornecedor.razao_social }}" data-value="{{ fornecedor.id }}" data-nome="{{ fornecedor.razao_social }}" data-documento="{{ fornecedor.cnpj_cpf or '' }}"></option>
                     {% endfor %}
-                </select>
+                </datalist>
+                <small>Digite para filtrar e selecione uma opção da lista.</small>
             </div>
-            <div class="form-group"><label for="fornecedor_nome_snapshot">Nome do fornecedor</label><input id="fornecedor_nome_snapshot" name="fornecedor_nome_snapshot" value="{{ titulo.fornecedor_nome_snapshot if titulo else '' }}" maxlength="180" data-uppercase required></div>
-            <div class="form-group"><label for="fornecedor_cnpj_cpf_snapshot">CNPJ/CPF</label><input id="fornecedor_cnpj_cpf_snapshot" name="fornecedor_cnpj_cpf_snapshot" value="{{ titulo.fornecedor_cnpj_cpf_snapshot if titulo else '' }}" maxlength="18" data-documento-br></div>
+            <div class="form-group"><label for="fornecedor_nome_snapshot">Nome do fornecedor</label><input id="fornecedor_nome_snapshot" name="fornecedor_nome_snapshot" value="{{ titulo.fornecedor_nome_snapshot if titulo else '' }}" maxlength="180" readonly required></div>
+            <div class="form-group"><label for="fornecedor_cnpj_cpf_snapshot">CNPJ/CPF</label><input id="fornecedor_cnpj_cpf_snapshot" name="fornecedor_cnpj_cpf_snapshot" value="{{ titulo.fornecedor_cnpj_cpf_snapshot if titulo else '' }}" maxlength="18" data-documento-br readonly></div>
         </div>
 
         <h2>Documento</h2>
@@ -89,6 +101,30 @@
 </section>
 <script>
 (function () {
+    var fornecedorBusca = document.getElementById('fornecedor_busca');
+    var fornecedorId = document.getElementById('fornecedor_id');
+    var fornecedoresLista = document.getElementById('fornecedores_cadastrados');
+    var fornecedorNome = document.getElementById('fornecedor_nome_snapshot');
+    var fornecedorDocumento = document.getElementById('fornecedor_cnpj_cpf_snapshot');
+    var sincronizarFornecedor = function () {
+        if (!fornecedorBusca || !fornecedorId || !fornecedoresLista) { return; }
+        var texto = fornecedorBusca.value.trim();
+        var opcao = Array.from(fornecedoresLista.options).find(function (item) {
+            return item.value.trim() === texto;
+        });
+        fornecedorId.value = opcao ? (opcao.dataset.value || '') : '';
+        if (fornecedorNome) { fornecedorNome.value = opcao ? (opcao.dataset.nome || '') : ''; }
+        if (fornecedorDocumento) {
+            fornecedorDocumento.value = opcao ? (opcao.dataset.documento || '') : '';
+            fornecedorDocumento.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+    };
+    if (fornecedorBusca) {
+        fornecedorBusca.addEventListener('input', sincronizarFornecedor);
+        fornecedorBusca.addEventListener('change', sincronizarFornecedor);
+        fornecedorBusca.addEventListener('blur', sincronizarFornecedor);
+    }
+
     var forma = document.getElementById('forma_pagamento');
     var tipo = document.getElementById('tipo_pagamento');
     var dataCompra = document.getElementById('data_compra_cartao');
