@@ -219,6 +219,19 @@ class FinanceiroCartoesFaturasTestCase(unittest.TestCase):
         self.assertEqual("2026-10-20", fechamento.isoformat())
         self.assertEqual("2026-10-28", vencimento.isoformat())
 
+    def test_vencimento_anterior_ao_fechamento_fica_no_mes_seguinte(self):
+        cartao = self._criar_cartao()
+        cartao.dia_fechamento = 24
+        cartao.dia_vencimento = 6
+
+        competencia, fechamento, vencimento = calcular_ciclo_fatura(
+            cartao,
+            __import__("datetime").date(2026, 9, 15),
+        )
+        self.assertEqual("2026-09-01", competencia.isoformat())
+        self.assertEqual("2026-09-24", fechamento.isoformat())
+        self.assertEqual("2026-10-06", vencimento.isoformat())
+
     def test_titulo_cartao_cria_reutiliza_fatura_e_recalcula_total(self):
         cartao = self._criar_cartao()
 

@@ -13,7 +13,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.extensions import db
 from app.models import CentroCusto, FinanceiroCartaoCredito, FinanceiroCartaoFatura, FinanceiroContaPagarTitulo, FinanceiroImportacaoCartao
-from app.services.financeiro_contas_pagar_service import recalcular_fatura
+from app.services.financeiro_contas_pagar_service import calcular_datas_fatura, recalcular_fatura
 
 COLUNAS = [
     "ID legado da parcela", "ID legado da compra", "Cartão (nome cadastrado)",
@@ -261,8 +261,7 @@ def _importar_linha(linha, usuario_id, cache=None):
     if fatura and fatura.status == "Cancelada":
         raise ValueError("Fatura cancelada: reabra ou confira a fatura antes de importar esta parcela.")
     if not fatura:
-        fechamento = competencia.replace(day=min(cartao.dia_fechamento, monthrange(competencia.year, competencia.month)[1]))
-        vencimento = competencia.replace(day=min(cartao.dia_vencimento, monthrange(competencia.year, competencia.month)[1]))
+        fechamento, vencimento = calcular_datas_fatura(cartao, competencia.year, competencia.month)
         fatura = FinanceiroCartaoFatura(cartao_credito_id=cartao.id, competencia=competencia,
             data_fechamento=fechamento, data_vencimento=vencimento, status="Aberta",
             criado_por_usuario_id=usuario_id, atualizado_por_usuario_id=usuario_id)

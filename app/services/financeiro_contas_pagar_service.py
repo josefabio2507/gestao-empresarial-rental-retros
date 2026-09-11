@@ -157,6 +157,15 @@ def _proximo_mes(ano, mes):
     return ano, mes + 1
 
 
+def calcular_datas_fatura(cartao, ano, mes):
+    data_fechamento = _data_com_dia_valido(ano, mes, cartao.dia_fechamento)
+    ano_vencimento, mes_vencimento = ano, mes
+    if cartao.dia_vencimento <= cartao.dia_fechamento:
+        ano_vencimento, mes_vencimento = _proximo_mes(ano, mes)
+    data_vencimento = _data_com_dia_valido(ano_vencimento, mes_vencimento, cartao.dia_vencimento)
+    return data_fechamento, data_vencimento
+
+
 def calcular_ciclo_fatura(cartao, data_compra):
     if data_compra.day <= cartao.dia_fechamento:
         ano, mes = data_compra.year, data_compra.month
@@ -164,8 +173,7 @@ def calcular_ciclo_fatura(cartao, data_compra):
         ano, mes = _proximo_mes(data_compra.year, data_compra.month)
 
     competencia = date(ano, mes, 1)
-    data_fechamento = _data_com_dia_valido(ano, mes, cartao.dia_fechamento)
-    data_vencimento = _data_com_dia_valido(ano, mes, cartao.dia_vencimento)
+    data_fechamento, data_vencimento = calcular_datas_fatura(cartao, ano, mes)
     return competencia, data_fechamento, data_vencimento
 
 
