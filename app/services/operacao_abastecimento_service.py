@@ -13,7 +13,14 @@ from app.services.google_drive_service import (
     mensagem_erro_upload_google_drive,
     upload_arquivo_google_drive,
 )
-from app.services.operacao_pool_service import decimal_ou_none, texto, veiculos_vinculados_ao_colaborador
+from app.services.operacao_pool_service import (
+    TIPOS_LEITURA,
+    decimal_ou_none,
+    registrar_leitura,
+    texto,
+    tipo_leitura_padrao_veiculo,
+    veiculos_vinculados_ao_colaborador,
+)
 from app.services.permissoes_service import usuario_eh_administrador
 from app.services.suprimentos_service import _normalizar_imagem_para_jpg
 from app.utils.datas import agora_brasil
@@ -254,6 +261,8 @@ def salvar_abastecimento(form_data, files_data, usuario, veiculo=None, abastecim
     colaborador = colaborador_do_usuario(usuario)
     equipe = colaborador.equipe if colaborador else None
     data_abastecimento = data_ou_none(form_data.get("data_abastecimento"))
+    tipo_leitura = texto(getattr(vinculo, "tipo_leitura", None)) or tipo_leitura_padrao_veiculo(veiculo)
+    leitura_atual = decimal_ou_none(form_data.get("leitura_atual"))
     tipo_combustivel = texto(form_data.get("tipo_combustivel"))
     qtd_litros = decimal_ou_none(form_data.get("qtd_litros"))
     preco = decimal_ou_none(form_data.get("preco"))
@@ -264,6 +273,10 @@ def salvar_abastecimento(form_data, files_data, usuario, veiculo=None, abastecim
 
     if not data_abastecimento:
         return False, "Data do abastecimento e obrigatoria.", abastecimento
+    if tipo_leitura not in TIPOS_LEITURA:
+        return False, "Tipo de leitura do vinculo invalido.", abastecimento
+    if leitura_atual is None:
+        return False, "Hodometro/horimetro e obrigatorio.", abastecimento
     if tipo_combustivel not in TIPOS_COMBUSTIVEL:
         return False, "Tipo de combustivel invalido.", abastecimento
     if qtd_litros is None or qtd_litros <= 0:
@@ -293,7 +306,12 @@ def salvar_abastecimento(form_data, files_data, usuario, veiculo=None, abastecim
         )
         db.session.add(abastecimento)
 
+    leitura_original = getattr(abastecimento, "leitura_atual", None)
+    tipo_leitura_original = getattr(abastecimento, "tipo_leitura", None)
+
     abastecimento.data_abastecimento = data_abastecimento
+    abastecimento.tipo_leitura = tipo_leitura
+    abastecimento.leitura_atual = leitura_atual
     abastecimento.tipo_combustivel = tipo_combustivel
     abastecimento.qtd_litros = qtd_litros
     abastecimento.preco = preco
@@ -316,6 +334,24 @@ def salvar_abastecimento(form_data, files_data, usuario, veiculo=None, abastecim
         return False, erro_extras, abastecimento
 
     db.session.flush()
+
+    leitura_alterada = (
+        leitura_original != abastecimento.leitura_atual
+        or tipo_leitura_original != abastecimento.tipo_leitura
+    )
+    if leitura_alterada:
+        sucesso_leitura, mensagem_leitura, _ = registrar_leitura(
+            veiculo,
+            tipo_leitura,
+            leitura_atual,
+            origem="abastecimento",
+            usuario=usuario,
+            vinculo=vinculo,
+        )
+        if not sucesso_leitura:
+            db.session.rollback()
+            return False, mensagem_leitura, abastecimento
+
     if abastecimento.valor_total_nota_fiscal is not None:
         if abastecimento.status_conferencia_nota_fiscal == "Conferido":
             _registrar_log_abastecimento("operacao_abastecimento_nf_conferida", f"Valor da NF confere. Abastecimento: {abastecimento.id}.")

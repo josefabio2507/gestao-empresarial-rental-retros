@@ -20,6 +20,7 @@
         <p><strong>Data:</strong> {{ abastecimento.data_abastecimento.strftime('%d/%m/%Y') }}</p>
         <p><strong>Motorista/Operador:</strong> {{ abastecimento.colaborador.nome if abastecimento.colaborador else '-' }}</p>
         <p><strong>Equipe:</strong> {{ abastecimento.equipe.nome if abastecimento.equipe else '-' }}</p>
+        <p><strong>{{ 'Horímetro' if abastecimento.tipo_leitura == 'horimetro' else 'Hodômetro' }}:</strong> {{ (abastecimento.leitura_atual|string).replace('.', ',') }} {{ 'h' if abastecimento.tipo_leitura == 'horimetro' else 'km' }}</p>
         <p><strong>Tipo de combustível:</strong> {{ abastecimento.tipo_combustivel }}</p>
         <p><strong>Qtd Litros:</strong> {{ (abastecimento.qtd_litros|string).replace('.', ',') }}</p>
         <p><strong>Total combustível:</strong> {{ formatar_moeda_brl(abastecimento.valor_total_combustivel) }}</p>
