@@ -25,7 +25,7 @@ Cartões ainda não vinculados não bloqueiam as demais compras. As linhas corre
 - **Pago** registra o valor pago histórico, sem criar uma baixa com data inventada. O pagamento histórico aparece no detalhe do título e é preservado nos recálculos.
 - Situação vazia é tratada como **em aberto**, conforme solicitado. O sistema apresenta **Vencido** ou **A vencer**, de acordo com a data.
 - Origem **Legado**, tipo e forma **Cartão de Crédito**. O nome do fornecedor é preservado como histórico, sem criar automaticamente cadastros de fornecedores.
-- Vencimentos originais permanecem nas parcelas. Na fatura mensal nova, o cabeçalho usa o dia de vencimento do cadastro do cartão. Faturas já existentes mantêm suas datas. Essa interpretação foi apresentada ao usuário para conferência.
+- Vencimentos originais permanecem nas parcelas. Na fatura mensal, o cabeçalho usa o dia cadastrado no cartão. Quando o dia de vencimento é anterior ou igual ao fechamento, o vencimento fica no mês seguinte ao fechamento.
 - Valores negativos/zero não são transformados em compras positivas. Ficam separados no relatório de pendências. Os quatro descontos da planilha precisam ser conferidos antes de encerrar a conciliação das faturas.
 - Faturas canceladas não recebem parcelas; essas linhas são reportadas como pendências.
 - A importação exige permissão de criar em Contas a Pagar. A prévia, os lotes e as pendências só podem ser acessados pelo usuário que enviou o arquivo.
@@ -49,6 +49,8 @@ Finais encontrados: 0903, 3539, 4729, 6226, 7216, 8356 e 8887.
 ## Banco e testes
 
 A migração `m3c4d5e6f7a8`, filha de `l2b3c4d5e6f7`, adiciona o identificador único do legado de cartões, o pagamento histórico e a tabela de importações. Não importa dados por seed. O arquivo e o progresso ficam no banco, não no cookie de sessão ou em arquivo temporário do servidor.
+
+A migração `n4d5e6f7a8b9` corrige as faturas existentes cujo vencimento ficou igual ou anterior ao fechamento, movendo o vencimento para o mês seguinte conforme o cadastro do cartão.
 
 Os lotes usam atualização condicional do cursor, transações e proteção contra repetição. Uma falha inesperada desfaz somente o lote em andamento. O banco impõe a pausa entre os lotes; atualizar a página não acelera nem repete a gravação.
 
