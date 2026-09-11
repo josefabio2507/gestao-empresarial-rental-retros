@@ -265,8 +265,11 @@ class FinanceiroCartoesFaturasTestCase(unittest.TestCase):
         self._liberar(visualizar=True)
         self._autenticar(self.usuario)
 
-        self.assertEqual(200, self.client.get("/financeiro/contas-a-pagar/cartoes").status_code)
+        cartoes = self.client.get("/financeiro/contas-a-pagar/cartoes")
+        self.assertEqual(200, cartoes.status_code)
+        self.assertNotIn(b"Importar compras do legado", cartoes.data)
         self.assertEqual(200, self.client.get("/financeiro/contas-a-pagar/faturas").status_code)
+        self.assertEqual(404, self.client.get("/financeiro/contas-a-pagar/cartoes/importar-legado").status_code)
         novo_cartao = self.client.get("/financeiro/contas-a-pagar/cartoes/novo")
         self.assertEqual(302, novo_cartao.status_code)
         self.assertIn("/acesso-negado", novo_cartao.headers["Location"])

@@ -2067,24 +2067,6 @@ class CentroCusto(db.Model):
     def __repr__(self):
         return f"<CentroCusto {self.codigo or ''} {self.nome}>"
 
-class FinanceiroImportacaoCartao(db.Model):
-    __tablename__ = "financeiro_importacoes_cartao"
-
-    id = db.Column(db.String(36), primary_key=True)
-    usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=False, index=True)
-    arquivo_nome = db.Column(db.String(255), nullable=False)
-    dados = db.Column(db.JSON, nullable=False)
-    mapeamento = db.Column(db.JSON, nullable=False, default=dict)
-    cursor = db.Column(db.Integer, nullable=False, default=0)
-    importados = db.Column(db.Integer, nullable=False, default=0)
-    ignorados = db.Column(db.Integer, nullable=False, default=0)
-    pendentes = db.Column(db.Integer, nullable=False, default=0)
-    iniciado = db.Column(db.Boolean, nullable=False, default=False)
-    concluido = db.Column(db.Boolean, nullable=False, default=False)
-    proximo_lote_em = db.Column(db.DateTime, nullable=True)
-    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
-
-
 class FinanceiroCartaoCredito(db.Model):
     __tablename__ = "financeiro_cartoes_credito"
 
