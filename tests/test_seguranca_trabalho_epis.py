@@ -15,6 +15,7 @@ from app.models import (
     Usuario,
 )
 from app.services.seguranca_trabalho_service import (
+    buscar_itens_estoque_para_consulta,
     buscar_itens_estoque_para_entrega,
     registrar_entrega_epi,
 )
@@ -119,18 +120,23 @@ class SegurancaTrabalhoEpisTestCase(unittest.TestCase):
         }
 
     def test_consulta_inclui_epi_ou_uniforme_com_estoque_zerado(self):
-        itens = buscar_itens_estoque_para_entrega()
+        itens = buscar_itens_estoque_para_consulta()
 
         self.assertEqual(
             {self.epi_com_saldo.id, self.uniforme_com_saldo.id, self.epi_sem_saldo.id},
             {item.id for item in itens},
         )
 
-    def test_nova_entrega_exibe_apenas_itens_com_saldo_disponivel(self):
-        itens = buscar_itens_estoque_para_entrega(somente_com_saldo=True)
+    def test_lista_de_entrega_mantem_comportamento_anterior(self):
+        itens = buscar_itens_estoque_para_entrega()
 
         self.assertEqual(
-            {self.epi_com_saldo.id, self.uniforme_com_saldo.id},
+            {
+                self.epi_com_saldo.id,
+                self.uniforme_com_saldo.id,
+                self.epi_sem_saldo.id,
+                self.item_outro_tipo.id,
+            },
             {item.id for item in itens},
         )
 
@@ -146,22 +152,13 @@ class SegurancaTrabalhoEpisTestCase(unittest.TestCase):
         self.assertEqual(Decimal("-2.000"), entrega.movimentacao_estoque.quantidade)
         self.assertEqual(saldo_anterior - Decimal("2"), self.epi_com_saldo.saldo_estoque)
 
-    def test_backend_rejeita_item_de_outro_tipo(self):
-        sucesso, mensagem, entrega = registrar_entrega_epi(
-            self._form_entrega(self.item_outro_tipo.id), self.usuario
-        )
-
-        self.assertFalse(sucesso)
-        self.assertIn("EPI ou Uniforme", mensagem)
-        self.assertIsNone(entrega)
-
-    def test_backend_rejeita_item_sem_saldo(self):
+    def test_backend_mantem_bloqueio_de_baixa_sem_saldo(self):
         sucesso, mensagem, entrega = registrar_entrega_epi(
             self._form_entrega(self.epi_sem_saldo.id), self.usuario
         )
 
         self.assertFalse(sucesso)
-        self.assertIn("saldo disponivel", mensagem)
+        self.assertIn("maior que o saldo", mensagem)
         self.assertIsNone(entrega)
 
 
