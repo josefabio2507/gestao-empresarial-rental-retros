@@ -1,9 +1,13 @@
 from datetime import date
 
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, flash, redirect, render_template, request, send_file, url_for
 from flask_login import current_user, login_required
 
 from app.services.logs_service import registrar_log
+from app.services.seguranca_trabalho_pdf_service import (
+    gerar_pdf_entregas_epi,
+    nome_arquivo_entregas_epi_pdf,
+)
 from app.services.seguranca_trabalho_service import (
     MOTIVOS_ENTREGA_EPI,
     STATUS_ENTREGA_EPI_ATIVA,
@@ -43,6 +47,29 @@ def epis():
         status_entrega_ativa=STATUS_ENTREGA_EPI_ATIVA,
         filtros=request.args,
         formatar_decimal_brasil=formatar_decimal_brasil,
+    )
+
+
+@seguranca_trabalho_bp.route("/epis/exportar-pdf")
+@login_required
+def exportar_epis_pdf():
+    colaboradores = buscar_colaboradores_ativos()
+    itens = buscar_itens_estoque_para_entrega()
+    entregas = buscar_entregas_epi(
+        request.args.get("colaborador_id"),
+        request.args.get("item_id"),
+        request.args.get("tipo_material"),
+    )
+    pdf_buffer = gerar_pdf_entregas_epi(entregas, request.args, colaboradores, itens)
+    registrar_log(
+        "seguranca_trabalho_epis_pdf_exportado",
+        "Relatorio de EPIs e uniformes exportado em PDF.",
+    )
+    return send_file(
+        pdf_buffer,
+        as_attachment=True,
+        download_name=nome_arquivo_entregas_epi_pdf(),
+        mimetype="application/pdf",
     )
 
 
