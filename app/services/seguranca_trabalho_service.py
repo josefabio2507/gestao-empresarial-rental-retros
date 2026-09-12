@@ -64,7 +64,7 @@ def item_eh_epi_ou_uniforme(item):
     return any(valor in CATEGORIAS_EPI_UNIFORME for valor in identificadores_categoria)
 
 
-def buscar_itens_estoque_para_entrega():
+def buscar_itens_estoque_para_entrega(somente_com_saldo=False):
     saldo_disponivel = (
         select(func.coalesce(func.sum(SuprimentosMovimentacaoEstoque.quantidade), 0))
         .where(
@@ -81,7 +81,7 @@ def buscar_itens_estoque_para_entrega():
         )
     )
 
-    return (
+    query = (
         SuprimentosItem.query
         .options(
             joinedload(SuprimentosItem.categoria),
@@ -92,11 +92,13 @@ def buscar_itens_estoque_para_entrega():
             SuprimentosItem.ativo.is_(True),
             SuprimentosItem.item_estocavel.is_(True),
             or_(SuprimentosItem.tipo == "epi", categoria_epi_uniforme),
-            saldo_disponivel > 0,
         )
-        .order_by(SuprimentosItem.descricao.asc())
-        .all()
     )
+
+    if somente_com_saldo:
+        query = query.filter(saldo_disponivel > 0)
+
+    return query.order_by(SuprimentosItem.descricao.asc()).all()
 
 
 def buscar_entregas_epi(colaborador_id=None, item_id=None, tipo_material=None):

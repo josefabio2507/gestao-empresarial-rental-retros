@@ -118,8 +118,16 @@ class SegurancaTrabalhoEpisTestCase(unittest.TestCase):
             "motivo_entrega": "Reposicao",
         }
 
-    def test_lista_apenas_epi_ou_uniforme_ativo_com_saldo_disponivel(self):
+    def test_consulta_inclui_epi_ou_uniforme_com_estoque_zerado(self):
         itens = buscar_itens_estoque_para_entrega()
+
+        self.assertEqual(
+            {self.epi_com_saldo.id, self.uniforme_com_saldo.id, self.epi_sem_saldo.id},
+            {item.id for item in itens},
+        )
+
+    def test_nova_entrega_exibe_apenas_itens_com_saldo_disponivel(self):
+        itens = buscar_itens_estoque_para_entrega(somente_com_saldo=True)
 
         self.assertEqual(
             {self.epi_com_saldo.id, self.uniforme_com_saldo.id},
