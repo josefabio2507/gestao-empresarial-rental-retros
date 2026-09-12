@@ -6,4 +6,13 @@
     <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.agendamentos_xml') }}">Agendamentos XML</a>
     <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.cartoes') }}">Cartoes</a>
     <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.faturas') }}">Faturas</a>
+    {% if request.endpoint in [
+        'financeiro_contas_pagar.novo',
+        'financeiro_contas_pagar.agendamentos_oc',
+        'financeiro_contas_pagar.agendamentos_xml',
+        'financeiro_contas_pagar.cartoes',
+        'financeiro_contas_pagar.faturas'
+    ] %}
+        <a class="btn btn-secondary" href="{{ url_for('financeiro.index') }}">Voltar ao Financeiro</a>
+    {% endif %}
 </nav>
