@@ -1,12 +1,14 @@
 from datetime import date, datetime
 from decimal import Decimal
 
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import joinedload
 
 from app.extensions import db
 from app.models import (
     Colaborador,
     SegurancaTrabalhoEntregaEpi,
+    SuprimentosCategoriaItem,
     SuprimentosItem,
     SuprimentosMovimentacaoEstoque,
 )
@@ -38,6 +40,8 @@ MOTIVOS_ENTREGA_EPI = [
     "Outro",
 ]
 
+CATEGORIAS_EPI_UNIFORME = ("epi", "epis", "uniforme", "uniformes")
+
 
 def buscar_colaboradores_ativos():
     return (
@@ -48,13 +52,47 @@ def buscar_colaboradores_ativos():
     )
 
 
+def item_eh_epi_ou_uniforme(item):
+    if texto(getattr(item, "tipo", None)).lower() == "epi":
+        return True
+
+    categoria = getattr(item, "categoria", None)
+    identificadores_categoria = (
+        texto(getattr(categoria, "slug", None)).lower(),
+        texto(getattr(categoria, "nome", None)).lower(),
+    )
+    return any(valor in CATEGORIAS_EPI_UNIFORME for valor in identificadores_categoria)
+
+
 def buscar_itens_estoque_para_entrega():
+    saldo_disponivel = (
+        select(func.coalesce(func.sum(SuprimentosMovimentacaoEstoque.quantidade), 0))
+        .where(
+            SuprimentosMovimentacaoEstoque.item_id == SuprimentosItem.id,
+            SuprimentosMovimentacaoEstoque.status == STATUS_MOVIMENTACAO_ESTOQUE_REGISTRADA,
+        )
+        .correlate(SuprimentosItem)
+        .scalar_subquery()
+    )
+    categoria_epi_uniforme = SuprimentosItem.categoria.has(
+        or_(
+            func.lower(func.trim(SuprimentosCategoriaItem.slug)).in_(CATEGORIAS_EPI_UNIFORME),
+            func.lower(func.trim(SuprimentosCategoriaItem.nome)).in_(CATEGORIAS_EPI_UNIFORME),
+        )
+    )
+
     return (
         SuprimentosItem.query
-        .options(joinedload(SuprimentosItem.unidade_medida), joinedload(SuprimentosItem.movimentacoes_estoque))
+        .options(
+            joinedload(SuprimentosItem.categoria),
+            joinedload(SuprimentosItem.unidade_medida),
+            joinedload(SuprimentosItem.movimentacoes_estoque),
+        )
         .filter(
             SuprimentosItem.ativo.is_(True),
             SuprimentosItem.item_estocavel.is_(True),
+            or_(SuprimentosItem.tipo == "epi", categoria_epi_uniforme),
+            saldo_disponivel > 0,
         )
         .order_by(SuprimentosItem.descricao.asc())
         .all()
@@ -110,13 +148,19 @@ def _validar_entrega(dados):
 
     item = (
         SuprimentosItem.query
-        .options(joinedload(SuprimentosItem.movimentacoes_estoque))
+        .options(
+            joinedload(SuprimentosItem.categoria),
+            joinedload(SuprimentosItem.movimentacoes_estoque),
+        )
         .get(dados["item_id"])
         if dados["item_id"]
         else None
     )
     if not item or not item.ativo or not item.item_estocavel:
         return False, "Informe um item estocavel ativo do estoque de Suprimentos.", None, None
+
+    if not item_eh_epi_ou_uniforme(item):
+        return False, "Informe um item classificado como EPI ou Uniforme.", None, None
 
     if dados["tipo_material"] not in TIPOS_MATERIAL_ENTREGA:
         return False, "Informe se o material entregue e EPI ou Uniforme.", None, None
@@ -149,6 +193,9 @@ def registrar_entrega_epi(form_data, usuario):
         return False, mensagem, None
 
     saldo_atual = Decimal(item.saldo_estoque)
+    if saldo_atual <= 0:
+        return False, "O item informado nao possui saldo disponivel em estoque.", None
+
     if dados["quantidade"] > saldo_atual:
         return False, "Entrega nao pode ser maior que o saldo atual do item.", None
 
