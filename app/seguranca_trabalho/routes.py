@@ -15,6 +15,7 @@ from app.services.seguranca_trabalho_service import (
     buscar_colaboradores_ativos,
     buscar_entrega_epi_por_id,
     buscar_entregas_epi,
+    buscar_itens_estoque_para_consulta,
     buscar_itens_estoque_para_entrega,
     cancelar_entrega_epi,
     editar_entrega_epi,
@@ -42,7 +43,7 @@ def epis():
             request.args.get("tipo_material"),
         ),
         colaboradores=buscar_colaboradores_ativos(),
-        itens=buscar_itens_estoque_para_entrega(),
+        itens=buscar_itens_estoque_para_consulta(),
         tipos_material=TIPOS_MATERIAL_ENTREGA,
         status_entrega_ativa=STATUS_ENTREGA_EPI_ATIVA,
         filtros=request.args,
@@ -54,7 +55,7 @@ def epis():
 @login_required
 def exportar_epis_pdf():
     colaboradores = buscar_colaboradores_ativos()
-    itens = buscar_itens_estoque_para_entrega()
+    itens = buscar_itens_estoque_para_consulta()
     entregas = buscar_entregas_epi(
         request.args.get("colaborador_id"),
         request.args.get("item_id"),
@@ -93,7 +94,7 @@ def nova_entrega_epi():
         "seguranca_trabalho/epis/form.html",
         entrega=None,
         colaboradores=buscar_colaboradores_ativos(),
-        itens=buscar_itens_estoque_para_entrega(somente_com_saldo=True),
+        itens=buscar_itens_estoque_para_entrega(),
         tipos_material=TIPOS_MATERIAL_ENTREGA,
         motivos_entrega=MOTIVOS_ENTREGA_EPI,
         hoje=date.today().isoformat(),
@@ -127,7 +128,7 @@ def editar_entrega_epi_route(entrega_id):
         "seguranca_trabalho/epis/form.html",
         entrega=entrega,
         colaboradores=buscar_colaboradores_ativos(),
-        itens=buscar_itens_estoque_para_entrega(somente_com_saldo=True),
+        itens=buscar_itens_estoque_para_entrega(),
         tipos_material=TIPOS_MATERIAL_ENTREGA,
         motivos_entrega=MOTIVOS_ENTREGA_EPI,
         hoje=date.today().isoformat(),
