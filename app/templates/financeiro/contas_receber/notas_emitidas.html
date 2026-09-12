@@ -19,8 +19,16 @@
 
     <form class="filter-card" method="GET">
         <div class="form-grid">
-            <div class="form-group"><label for="cliente">Cliente</label><input id="cliente" name="cliente" value="{{ filtros.get('cliente', '') }}"></div>
-            <div class="form-group"><label for="cnpj_cpf">CNPJ/CPF</label><input id="cnpj_cpf" name="cnpj_cpf" value="{{ filtros.get('cnpj_cpf', '') }}"></div>
+            <div class="form-group">
+                <label for="cliente_id">Cliente</label>
+                <select id="cliente_id" name="cliente_id">
+                    <option value="">Todos</option>
+                    {% for cliente in clientes %}
+                    <option value="{{ cliente.id }}" data-cnpj-cpf="{{ cliente.cnpj_cpf }}" {{ 'selected' if filtros.get('cliente_id')|string == cliente.id|string else '' }}>{{ cliente.razao_social }}{% if cliente.nome_fantasia %} — {{ cliente.nome_fantasia }}{% endif %}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group"><label for="cnpj_cpf">CNPJ/CPF</label><input id="cnpj_cpf" name="cnpj_cpf" value="{{ filtros.get('cnpj_cpf', '') }}" readonly></div>
             <div class="form-group"><label for="numero_nota">Número da nota</label><input id="numero_nota" name="numero_nota" value="{{ filtros.get('numero_nota', '') }}"></div>
             <div class="form-group"><label for="serie">Série</label><input id="serie" name="serie" value="{{ filtros.get('serie', '') }}"></div>
             <div class="form-group"><label for="tipo_nota">Tipo</label><select id="tipo_nota" name="tipo_nota"><option value="">Todos</option>{% for tipo in tipos_nota %}<option value="{{ tipo }}" {{ 'selected' if filtros.get('tipo_nota') == tipo else '' }}>{{ tipo }}</option>{% endfor %}</select></div>
@@ -43,4 +51,15 @@
         </div>
     </section>
 </section>
+<script>
+    (() => {
+        const cliente = document.getElementById('cliente_id');
+        const documento = document.getElementById('cnpj_cpf');
+        const sincronizarDocumento = () => {
+            documento.value = cliente.selectedOptions[0]?.dataset.cnpjCpf || '';
+        };
+        cliente.addEventListener('change', sincronizarDocumento);
+        sincronizarDocumento();
+    })();
+</script>
 {% endblock %}

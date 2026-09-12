@@ -11,6 +11,7 @@ from app.models import (
     FinanceiroContaReceberCobranca,
     FinanceiroContaReceberLoteBaixa,
     FinanceiroContaReceberTitulo,
+    FinanceiroCliente,
     FinanceiroContratoCliente,
     FinanceiroContratoMedicao,
     FinanceiroNotaFiscalEmitida,
@@ -25,6 +26,7 @@ from app.services.financeiro_contas_receber_service import (
     gerar_dashboard,
     gerar_titulos_da_medicao,
     gerar_titulos_da_nota,
+    listar_notas_emitidas,
     listar_titulos_receber,
     salvar_contrato_cliente,
     salvar_medicao_contrato,
@@ -692,6 +694,60 @@ class FinanceiroContasReceberTestCase(unittest.TestCase):
         self.assertEqual(200, dashboard.status_code)
         self.assertIn("Quantidade de notas fiscais emitidas que ainda não possuem título financeiro vinculado.".encode(), dashboard.data)
         self.assertIn(b"Notas emitidas recentes", dashboard.data)
+
+    def test_filtro_notas_emitidas_usa_cliente_cadastrado_e_sincroniza_documento(self):
+        cliente_ativo = FinanceiroCliente(
+            tipo_pessoa="juridica",
+            cnpj_cpf="11.222.333/0001-81",
+            cnpj_cpf_normalizado="11222333000181",
+            razao_social="Cliente Ativo Ltda",
+            nome_fantasia="Cliente Ativo",
+            ativo=True,
+        )
+        cliente_inativo = FinanceiroCliente(
+            tipo_pessoa="juridica",
+            cnpj_cpf="22.333.444/0001-81",
+            cnpj_cpf_normalizado="22333444000181",
+            razao_social="Cliente Inativo Ltda",
+            ativo=False,
+        )
+        db.session.add_all([cliente_ativo, cliente_inativo])
+        db.session.commit()
+
+        # Simula nota legada ainda sem cliente_id, vinculada pelo documento snapshot.
+        sucesso, _, nota_ativo = salvar_nota_emitida(
+            self._dados_nota(
+                numero_nota="NFSE-CLIENTE-ATIVO",
+                cliente_nome_snapshot="Nome historico do cliente",
+                cliente_cnpj_cpf_snapshot="11222333000181",
+            ),
+            usuario=self.admin,
+        )
+        self.assertTrue(sucesso)
+        sucesso, _, nota_inativo = salvar_nota_emitida(
+            self._dados_nota(
+                numero_nota="NFSE-CLIENTE-INATIVO",
+                cliente_nome_snapshot="Cliente Inativo Ltda",
+                cliente_cnpj_cpf_snapshot="22333444000181",
+            ),
+            usuario=self.admin,
+        )
+        self.assertTrue(sucesso)
+
+        notas = listar_notas_emitidas({"cliente_id": str(cliente_ativo.id), "cnpj_cpf": "documento-divergente"})
+        self.assertEqual([nota_ativo.id], [nota.id for nota in notas])
+
+        self._autenticar(self.admin)
+        resposta = self.client.get(f"/financeiro/contas-a-receber/notas-emitidas?cliente_id={cliente_ativo.id}")
+        self.assertEqual(200, resposta.status_code)
+        self.assertIn(b'name="cliente_id"', resposta.data)
+        self.assertIn(b'data-cnpj-cpf="11.222.333/0001-81"', resposta.data)
+        self.assertIn(b"Cliente Ativo Ltda", resposta.data)
+        self.assertNotIn(b"Cliente Inativo Ltda", resposta.data)
+        self.assertIn(b"NFSE-CLIENTE-ATIVO", resposta.data)
+        self.assertNotIn(b"NFSE-CLIENTE-INATIVO", resposta.data)
+        self.assertIn(b"readonly", resposta.data)
+        self.assertIn(b"sincronizarDocumento", resposta.data)
 
     def test_permissao_bloqueia_notas_emitidas_sem_visualizar(self):
         self._autenticar(self.usuario)

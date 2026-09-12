@@ -1143,12 +1143,25 @@ def salvar_nota_emitida(dados, nota=None, arquivos=None, usuario=None):
 def listar_notas_emitidas(filtros=None):
     filtros = filtros or {}
     query = FinanceiroNotaFiscalEmitida.query.options(joinedload(FinanceiroNotaFiscalEmitida.titulos))
+    cliente_id = inteiro_ou_none(filtros.get("cliente_id"))
+    cliente_cadastrado = db.session.get(FinanceiroCliente, cliente_id) if cliente_id else None
+    if cliente_id:
+        if not cliente_cadastrado:
+            return []
+        # O documento tambem encontra notas antigas que ainda nao possuem cliente_id.
+        query = query.filter(
+            (FinanceiroNotaFiscalEmitida.cliente_id == cliente_cadastrado.id)
+            | (FinanceiroNotaFiscalEmitida.cliente_cnpj_cpf_snapshot == cliente_cadastrado.cnpj_cpf)
+            | (FinanceiroNotaFiscalEmitida.cliente_cnpj_cpf_snapshot == cliente_cadastrado.cnpj_cpf_normalizado)
+        )
     cliente = texto(filtros.get("cliente"))
-    if cliente:
+    if cliente and not cliente_id:
         query = query.filter(FinanceiroNotaFiscalEmitida.cliente_nome_snapshot.ilike(f"%{cliente}%"))
-    cnpj_cpf = somente_digitos(filtros.get("cnpj_cpf"))
+    # Quando ha cliente selecionado, o documento sempre vem do cadastro central.
+    cnpj_cpf = cliente_cadastrado.cnpj_cpf_normalizado if cliente_cadastrado else somente_digitos(filtros.get("cnpj_cpf"))
     if cnpj_cpf:
-        query = query.filter(FinanceiroNotaFiscalEmitida.cliente_cnpj_cpf_snapshot.ilike(f"%{cnpj_cpf}%"))
+        if not cliente_cadastrado:
+            query = query.filter(FinanceiroNotaFiscalEmitida.cliente_cnpj_cpf_snapshot.ilike(f"%{cnpj_cpf}%"))
     numero = texto(filtros.get("numero_nota"))
     if numero:
         query = query.filter(FinanceiroNotaFiscalEmitida.numero_nota.ilike(f"%{numero}%"))

@@ -209,6 +209,7 @@ def notas_emitidas():
     return render_template(
         "financeiro/contas_receber/notas_emitidas.html",
         notas=listar_notas_emitidas(request.args),
+        clientes=clientes_ativos(),
         filtros=request.args,
         tipos_nota=TIPOS_NOTA_EMITIDA,
         status_fiscais=STATUS_FISCAIS_NOTA_EMITIDA,
