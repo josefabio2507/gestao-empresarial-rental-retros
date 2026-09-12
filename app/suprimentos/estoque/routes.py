@@ -5,6 +5,10 @@ from flask_login import current_user, login_required
 
 from app.decorators import module_permission_required
 from app.services.logs_service import registrar_log
+from app.services.suprimentos_estoque_historico_pdf_service import (
+    gerar_pdf_historico_estoque,
+    nome_arquivo_historico_estoque_pdf,
+)
 from app.services.suprimentos_estoque_pdf_service import (
     gerar_pdf_estoque_materiais,
     nome_arquivo_estoque_pdf,
@@ -96,6 +100,37 @@ def movimentacoes():
     )
 
 
+@suprimentos_estoque_bp.route("/movimentacoes/exportar-pdf")
+@login_required
+@module_permission_required("suprimentos", "estoque", "visualizar")
+def exportar_movimentacoes_pdf():
+    itens = buscar_itens_ativos()
+    fornecedores = buscar_fornecedores_ativos()
+    movimentacoes_filtradas = buscar_movimentacoes_estoque(
+        request.args.get("item_id"),
+        request.args.get("fornecedor_id"),
+        request.args.get("documento"),
+        request.args.get("data_inicio"),
+        request.args.get("data_fim"),
+    )
+    pdf_buffer = gerar_pdf_historico_estoque(
+        movimentacoes_filtradas,
+        request.args,
+        itens,
+        fornecedores,
+    )
+    registrar_log(
+        "suprimentos_estoque_historico_pdf_exportado",
+        "Relatorio do historico de estoque exportado em PDF.",
+    )
+    return send_file(
+        pdf_buffer,
+        as_attachment=True,
+        download_name=nome_arquivo_historico_estoque_pdf(),
+        mimetype="application/pdf",
+    )
+
+
 @suprimentos_estoque_bp.route("/movimentacoes/nova", methods=["GET", "POST"])
 @login_required
 @module_permission_required("suprimentos", "estoque", "editar")
@@ -135,4 +170,3 @@ def nova_movimentacao():
         filtros=request.args,
         formatar_decimal_brasil=formatar_decimal_brasil,
     )
-
