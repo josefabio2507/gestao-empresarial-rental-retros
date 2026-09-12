@@ -10,6 +10,7 @@
         </div>
         <div class="page-actions">
             <a class="btn btn-primary" href="{{ url_for('seguranca_trabalho.nova_entrega_epi') }}">Nova entrega</a>
+            <a class="btn btn-secondary" href="{{ url_for('seguranca_trabalho.exportar_epis_pdf', colaborador_id=filtros.get('colaborador_id', ''), item_id=filtros.get('item_id', ''), tipo_material=filtros.get('tipo_material', '')) }}">Exportar PDF</a>
             <a class="btn btn-secondary" href="{{ url_for('seguranca_trabalho.index') }}">Voltar</a>
         </div>
     </div>
