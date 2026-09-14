@@ -208,7 +208,9 @@ def novo_abastecimento(veiculo_id):
         flash("Veiculo/equipamento nao esta vinculado ao usuario logado.", "danger")
         return redirect(url_for("operacao.abastecimentos"))
 
+    leitura_atual_form = ""
     if request.method == "POST":
+        leitura_atual_form = request.form.get("leitura_atual", "")
         sucesso, mensagem, abastecimento = salvar_abastecimento(request.form, request.files, current_user, veiculo=veiculo)
         if sucesso:
             registrar_log("operacao_abastecimento_criado", f"Abastecimento registrado. ID: {abastecimento.id}.")
@@ -226,6 +228,7 @@ def novo_abastecimento(veiculo_id):
         tipos_combustivel=TIPOS_COMBUSTIVEL,
         categorias_custo_extra=CATEGORIAS_CUSTO_EXTRA,
         data_padrao=data_padrao_form(),
+        leitura_atual_form=leitura_atual_form,
         modo="novo",
     )
 
@@ -261,7 +264,9 @@ def editar_abastecimento(abastecimento_id):
         flash("Veiculo/equipamento nao esta mais vinculado ao usuario logado.", "danger")
         return redirect(url_for("operacao.abastecimentos"))
 
+    leitura_atual_form = format(abastecimento.leitura_atual, "f").replace(".", ",") if abastecimento.leitura_atual is not None else ""
     if request.method == "POST":
+        leitura_atual_form = request.form.get("leitura_atual", "")
         sucesso, mensagem, abastecimento = salvar_abastecimento(
             request.form,
             request.files,
@@ -284,6 +289,7 @@ def editar_abastecimento(abastecimento_id):
         tipos_combustivel=TIPOS_COMBUSTIVEL,
         categorias_custo_extra=CATEGORIAS_CUSTO_EXTRA,
         data_padrao=abastecimento.data_abastecimento.isoformat(),
+        leitura_atual_form=leitura_atual_form,
         modo="editar",
     )
 
