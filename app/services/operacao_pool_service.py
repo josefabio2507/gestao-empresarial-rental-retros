@@ -308,7 +308,7 @@ def vincular_responsavel(form_data, usuario=None, veiculo=None):
         referencia is None or leitura_final_anterior > referencia
     ):
         referencia = leitura_final_anterior
-    if referencia is not None and leitura_inicial <= referencia:
+    if referencia is not None and leitura_inicial < referencia:
         return False, "Leitura deve ser maior que a ultima valida do ativo.", None
     ativo_anterior = vinculo_ativo_do_veiculo(veiculo)
     if ativo_anterior:

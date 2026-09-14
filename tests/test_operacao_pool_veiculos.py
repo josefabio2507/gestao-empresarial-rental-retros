@@ -512,16 +512,20 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         self._liberar_usuario(editar=True)
         self._autenticar(self.usuario)
 
-        for leitura in ("156247,00", "156246,99"):
-            resposta = self.client.post(
-                f"/operacao/pool-veiculos/ativos/{veiculo.id}/vincular",
-                data={"leitura_inicial": leitura, "observacoes": "Valor conferido"},
-            )
-            self.assertEqual(200, resposta.status_code)
-            self.assertIn(b"Leitura deve ser maior que a ultima valida do ativo.", resposta.data)
-            self.assertIn(f'value="{leitura}"'.encode(), resposta.data)
-            self.assertIn(b"Valor conferido", resposta.data)
-        self.assertEqual(1, OperacaoVeiculoResponsavel.query.filter_by(veiculo_id=veiculo.id).count())
+        resposta_igual = self.client.post(
+            f"/operacao/pool-veiculos/ativos/{veiculo.id}/vincular",
+            data={"leitura_inicial": "156247,00", "observacoes": "Valor conferido"},
+        )
+        self.assertEqual(302, resposta_igual.status_code)
+        resposta_menor = self.client.post(
+            f"/operacao/pool-veiculos/ativos/{veiculo.id}/vincular",
+            data={"leitura_inicial": "156246,99", "observacoes": "Valor conferido"},
+        )
+        self.assertEqual(200, resposta_menor.status_code)
+        self.assertIn(b"Leitura deve ser maior que a ultima valida do ativo.", resposta_menor.data)
+        self.assertIn(b'value="156246,99"', resposta_menor.data)
+        self.assertIn(b"Valor conferido", resposta_menor.data)
+        self.assertEqual(2, OperacaoVeiculoResponsavel.query.filter_by(veiculo_id=veiculo.id).count())
 
     def test_rota_vincular_exige_leitura_e_preserva_valor_invalido(self):
         veiculo = self._criar_veiculo()
