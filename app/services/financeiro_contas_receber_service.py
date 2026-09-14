@@ -9,7 +9,7 @@ from sqlalchemy import func, or_
 from sqlalchemy.orm import joinedload
 
 from app.extensions import db
-from app.models import CentroCusto, Equipe, FinanceiroContaReceberBaixa, FinanceiroContaReceberLoteBaixa, FinanceiroCliente, FinanceiroContaReceberTitulo, FinanceiroNotaFiscalEmitida, FinanceiroContratoCliente, FinanceiroContratoMedicao, FinanceiroContaReceberCobranca
+from app.models import CentroCusto, Equipe, FinanceiroContaReceberBaixa, FinanceiroContaReceberLoteBaixa, FinanceiroCliente, FinanceiroContaReceberTitulo, FinanceiroNotaFiscalEmitida, FinanceiroContratoCliente, FinanceiroContratoMedicao, FinanceiroContaReceberCobranca, OperacaoVeiculoEquipamento
 from app.utils.datas import agora_brasil
 
 
@@ -234,6 +234,9 @@ def _validar_titulo(titulo):
     if titulo.valor_recebido > titulo.valor_liquido:
         return False, "Saldo em aberto não pode ficar negativo nesta fase."
 
+    if titulo.sub_centro_custo_veiculo_id and not buscar_veiculo_equipamento_ativo(titulo.sub_centro_custo_veiculo_id):
+        return False, "Selecione um veículo/equipamento ativo cadastrado."
+
     if titulo.origem_lancamento not in ORIGENS_LANCAMENTO:
         return False, "Origem do lançamento inválida."
 
@@ -419,6 +422,26 @@ def buscar_centros_custo_ativos():
 
 def buscar_equipes_ativas():
     return Equipe.query.filter_by(ativo=True).order_by(Equipe.nome.asc()).all()
+
+
+def buscar_veiculos_equipamentos_ativos():
+    return OperacaoVeiculoEquipamento.query.filter_by(ativo=True).order_by(
+        OperacaoVeiculoEquipamento.placa.asc(),
+        OperacaoVeiculoEquipamento.identificacao.asc(),
+        OperacaoVeiculoEquipamento.descricao.asc(),
+    ).all()
+
+
+def buscar_veiculo_equipamento_ativo(veiculo_id):
+    veiculo_id = inteiro_ou_none(veiculo_id)
+    if not veiculo_id:
+        return None
+    return OperacaoVeiculoEquipamento.query.filter_by(id=veiculo_id, ativo=True).first()
+
+
+def buscar_veiculo_equipamento_por_id(veiculo_id):
+    veiculo_id = inteiro_ou_none(veiculo_id)
+    return db.session.get(OperacaoVeiculoEquipamento, veiculo_id) if veiculo_id else None
 
 
 def _saldo_expr():
@@ -1257,6 +1280,8 @@ def gerar_titulos_da_nota(nota, dados, usuario=None):
     centro_custo_id = inteiro_ou_none(dados.get("centro_custo_id"))
     equipe_id = inteiro_ou_none(dados.get("sub_centro_custo_equipe_id"))
     veiculo_id = inteiro_ou_none(dados.get("sub_centro_custo_veiculo_id"))
+    if veiculo_id and not buscar_veiculo_equipamento_ativo(veiculo_id):
+        return False, "Selecione um veículo/equipamento ativo cadastrado.", []
     observacoes = texto_maiusculo(dados.get("observacoes_financeiras")) or nota.observacoes_financeiras
     valores = _parcelas(Decimal(nota.valor_total).quantize(Decimal("0.01")), parcelas)
     titulos = []
@@ -1608,12 +1633,33 @@ def listar_medicoes_contratos(filtros=None):
     contrato_id = inteiro_ou_none(filtros.get("contrato_id"))
     if contrato_id:
         query = query.filter(FinanceiroContratoMedicao.contrato_id == contrato_id)
+    cliente_id = inteiro_ou_none(filtros.get("cliente_id"))
+    cliente_cadastrado = db.session.get(FinanceiroCliente, cliente_id) if cliente_id else None
+    contrato_ja_unido = False
+    if cliente_id:
+        query = query.join(FinanceiroContratoCliente, FinanceiroContratoMedicao.contrato)
+        contrato_ja_unido = True
+        if cliente_cadastrado:
+            query = query.filter(or_(
+                FinanceiroContratoCliente.cliente_id == cliente_cadastrado.id,
+                (
+                    FinanceiroContratoCliente.cliente_id.is_(None)
+                    & (FinanceiroContratoCliente.cliente_cnpj_cpf_snapshot == cliente_cadastrado.cnpj_cpf_normalizado)
+                ),
+            ))
+        else:
+            query = query.filter(FinanceiroContratoMedicao.id.is_(None))
     cliente = texto(filtros.get("cliente"))
-    if cliente:
-        query = query.join(FinanceiroContratoCliente).filter(FinanceiroContratoCliente.cliente_nome_snapshot.ilike(f"%{cliente}%"))
+    if cliente and not cliente_id:
+        if not contrato_ja_unido:
+            query = query.join(FinanceiroContratoCliente, FinanceiroContratoMedicao.contrato)
+            contrato_ja_unido = True
+        query = query.filter(FinanceiroContratoCliente.cliente_nome_snapshot.ilike(f"%{cliente}%"))
     cnpj_cpf = somente_digitos(filtros.get("cnpj_cpf"))
     if cnpj_cpf:
-        query = query.join(FinanceiroContratoCliente, FinanceiroContratoMedicao.contrato).filter(FinanceiroContratoCliente.cliente_cnpj_cpf_snapshot.ilike(f"%{cnpj_cpf}%"))
+        if not contrato_ja_unido:
+            query = query.join(FinanceiroContratoCliente, FinanceiroContratoMedicao.contrato)
+        query = query.filter(FinanceiroContratoCliente.cliente_cnpj_cpf_snapshot.ilike(f"%{cnpj_cpf}%"))
     numero = texto(filtros.get("numero_medicao"))
     if numero:
         query = query.filter(FinanceiroContratoMedicao.numero_medicao.ilike(f"%{numero}%"))
@@ -1680,6 +1726,8 @@ def gerar_titulos_da_medicao(medicao, dados, usuario=None):
     centro_custo_id = inteiro_ou_none(dados.get("centro_custo_id")) or getattr(contrato, "centro_custo_id", None)
     equipe_id = inteiro_ou_none(dados.get("sub_centro_custo_equipe_id")) or getattr(contrato, "sub_centro_custo_equipe_id", None)
     veiculo_id = inteiro_ou_none(dados.get("sub_centro_custo_veiculo_id"))
+    if veiculo_id and not buscar_veiculo_equipamento_ativo(veiculo_id):
+        return False, "Selecione um veículo/equipamento ativo cadastrado.", []
     observacoes = texto_maiusculo(dados.get("observacoes_financeiras")) or medicao.observacoes_financeiras
     valores = _parcelas(Decimal(medicao.valor_liquido_medido).quantize(Decimal("0.01")), parcelas)
     titulos = []

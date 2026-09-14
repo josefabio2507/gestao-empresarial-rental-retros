@@ -18,6 +18,7 @@ from app.models import (
     LogAcesso,
     Modulo,
     NivelAcesso,
+    OperacaoVeiculoEquipamento,
     PermissaoUsuarioModulo,
     Usuario,
 )
@@ -27,6 +28,7 @@ from app.services.financeiro_contas_receber_service import (
     gerar_titulos_da_medicao,
     gerar_titulos_da_nota,
     listar_notas_emitidas,
+    listar_medicoes_contratos,
     listar_titulos_receber,
     salvar_contrato_cliente,
     salvar_medicao_contrato,
@@ -776,6 +778,70 @@ class FinanceiroContasReceberTestCase(unittest.TestCase):
         sucesso, mensagem, _ = gerar_titulos_da_medicao(medicao, {"data_vencimento": "2026-09-30"}, usuario=self.admin)
         self.assertFalse(sucesso)
         self.assertIn("já possui título", mensagem)
+
+    def test_gera_titulo_da_medicao_pela_rota_com_veiculo_ativo_e_bloqueia_duplicidade(self):
+        self._liberar(visualizar=True, criar=True, editar=True, cancelar=True)
+        self._autenticar(self.usuario)
+        veiculo = OperacaoVeiculoEquipamento(
+            identificacao="EQ-42", placa="ABC1D23", descricao="RETROESCAVADEIRA",
+            centro_custo="EQ-42-RETROESCAVADEIRA", situacao_aquisicao="Quitado",
+            tipo="Maquina", status_operacional="Disponivel", ativo=True,
+        )
+        inativo = OperacaoVeiculoEquipamento(
+            identificacao="EQ-99", descricao="EQUIPAMENTO INATIVO",
+            centro_custo="EQ-99-EQUIPAMENTO INATIVO", situacao_aquisicao="Quitado",
+            tipo="Equipamento", status_operacional="Indisponivel", ativo=False,
+        )
+        db.session.add_all([veiculo, inativo])
+        db.session.commit()
+        contrato = self._criar_contrato()
+        sucesso, _, medicao = salvar_medicao_contrato(self._dados_medicao(contrato), usuario=self.admin)
+        self.assertTrue(sucesso)
+
+        formulario = self.client.get(f"/financeiro/contas-a-receber/medicoes/{medicao.id}/gerar")
+        self.assertEqual(200, formulario.status_code)
+        self.assertIn(b'ABC1D23 - RETROESCAVADEIRA', formulario.data)
+        self.assertNotIn(b'EQUIPAMENTO INATIVO', formulario.data)
+        resposta = self.client.post(
+            f"/financeiro/contas-a-receber/medicoes/{medicao.id}/gerar",
+            data={"data_vencimento": "2026-09-10", "numero_parcelas": "1", "sub_centro_custo_veiculo_id": str(veiculo.id)},
+            follow_redirects=True,
+        )
+        self.assertEqual(200, resposta.status_code)
+        titulo = FinanceiroContaReceberTitulo.query.filter_by(medicao_id=medicao.id).one()
+        self.assertEqual(veiculo.id, titulo.sub_centro_custo_veiculo_id)
+        self.assertIn("Títulos a receber vinculados".encode(), resposta.data)
+        self.assertIn(b"MED-100", resposta.data)
+        self.assertEqual("Título gerado", db.session.get(FinanceiroContratoMedicao, medicao.id).status_financeiro)
+
+        repetida = self.client.post(
+            f"/financeiro/contas-a-receber/medicoes/{medicao.id}/gerar",
+            data={"data_vencimento": "2026-09-10"}, follow_redirects=True,
+        )
+        self.assertIn("já possui título".encode(), repetida.data)
+        self.assertEqual(1, FinanceiroContaReceberTitulo.query.filter_by(medicao_id=medicao.id).count())
+
+    def test_filtra_medicoes_por_cliente_cadastrado_e_combinacoes(self):
+        cliente_a = FinanceiroCliente(tipo_pessoa="juridica", cnpj_cpf="11.111.111/0001-11", cnpj_cpf_normalizado="11111111000111", razao_social="CLIENTE ALFA", ativo=True)
+        cliente_b = FinanceiroCliente(tipo_pessoa="juridica", cnpj_cpf="22.222.222/0001-22", cnpj_cpf_normalizado="22222222000122", razao_social="CLIENTE BETA", ativo=True)
+        db.session.add_all([cliente_a, cliente_b])
+        db.session.commit()
+        contrato_a = self._criar_contrato(cliente_id=str(cliente_a.id), numero_contrato="CTR-A")
+        contrato_b = self._criar_contrato(cliente_id=str(cliente_b.id), numero_contrato="CTR-B")
+        salvar_medicao_contrato(self._dados_medicao(contrato_a, numero_medicao="MED-A", competencia="2026-08", status_medicao="Aprovada"), usuario=self.admin)
+        salvar_medicao_contrato(self._dados_medicao(contrato_b, numero_medicao="MED-B", competencia="2026-09", status_medicao="Medida"), usuario=self.admin)
+
+        self.assertEqual(["MED-A"], [m.numero_medicao for m in listar_medicoes_contratos({"cliente_id": str(cliente_a.id)})])
+        self.assertEqual(["MED-A"], [m.numero_medicao for m in listar_medicoes_contratos({"cliente_id": str(cliente_a.id), "status_medicao": "Aprovada"})])
+        self.assertEqual(["MED-A"], [m.numero_medicao for m in listar_medicoes_contratos({"cliente_id": str(cliente_a.id), "competencia": "2026-08"})])
+        self.assertEqual(["MED-A"], [m.numero_medicao for m in listar_medicoes_contratos({"cliente_id": str(cliente_a.id), "cnpj_cpf": "11111111000111"})])
+        self.assertEqual([], listar_medicoes_contratos({"cliente_id": str(cliente_a.id), "status_medicao": "Medida"}))
+
+        self._liberar(visualizar=True)
+        self._autenticar(self.usuario)
+        resposta = self.client.get(f"/financeiro/contas-a-receber/medicoes?cliente_id={cliente_a.id}&status_medicao=Medida")
+        self.assertIn(b'name="cliente_id"', resposta.data)
+        self.assertIn("Nenhuma medição encontrada".encode(), resposta.data)
 
     def test_vincula_medicao_a_titulo_e_nota_emitida(self):
         contrato = self._criar_contrato()
