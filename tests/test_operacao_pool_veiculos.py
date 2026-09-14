@@ -35,6 +35,7 @@ from app.services.operacao_pool_service import (
     alterar_indisponibilidade_veiculo,
     buscar_veiculos_pool,
     corrigir_vinculo,
+    decimal_ou_none,
     encerrar_vinculo,
     registrar_leitura,
     salvar_veiculo_equipamento,
@@ -219,6 +220,11 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         self.assertEqual(STATUS_VINCULO_ATIVO, vinculo.status)
         self.assertEqual(STATUS_EM_USO, veiculo.status_operacional)
         self.assertEqual(1, OperacaoLeituraAtivo.query.filter_by(veiculo_id=veiculo.id, origem="pool").count())
+
+    def test_converte_leituras_brasileiras_e_decimais_com_ponto(self):
+        self.assertEqual("156247.00", str(decimal_ou_none("156247,00")))
+        self.assertEqual("156247.00", str(decimal_ou_none("156.247,00")))
+        self.assertEqual("156247.00", str(decimal_ou_none("156247.00")))
 
     def test_encerrar_vinculo_deixa_veiculo_disponivel_para_novo_usuario(self):
         veiculo = self._criar_veiculo("POOL001", "CAMINHAO POOL")
@@ -481,7 +487,7 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
 
         resposta_post = self.client.post(
             f"/operacao/pool-veiculos/ativos/{veiculo.id}/vincular",
-            data={"tipo_leitura": "odometro", "leitura_inicial": "80"},
+            data={"tipo_leitura": "odometro", "leitura_inicial": "80,50"},
             follow_redirects=False,
         )
         self.assertEqual(302, resposta_post.status_code)
@@ -490,6 +496,50 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         self.assertEqual("50.00", str(primeiro.leitura_final))
         self.assertEqual(self.operador.id, novo.colaborador_id)
         self.assertEqual(self.equipe.id, novo.equipe_id)
+        self.assertEqual("80.50", str(novo.leitura_inicial))
+
+    def test_rota_vincular_preserva_leitura_quando_igual_ou_menor(self):
+        veiculo = self._criar_veiculo()
+        vincular_responsavel(
+            {"colaborador_id": str(self.motorista.id), "tipo_leitura": "odometro", "leitura_inicial": "156247,00"},
+            usuario=self.admin,
+            veiculo=veiculo,
+        )
+        self.usuario.colaborador_id = self.operador.id
+        db.session.commit()
+        self._liberar_usuario(editar=True)
+        self._autenticar(self.usuario)
+
+        for leitura in ("156247,00", "156246,99"):
+            resposta = self.client.post(
+                f"/operacao/pool-veiculos/ativos/{veiculo.id}/vincular",
+                data={"leitura_inicial": leitura, "observacoes": "Valor conferido"},
+            )
+            self.assertEqual(200, resposta.status_code)
+            self.assertIn(b"Leitura deve ser maior que a ultima valida do ativo.", resposta.data)
+            self.assertIn(f'value="{leitura}"'.encode(), resposta.data)
+            self.assertIn(b"Valor conferido", resposta.data)
+        self.assertEqual(1, OperacaoVeiculoResponsavel.query.filter_by(veiculo_id=veiculo.id).count())
+
+    def test_rota_vincular_exige_leitura_e_preserva_valor_invalido(self):
+        veiculo = self._criar_veiculo()
+        self.usuario.colaborador_id = self.operador.id
+        db.session.commit()
+        self._liberar_usuario(editar=True)
+        self._autenticar(self.usuario)
+
+        resposta_vazia = self.client.post(
+            f"/operacao/pool-veiculos/ativos/{veiculo.id}/vincular",
+            data={"leitura_inicial": ""},
+        )
+        self.assertIn(b"Leitura inicial e obrigatoria.", resposta_vazia.data)
+
+        resposta_invalida = self.client.post(
+            f"/operacao/pool-veiculos/ativos/{veiculo.id}/vincular",
+            data={"leitura_inicial": "abc"},
+        )
+        self.assertIn(b"Leitura inicial invalida.", resposta_invalida.data)
+        self.assertIn(b'value="abc"', resposta_invalida.data)
 
     def test_rota_vincular_maquina_usa_horimetro_automatico(self):
         veiculo = self._criar_veiculo("MAQ001", "ESCAVADEIRA", tipo="Maquina")

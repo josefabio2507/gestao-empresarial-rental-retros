@@ -49,9 +49,16 @@ def motivo_indisponibilidade_normalizado(motivo):
 
 
 def decimal_ou_none(valor):
-    valor = texto(valor).replace(".", "").replace(",", ".")
+    valor = texto(valor).replace(" ", "")
     if not valor:
         return None
+    if "," in valor and "." in valor:
+        if valor.rfind(",") > valor.rfind("."):
+            valor = valor.replace(".", "").replace(",", ".")
+        else:
+            valor = valor.replace(",", "")
+    elif "," in valor:
+        valor = valor.replace(",", ".")
     try:
         numero = Decimal(valor)
     except (InvalidOperation, ValueError):
@@ -203,8 +210,6 @@ def leitura_final_anterior_sugerida(veiculo):
     ativo_anterior = vinculo_ativo_do_veiculo(veiculo) if veiculo else None
     if not ativo_anterior:
         return None
-    if ativo_anterior.leitura_inicial is not None:
-        return ativo_anterior.leitura_inicial
     if ativo_anterior.tipo_leitura:
         ultima = (
             OperacaoLeituraAtivo.query.filter_by(
@@ -216,8 +221,9 @@ def leitura_final_anterior_sugerida(veiculo):
             .order_by(OperacaoLeituraAtivo.registrada_em.desc(), OperacaoLeituraAtivo.id.desc())
             .first()
         )
-        return ultima.leitura if ultima else None
-    return None
+        if ultima:
+            return ultima.leitura
+    return ativo_anterior.leitura_inicial
 
 
 def registrar_leitura(
@@ -273,7 +279,8 @@ def vincular_responsavel(form_data, usuario=None, veiculo=None):
     colaborador = buscar_por_id(Colaborador, inteiro_ou_none(form_data.get("colaborador_id")))
     equipe = buscar_por_id(Equipe, inteiro_ou_none(form_data.get("equipe_id")))
     tipo_leitura = texto(form_data.get("tipo_leitura")) or None
-    leitura_inicial = decimal_ou_none(form_data.get("leitura_inicial"))
+    leitura_inicial_informada = texto(form_data.get("leitura_inicial"))
+    leitura_inicial = decimal_ou_none(leitura_inicial_informada)
     leitura_final_anterior = decimal_ou_none(form_data.get("leitura_final_anterior"))
     agora = agora_brasil()
 
@@ -288,8 +295,19 @@ def vincular_responsavel(form_data, usuario=None, veiculo=None):
         return False, "Equipe nao encontrada ou inativa.", None
     if not tipo_leitura or tipo_leitura not in TIPOS_LEITURA:
         return False, "Tipo de leitura e obrigatorio.", None
-    if leitura_inicial is None:
+    if not leitura_inicial_informada:
         return False, "Leitura inicial e obrigatoria.", None
+    if leitura_inicial is None or leitura_inicial < 0:
+        return False, "Leitura inicial invalida.", None
+
+    ultima = ultima_leitura_valida(veiculo.id, tipo_leitura)
+    referencia = ultima.leitura if ultima else None
+    if leitura_final_anterior is not None and (
+        referencia is None or leitura_final_anterior > referencia
+    ):
+        referencia = leitura_final_anterior
+    if referencia is not None and leitura_inicial <= referencia:
+        return False, "Leitura deve ser maior que a ultima valida do ativo.", None
     ativo_anterior = vinculo_ativo_do_veiculo(veiculo)
     if ativo_anterior:
         if leitura_final_anterior is not None and ativo_anterior.tipo_leitura:

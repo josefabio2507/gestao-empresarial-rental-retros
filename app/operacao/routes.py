@@ -449,6 +449,8 @@ def vincular_veiculo(veiculo_id):
         return redirect(url_for("operacao.pool"))
 
     tipo_leitura = tipo_leitura_padrao_veiculo(veiculo)
+    leitura_inicial_form = ""
+    observacoes_form = ""
     leitura_final_anterior = leitura_final_anterior_sugerida(veiculo)
     leitura_final_anterior_form = (
         format(leitura_final_anterior, "f").replace(".", ",")
@@ -458,6 +460,8 @@ def vincular_veiculo(veiculo_id):
 
     if request.method == "POST":
         dados_vinculo = request.form.to_dict()
+        leitura_inicial_form = request.form.get("leitura_inicial", "")
+        observacoes_form = request.form.get("observacoes", "")
         dados_vinculo["colaborador_id"] = str(colaborador_logado.id)
         dados_vinculo["equipe_id"] = str(colaborador_logado.equipe_id)
         dados_vinculo["tipo_leitura"] = tipo_leitura
@@ -477,6 +481,8 @@ def vincular_veiculo(veiculo_id):
         colaborador=colaborador_logado,
         equipe=colaborador_logado.equipe,
         leitura_final_anterior=leitura_final_anterior_form,
+        leitura_inicial_form=leitura_inicial_form,
+        observacoes_form=observacoes_form,
         tipo_leitura=tipo_leitura,
     )
 
