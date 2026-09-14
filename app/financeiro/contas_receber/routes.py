@@ -19,6 +19,8 @@ from app.services.financeiro_contas_receber_service import (
     buscar_centros_custo_ativos,
     buscar_contrato_cliente_por_id,
     buscar_equipes_ativas,
+    buscar_veiculo_equipamento_por_id,
+    buscar_veiculos_equipamentos_ativos,
     buscar_medicao_contrato_por_id,
     buscar_nota_emitida_por_id,
     buscar_titulo_por_id,
@@ -93,6 +95,7 @@ def _contexto_formulario():
         "origens_lancamento": ORIGENS_LANCAMENTO,
         "centros_custo": buscar_centros_custo_ativos(),
         "equipes": buscar_equipes_ativas(),
+        "veiculos_equipamentos": buscar_veiculos_equipamentos_ativos(),
         "clientes": clientes_ativos(),
     }
 
@@ -324,6 +327,7 @@ def gerar_contas_receber_nota(nota_id):
         nota=nota,
         centros_custo=buscar_centros_custo_ativos(),
         equipes=buscar_equipes_ativas(),
+        veiculos_equipamentos=buscar_veiculos_equipamentos_ativos(),
         formatar_moeda_brl=formatar_moeda_brl,
         formatar_data_brasil=formatar_data_brasil,
         pode_criar=True,
@@ -400,6 +404,7 @@ def detalhe(titulo_id):
     return render_template(
         "financeiro/contas_receber/detalhe.html",
         titulo=titulo,
+        veiculo_equipamento=buscar_veiculo_equipamento_por_id(titulo.sub_centro_custo_veiculo_id),
         formatar_moeda_brl=formatar_moeda_brl,
         formatar_data_brasil=formatar_data_brasil,
         pode_editar=usuario_tem_permissao(current_user, DEPARTAMENTO_FINANCEIRO, MODULO_CONTAS_RECEBER, "editar"),
@@ -816,6 +821,7 @@ def medicoes():
         "financeiro/contas_receber/medicoes.html",
         medicoes=listar_medicoes_contratos(request.args),
         contratos=listar_contratos_clientes(),
+        clientes=clientes_ativos(),
         filtros=request.args,
         status_medicoes=STATUS_MEDICOES,
         status_financeiros=STATUS_FINANCEIROS_MEDICAO,
@@ -931,6 +937,7 @@ def gerar_contas_receber_medicao(medicao_id):
         medicao=medicao,
         centros_custo=buscar_centros_custo_ativos(),
         equipes=buscar_equipes_ativas(),
+        veiculos_equipamentos=buscar_veiculos_equipamentos_ativos(),
         formatar_moeda_brl=formatar_moeda_brl,
         formatar_data_brasil=formatar_data_brasil,
         pode_criar=True,

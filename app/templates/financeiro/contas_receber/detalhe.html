@@ -63,7 +63,7 @@
                 <p><strong>Parcela:</strong> {{ titulo.parcela_numero }} de {{ titulo.total_parcelas }}</p>
                 <p><strong>Centro de custo:</strong> {{ (titulo.centro_custo.codigo ~ ' - ' if titulo.centro_custo and titulo.centro_custo.codigo else '') ~ titulo.centro_custo.nome if titulo.centro_custo else '-' }}</p>
                 <p><strong>Subcentro/equipe:</strong> {{ titulo.sub_centro_custo_equipe.nome if titulo.sub_centro_custo_equipe else '-' }}</p>
-                <p><strong>Subcentro/veículo:</strong> {{ titulo.sub_centro_custo_veiculo_id or '-' }}</p>
+                <p><strong>Subcentro/veículo ou equipamento:</strong> {% if veiculo_equipamento %}{{ veiculo_equipamento.placa or veiculo_equipamento.identificacao }}{% if veiculo_equipamento.descricao %} - {{ veiculo_equipamento.descricao }}{% endif %}{% else %}-{% endif %}</p>
             </section>
         </div>
 
