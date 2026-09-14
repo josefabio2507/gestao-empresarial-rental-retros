@@ -29,7 +29,7 @@
             </div>
             <div class="form-group">
                 <label for="leitura_inicial">Leitura inicial</label>
-                <input id="leitura_inicial" name="leitura_inicial" required>
+                <input id="leitura_inicial" name="leitura_inicial" required inputmode="decimal" value="{{ leitura_inicial_form }}">
             </div>
             <div class="form-group">
                 <label>Leitura final do responsavel anterior</label>
@@ -38,7 +38,7 @@
             </div>
             <div class="form-group">
                 <label for="observacoes">Observacoes</label>
-                <textarea id="observacoes" name="observacoes"></textarea>
+                <textarea id="observacoes" name="observacoes">{{ observacoes_form }}</textarea>
             </div>
         </div>
         <div class="form-actions">
