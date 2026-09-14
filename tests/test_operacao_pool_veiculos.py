@@ -1,4 +1,5 @@
 import unittest
+from decimal import Decimal
 from io import BytesIO
 
 from PIL import Image
@@ -225,6 +226,7 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         self.assertEqual("156247.00", str(decimal_ou_none("156247,00")))
         self.assertEqual("156247.00", str(decimal_ou_none("156.247,00")))
         self.assertEqual("156247.00", str(decimal_ou_none("156247.00")))
+        self.assertEqual("156247.00", str(decimal_ou_none(Decimal("156247.00"))))
 
     def test_encerrar_vinculo_deixa_veiculo_disponivel_para_novo_usuario(self):
         veiculo = self._criar_veiculo("POOL001", "CAMINHAO POOL")

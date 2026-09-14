@@ -49,6 +49,8 @@ def motivo_indisponibilidade_normalizado(motivo):
 
 
 def decimal_ou_none(valor):
+    if isinstance(valor, Decimal):
+        return valor.quantize(Decimal("0.01"))
     valor = texto(valor).replace(" ", "")
     if not valor:
         return None
