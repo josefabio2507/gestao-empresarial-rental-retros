@@ -1,4 +1,5 @@
 from io import BytesIO
+from datetime import date
 from unittest.mock import patch
 import unittest
 
@@ -16,6 +17,7 @@ from app.models import (
 from app.services.financeiro_contas_pagar_service import (
     indicadores_dashboard,
     salvar_titulo,
+    salvar_titulos_recorrentes,
 )
 
 
@@ -273,6 +275,97 @@ class FinanceiroContasPagarTestCase(unittest.TestCase):
         self.assertIn(b'data-documento="11222333000181"', resposta.data)
         self.assertIn(b'id="fornecedor_nome_snapshot"', resposta.data)
         self.assertIn(b'readonly', resposta.data)
+
+    def test_formulario_exibe_pagamento_recorrente_somente_no_novo(self):
+        self._autenticar(self.admin)
+
+        resposta = self.client.get("/financeiro/contas-a-pagar/novo")
+
+        self.assertEqual(200, resposta.status_code)
+        self.assertIn(b'id="eh_recorrente"', resposta.data)
+        self.assertIn(b'id="campos-recorrencia"', resposta.data)
+        self.assertIn(b'name="recorrencia_token"', resposta.data)
+        self.assertIn(b'max="60"', resposta.data)
+
+    def test_cria_doze_titulos_mensais_ancorados_no_ultimo_dia(self):
+        dados = self._dados_titulo(
+            data_vencimento="2026-01-31",
+            competencia="2026-01",
+            eh_recorrente="Sim",
+            recorrencia_periodicidade="Mensal",
+            recorrencia_quantidade="12",
+            recorrencia_data_inicial="2026-01-31",
+            recorrencia_descricao="Contrato mensal",
+            recorrencia_token="12345678-1234-1234-1234-123456789abc",
+        )
+
+        sucesso, mensagem, titulos = salvar_titulos_recorrentes(dados, usuario=self.admin)
+
+        self.assertTrue(sucesso, mensagem)
+        self.assertEqual(12, len(titulos))
+        self.assertEqual(12, FinanceiroContaPagarTitulo.query.count())
+        self.assertEqual(date(2026, 1, 31), titulos[0].data_vencimento)
+        self.assertEqual(date(2026, 2, 28), titulos[1].data_vencimento)
+        self.assertEqual(date(2026, 3, 31), titulos[2].data_vencimento)
+        self.assertEqual(date(2026, 12, 31), titulos[-1].data_vencimento)
+        self.assertEqual(date(2026, 2, 1), titulos[1].competencia)
+        self.assertEqual(list(range(1, 13)), [titulo.parcela_numero for titulo in titulos])
+        self.assertTrue(all(titulo.total_parcelas == 12 for titulo in titulos))
+        self.assertTrue(all(titulo.recorrencia_periodicidade == "Mensal" for titulo in titulos))
+
+    def test_recorrencias_semanais_quinzenais_e_anuais_calculam_datas(self):
+        casos = [
+            ("Semanal", "2026-01-31", date(2026, 2, 7)),
+            ("Quinzenal", "2026-01-31", date(2026, 2, 15)),
+            ("Anual", "2024-02-29", date(2025, 2, 28)),
+        ]
+        for indice, (periodicidade, inicio, vencimento_esperado) in enumerate(casos):
+            dados = self._dados_titulo(
+                eh_recorrente="Sim",
+                recorrencia_periodicidade=periodicidade,
+                recorrencia_quantidade="2",
+                recorrencia_data_inicial=inicio,
+                recorrencia_token=f"12345678-1234-1234-1234-{indice:012d}",
+            )
+            sucesso, mensagem, titulos = salvar_titulos_recorrentes(dados, usuario=self.admin)
+            self.assertTrue(sucesso, mensagem)
+            self.assertEqual(vencimento_esperado, titulos[1].data_vencimento)
+
+    def test_reenvio_da_mesma_recorrencia_nao_duplica_titulos(self):
+        dados = self._dados_titulo(
+            eh_recorrente="Sim",
+            recorrencia_periodicidade="Mensal",
+            recorrencia_quantidade="3",
+            recorrencia_data_inicial="2026-08-31",
+            recorrencia_token="aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+        )
+
+        primeira = salvar_titulos_recorrentes(dados, usuario=self.admin)
+        segunda = salvar_titulos_recorrentes(dados, usuario=self.admin)
+
+        self.assertTrue(primeira[0], primeira[1])
+        self.assertTrue(segunda[0], segunda[1])
+        self.assertEqual(3, FinanceiroContaPagarTitulo.query.count())
+        self.assertIn("ja haviam sido gerados", segunda[1])
+
+    def test_valida_limites_e_data_da_recorrencia(self):
+        base = self._dados_titulo(
+            eh_recorrente="Sim",
+            recorrencia_periodicidade="Mensal",
+            recorrencia_token="aaaaaaaa-bbbb-cccc-dddd-ffffffffffff",
+        )
+        sucesso, mensagem, _ = salvar_titulos_recorrentes(
+            {**base, "recorrencia_quantidade": "61"}, usuario=self.admin
+        )
+        self.assertFalse(sucesso)
+        self.assertIn("entre 1 e 60", mensagem)
+
+        sucesso, mensagem, _ = salvar_titulos_recorrentes(
+            {**base, "recorrencia_quantidade": "1", "data_vencimento": "", "recorrencia_data_inicial": ""},
+            usuario=self.admin,
+        )
+        self.assertFalse(sucesso)
+        self.assertEqual("Data inicial da recorrencia e obrigatoria.", mensagem)
 
     def test_titulo_exige_fornecedor_cadastrado_e_ignora_snapshots_enviados(self):
         sucesso, mensagem, _ = salvar_titulo(

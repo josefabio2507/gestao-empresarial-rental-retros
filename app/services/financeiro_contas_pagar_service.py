@@ -74,6 +74,8 @@ STATUS_XML_FINANCEIRO = [
     "Ja integrado via O.C.",
     "Cancelado",
 ]
+PERIODICIDADES_RECORRENCIA = ["Mensal", "Quinzenal", "Semanal", "Anual"]
+MAX_RECORRENCIAS = 60
 
 
 def _registrar_log(evento, mensagem):
@@ -155,6 +157,20 @@ def _proximo_mes(ano, mes):
     if mes == 12:
         return ano + 1, 1
     return ano, mes + 1
+
+
+def calcular_data_recorrencia(data_inicial, periodicidade, indice):
+    if periodicidade == "Semanal":
+        return data_inicial + timedelta(days=7 * indice)
+    if periodicidade == "Quinzenal":
+        return data_inicial + timedelta(days=15 * indice)
+    if periodicidade == "Mensal":
+        total_meses = data_inicial.year * 12 + data_inicial.month - 1 + indice
+        ano, mes_zero = divmod(total_meses, 12)
+        return _data_com_dia_valido(ano, mes_zero + 1, data_inicial.day)
+    if periodicidade == "Anual":
+        return _data_com_dia_valido(data_inicial.year + indice, data_inicial.month, data_inicial.day)
+    raise ValueError("Periodicidade invalida.")
 
 
 def calcular_datas_fatura(cartao, ano, mes):
@@ -1321,7 +1337,7 @@ def vincular_titulo_a_fatura_cartao(titulo, usuario=None):
     return fatura_anterior, fatura
 
 
-def salvar_titulo(dados, titulo=None, usuario=None):
+def salvar_titulo(dados, titulo=None, usuario=None, commit=True):
     titulo = titulo or FinanceiroContaPagarTitulo()
 
     try:
@@ -1421,11 +1437,78 @@ def salvar_titulo(dados, titulo=None, usuario=None):
         if fatura_anterior and (not fatura_atual or fatura_anterior.id != fatura_atual.id):
             recalcular_fatura(fatura_anterior)
 
-        db.session.commit()
+        if commit:
+            db.session.commit()
         return True, "Titulo salvo com sucesso.", titulo
     except ValueError as exc:
         db.session.rollback()
         return False, str(exc), titulo
+
+
+def salvar_titulos_recorrentes(dados, usuario=None):
+    recorrente = (dados.get("eh_recorrente") or "Nao") == "Sim"
+    if not recorrente:
+        sucesso, mensagem, titulo = salvar_titulo(dados, usuario=usuario)
+        return sucesso, mensagem, [titulo] if sucesso else []
+
+    try:
+        periodicidade = (dados.get("recorrencia_periodicidade") or "").strip()
+        if periodicidade not in PERIODICIDADES_RECORRENCIA:
+            raise ValueError("Periodicidade invalida.")
+        quantidade = parse_int(
+            dados.get("recorrencia_quantidade"),
+            padrao=0,
+            nome_campo="Quantidade de recorrencias",
+        )
+        if quantidade < 1 or quantidade > MAX_RECORRENCIAS:
+            raise ValueError(f"Quantidade de recorrencias deve estar entre 1 e {MAX_RECORRENCIAS}.")
+        data_inicial = parse_data(
+            dados.get("recorrencia_data_inicial") or dados.get("data_vencimento"),
+            obrigatorio=True,
+            nome_campo="Data inicial da recorrencia",
+        )
+        grupo_id = (dados.get("recorrencia_token") or "").strip()
+        if not re.fullmatch(r"[0-9a-fA-F-]{36}", grupo_id):
+            raise ValueError("Identificador da recorrencia invalido. Recarregue o formulario e tente novamente.")
+        existentes = FinanceiroContaPagarTitulo.query.filter_by(
+            recorrencia_grupo_id=grupo_id
+        ).order_by(FinanceiroContaPagarTitulo.recorrencia_sequencia.asc()).all()
+        if existentes:
+            return True, f"{len(existentes)} titulos recorrentes ja haviam sido gerados.", existentes
+
+        descricao_recorrencia = normalizar_texto(
+            dados.get("recorrencia_descricao"), upper=False
+        ) or None
+        if descricao_recorrencia and len(descricao_recorrencia) > 120:
+            raise ValueError("Identificacao da recorrencia deve ter no maximo 120 caracteres.")
+
+        titulos = []
+        for indice in range(quantidade):
+            vencimento = calcular_data_recorrencia(data_inicial, periodicidade, indice)
+            dados_titulo = dict(dados)
+            dados_titulo.update(
+                data_vencimento=vencimento.isoformat(),
+                competencia=vencimento.strftime("%Y-%m"),
+                parcela_numero=str(indice + 1),
+                total_parcelas=str(quantidade),
+            )
+            sucesso, mensagem, titulo = salvar_titulo(
+                dados_titulo, usuario=usuario, commit=False
+            )
+            if not sucesso:
+                return False, mensagem, []
+            titulo.recorrencia_grupo_id = grupo_id
+            titulo.recorrencia_periodicidade = periodicidade
+            titulo.recorrencia_sequencia = indice + 1
+            titulo.recorrencia_total = quantidade
+            titulo.recorrencia_descricao = descricao_recorrencia
+            titulos.append(titulo)
+
+        db.session.commit()
+        return True, f"{quantidade} titulos recorrentes gerados com sucesso.", titulos
+    except ValueError as exc:
+        db.session.rollback()
+        return False, str(exc), []
 
 
 def cancelar_titulo(titulo, usuario=None):

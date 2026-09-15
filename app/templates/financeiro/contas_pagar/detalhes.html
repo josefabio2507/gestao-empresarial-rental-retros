@@ -33,6 +33,9 @@
         <p><strong>Vencimento:</strong> {{ titulo.data_vencimento.strftime("%d/%m/%Y") }}</p>
         <p><strong>Competencia:</strong> {{ titulo.competencia.strftime("%m/%Y") if titulo.competencia else "-" }}</p>
         <p><strong>Parcela:</strong> {{ titulo.parcela_numero }}/{{ titulo.total_parcelas }}</p>
+        {% if titulo.recorrencia_grupo_id %}
+        <p><strong>Recorrencia:</strong> {{ titulo.recorrencia_periodicidade }} - {{ titulo.recorrencia_sequencia }}/{{ titulo.recorrencia_total }}{% if titulo.recorrencia_descricao %} - {{ titulo.recorrencia_descricao }}{% endif %}</p>
+        {% endif %}
         <p><strong>Centro de custo:</strong> {{ titulo.centro_custo.nome if titulo.centro_custo else "-" }}</p>
         <p><strong>Valor original:</strong> {{ formatar_moeda_brl(titulo.valor_original) }}</p>
         <p><strong>Valor liquido:</strong> {{ formatar_moeda_brl(titulo.valor_liquido_previsto) }}</p>

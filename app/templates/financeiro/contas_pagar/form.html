@@ -59,6 +59,44 @@
             <div class="form-group"><label for="valor_pago">Valor pago</label><input id="valor_pago" name="valor_pago" value="{{ '%.2f'|format(titulo.valor_pago)|replace('.', ',') if titulo else '0,00' }}" readonly><small>Atualizado automaticamente pelas baixas.</small></div>
         </div>
 
+        {% if modo == "novo" %}
+        <h2>Pagamento Recorrente</h2>
+        <input type="hidden" name="recorrencia_token" value="{{ recorrencia_token }}">
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="eh_recorrente">E recorrente?</label>
+                <select id="eh_recorrente" name="eh_recorrente">
+                    <option value="Nao" selected>Nao</option>
+                    <option value="Sim">Sim</option>
+                </select>
+            </div>
+        </div>
+        <div id="campos-recorrencia" class="form-grid" hidden>
+            <div class="form-group">
+                <label for="recorrencia_periodicidade">Periodicidade</label>
+                <select id="recorrencia_periodicidade" name="recorrencia_periodicidade">
+                    <option value="Mensal">Mensal</option>
+                    <option value="Quinzenal">Quinzenal</option>
+                    <option value="Semanal">Semanal</option>
+                    <option value="Anual">Anual</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="recorrencia_quantidade">Quantidade de recorrencias</label>
+                <input id="recorrencia_quantidade" name="recorrencia_quantidade" type="number" min="1" max="60" value="1">
+            </div>
+            <div class="form-group">
+                <label for="recorrencia_data_inicial">Data inicial da recorrencia</label>
+                <input id="recorrencia_data_inicial" name="recorrencia_data_inicial" type="date">
+                <small>Se estiver vazia, sera usada a data de vencimento.</small>
+            </div>
+            <div class="form-group">
+                <label for="recorrencia_descricao">Identificacao da recorrencia (opcional)</label>
+                <input id="recorrencia_descricao" name="recorrencia_descricao" maxlength="120" placeholder="Ex.: Aluguel mensal do galpao">
+            </div>
+        </div>
+        {% endif %}
+
         <h2>Classificacao</h2>
         <div class="form-grid">
             <div class="form-group">
@@ -125,19 +163,41 @@
         fornecedorBusca.addEventListener('blur', sincronizarFornecedor);
     }
 
+    var recorrente = document.getElementById('eh_recorrente');
+    var camposRecorrencia = document.getElementById('campos-recorrencia');
+    var dataInicialRecorrencia = document.getElementById('recorrencia_data_inicial');
+    var quantidadeRecorrencia = document.getElementById('recorrencia_quantidade');
+    var periodicidadeRecorrencia = document.getElementById('recorrencia_periodicidade');
+    var dataVencimento = document.getElementById('data_vencimento');
+    var sincronizarRecorrencia = function () {
+        if (!recorrente || !camposRecorrencia) { return; }
+        var ativa = recorrente.value === 'Sim';
+        camposRecorrencia.hidden = !ativa;
+        [quantidadeRecorrencia, periodicidadeRecorrencia].forEach(function (campo) {
+            if (campo) { campo.required = ativa; }
+        });
+        if (ativa && dataInicialRecorrencia && !dataInicialRecorrencia.value && dataVencimento) {
+            dataInicialRecorrencia.value = dataVencimento.value;
+        }
+    };
+    if (recorrente) {
+        recorrente.addEventListener('change', sincronizarRecorrencia);
+        if (dataVencimento) { dataVencimento.addEventListener('change', sincronizarRecorrencia); }
+        sincronizarRecorrencia();
+    }
+
     var forma = document.getElementById('forma_pagamento');
     var tipo = document.getElementById('tipo_pagamento');
     var dataCompra = document.getElementById('data_compra_cartao');
     var dataEmissao = document.getElementById('data_emissao');
-    if (!forma || !tipo) { return; }
-    forma.addEventListener('change', function () {
+    if (forma && tipo) { forma.addEventListener('change', function () {
         if (forma.value === 'Cartao de Credito') {
             tipo.value = 'Cartao de Credito';
             if (dataCompra && dataEmissao && !dataCompra.value) {
                 dataCompra.value = dataEmissao.value;
             }
         }
-    });
+    }); }
 })();
 </script>
 {% endblock %}
