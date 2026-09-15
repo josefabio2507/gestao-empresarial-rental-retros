@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 from flask import abort, flash, redirect, render_template, request, send_file, url_for
 from flask_login import current_user, login_required
 
@@ -41,6 +43,7 @@ from app.services.financeiro_contas_pagar_service import (
     titulos_para_baixa_em_massa,
     titulo_elegivel_baixa,
     salvar_titulo,
+    salvar_titulos_recorrentes,
     status_financeiro_xml,
     titulos_ativos_documento_fiscal,
 )
@@ -209,9 +212,13 @@ def exportar_titulos_pdf():
 @module_permission_required("financeiro", "contas_a_pagar", "criar")
 def novo():
     if request.method == "POST":
-        sucesso, mensagem, titulo = salvar_titulo(request.form, usuario=current_user)
+        sucesso, mensagem, titulos_gerados = salvar_titulos_recorrentes(request.form, usuario=current_user)
         if sucesso:
-            registrar_log("financeiro_contas_pagar_criado", f"Titulo a pagar criado. ID: {titulo.id}.")
+            titulo = titulos_gerados[0]
+            registrar_log(
+                "financeiro_contas_pagar_criado",
+                f"Titulos a pagar criados: {len(titulos_gerados)}. Primeiro ID: {titulo.id}.",
+            )
             flash(mensagem, "success")
             return redirect(url_for("financeiro_contas_pagar.detalhes", titulo_id=titulo.id))
         flash(mensagem, "danger")
@@ -221,6 +228,7 @@ def novo():
         titulo=None,
         modo="novo",
         opcoes=buscar_opcoes_formulario(),
+        recorrencia_token=str(uuid4()),
     )
 
 

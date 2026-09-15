@@ -2261,6 +2261,11 @@ class FinanceiroContaPagarTitulo(db.Model):
     valor_pago = db.Column(db.Numeric(12, 2), default=0, nullable=False)
     parcela_numero = db.Column(db.Integer, default=1, nullable=False)
     total_parcelas = db.Column(db.Integer, default=1, nullable=False)
+    recorrencia_grupo_id = db.Column(db.String(36), nullable=True, index=True)
+    recorrencia_periodicidade = db.Column(db.String(20), nullable=True)
+    recorrencia_sequencia = db.Column(db.Integer, nullable=True)
+    recorrencia_total = db.Column(db.Integer, nullable=True)
+    recorrencia_descricao = db.Column(db.String(120), nullable=True)
     centro_custo_id = db.Column(
         db.Integer,
         db.ForeignKey("centros_custo.id"),
@@ -2339,6 +2344,23 @@ class FinanceiroContaPagarTitulo(db.Model):
         db.CheckConstraint("parcela_numero >= 1", name="ck_financeiro_cp_parcela_numero"),
         db.CheckConstraint("total_parcelas >= 1", name="ck_financeiro_cp_total_parcelas"),
         db.CheckConstraint("parcela_numero <= total_parcelas", name="ck_financeiro_cp_parcela_total"),
+        db.CheckConstraint(
+            "recorrencia_periodicidade is null or recorrencia_periodicidade in ('Mensal', 'Quinzenal', 'Semanal', 'Anual')",
+            name="ck_financeiro_cp_recorrencia_periodicidade",
+        ),
+        db.CheckConstraint(
+            "recorrencia_total is null or (recorrencia_total >= 1 and recorrencia_total <= 60)",
+            name="ck_financeiro_cp_recorrencia_total",
+        ),
+        db.CheckConstraint(
+            "recorrencia_sequencia is null or recorrencia_sequencia >= 1",
+            name="ck_financeiro_cp_recorrencia_sequencia",
+        ),
+        db.UniqueConstraint(
+            "recorrencia_grupo_id",
+            "recorrencia_sequencia",
+            name="uq_financeiro_cp_recorrencia_grupo_sequencia",
+        ),
     )
 
     @property

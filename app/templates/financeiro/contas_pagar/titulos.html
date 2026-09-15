@@ -56,7 +56,7 @@
                         <td>{{ titulo.id }}</td>
                         <td>{{ titulo.fornecedor_nome_snapshot }}</td>
                         <td>{{ titulo.fornecedor_cnpj_cpf_snapshot or "-" }}</td>
-                        <td>{{ titulo.descricao }}</td>
+                        <td>{{ titulo.descricao }}{% if titulo.recorrencia_grupo_id %}<br><small>Recorrente {{ titulo.recorrencia_sequencia }}/{{ titulo.recorrencia_total }}</small>{% endif %}</td>
                         <td>{{ titulo.numero_documento or "-" }}</td>
                         <td>{{ titulo.numero_nfe or "-" }}</td>
                         <td>{{ titulo.ordem_compra.numero if titulo.ordem_compra else "-" }}</td>
