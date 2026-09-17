@@ -15,6 +15,7 @@ from app.services.fiscal_service import (
     consultar_documentos_sefaz,
     eventos_manifestacao_disponiveis,
     manifestar_documento_fiscal,
+    proxima_consulta_sefaz_permitida,
     rotulos_status_documento,
     salvar_certificado_a1,
     salvar_xml_documento,
@@ -42,6 +43,7 @@ def documentos():
         controles_nsu=buscar_controles_nsu(),
         status_documentos=rotulos_status_documento(),
         eventos_manifestacao=eventos_manifestacao_disponiveis(),
+        proxima_consulta_sefaz_permitida=proxima_consulta_sefaz_permitida,
         status_financeiro_xml=status_financeiro_xml,
         titulos_ativos_documento_fiscal=titulos_ativos_documento_fiscal,
     )

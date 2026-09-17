@@ -214,6 +214,26 @@ class FiscalDocumentosTestCase(unittest.TestCase):
 </retDistDFeInt>
 """
 
+    def _retorno_consumo_indevido(self, ultimo_nsu="3783"):
+        return f"""<?xml version="1.0" encoding="UTF-8"?>
+<retDistDFeInt xmlns="http://www.portalfiscal.inf.br/nfe" versao="1.01">
+  <cStat>656</cStat>
+  <xMotivo>Rejeicao: Consumo Indevido. Deve ser utilizado o ultNSU nas solicitacoes subsequentes.</xMotivo>
+  <ultNSU>{ultimo_nsu}</ultNSU>
+  <maxNSU>000000000000000</maxNSU>
+</retDistDFeInt>
+"""
+
+    def _retorno_sem_documentos(self, ultimo_nsu="3783"):
+        return f"""<?xml version="1.0" encoding="UTF-8"?>
+<retDistDFeInt xmlns="http://www.portalfiscal.inf.br/nfe" versao="1.01">
+  <cStat>137</cStat>
+  <xMotivo>Nenhum documento localizado</xMotivo>
+  <ultNSU>{ultimo_nsu}</ultNSU>
+  <maxNSU>{ultimo_nsu}</maxNSU>
+</retDistDFeInt>
+"""
+
     def _retorno_manifestacao(self):
         return """<?xml version="1.0" encoding="UTF-8"?>
 <retEnvEvento xmlns="http://www.portalfiscal.inf.br/nfe" versao="1.00">
@@ -498,6 +518,72 @@ class FiscalDocumentosTestCase(unittest.TestCase):
         self.assertIsNone(documento.xml_path)
         self.assertIsNone(documento.danfe_path)
         self.assertEqual("44555666000177", documento.destinatario_cnpj)
+
+    def test_consumo_indevido_salva_nsu_e_bloqueia_nova_consulta_por_uma_hora(self):
+        sucesso, _, _ = salvar_certificado_a1(
+            {
+                "cnpj_empresa": "44.555.666/0001-77",
+                "razao_social": "Rental Retros LTDA",
+                "senha": "segredo",
+            },
+            self._arquivo_certificado(),
+            self.admin,
+        )
+        self.assertTrue(sucesso)
+        self.FakePyNFeClient.chamadas = []
+        self.FakePyNFeClient.resposta = self._retorno_consumo_indevido()
+
+        sucesso, mensagem, controle = consultar_documentos_sefaz(
+            "44.555.666/0001-77",
+            cliente_cls=self.FakePyNFeClient,
+        )
+
+        self.assertFalse(sucesso)
+        self.assertEqual("Uso indevido", controle.status)
+        self.assertEqual("3783", controle.ultimo_nsu)
+        self.assertIsNone(controle.max_nsu)
+        self.assertIn("ficarão bloqueadas até", mensagem)
+        self.assertEqual(1, len(self.FakePyNFeClient.chamadas))
+
+        sucesso, mensagem, _ = consultar_documentos_sefaz(
+            "44.555.666/0001-77",
+            cliente_cls=self.FakePyNFeClient,
+        )
+
+        self.assertFalse(sucesso)
+        self.assertIn("temporariamente bloqueada", mensagem)
+        self.assertEqual(1, len(self.FakePyNFeClient.chamadas))
+
+    def test_consulta_retorna_apos_expirar_bloqueio_usando_nsu_corrigido(self):
+        sucesso, _, _ = salvar_certificado_a1(
+            {
+                "cnpj_empresa": "44.555.666/0001-77",
+                "razao_social": "Rental Retros LTDA",
+                "senha": "segredo",
+            },
+            self._arquivo_certificado(),
+            self.admin,
+        )
+        self.assertTrue(sucesso)
+        controle = FiscalControleNSU(
+            cnpj_empresa="44555666000177",
+            ultimo_nsu="3783",
+            status="Uso indevido",
+            consultado_em=datetime.now() - timedelta(hours=2),
+        )
+        db.session.add(controle)
+        db.session.commit()
+        self.FakePyNFeClient.chamadas = []
+        self.FakePyNFeClient.resposta = self._retorno_sem_documentos()
+
+        sucesso, _, controle = consultar_documentos_sefaz(
+            "44.555.666/0001-77",
+            cliente_cls=self.FakePyNFeClient,
+        )
+
+        self.assertTrue(sucesso)
+        self.assertEqual("3783", self.FakePyNFeClient.chamadas[0]["ultimo_nsu"])
+        self.assertEqual("Sem novos documentos", controle.status)
 
     def test_manifestacao_registra_protocolo_baixa_xml_completo_e_gera_danfe(self):
         sucesso, _, _ = salvar_certificado_a1(

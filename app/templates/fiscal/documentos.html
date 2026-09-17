@@ -208,19 +208,28 @@
                     <th>Máximo NSU</th>
                     <th>Status</th>
                     <th>Última consulta</th>
+                    <th>Próxima consulta</th>
                 </tr>
             </thead>
             <tbody>
                 {% for controle in controles_nsu %}
+                    {% set proxima_consulta = proxima_consulta_sefaz_permitida(controle) %}
                     <tr>
                         <td>{{ controle.cnpj_empresa }}</td>
                         <td>{{ controle.ultimo_nsu }}</td>
                         <td>{{ controle.max_nsu or "-" }}</td>
                         <td>{{ controle.status }}</td>
                         <td>{{ controle.consultado_em.strftime("%d/%m/%Y %H:%M") if controle.consultado_em else "-" }}</td>
+                        <td>
+                            {% if proxima_consulta %}
+                                <span class="badge badge-warning">Após {{ proxima_consulta.strftime("%d/%m/%Y %H:%M") }}</span>
+                            {% else %}
+                                <span class="badge badge-success">Liberada</span>
+                            {% endif %}
+                        </td>
                     </tr>
                 {% else %}
-                    <tr><td class="empty-state" colspan="5">Nenhuma consulta registrada.</td></tr>
+                    <tr><td class="empty-state" colspan="6">Nenhuma consulta registrada.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
