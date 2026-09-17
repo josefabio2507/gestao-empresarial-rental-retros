@@ -41,6 +41,7 @@ from app.services.operacao_multas_transito_service import (
     listar_motoristas_vinculados_multas,
     motorista_vinculado_na_data,
     salvar_multa_transito,
+    salvar_boleto_multa,
     veiculos_para_multas,
 )
 from app.services.operacao_pool_service import (
@@ -334,7 +335,7 @@ def nova_multa_transito():
         if sucesso:
             registrar_log("operacao_multa_transito_criada", f"Multa de transito criada. ID: {multa.id}.")
             flash(mensagem, "success")
-            return redirect(url_for("operacao.multas_transito"))
+            return redirect(url_for("operacao.cadastrar_boleto_multa", multa_id=multa.id))
         flash(mensagem, "danger")
 
     return render_template(
@@ -362,6 +363,31 @@ def ver_multa_transito(multa_id):
         multa=multa,
         cidades=dict(CIDADES_MULTA),
         gravidades=dict(GRAVIDADES_MULTA),
+        formatar_moeda_brl=formatar_moeda_brl,
+    )
+
+
+@operacao_bp.route("/multas-transito/<int:multa_id>/boleto", methods=["GET", "POST"])
+@login_required
+@module_permission_required("operacao", MODULO_MULTAS_TRANSITO, "criar")
+def cadastrar_boleto_multa(multa_id):
+    multa = buscar_multa(multa_id)
+    if not multa:
+        flash("Multa de transito nao encontrada.", "warning")
+        return redirect(url_for("operacao.multas_transito"))
+
+    if request.method == "POST":
+        sucesso, mensagem = salvar_boleto_multa(request.form, multa)
+        if sucesso:
+            registrar_log("operacao_multa_transito_boleto_salvo", f"Boleto da multa salvo. ID: {multa.id}.")
+            flash(mensagem, "success")
+            return redirect(url_for("operacao.ver_multa_transito", multa_id=multa.id))
+        flash(mensagem, "danger")
+
+    return render_template(
+        "operacao/multa_transito_boleto_form.html",
+        multa=multa,
+        dados=request.form,
         formatar_moeda_brl=formatar_moeda_brl,
     )
 

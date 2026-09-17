@@ -25,7 +25,7 @@ from app.models import (
 )
 from app.services.operacao_abastecimento_service import TIPOS_COMBUSTIVEL, cancelar_custo_extra_abastecimento, salvar_abastecimento
 from app.services.operacao_impostos_taxas_service import salvar_impostos_taxas
-from app.services.operacao_multas_transito_service import salvar_multa_transito
+from app.services.operacao_multas_transito_service import salvar_boleto_multa, salvar_multa_transito
 from app.services.operacao_pool_service import (
     STATUS_DISPONIVEL,
     STATUS_EM_USO,
@@ -892,6 +892,81 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         self.assertEqual("Condutor Informado", multa.motorista_indicado_nome)
         self.assertEqual("585.69", str(multa.custo_total))
         self.assertEqual(1, OperacaoMultaTransito.query.count())
+
+    def test_cadastra_notificacao_sem_valor_e_depois_completa_boleto(self):
+        veiculo = self._criar_veiculo("NTF001", "CAMINHAO NOTIFICACAO")
+        sucesso, mensagem, multa = salvar_multa_transito(
+            {
+                "data_infracao": "2026-09-15",
+                "hora_infracao": "10:20",
+                "veiculo_id": str(veiculo.id),
+                "numero_auto_infracao": "AUTO-NTF-001",
+                "local_infracao": "Av. da Praia",
+                "cidade": "SANTOS",
+                "descricao_infracao": "Notificacao recebida sem boleto",
+                "gravidade": "Media",
+                "pontuacao": "4",
+            },
+            self.admin,
+        )
+
+        self.assertTrue(sucesso, mensagem)
+        self.assertIsNone(multa.valor_multa)
+        self.assertIsNone(multa.data_vencimento)
+        self.assertFalse(multa.boleto_cadastrado)
+        self.assertEqual("Aguardando boleto", multa.status_boleto)
+
+        sucesso, mensagem = salvar_boleto_multa(
+            {"valor_multa": "293,47", "data_vencimento": "2026-10-15"},
+            multa,
+        )
+
+        self.assertTrue(sucesso, mensagem)
+        self.assertEqual("293.47", str(multa.valor_multa))
+        self.assertEqual("2026-10-15", multa.data_vencimento.isoformat())
+        self.assertTrue(multa.boleto_cadastrado)
+        self.assertEqual("Boleto cadastrado", multa.status_boleto)
+
+    def test_fluxo_web_notificacao_redireciona_para_cadastro_do_boleto(self):
+        veiculo = self._criar_veiculo("WEB001", "CAMINHAO FLUXO WEB")
+        self._liberar_usuario("multas_transito", visualizar=True, criar=True)
+        self._autenticar(self.usuario)
+
+        resposta = self.client.post(
+            "/operacao/multas-transito/nova",
+            data={
+                "data_infracao": "2026-09-17",
+                "hora_infracao": "11:30",
+                "veiculo_id": str(veiculo.id),
+                "numero_auto_infracao": "AUTO-WEB-001",
+                "local_infracao": "Rodovia dos Imigrantes",
+                "cidade": "SAO PAULO",
+                "descricao_infracao": "Notificacao para validar fluxo web",
+                "gravidade": "Grave",
+                "pontuacao": "5",
+            },
+            follow_redirects=False,
+        )
+
+        multa = OperacaoMultaTransito.query.filter_by(numero_auto_infracao="AUTO-WEB-001").one()
+        self.assertEqual(302, resposta.status_code)
+        self.assertTrue(resposta.headers["Location"].endswith(f"/operacao/multas-transito/{multa.id}/boleto"))
+        self.assertFalse(multa.boleto_cadastrado)
+
+        formulario = self.client.get(resposta.headers["Location"])
+        self.assertEqual(200, formulario.status_code)
+        self.assertIn(b"Cadastrar boleto", formulario.data)
+        self.assertIn(b"AUTO-WEB-001", formulario.data)
+
+        resposta_boleto = self.client.post(
+            resposta.headers["Location"],
+            data={"valor_multa": "195,23", "data_vencimento": "2026-10-20"},
+            follow_redirects=True,
+        )
+
+        self.assertEqual(200, resposta_boleto.status_code)
+        self.assertIn(b"Boleto cadastrado", resposta_boleto.data)
+        self.assertIn(b"R$ 195,23", resposta_boleto.data)
 
     def test_rota_multas_transito_e_central_de_custos_exibem_multa(self):
         veiculo = self._criar_veiculo("MLT002", "CAMINHAO CENTRAL MULTA")
