@@ -14,8 +14,10 @@ from app.models import (
     FinanceiroCartaoFatura,
     FinanceiroContaPagarTitulo,
     Departamento,
+    Equipe,
     Modulo,
     NivelAcesso,
+    OperacaoVeiculoEquipamento,
     PermissaoUsuarioModulo,
     SuprimentosAlcadaAprovacao,
     SuprimentosCategoriaItem,
@@ -474,6 +476,48 @@ class SuprimentosOrdensCompraTestCase(unittest.TestCase):
         sucesso, mensagem = provisionar_financeiro_ordem_compra(ordem, usuario=self.admin)
         self.assertFalse(sucesso)
         self.assertEqual("Esta Ordem de Compra ja possui titulos financeiros gerados.", mensagem)
+
+    def test_provisiona_financeiro_com_equipe_e_veiculo_da_requisicao(self):
+        equipe = Equipe(nome="Equipe Financeiro", slug="equipe-financeiro", ativo=True)
+        veiculo = OperacaoVeiculoEquipamento(
+            identificacao="VEICULO-FINANCEIRO",
+            placa="ABC1D23",
+            descricao="Veiculo do teste financeiro",
+            centro_custo="MANUTENCAO",
+            centro_custo_id=self.centro.id,
+            situacao_aquisicao="Quitado",
+            tipo="Veiculo leve",
+            status_operacional="Disponivel",
+            ativo=True,
+        )
+        db.session.add_all([equipe, veiculo])
+        db.session.flush()
+
+        self.requisicao.sub_centro_custo_equipe_id = self.centro.id
+        self.requisicao.sub_centro_custo_veiculo_id = self.centro.id
+        self.requisicao.equipe_id = equipe.id
+        self.requisicao.veiculo_placa = "abc1d23"
+        db.session.commit()
+
+        ordem = self._criar_ordem_compra()
+        sucesso, _ = preparar_financeiro_ordem_compra(
+            ordem,
+            {
+                "tipo_pagamento_financeiro": "Faturado",
+                "forma_pagamento_financeiro": "Pix",
+                "data_primeiro_vencimento_financeiro": "2026-09-17",
+                "numero_parcelas_financeiro": "1",
+            },
+        )
+        self.assertTrue(sucesso)
+
+        sucesso, mensagem = provisionar_financeiro_ordem_compra(ordem, usuario=self.admin)
+
+        self.assertTrue(sucesso, mensagem)
+        titulo = FinanceiroContaPagarTitulo.query.filter_by(ordem_compra_id=ordem.id).one()
+        self.assertEqual(equipe.id, titulo.sub_centro_custo_equipe_id)
+        self.assertEqual(veiculo.id, titulo.sub_centro_custo_veiculo_id)
+
     def test_listagem_de_ordens_aguardando_financeiro(self):
         cotacao = self._criar_cotacao_aprovada()
         _, _, ordens = gerar_ordens_compra_cotacao(cotacao, self.admin)

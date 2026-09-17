@@ -28,6 +28,7 @@ from app.models import (
     Equipe,
     Modulo,
     NivelAcesso,
+    OperacaoVeiculoEquipamento,
     PermissaoUsuarioModulo,
     SuprimentosAlcadaAprovacao,
     SuprimentosCategoriaItem,
@@ -1804,12 +1805,18 @@ def _centro_custo_ordem(ordem):
 
 def _subcentro_equipe_ordem(ordem):
     requisicao = getattr(ordem, "requisicao", None)
-    return getattr(requisicao, "sub_centro_custo_equipe_id", None)
+    return getattr(requisicao, "equipe_id", None)
 
 
 def _subcentro_veiculo_ordem(ordem):
     requisicao = getattr(ordem, "requisicao", None)
-    return getattr(requisicao, "sub_centro_custo_veiculo_id", None)
+    placa = texto_maiusculo(getattr(requisicao, "veiculo_placa", None))
+    if not placa:
+        return None
+    veiculo = OperacaoVeiculoEquipamento.query.filter(
+        func.upper(OperacaoVeiculoEquipamento.placa) == placa
+    ).first()
+    return veiculo.id if veiculo else None
 
 
 def gerar_contas_pagar_ordem_compra(ordem, usuario=None):
