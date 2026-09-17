@@ -56,6 +56,7 @@
         <div class="form-actions">
             <button class="btn btn-primary" type="submit">Filtrar</button>
             <a class="btn btn-secondary" href="{{ url_for('operacao.central_custos_veiculo', veiculo_id=veiculo.id) }}">Limpar</a>
+            <button class="btn btn-secondary" type="submit" formaction="{{ url_for('operacao.relatorio_custos_veiculo_pdf', veiculo_id=veiculo.id) }}">Gerar relatório descritivo</button>
         </div>
     </form>
 
@@ -70,6 +71,12 @@
             <span>Total geral</span>
             <strong>{{ formatar_moeda_brl(total_geral) }}</strong>
         </div>
+    </div>
+
+    <div class="cost-summary-grid">
+        <div class="cost-summary-item"><span>{{ indicadores.rotulo_uso }}</span><strong>{{ '%.2f'|format(indicadores.uso_periodo)|replace('.', ',') }} {{ indicadores.unidade_uso }}</strong></div>
+        <div class="cost-summary-item"><span>{{ indicadores.rotulo_consumo }}</span><strong>{{ ('%.2f '|format(indicadores.consumo_por_litro)|replace('.', ',') ~ indicadores.unidade_uso ~ '/l') if indicadores.consumo_por_litro is not none else '-' }}</strong></div>
+        <div class="cost-summary-item"><span>{{ indicadores.rotulo_custo }}</span><strong>{{ (formatar_moeda_brl(indicadores.custo_por_unidade) ~ '/' ~ indicadores.unidade_uso) if indicadores.custo_por_unidade is not none else '-' }}</strong></div>
     </div>
 
     <div class="cost-list-grid">

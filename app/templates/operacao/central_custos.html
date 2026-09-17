@@ -30,6 +30,20 @@
         </div>
     </form>
 
+    <form class="filter-bar" method="GET" action="{{ url_for('operacao.relatorio_custos_geral_pdf') }}">
+        <div class="form-group">
+            <label for="relatorio_data_inicio">Data inicial do relatório geral</label>
+            <input id="relatorio_data_inicio" name="data_inicio" type="date">
+        </div>
+        <div class="form-group">
+            <label for="relatorio_data_fim">Data final do relatório geral</label>
+            <input id="relatorio_data_fim" name="data_fim" type="date">
+        </div>
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Gerar relatório geral dos ativos</button>
+        </div>
+    </form>
+
     <div class="table-card table-responsive">
         <table class="table">
             <thead>

@@ -99,6 +99,36 @@ def linhas_abastecimento(veiculo, inicio=None, fim=None):
     return linhas, total
 
 
+def indicadores_abastecimento(veiculo, inicio=None, fim=None):
+    """Calcula uso, consumo e custo conforme odômetro ou horímetro do ativo."""
+    query = OperacaoAbastecimento.query.filter_by(veiculo_id=veiculo.id)
+    registros_periodo = _filtrar_data_abastecimento(query, inicio, fim).order_by(
+        OperacaoAbastecimento.data_abastecimento.asc(), OperacaoAbastecimento.id.asc()
+    ).all()
+    tipo_leitura = registros_periodo[-1].tipo_leitura if registros_periodo else "odometro"
+    registros = [item for item in registros_periodo if item.tipo_leitura == tipo_leitura]
+    leituras = [decimal_zero(item.leitura_atual) for item in registros if item.leitura_atual is not None]
+    uso_periodo = max(leituras) - min(leituras) if len(leituras) >= 2 else Decimal("0")
+    litros = sum((decimal_zero(item.qtd_litros) for item in registros), start=Decimal("0"))
+    custo = sum((decimal_zero(item.valor_total_combustivel) for item in registros), start=Decimal("0"))
+    horimetro = tipo_leitura == "horimetro"
+    return {
+        "tipo_leitura": tipo_leitura,
+        "unidade_uso": "h" if horimetro else "km",
+        "rotulo_uso": "Horas trabalhadas no período" if horimetro else "Km rodados no período",
+        "rotulo_consumo": "Consumo por hora trabalhada" if horimetro else "Consumo por km rodado",
+        "rotulo_custo": "Custo por hora trabalhada" if horimetro else "Custo por km rodado",
+        "uso_periodo": uso_periodo,
+        "km_rodados": uso_periodo if not horimetro else Decimal("0"),
+        "litros": litros,
+        "consumo_por_litro": (uso_periodo / litros) if litros > 0 and uso_periodo > 0 else None,
+        "custo_por_unidade": (custo / uso_periodo) if uso_periodo > 0 else None,
+        "consumo_km_litro": (uso_periodo / litros) if not horimetro and litros > 0 and uso_periodo > 0 else None,
+        "custo_por_km": (custo / uso_periodo) if not horimetro and uso_periodo > 0 else None,
+        "leituras_suficientes": len(leituras) >= 2,
+    }
+
+
 def linhas_manutencao(veiculo, inicio=None, fim=None):
     query = OperacaoHistoricoManutencao.query.filter_by(veiculo_id=veiculo.id)
     query = _filtrar_data_manutencao(query, inicio, fim)
@@ -219,3 +249,35 @@ def central_custos_veiculo(veiculo, inicio=None, fim=None):
     }
     total_geral = sum((grupo["total"] for grupo in grupos.values()), start=Decimal("0"))
     return grupos, total_geral
+
+
+def relatorio_custos_veiculo(veiculo, inicio=None, fim=None):
+    grupos, total_geral = central_custos_veiculo(veiculo, inicio, fim)
+    return {
+        "veiculo": veiculo,
+        "grupos": grupos,
+        "total_geral": total_geral,
+        "indicadores": indicadores_abastecimento(veiculo, inicio, fim),
+    }
+
+
+def relatorio_custos_ativos(inicio=None, fim=None):
+    veiculos = OperacaoVeiculoEquipamento.query.filter(
+        OperacaoVeiculoEquipamento.ativo.is_(True)
+    ).order_by(OperacaoVeiculoEquipamento.identificacao.asc()).all()
+    linhas = []
+    totais = {chave: Decimal("0") for chave in ("abastecimento", "manutencao", "multas", "impostos_taxas")}
+    total_geral = Decimal("0")
+    for veiculo in veiculos:
+        dados = relatorio_custos_veiculo(veiculo, inicio, fim)
+        linha = {
+            "veiculo": veiculo,
+            "indicadores": dados["indicadores"],
+            **{chave: dados["grupos"][chave]["total"] for chave in totais},
+            "total_geral": dados["total_geral"],
+        }
+        linhas.append(linha)
+        for chave in totais:
+            totais[chave] += linha[chave]
+        total_geral += linha["total_geral"]
+    return {"linhas": linhas, "totais": totais, "total_geral": total_geral}
