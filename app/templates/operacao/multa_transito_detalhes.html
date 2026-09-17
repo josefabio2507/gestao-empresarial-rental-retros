@@ -8,7 +8,10 @@
             <h1>Detalhes da multa</h1>
             <p>{{ multa.veiculo.placa or multa.veiculo.identificacao }} - {{ multa.veiculo.descricao }}</p>
         </div>
-        <a class="btn btn-secondary" href="{{ url_for('operacao.multas_transito') }}">Voltar</a>
+        <div class="form-actions">
+            <a class="btn btn-primary" href="{{ url_for('operacao.cadastrar_boleto_multa', multa_id=multa.id) }}">{{ 'Atualizar boleto' if multa.boleto_cadastrado else 'Cadastrar boleto' }}</a>
+            <a class="btn btn-secondary" href="{{ url_for('operacao.multas_transito') }}">Voltar</a>
+        </div>
     </div>
 
     <div class="details-card">
@@ -20,15 +23,16 @@
             <div><dt>Nº Auto de infração</dt><dd>{{ multa.numero_auto_infracao }}</dd></div>
             <div><dt>Local</dt><dd>{{ multa.local_infracao }}</dd></div>
             <div><dt>Cidade</dt><dd>{{ cidades.get(multa.cidade, multa.cidade) }}</dd></div>
-            <div><dt>Valor da multa</dt><dd>{{ formatar_moeda_brl(multa.valor_multa) }}</dd></div>
-            <div><dt>Vencimento</dt><dd>{{ multa.data_vencimento.strftime('%d/%m/%Y') }}</dd></div>
+            <div><dt>Situação</dt><dd>{{ multa.status_boleto }}</dd></div>
+            <div><dt>Valor da multa</dt><dd>{{ formatar_moeda_brl(multa.valor_multa) if multa.valor_multa is not none else '-' }}</dd></div>
+            <div><dt>Vencimento</dt><dd>{{ multa.data_vencimento.strftime('%d/%m/%Y') if multa.data_vencimento else '-' }}</dd></div>
             <div><dt>Motorista vinculado</dt><dd>{{ multa.motorista_vinculado.nome if multa.motorista_vinculado else '-' }}</dd></div>
             <div><dt>Motorista indicado</dt><dd>{{ multa.motorista_indicado_nome or (multa.motorista_indicado.nome if multa.motorista_indicado else '-') }}</dd></div>
             <div><dt>Gravidade</dt><dd>{{ gravidades.get(multa.gravidade, multa.gravidade) }}</dd></div>
             <div><dt>Pontuação</dt><dd>{{ multa.pontuacao }}</dd></div>
             <div><dt>Vencimento 2ª cobrança</dt><dd>{{ multa.data_vencimento_segunda_cobranca.strftime('%d/%m/%Y') if multa.data_vencimento_segunda_cobranca else '-' }}</dd></div>
-            <div><dt>Valor 2ª cobrança</dt><dd>{{ formatar_moeda_brl(multa.valor_segunda_cobranca or 0) }}</dd></div>
-            <div><dt>Custo total</dt><dd>{{ formatar_moeda_brl(multa.custo_total) }}</dd></div>
+            <div><dt>Valor 2ª cobrança</dt><dd>{{ formatar_moeda_brl(multa.valor_segunda_cobranca) if multa.valor_segunda_cobranca is not none else '-' }}</dd></div>
+            <div><dt>Custo total</dt><dd>{{ formatar_moeda_brl(multa.custo_total) if multa.boleto_cadastrado else '-' }}</dd></div>
             <div class="details-wide"><dt>Descrição da infração</dt><dd>{{ multa.descricao_infracao }}</dd></div>
         </dl>
     </div>

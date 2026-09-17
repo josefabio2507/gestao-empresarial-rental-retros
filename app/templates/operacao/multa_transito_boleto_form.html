@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Multas de Trânsito · Etapa 2</span>
+            <h1>Cadastrar boleto</h1>
+            <p>Notificação {{ multa.numero_auto_infracao }} · {{ multa.veiculo.placa or multa.veiculo.identificacao }}</p>
+        </div>
+        <a class="btn btn-secondary" href="{{ url_for('operacao.ver_multa_transito', multa_id=multa.id) }}">Voltar</a>
+    </div>
+
+    <div class="details-card">
+        <p><strong>Notificação já cadastrada.</strong> Complete os dados abaixo quando o boleto for recebido.</p>
+    </div>
+
+    <form class="form-card" method="POST">
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="valor_multa">Valor da multa (R$)</label>
+                <input id="valor_multa" name="valor_multa" required inputmode="decimal" placeholder="R$ 0,00" value="{{ dados.get('valor_multa', formatar_moeda_brl(multa.valor_multa).replace('R$ ', '') if multa.valor_multa is not none else '') }}">
+            </div>
+            <div class="form-group">
+                <label for="data_vencimento">Data de vencimento</label>
+                <input id="data_vencimento" name="data_vencimento" type="date" required value="{{ dados.get('data_vencimento', multa.data_vencimento.isoformat() if multa.data_vencimento else '') }}">
+            </div>
+            <div class="form-group">
+                <label for="data_vencimento_segunda_cobranca">Data de vencimento da 2ª cobrança</label>
+                <input id="data_vencimento_segunda_cobranca" name="data_vencimento_segunda_cobranca" type="date" value="{{ dados.get('data_vencimento_segunda_cobranca', multa.data_vencimento_segunda_cobranca.isoformat() if multa.data_vencimento_segunda_cobranca else '') }}">
+            </div>
+            <div class="form-group">
+                <label for="valor_segunda_cobranca">Valor da 2ª cobrança (R$)</label>
+                <input id="valor_segunda_cobranca" name="valor_segunda_cobranca" inputmode="decimal" placeholder="R$ 0,00" value="{{ dados.get('valor_segunda_cobranca', formatar_moeda_brl(multa.valor_segunda_cobranca).replace('R$ ', '') if multa.valor_segunda_cobranca is not none else '') }}">
+            </div>
+        </div>
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">Salvar boleto</button>
+            <a class="btn btn-secondary" href="{{ url_for('operacao.ver_multa_transito', multa_id=multa.id) }}">Cadastrar depois</a>
+        </div>
+    </form>
+</section>
+{% endblock %}

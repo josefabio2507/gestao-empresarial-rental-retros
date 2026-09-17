@@ -170,10 +170,10 @@ def salvar_multa_transito(dados, usuario, multa=None):
         return False, "Preencha local, cidade e descricao da infracao.", None
     if cidade not in dict(CIDADES_MULTA):
         return False, "Cidade invalida.", None
-    if valor_multa is None:
-        return False, "Informe o valor da multa.", None
-    if not data_vencimento:
-        return False, "Informe a data de vencimento.", None
+    if bool(valor_multa is not None) != bool(data_vencimento):
+        return False, "Informe valor e data de vencimento juntos.", None
+    if valor_multa is not None and valor_multa < 0:
+        return False, "Informe um valor valido para a multa.", None
     if gravidade not in dict(GRAVIDADES_MULTA):
         return False, "Gravidade invalida.", None
     if pontuacao is None or pontuacao < 0:
@@ -204,4 +204,28 @@ def salvar_multa_transito(dados, usuario, multa=None):
 
     db.session.add(multa)
     db.session.commit()
-    return True, "Multa de transito salva com sucesso.", multa
+    return True, "Notificacao de multa salva com sucesso.", multa
+
+
+def salvar_boleto_multa(dados, multa):
+    valor_multa = decimal_brl(dados.get("valor_multa"))
+    data_vencimento = data_form(dados.get("data_vencimento"))
+    data_segunda = data_form(dados.get("data_vencimento_segunda_cobranca"))
+    valor_segunda = decimal_brl(dados.get("valor_segunda_cobranca"))
+
+    if valor_multa is None or valor_multa < 0:
+        return False, "Informe um valor valido para o boleto."
+    if not data_vencimento:
+        return False, "Informe a data de vencimento do boleto."
+    if bool(data_segunda) != bool(valor_segunda is not None):
+        return False, "Informe data e valor da segunda cobranca juntos."
+    if valor_segunda is not None and valor_segunda < 0:
+        return False, "Informe um valor valido para a segunda cobranca."
+
+    multa.valor_multa = valor_multa
+    multa.data_vencimento = data_vencimento
+    multa.data_vencimento_segunda_cobranca = data_segunda
+    multa.valor_segunda_cobranca = valor_segunda
+    db.session.add(multa)
+    db.session.commit()
+    return True, "Boleto da multa salvo com sucesso."

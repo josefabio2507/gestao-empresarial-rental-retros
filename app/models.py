@@ -512,8 +512,8 @@ class OperacaoMultaTransito(db.Model):
     local_infracao = db.Column(db.String(255), nullable=False)
     cidade = db.Column(db.String(80), nullable=False, index=True)
     descricao_infracao = db.Column(db.Text, nullable=False)
-    valor_multa = db.Column(db.Numeric(12, 2), nullable=False)
-    data_vencimento = db.Column(db.Date, nullable=False)
+    valor_multa = db.Column(db.Numeric(12, 2), nullable=True)
+    data_vencimento = db.Column(db.Date, nullable=True)
     gravidade = db.Column(db.String(40), nullable=False)
     pontuacao = db.Column(db.Integer, nullable=False)
     data_vencimento_segunda_cobranca = db.Column(db.Date, nullable=True)
@@ -547,6 +547,14 @@ class OperacaoMultaTransito(db.Model):
     @property
     def custo_total(self):
         return (self.valor_multa or 0) + (self.valor_segunda_cobranca or 0)
+
+    @property
+    def boleto_cadastrado(self):
+        return self.valor_multa is not None and self.data_vencimento is not None
+
+    @property
+    def status_boleto(self):
+        return "Boleto cadastrado" if self.boleto_cadastrado else "Aguardando boleto"
 
     def __repr__(self):
         return f"<OperacaoMultaTransito veiculo={self.veiculo_id} auto={self.numero_auto_infracao}>"
