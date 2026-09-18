@@ -1,4 +1,4 @@
-from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
+from flask import Blueprint, flash, jsonify, redirect, render_template, request, send_file, url_for
 from flask_login import current_user, login_required
 
 from app.decorators import module_permission_required
@@ -7,9 +7,11 @@ from app.services.logs_service import registrar_log
 from app.services.operacao_central_custos_service import (
     STATUS_CENTRAL_CUSTOS,
     buscar_veiculos_central_custos,
-    central_custos_veiculo as central_custos_veiculo_service,
     periodo_filtros,
+    relatorio_custos_ativos,
+    relatorio_custos_veiculo,
 )
+from app.services.operacao_central_custos_pdf_service import gerar_pdf_consolidado, gerar_pdf_descritivo, nome_pdf
 from app.services.operacao_abastecimento_service import (
     CATEGORIAS_CUSTO_EXTRA,
     TIPOS_COMBUSTIVEL,
@@ -168,7 +170,8 @@ def central_custos_veiculo(veiculo_id):
         return redirect(url_for("operacao.central_custos"))
 
     data_inicio, data_fim = periodo_filtros(request.args)
-    grupos, total_geral = central_custos_veiculo_service(veiculo, data_inicio, data_fim)
+    dados_relatorio = relatorio_custos_veiculo(veiculo, data_inicio, data_fim)
+    grupos, total_geral = dados_relatorio["grupos"], dados_relatorio["total_geral"]
     return render_template(
         "operacao/central_custos_veiculo.html",
         veiculo=veiculo,
@@ -177,8 +180,33 @@ def central_custos_veiculo(veiculo_id):
         filtros=request.args,
         data_inicio=data_inicio,
         data_fim=data_fim,
+        indicadores=dados_relatorio["indicadores"],
         formatar_moeda_brl=formatar_moeda_brl,
     )
+
+
+@operacao_bp.route("/central-custos/veiculos/<int:veiculo_id>/relatorio.pdf")
+@login_required
+@module_permission_required("operacao", MODULO_CENTRAL_CUSTOS, "visualizar")
+def relatorio_custos_veiculo_pdf(veiculo_id):
+    veiculo = buscar_por_id(OperacaoVeiculoEquipamento, veiculo_id)
+    if not veiculo:
+        flash("Veiculo/equipamento nao encontrado.", "warning")
+        return redirect(url_for("operacao.central_custos"))
+    data_inicio, data_fim = periodo_filtros(request.args)
+    pdf = gerar_pdf_descritivo(relatorio_custos_veiculo(veiculo, data_inicio, data_fim), data_inicio, data_fim)
+    registrar_log("operacao_central_custos_relatorio_veiculo", f"Relatorio de custos exportado. Veiculo: {veiculo.id}.")
+    return send_file(pdf, mimetype="application/pdf", as_attachment=True, download_name=nome_pdf(f"custos_{veiculo.identificacao}"))
+
+
+@operacao_bp.route("/central-custos/relatorio-geral.pdf")
+@login_required
+@module_permission_required("operacao", MODULO_CENTRAL_CUSTOS, "visualizar")
+def relatorio_custos_geral_pdf():
+    data_inicio, data_fim = periodo_filtros(request.args)
+    pdf = gerar_pdf_consolidado(relatorio_custos_ativos(data_inicio, data_fim), data_inicio, data_fim)
+    registrar_log("operacao_central_custos_relatorio_geral", "Relatorio geral de custos exportado.")
+    return send_file(pdf, mimetype="application/pdf", as_attachment=True, download_name=nome_pdf("custos_geral_ativos"))
 
 @operacao_bp.route("/abastecimentos")
 @login_required

@@ -1,4 +1,5 @@
 import unittest
+from datetime import datetime
 from decimal import Decimal
 from io import BytesIO
 
@@ -24,6 +25,7 @@ from app.models import (
     Usuario,
 )
 from app.services.operacao_abastecimento_service import TIPOS_COMBUSTIVEL, cancelar_custo_extra_abastecimento, salvar_abastecimento
+from app.services.operacao_central_custos_service import indicadores_abastecimento, relatorio_custos_ativos
 from app.services.operacao_impostos_taxas_service import salvar_impostos_taxas
 from app.services.operacao_multas_transito_service import salvar_boleto_multa, salvar_multa_transito
 from app.services.operacao_pool_service import (
@@ -856,6 +858,81 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         self.assertIn(b"Detalhes do abastecimento", detalhe.data)
         self.assertIn(b"Ver cupom fiscal", detalhe.data)
         self.assertIn(b"https://drive.google.com/cupom/1", detalhe.data)
+
+    def test_relatorios_central_custos_calculam_km_consumo_custo_e_geram_pdf(self):
+        veiculo = self._criar_veiculo("RLT001", "CAMINHAO RELATORIO")
+        inativo = self._criar_veiculo("RLT999", "CAMINHAO INATIVO")
+        inativo.ativo = False
+        self.usuario.colaborador_id = self.motorista.id
+        db.session.commit()
+        sucesso, mensagem, vinculo = vincular_responsavel(
+            {"colaborador_id": str(self.motorista.id), "tipo_leitura": "odometro", "leitura_inicial": "1000"},
+            usuario=self.admin,
+            veiculo=veiculo,
+        )
+        self.assertTrue(sucesso, mensagem)
+        for data, leitura in (("2026-09-01", "1000"), ("2026-09-10", "1300")):
+            db.session.add(OperacaoAbastecimento(
+                veiculo_id=veiculo.id,
+                vinculo_id=vinculo.id,
+                colaborador_id=self.motorista.id,
+                equipe_id=self.equipe.id,
+                usuario_id=self.usuario.id,
+                data_abastecimento=datetime.strptime(data, "%Y-%m-%d").date(),
+                tipo_leitura="odometro",
+                leitura_atual=Decimal(leitura),
+                tipo_combustivel="Diesel S10",
+                qtd_litros=Decimal("25"),
+                preco=Decimal("6"),
+            ))
+        db.session.commit()
+
+        indicadores = indicadores_abastecimento(veiculo)
+        self.assertEqual(Decimal("300"), indicadores["km_rodados"])
+        self.assertEqual(Decimal("6"), indicadores["consumo_km_litro"])
+        self.assertEqual(Decimal("1"), indicadores["custo_por_km"])
+        consolidado = relatorio_custos_ativos()
+        self.assertEqual(["RLT001"], [linha["veiculo"].identificacao for linha in consolidado["linhas"]])
+        self.assertEqual(Decimal("300.00"), consolidado["total_geral"])
+
+        self._liberar_usuario("central_custos", visualizar=True)
+        self._autenticar(self.usuario)
+        tela = self.client.get(f"/operacao/central-custos/veiculos/{veiculo.id}")
+        self.assertIn(b"300,00 km", tela.data)
+        self.assertIn(b"6,00 km/l", tela.data)
+        individual = self.client.get(f"/operacao/central-custos/veiculos/{veiculo.id}/relatorio.pdf")
+        geral = self.client.get("/operacao/central-custos/relatorio-geral.pdf?data_inicio=2026-09-01&data_fim=2026-09-30")
+        self.assertEqual(200, individual.status_code)
+        self.assertEqual(200, geral.status_code)
+        self.assertTrue(individual.data.startswith(b"%PDF-"))
+        self.assertTrue(geral.data.startswith(b"%PDF-"))
+
+    def test_indicadores_de_equipamento_usam_horimetro(self):
+        equipamento = self._criar_veiculo("EQP001", "EQUIPAMENTO HORIMETRO", tipo="Equipamento")
+        self.usuario.colaborador_id = self.motorista.id
+        db.session.commit()
+        sucesso, mensagem, vinculo = vincular_responsavel(
+            {"colaborador_id": str(self.motorista.id), "tipo_leitura": "horimetro", "leitura_inicial": "100"},
+            usuario=self.admin,
+            veiculo=equipamento,
+        )
+        self.assertTrue(sucesso, mensagem)
+        for leitura in ("100", "120"):
+            db.session.add(OperacaoAbastecimento(
+                veiculo_id=equipamento.id, vinculo_id=vinculo.id, colaborador_id=self.motorista.id,
+                equipe_id=self.equipe.id, usuario_id=self.usuario.id,
+                data_abastecimento=datetime(2026, 9, 1 if leitura == "100" else 2).date(),
+                tipo_leitura="horimetro", leitura_atual=Decimal(leitura), tipo_combustivel="Diesel S10",
+                qtd_litros=Decimal("10"), preco=Decimal("5"),
+            ))
+        db.session.commit()
+
+        indicadores = indicadores_abastecimento(equipamento)
+        self.assertEqual("horimetro", indicadores["tipo_leitura"])
+        self.assertEqual("h", indicadores["unidade_uso"])
+        self.assertEqual(Decimal("20"), indicadores["uso_periodo"])
+        self.assertEqual(Decimal("1"), indicadores["consumo_por_litro"])
+        self.assertEqual(Decimal("5"), indicadores["custo_por_unidade"])
 
     def test_salva_multa_transito_com_motorista_vinculado_e_custo_total(self):
         veiculo = self._criar_veiculo("MLT001", "CAMINHAO MULTA")
