@@ -25,6 +25,7 @@
             | <strong>Aprovada por:</strong> {{ ordem.cotacao.aprovada_por.nome if ordem.cotacao and ordem.cotacao.aprovada_por else "-" }}
         </p>
         <p><strong>Condicao de pagamento:</strong> {{ ordem.condicao_pagamento_snapshot or "-" }}</p>
+        {% if ordem.tipo_custo %}<p><strong>Tipo de Custo:</strong> {{ ordem.tipo_custo }}</p>{% endif %}
         <p><strong>Gerada por:</strong> {{ ordem.criado_por.nome }}</p>
         <p><strong>Gerada em:</strong> {{ ordem.gerada_em.strftime("%d/%m/%Y %H:%M") }}</p>
         <p><strong>Observacoes:</strong> {{ ordem.observacoes or "-" }}</p>

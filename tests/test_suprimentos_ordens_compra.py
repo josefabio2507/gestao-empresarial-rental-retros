@@ -48,6 +48,7 @@ from app.services.suprimentos_service import (
     cancelar_ordem_compra,
     enviar_cotacao_para_aprovacao,
     enviar_requisicao_compra,
+    gerar_mensagem_ordem_compra_fornecedor,
     gerar_ordens_compra_cotacao,
     preparar_financeiro_ordem_compra,
     provisionar_financeiro_ordem_compra,
@@ -60,6 +61,7 @@ from app.services.suprimentos_service import (
     selecionar_proposta_vencedora,
     status_evidencia_item_oc,
 )
+from app.services.operacao_central_custos_service import relatorio_custos_veiculo
 
 
 class FakeDriveCreateRequest:
@@ -308,6 +310,68 @@ class SuprimentosOrdensCompraTestCase(unittest.TestCase):
         self.assertEqual(STATUS_FINANCEIRO_PENDENTE, ordem.status_financeiro)
         self.assertEqual(1, ordem.quantidade_parcelas)
         self.assertEqual([], ordem.parcelas_financeiras)
+
+    def test_ordem_de_veiculo_recebe_tipo_custo_da_requisicao(self):
+        subcentro_veiculo = CentroCusto(
+            codigo="VEI-001",
+            nome="DTF56H8",
+            classe="CENTRO DE EGP VEÍCULOS",
+            ativo=True,
+        )
+        db.session.add(subcentro_veiculo)
+        db.session.flush()
+        self.requisicao.sub_centro_custo_veiculo_id = subcentro_veiculo.id
+        self.requisicao.tipo_custo = "Manutenção"
+        db.session.commit()
+
+        cotacao = self._criar_cotacao_aprovada()
+        sucesso, mensagem, ordens = gerar_ordens_compra_cotacao(cotacao, self.admin)
+
+        self.assertTrue(sucesso, mensagem)
+        self.assertEqual("Manutenção", ordens[0].tipo_custo)
+        self.assertIn(
+            "Tipo de Custo: Manutenção",
+            gerar_mensagem_ordem_compra_fornecedor(ordens[0]),
+        )
+
+    def test_central_custos_inclui_ordem_recebida_por_veiculo_e_tipo_custo(self):
+        veiculo = OperacaoVeiculoEquipamento(
+            identificacao="DTF56H8",
+            placa="DTF56H8",
+            descricao="VEICULO TESTE",
+            centro_custo="DTF56H8 - VEICULO TESTE",
+            centro_custo_id=self.centro.id,
+            situacao_aquisicao="Quitado",
+            tipo="Veiculo leve",
+            status_operacional="Disponivel",
+            ativo=True,
+        )
+        db.session.add(veiculo)
+        self.requisicao.sub_centro_custo_veiculo_id = self.centro.id
+        self.requisicao.tipo_custo = "Diversos"
+        db.session.commit()
+
+        cotacao = self._criar_cotacao_aprovada()
+        _, _, ordens = gerar_ordens_compra_cotacao(cotacao, self.admin)
+        ordem = ordens[0]
+        item = ordem.itens[0]
+        registrar_recebimento_ordem_compra(
+            {
+                "tipo_documento": "Nota Fiscal",
+                "numero_documento": "NF CENTRAL",
+                "data_documento": "2026-09-24",
+                f"quantidade_recebida_{item.id}": "2",
+            },
+            ordem,
+            self.admin,
+        )
+
+        dados = relatorio_custos_veiculo(veiculo)
+
+        self.assertEqual(STATUS_ORDEM_COMPRA_RECEBIDA, ordem.status)
+        self.assertEqual(Decimal("251.00"), dados["grupos"]["manutencao"]["total"])
+        self.assertEqual(ordem.numero, dados["grupos"]["manutencao"]["linhas"][0]["documento"])
+        self.assertEqual(Decimal("0"), dados["grupos"]["abastecimento"]["total"])
 
     def test_gera_ordem_compra_com_pagamento_da_proposta(self):
         cartao = FinanceiroCartaoCredito(

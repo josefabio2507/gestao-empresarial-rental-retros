@@ -165,6 +165,7 @@
                     <th>Cotacao</th>
                     <th>Centro de custo</th>
                     <th>Sub Centros de Custo / Placa do Veiculo</th>
+                    <th>Tipo de Custo</th>
                     <th>Justificativa</th>
                     <th>Status</th>
                     <th>Status financeiro</th>
@@ -189,6 +190,7 @@
                                 -
                             {% endif %}
                         </td>
+                        <td>{{ ordem.tipo_custo or "-" }}</td>
                         <td class="col-texto-longo">{{ ordem.requisicao.justificativa if ordem.requisicao else "-" }}</td>
                         <td><span class="badge badge-success">{{ ordem.status }}</span></td>
                         <td><span class="badge badge-secondary">{{ ordem.status_financeiro }}</span></td>
@@ -209,7 +211,7 @@
                         </td>
                     </tr>
                 {% else %}
-                    <tr><td class="empty-state" colspan="13">Nenhuma ordem de compra encontrada.</td></tr>
+                    <tr><td class="empty-state" colspan="14">Nenhuma ordem de compra encontrada.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
