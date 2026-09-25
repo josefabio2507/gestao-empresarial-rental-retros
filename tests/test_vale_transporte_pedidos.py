@@ -138,6 +138,18 @@ class ValeTransportePedidosTestCase(unittest.TestCase):
         self.assertEqual("100", item["matricula"])
         self.assertEqual(Decimal("220.00"), item["valor_total"])
 
+    def test_normaliza_id_textual_da_equipe_antes_da_consulta(self):
+        previa = montar_previa_pedido_vale_transporte(
+            competencia="09.2026",
+            data_inicial="2026-09-01",
+            data_final="2026-09-30",
+            quantidade_dias="22",
+            equipe_id=f" {self.equipe.id} ",
+            prazo_pagamento="mensal",
+        )
+
+        self.assertEqual(1, len(previa["itens"]))
+
     def test_cria_pedido_com_snapshot_e_recalculo_backend(self):
         vinculo = self.colaborador.linhas_vale_transporte[0]
 

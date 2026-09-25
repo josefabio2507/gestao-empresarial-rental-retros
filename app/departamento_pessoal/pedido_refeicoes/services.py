@@ -542,6 +542,14 @@ def validar_dados_pedido(equipe_id, restaurante_id, data_pedido):
     if not equipe_id:
         return False, "Equipe é obrigatória."
 
+    try:
+        equipe_id = int(equipe_id)
+    except (TypeError, ValueError):
+        return False, "Equipe inválida ou inativa."
+
+    if equipe_id <= 0:
+        return False, "Equipe inválida ou inativa."
+
     equipe = Equipe.query.filter_by(id=equipe_id, ativo=True).first()
 
     if not equipe:
@@ -549,6 +557,14 @@ def validar_dados_pedido(equipe_id, restaurante_id, data_pedido):
 
     if not restaurante_id:
         return False, "Restaurante é obrigatório."
+
+    try:
+        restaurante_id = int(restaurante_id)
+    except (TypeError, ValueError):
+        return False, "Restaurante inválido ou inativo."
+
+    if restaurante_id <= 0:
+        return False, "Restaurante inválido ou inativo."
 
     restaurante = Restaurante.query.filter_by(id=restaurante_id, ativo=True).first()
 
@@ -572,6 +588,9 @@ def criar_pedido_refeicao(equipe_id, restaurante_id, data_pedido, observacao=Non
 
     if not valido:
         return False, mensagem, None
+
+    equipe_id = int(equipe_id)
+    restaurante_id = int(restaurante_id)
 
     pedido = PedidoRefeicao(
         equipe_id=equipe_id,
@@ -605,6 +624,9 @@ def atualizar_pedido_refeicao(pedido, equipe_id, restaurante_id, data_pedido, ob
 
     if not valido:
         return False, mensagem
+
+    equipe_id = int(equipe_id)
+    restaurante_id = int(restaurante_id)
 
     pedido.equipe_id = equipe_id
     pedido.restaurante_id = restaurante_id
