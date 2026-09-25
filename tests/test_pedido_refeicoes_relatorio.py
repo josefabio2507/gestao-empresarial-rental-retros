@@ -1,11 +1,26 @@
 from decimal import Decimal
+from datetime import date
 from types import SimpleNamespace
 import unittest
 
+from flask import Flask
+
 from app.departamento_pessoal.pedido_refeicoes.services import (
+    buscar_fretes,
+    buscar_pedidos_relatorio_refeicoes,
     calcular_resumo_pedidos_relatorio,
     calcular_resumo_totais_relatorio,
     calcular_total_pedido_relatorio,
+)
+from app.extensions import db
+from app.models import (
+    Colaborador,
+    ConsumoRefeicao,
+    Equipe,
+    FretePedidoRefeicao,
+    ItemCardapio,
+    PedidoRefeicao,
+    Restaurante,
 )
 
 
@@ -119,6 +134,105 @@ class PedidoRefeicoesRelatorioTestCase(unittest.TestCase):
         self.assertEqual(resumo[1]["linhas_dia"], 0)
         self.assertEqual(resumo[2]["total_dia"], Decimal("30.00"))
         self.assertEqual(resumo[2]["linhas_dia"], 1)
+
+
+class FiltrosRelatorioRefeicoesTestCase(unittest.TestCase):
+    def setUp(self):
+        self.app = Flask(__name__)
+        self.app.config.update(
+            TESTING=True,
+            SQLALCHEMY_DATABASE_URI="sqlite:///:memory:",
+            SQLALCHEMY_TRACK_MODIFICATIONS=False,
+        )
+        db.init_app(self.app)
+        self.contexto = self.app.app_context()
+        self.contexto.push()
+        db.create_all()
+
+        equipe = Equipe(nome="Equipe Relatório", slug="equipe-relatorio")
+        restaurante = Restaurante(nome="Restaurante Relatório", ativo=True)
+        colaborador = Colaborador(
+            matricula="REL-001",
+            nome="Colaborador Relatório",
+            cpf="99999999991",
+            equipe=equipe,
+            ativo=True,
+        )
+        db.session.add_all([equipe, restaurante, colaborador])
+        db.session.flush()
+
+        item = ItemCardapio(
+            restaurante_id=restaurante.id,
+            tipo="Refeição",
+            nome="Prato Relatório",
+            preco=Decimal("25.00"),
+            dia_semana="Todos os Dias",
+            ativo=True,
+        )
+        pedido = PedidoRefeicao(
+            numero_pedido="PED-RELATORIO",
+            equipe_id=equipe.id,
+            restaurante_id=restaurante.id,
+            data_pedido=date(2026, 9, 10),
+            status="Enviado",
+            enviado_whatsapp=True,
+            quantidade_envios=1,
+        )
+        db.session.add_all([item, pedido])
+        db.session.flush()
+        db.session.add_all([
+            ConsumoRefeicao(
+                pedido_id=pedido.id,
+                colaborador_id=colaborador.id,
+                item_cardapio_id=item.id,
+                quantidade=1,
+                valor_unitario=Decimal("25.00"),
+                valor_total=Decimal("25.00"),
+            ),
+            FretePedidoRefeicao(
+                data=date(2026, 9, 10),
+                restaurante_id=restaurante.id,
+                valor=Decimal("10.00"),
+                ativo=True,
+            ),
+        ])
+        db.session.commit()
+        self.equipe_id = equipe.id
+        self.restaurante_id = restaurante.id
+
+    def tearDown(self):
+        db.session.remove()
+        db.drop_all()
+        self.contexto.pop()
+
+    def test_emissao_aceita_ids_textuais_dos_filtros_da_tela(self):
+        pedidos = buscar_pedidos_relatorio_refeicoes(
+            data_inicial="2026-09-01",
+            data_final="2026-09-30",
+            equipe_id=str(self.equipe_id),
+            restaurante_id=str(self.restaurante_id),
+            status="Enviado",
+        )
+        fretes = buscar_fretes(
+            ativos_apenas=True,
+            data_inicial="2026-09-01",
+            data_final="2026-09-30",
+            restaurante_id=str(self.restaurante_id),
+        )
+
+        self.assertEqual([pedido.numero_pedido for pedido in pedidos], ["PED-RELATORIO"])
+        self.assertEqual(len(fretes), 1)
+
+    def test_ids_invalidos_nao_removem_os_filtros_do_relatorio(self):
+        pedidos = buscar_pedidos_relatorio_refeicoes(
+            data_inicial="2026-09-01",
+            data_final="2026-09-30",
+            equipe_id="invalido",
+        )
+        fretes = buscar_fretes(restaurante_id="invalido")
+
+        self.assertEqual(pedidos, [])
+        self.assertEqual(fretes, [])
 
 
 if __name__ == "__main__":
