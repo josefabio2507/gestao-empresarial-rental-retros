@@ -31,8 +31,9 @@
         </div>
     </form>
 
-    <div class="table-card table-responsive listbox-10-linhas" role="region" aria-label="Lista de cotacoes" tabindex="0">
-        <table class="table">
+    <div class="table-card">
+        <div class="cotacoes-listbox" role="region" aria-label="Lista de cotacoes" tabindex="0">
+            <table class="table cotacoes-table">
             <thead>
                 <tr>
                     <th>Numero</th>
@@ -62,7 +63,8 @@
                     <tr><td class="empty-state" colspan="5">Nenhuma cotacao encontrada.</td></tr>
                 {% endfor %}
             </tbody>
-        </table>
+            </table>
+        </div>
     </div>
 
     <div class="page-actions">

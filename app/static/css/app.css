@@ -100,6 +100,31 @@
     min-height: var(--listbox-row-height);
 }
 
+.cotacoes-listbox {
+    --cotacoes-header-height: 46px;
+    --cotacoes-row-height: 61px;
+    height: calc(var(--cotacoes-header-height) + (10 * var(--cotacoes-row-height)) + 17px);
+    max-width: 100%;
+    overflow: scroll;
+    scrollbar-gutter: stable;
+}
+
+.cotacoes-listbox .cotacoes-table {
+    min-width: 760px;
+}
+
+.cotacoes-listbox .cotacoes-table thead th {
+    background: #f3f7fb;
+    height: var(--cotacoes-header-height);
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
+
+.cotacoes-listbox .cotacoes-table tbody tr {
+    height: var(--cotacoes-row-height);
+}
+
 .requisicoes-listbox {
     --listbox-header-height: 45px;
     --listbox-row-height: 52px;
