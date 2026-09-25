@@ -234,6 +234,7 @@ class SuprimentosCotacoesTestCase(unittest.TestCase):
 
         self.assertEqual(200, resposta.status_code)
         self.assertIn(b"Cotacoes", resposta.data)
+        self.assertIn(b"listbox-10-linhas", resposta.data)
 
     def test_cria_cotacao_apenas_para_requisicao_enviada(self):
         self.assertEqual(STATUS_REQUISICAO_ENVIADA, self.requisicao.status)
