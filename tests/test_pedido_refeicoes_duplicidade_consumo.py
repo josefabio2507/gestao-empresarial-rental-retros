@@ -146,6 +146,20 @@ class PedidoRefeicoesDuplicidadeConsumoTestCase(unittest.TestCase):
         self.assertEqual(self._contar_consumos(self.joao, TIPO_CARDAPIO_REFEICAO), 1)
         self.assertEqual(self._contar_consumos(self.joao, TIPO_CARDAPIO_BEBIDA), 1)
 
+    def test_criacao_normaliza_ids_textuais_enviados_pelo_formulario(self):
+        sucesso, mensagem = criar_consumos_refeicao_bebida(
+            pedido=self.pedido,
+            colaborador_id=f" {self.joao.id} ",
+            refeicao_id=f" {self.refeicao.id} ",
+            bebida_id=f" {self.bebida.id} ",
+            quantidade_refeicao="1",
+            quantidade_bebida="1",
+        )
+
+        self.assertTrue(sucesso, mensagem)
+        self.assertEqual(self._contar_consumos(self.joao, TIPO_CARDAPIO_REFEICAO), 1)
+        self.assertEqual(self._contar_consumos(self.joao, TIPO_CARDAPIO_BEBIDA), 1)
+
     def test_bloqueia_segunda_refeicao_e_permite_bebida_se_ainda_nao_existir(self):
         self.assertTrue(self._lancar_consumo(self.joao, refeicao=True, bebida=False)[0])
 
@@ -190,6 +204,23 @@ class PedidoRefeicoesDuplicidadeConsumoTestCase(unittest.TestCase):
             quantidade_refeicao=2,
             quantidade_bebida=1,
             observacao="Sem cebola",
+        )
+
+        self.assertTrue(sucesso, mensagem)
+        self.assertEqual(self._contar_consumos(self.joao, TIPO_CARDAPIO_REFEICAO), 1)
+        self.assertEqual(self._contar_consumos(self.joao, TIPO_CARDAPIO_BEBIDA), 1)
+
+    def test_edicao_normaliza_ids_textuais_enviados_pelo_formulario(self):
+        self.assertTrue(self._lancar_consumo(self.joao, refeicao=True, bebida=False)[0])
+        consumo = self._primeiro_consumo(self.joao, TIPO_CARDAPIO_REFEICAO)
+
+        sucesso, mensagem = atualizar_consumos_refeicao_bebida(
+            consumo_referencia=consumo,
+            colaborador_id=str(self.joao.id),
+            refeicao_id=str(self.refeicao.id),
+            bebida_id=str(self.bebida.id),
+            quantidade_refeicao="2",
+            quantidade_bebida="1",
         )
 
         self.assertTrue(sucesso, mensagem)
