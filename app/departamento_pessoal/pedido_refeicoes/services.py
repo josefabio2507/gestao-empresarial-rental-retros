@@ -357,6 +357,9 @@ def buscar_fretes(ativos_apenas=False, data_inicial=None, data_final=None, resta
         if fim:
             query = query.filter(FretePedidoRefeicao.data <= fim)
     if restaurante_id:
+        restaurante_id = converter_identificador(restaurante_id)
+        if restaurante_id is None:
+            return []
         query = query.filter(FretePedidoRefeicao.restaurante_id == restaurante_id)
     return query.order_by(FretePedidoRefeicao.data.desc(), Restaurante.nome.asc(), FretePedidoRefeicao.id.desc()).all()
 
@@ -1497,9 +1500,15 @@ def buscar_pedidos_relatorio_refeicoes(
     )
 
     if equipe_id:
+        equipe_id = converter_identificador(equipe_id)
+        if equipe_id is None:
+            return []
         query = query.filter(PedidoRefeicao.equipe_id == equipe_id)
 
     if restaurante_id:
+        restaurante_id = converter_identificador(restaurante_id)
+        if restaurante_id is None:
+            return []
         query = query.filter(PedidoRefeicao.restaurante_id == restaurante_id)
 
     if status and status != "Todos":
