@@ -127,6 +127,39 @@ document.addEventListener("DOMContentLoaded", () => {
         atualizarVisibilidade();
     });
 
+    document.querySelectorAll("[data-abastecimento-reading]").forEach((grupo) => {
+        const placa = document.getElementById("sub_centro_custo_veiculo_busca");
+        const tipoCusto = document.getElementById("tipo_custo");
+        const campo = grupo.querySelector("input");
+        const rotulo = grupo.querySelector("[data-reading-label]");
+        const ajuda = grupo.querySelector("[data-reading-help]");
+        const lista = placa ? document.getElementById(placa.getAttribute("list")) : null;
+
+        if (!placa || !tipoCusto || !campo || !lista) {
+            return;
+        }
+
+        const atualizar = () => {
+            const opcao = Array.from(lista.options).find((item) => item.value.trim() === placa.value.trim());
+            const horimetro = opcao?.dataset.tipoLeitura === "horimetro";
+            const exibir = Boolean(opcao) && tipoCusto.value === "Abastecimento";
+            grupo.hidden = !exibir;
+            campo.required = exibir;
+            rotulo.textContent = horimetro ? "Horímetro" : "Odômetro";
+            ajuda.textContent = horimetro
+                ? "Informe a leitura atual do equipamento/máquina (máximo de 6 caracteres)."
+                : "Informe a leitura atual do veículo (máximo de 6 caracteres).";
+            if (!exibir) {
+                campo.value = "";
+            }
+        };
+
+        placa.addEventListener("input", atualizar);
+        placa.addEventListener("change", atualizar);
+        tipoCusto.addEventListener("change", atualizar);
+        atualizar();
+    });
+
     document.querySelectorAll("[data-auto-code-preview]").forEach((campoCodigo) => {
         const campoDescricao = document.getElementById("descricao");
         if (!campoDescricao || campoCodigo.value) {

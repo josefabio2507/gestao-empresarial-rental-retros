@@ -19,6 +19,7 @@
         <p><strong>Sub centro de custo - Equipe:</strong> {{ nome_subcentro_equipe_requisicao(requisicao) }}</p>
         <p><strong>Sub centro de custo - Placa do veiculo:</strong> {{ nome_subcentro_veiculo_requisicao(requisicao) }}</p>
         {% if requisicao.tipo_custo %}<p><strong>Tipo de Custo:</strong> {{ requisicao.tipo_custo }}</p>{% endif %}
+        {% if requisicao.leitura_abastecimento is not none %}<p><strong>{{ 'Horímetro' if requisicao.tipo_leitura_abastecimento == 'horimetro' else 'Odômetro' }}:</strong> {{ requisicao.leitura_abastecimento }}</p>{% endif %}
         <p><strong>Justificativa:</strong> {{ requisicao.justificativa }}</p>
         <p><strong>Observacoes:</strong> {{ requisicao.observacoes or "-" }}</p>
         {% if requisicao.enviada_em %}

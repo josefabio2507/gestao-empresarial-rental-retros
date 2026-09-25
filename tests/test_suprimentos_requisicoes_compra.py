@@ -1,4 +1,5 @@
 import unittest
+from decimal import Decimal
 
 from app import create_app
 from app.extensions import db
@@ -261,6 +262,36 @@ class SuprimentosRequisicoesCompraTestCase(unittest.TestCase):
 
         self.assertTrue(sucesso)
         self.assertIsNone(requisicao.tipo_custo)
+
+    def test_abastecimento_exige_leitura_com_no_maximo_seis_caracteres(self):
+        subcentro_veiculo = CentroCusto(
+            codigo="VEI-ABAST",
+            nome="ABC1D23",
+            classe="CENTRO DE EGP VEÍCULOS",
+            ativo=True,
+        )
+        db.session.add(subcentro_veiculo)
+        db.session.commit()
+
+        dados = {
+            "sub_centro_custo_veiculo_id": str(subcentro_veiculo.id),
+            "tipo_custo": "Abastecimento",
+            "justificativa": "Comprar combustivel",
+        }
+        sucesso, mensagem, _ = salvar_requisicao_compra(dados, self.admin)
+        self.assertFalse(sucesso)
+        self.assertEqual("Odometro ou horimetro e obrigatorio para abastecimento.", mensagem)
+
+        dados["leitura_abastecimento"] = "1234567"
+        sucesso, mensagem, _ = salvar_requisicao_compra(dados, self.admin)
+        self.assertFalse(sucesso)
+        self.assertEqual("Odometro ou horimetro deve ter no maximo 6 caracteres.", mensagem)
+
+        dados["leitura_abastecimento"] = "123456"
+        sucesso, mensagem, requisicao = salvar_requisicao_compra(dados, self.admin)
+        self.assertTrue(sucesso, mensagem)
+        self.assertEqual("odometro", requisicao.tipo_leitura_abastecimento)
+        self.assertEqual(Decimal("123456"), requisicao.leitura_abastecimento)
 
     def test_nao_aceita_texto_livre_nos_centros_de_custo_pesquisaveis(self):
         cenarios = [

@@ -75,7 +75,7 @@
 
     <div class="cost-summary-grid">
         <div class="cost-summary-item"><span>{{ indicadores.rotulo_uso }}</span><strong>{{ '%.2f'|format(indicadores.uso_periodo)|replace('.', ',') }} {{ indicadores.unidade_uso }}</strong></div>
-        <div class="cost-summary-item"><span>{{ indicadores.rotulo_consumo }}</span><strong>{{ ('%.2f '|format(indicadores.consumo_por_litro)|replace('.', ',') ~ indicadores.unidade_uso ~ '/l') if indicadores.consumo_por_litro is not none else '-' }}</strong></div>
+        <div class="cost-summary-item"><span>{{ indicadores.rotulo_consumo }}</span><strong>{{ ('%.2f '|format(indicadores.consumo_por_litro)|replace('.', ',') ~ indicadores.unidade_consumo) if indicadores.consumo_por_litro is not none else '-' }}</strong></div>
         <div class="cost-summary-item"><span>{{ indicadores.rotulo_custo }}</span><strong>{{ (formatar_moeda_brl(indicadores.custo_por_unidade) ~ '/' ~ indicadores.unidade_uso) if indicadores.custo_por_unidade is not none else '-' }}</strong></div>
     </div>
 

@@ -3,6 +3,7 @@ from flask_login import current_user, login_required
 
 from app.decorators import module_permission_required
 from app.models import (
+    OperacaoVeiculoEquipamento,
     SuprimentosRequisicaoCompra,
     SuprimentosRequisicaoCompraItem,
 )
@@ -43,10 +44,18 @@ STATUS_REQUISICOES = [
 
 
 def opcoes_formulario():
+    subcentros_veiculo = buscar_centros_custo_ativos(CLASSE_CENTRO_EPG_VEICULOS)
+    veiculos_por_centro = {
+        veiculo.centro_custo_id: veiculo
+        for veiculo in OperacaoVeiculoEquipamento.query.filter(
+            OperacaoVeiculoEquipamento.centro_custo_id.in_([centro.id for centro in subcentros_veiculo])
+        ).all()
+    }
     return {
         "centros": buscar_centros_custo_ativos(CLASSE_CENTRO_CUSTO),
         "subcentros_equipe": buscar_centros_custo_ativos(CLASSE_CENTRO_CUSTO_EQUIPES),
-        "subcentros_veiculo": buscar_centros_custo_ativos(CLASSE_CENTRO_EPG_VEICULOS),
+        "subcentros_veiculo": subcentros_veiculo,
+        "veiculos_por_centro": veiculos_por_centro,
         "itens_disponiveis": buscar_itens_ativos(),
     }
 

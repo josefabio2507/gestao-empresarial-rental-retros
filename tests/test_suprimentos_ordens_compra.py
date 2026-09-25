@@ -334,6 +334,20 @@ class SuprimentosOrdensCompraTestCase(unittest.TestCase):
             gerar_mensagem_ordem_compra_fornecedor(ordens[0]),
         )
 
+    def test_ordem_de_abastecimento_recebe_leitura_da_requisicao(self):
+        self.requisicao.sub_centro_custo_veiculo_id = self.centro.id
+        self.requisicao.tipo_custo = "Abastecimento"
+        self.requisicao.tipo_leitura_abastecimento = "odometro"
+        self.requisicao.leitura_abastecimento = Decimal("123456")
+        db.session.commit()
+
+        cotacao = self._criar_cotacao_aprovada()
+        sucesso, mensagem, ordens = gerar_ordens_compra_cotacao(cotacao, self.admin)
+
+        self.assertTrue(sucesso, mensagem)
+        self.assertEqual("odometro", ordens[0].tipo_leitura_abastecimento)
+        self.assertEqual(Decimal("123456"), ordens[0].leitura_abastecimento)
+
     def test_central_custos_inclui_ordem_recebida_por_veiculo_e_tipo_custo(self):
         veiculo = OperacaoVeiculoEquipamento(
             identificacao="DTF56H8",

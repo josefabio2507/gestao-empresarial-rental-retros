@@ -113,23 +113,58 @@ def indicadores_abastecimento(veiculo, inicio=None, fim=None):
     registros_periodo = _filtrar_data_abastecimento(query, inicio, fim).order_by(
         OperacaoAbastecimento.data_abastecimento.asc(), OperacaoAbastecimento.id.asc()
     ).all()
-    tipo_leitura = registros_periodo[-1].tipo_leitura if registros_periodo else "odometro"
+    tipo_leitura = "horimetro" if (veiculo.tipo or "").upper() in {"MAQUINA", "EQUIPAMENTO"} else "odometro"
     registros = [item for item in registros_periodo if item.tipo_leitura == tipo_leitura]
+
+    ordens = []
+    if veiculo.centro_custo_id:
+        candidatas = (
+            SuprimentosOrdemCompra.query
+            .join(SuprimentosRequisicaoCompra)
+            .filter(
+                SuprimentosOrdemCompra.status == "Recebida",
+                SuprimentosOrdemCompra.tipo_custo == "Abastecimento",
+                SuprimentosOrdemCompra.tipo_leitura_abastecimento == tipo_leitura,
+                SuprimentosOrdemCompra.leitura_abastecimento.isnot(None),
+                SuprimentosRequisicaoCompra.sub_centro_custo_veiculo_id == veiculo.centro_custo_id,
+            )
+            .all()
+        )
+        for ordem in candidatas:
+            data_recebimento = _data_recebimento_ordem(ordem)
+            if inicio and (not data_recebimento or data_recebimento < inicio):
+                continue
+            if fim and (not data_recebimento or data_recebimento > fim):
+                continue
+            ordens.append(ordem)
+
     leituras = [decimal_zero(item.leitura_atual) for item in registros if item.leitura_atual is not None]
+    leituras.extend(decimal_zero(ordem.leitura_abastecimento) for ordem in ordens)
     uso_periodo = max(leituras) - min(leituras) if len(leituras) >= 2 else Decimal("0")
     litros = sum((decimal_zero(item.qtd_litros) for item in registros), start=Decimal("0"))
+    litros += sum(
+        (sum((decimal_zero(item.quantidade) for item in ordem.itens), start=Decimal("0")) for ordem in ordens),
+        start=Decimal("0"),
+    )
     custo = sum((decimal_zero(item.valor_total_combustivel) for item in registros), start=Decimal("0"))
+    custo += sum((decimal_zero(ordem.valor_total) for ordem in ordens), start=Decimal("0"))
     horimetro = tipo_leitura == "horimetro"
+    consumo = (
+        (litros / uso_periodo if horimetro else uso_periodo / litros)
+        if litros > 0 and uso_periodo > 0
+        else None
+    )
     return {
         "tipo_leitura": tipo_leitura,
         "unidade_uso": "h" if horimetro else "km",
         "rotulo_uso": "Horas trabalhadas no período" if horimetro else "Km rodados no período",
         "rotulo_consumo": "Consumo por hora trabalhada" if horimetro else "Consumo por km rodado",
+        "unidade_consumo": "l/h" if horimetro else "km/l",
         "rotulo_custo": "Custo por hora trabalhada" if horimetro else "Custo por km rodado",
         "uso_periodo": uso_periodo,
         "km_rodados": uso_periodo if not horimetro else Decimal("0"),
         "litros": litros,
-        "consumo_por_litro": (uso_periodo / litros) if litros > 0 and uso_periodo > 0 else None,
+        "consumo_por_litro": consumo,
         "custo_por_unidade": (custo / uso_periodo) if uso_periodo > 0 else None,
         "consumo_km_litro": (uso_periodo / litros) if not horimetro and litros > 0 and uso_periodo > 0 else None,
         "custo_por_km": (custo / uso_periodo) if not horimetro and uso_periodo > 0 else None,
