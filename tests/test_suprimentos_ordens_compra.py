@@ -349,12 +349,19 @@ class SuprimentosOrdensCompraTestCase(unittest.TestCase):
         self.assertEqual(Decimal("123456"), ordens[0].leitura_abastecimento)
 
     def test_central_custos_inclui_ordem_recebida_por_veiculo_e_tipo_custo(self):
+        centro_equivalente = CentroCusto(
+            codigo="MAN-DUP",
+            nome=self.centro.nome,
+            ativo=True,
+        )
+        db.session.add(centro_equivalente)
+        db.session.flush()
         veiculo = OperacaoVeiculoEquipamento(
             identificacao="DTF56H8",
             placa="DTF56H8",
             descricao="VEICULO TESTE",
             centro_custo="DTF56H8 - VEICULO TESTE",
-            centro_custo_id=self.centro.id,
+            centro_custo_id=centro_equivalente.id,
             situacao_aquisicao="Quitado",
             tipo="Veiculo leve",
             status_operacional="Disponivel",

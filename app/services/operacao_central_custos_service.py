@@ -1,9 +1,11 @@
 from datetime import datetime, time
 from decimal import Decimal
+import unicodedata
 
 from sqlalchemy import or_
 
 from app.models import (
+    CentroCusto,
     OperacaoAbastecimento,
     OperacaoHistoricoManutencao,
     OperacaoImpostoTaxa,
@@ -33,6 +35,29 @@ def data_ou_none(valor):
 
 def decimal_zero(valor):
     return valor if valor is not None else Decimal("0")
+
+
+def _chave_centro_custo(valor):
+    texto_normalizado = unicodedata.normalize("NFKD", texto(valor))
+    return "".join(caractere for caractere in texto_normalizado if caractere.isalnum()).upper()
+
+
+def _centros_custo_equivalentes_veiculo(veiculo):
+    """Aceita cadastros duplicados do mesmo centro de custo pelo nome exibido."""
+    chaves = {
+        _chave_centro_custo(veiculo.centro_custo),
+        _chave_centro_custo(veiculo.centro_custo_ref.nome if veiculo.centro_custo_ref else None),
+    }
+    chaves.discard("")
+
+    ids = {veiculo.centro_custo_id} if veiculo.centro_custo_id else set()
+    if chaves:
+        ids.update(
+            centro.id
+            for centro in CentroCusto.query.all()
+            if _chave_centro_custo(centro.nome) in chaves
+        )
+    return ids
 
 
 def periodo_filtros(args):
@@ -117,7 +142,8 @@ def indicadores_abastecimento(veiculo, inicio=None, fim=None):
     registros = [item for item in registros_periodo if item.tipo_leitura == tipo_leitura]
 
     ordens = []
-    if veiculo.centro_custo_id:
+    centros_custo_ids = _centros_custo_equivalentes_veiculo(veiculo)
+    if centros_custo_ids:
         candidatas = (
             SuprimentosOrdemCompra.query
             .join(SuprimentosRequisicaoCompra)
@@ -126,7 +152,7 @@ def indicadores_abastecimento(veiculo, inicio=None, fim=None):
                 SuprimentosOrdemCompra.tipo_custo == "Abastecimento",
                 SuprimentosOrdemCompra.tipo_leitura_abastecimento == tipo_leitura,
                 SuprimentosOrdemCompra.leitura_abastecimento.isnot(None),
-                SuprimentosRequisicaoCompra.sub_centro_custo_veiculo_id == veiculo.centro_custo_id,
+                SuprimentosRequisicaoCompra.sub_centro_custo_veiculo_id.in_(centros_custo_ids),
             )
             .all()
         )
@@ -203,7 +229,8 @@ def _data_recebimento_ordem(ordem):
 
 
 def _ordens_recebidas_veiculo(veiculo, tipos_custo, inicio=None, fim=None, excluir_ids=None):
-    if not veiculo.centro_custo_id:
+    centros_custo_ids = _centros_custo_equivalentes_veiculo(veiculo)
+    if not centros_custo_ids:
         return [], Decimal("0")
 
     excluir_ids = set(excluir_ids or [])
@@ -215,7 +242,7 @@ def _ordens_recebidas_veiculo(veiculo, tipos_custo, inicio=None, fim=None, exclu
         )
         .filter(
             SuprimentosOrdemCompra.status == "Recebida",
-            SuprimentosRequisicaoCompra.sub_centro_custo_veiculo_id == veiculo.centro_custo_id,
+            SuprimentosRequisicaoCompra.sub_centro_custo_veiculo_id.in_(centros_custo_ids),
             SuprimentosOrdemCompra.tipo_custo.in_(tipos_custo),
         )
         .order_by(SuprimentosOrdemCompra.id.desc())
