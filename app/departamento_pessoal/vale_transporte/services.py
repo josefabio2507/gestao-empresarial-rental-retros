@@ -371,6 +371,22 @@ def normalizar_filtro_opcional(valor):
     return None if not texto or texto == FILTRO_TODOS else texto
 
 
+def normalizar_id_opcional(valor, nome_campo):
+    valor = normalizar_filtro_opcional(valor)
+    if valor is None:
+        return None
+
+    try:
+        identificador = int(valor)
+    except (TypeError, ValueError):
+        raise ValueError(f"{nome_campo} inválido.")
+
+    if identificador <= 0:
+        raise ValueError(f"{nome_campo} inválido.")
+
+    return identificador
+
+
 def texto_colaborador_filtro(colaborador):
     if not colaborador:
         return ""
@@ -379,7 +395,7 @@ def texto_colaborador_filtro(colaborador):
 
 
 def resolver_colaborador_filtro(colaborador_texto=None, colaborador_id=None):
-    colaborador_id = normalizar_filtro_opcional(colaborador_id)
+    colaborador_id = normalizar_id_opcional(colaborador_id, "Colaborador")
     texto = (colaborador_texto or "").strip()
 
     if colaborador_id:
@@ -457,7 +473,7 @@ def resolver_colaboradores_manuais_pedido(colaboradores_ids=None):
     vistos = set()
 
     for colaborador_id in colaboradores_ids or []:
-        colaborador_id = normalizar_filtro_opcional(colaborador_id)
+        colaborador_id = normalizar_id_opcional(colaborador_id, "Colaborador")
         if not colaborador_id:
             continue
 
@@ -516,8 +532,8 @@ def buscar_vinculos_para_pedido(
     empresa_transporte=None,
     prazo_pagamento=None,
 ):
-    equipe_id = normalizar_filtro_opcional(equipe_id)
-    colaborador_id = normalizar_filtro_opcional(colaborador_id)
+    equipe_id = normalizar_id_opcional(equipe_id, "Equipe")
+    colaborador_id = normalizar_id_opcional(colaborador_id, "Colaborador")
     forma_pagamento = normalizar_filtro_opcional(forma_pagamento)
     empresa_transporte = normalizar_filtro_opcional(empresa_transporte)
     prazo_pagamento = normalizar_filtro_opcional(prazo_pagamento)
