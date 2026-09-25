@@ -2681,6 +2681,7 @@ class SuprimentosRequisicaoCompra(db.Model):
         nullable=True,
         index=True,
     )
+    tipo_custo = db.Column(db.String(20), nullable=True)
     equipe_id = db.Column(
         db.Integer,
         db.ForeignKey("equipes.id"),
@@ -2718,6 +2719,10 @@ class SuprimentosRequisicaoCompra(db.Model):
         db.CheckConstraint(
             "status in ('Rascunho', 'Enviada para Analise', 'Aprovada', 'Cancelada')",
             name="ck_suprimentos_requisicoes_compra_status",
+        ),
+        db.CheckConstraint(
+            "tipo_custo IS NULL OR tipo_custo IN ('Abastecimento', 'Diversos', 'Manutenção')",
+            name="ck_suprimentos_requisicoes_compra_tipo_custo",
         ),
     )
 
@@ -3106,6 +3111,7 @@ class SuprimentosOrdemCompra(db.Model):
     fornecedor_razao_social_snapshot = db.Column(db.String(180), nullable=False)
     fornecedor_cnpj_cpf_snapshot = db.Column(db.String(20), nullable=True)
     condicao_pagamento_snapshot = db.Column(db.String(160), nullable=True)
+    tipo_custo = db.Column(db.String(20), nullable=True)
     status = db.Column(db.String(30), default="Gerada", nullable=False, index=True)
     status_financeiro = db.Column(db.String(30), default="Pendente de Financeiro", nullable=False, index=True)
     previsao_vencimento = db.Column(db.Date, nullable=True, index=True)
@@ -3200,6 +3206,10 @@ class SuprimentosOrdemCompra(db.Model):
         db.CheckConstraint(
             "quantidade_parcelas >= 1 and numero_parcelas_financeiro >= 1",
             name="ck_suprimentos_ordens_compra_qtd_parcelas",
+        ),
+        db.CheckConstraint(
+            "tipo_custo IS NULL OR tipo_custo IN ('Abastecimento', 'Diversos', 'Manutenção')",
+            name="ck_suprimentos_ordens_compra_tipo_custo",
         ),
     )
 

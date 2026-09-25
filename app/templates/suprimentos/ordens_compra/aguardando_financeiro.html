@@ -18,6 +18,7 @@
                     <th>OC</th>
                     <th>Fornecedor</th>
                     <th>Centro de custo</th>
+                    <th>Tipo de Custo</th>
                     <th>Status financeiro</th>
                     <th>Vencimento</th>
                     <th>Parcelas</th>
@@ -31,6 +32,7 @@
                         <td>{{ ordem.numero }}</td>
                         <td>{{ ordem.fornecedor_razao_social_snapshot }}</td>
                         <td>{{ ordem.requisicao.centro_custo.nome if ordem.requisicao and ordem.requisicao.centro_custo else "-" }}</td>
+                        <td>{{ ordem.tipo_custo or "-" }}</td>
                         <td><span class="badge badge-secondary">{{ ordem.status_financeiro }}</span></td>
                         <td>{{ ordem.previsao_vencimento.strftime("%d/%m/%Y") if ordem.previsao_vencimento else "-" }}</td>
                         <td>{{ ordem.quantidade_parcelas }}</td>
@@ -40,7 +42,7 @@
                         </td>
                     </tr>
                 {% else %}
-                    <tr><td class="empty-state" colspan="8">Nenhuma OC aguardando financeiro.</td></tr>
+                    <tr><td class="empty-state" colspan="9">Nenhuma OC aguardando financeiro.</td></tr>
                 {% endfor %}
             </tbody>
         </table>

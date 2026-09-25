@@ -104,6 +104,29 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 
+    document.querySelectorAll("[data-conditional-field]").forEach((grupo) => {
+        const controlador = document.getElementById(grupo.dataset.controller);
+        const campo = grupo.querySelector("input, select, textarea");
+
+        if (!controlador || !campo) {
+            return;
+        }
+
+        const atualizarVisibilidade = () => {
+            const exibir = Boolean(controlador.value);
+            grupo.hidden = !exibir;
+            campo.required = exibir;
+            if (!exibir) {
+                campo.value = "";
+            }
+        };
+
+        controlador.addEventListener("input", atualizarVisibilidade);
+        controlador.addEventListener("change", atualizarVisibilidade);
+        controlador.addEventListener("blur", atualizarVisibilidade);
+        atualizarVisibilidade();
+    });
+
     document.querySelectorAll("[data-auto-code-preview]").forEach((campoCodigo) => {
         const campoDescricao = document.getElementById("descricao");
         if (!campoDescricao || campoCodigo.value) {

@@ -213,6 +213,55 @@ class SuprimentosRequisicoesCompraTestCase(unittest.TestCase):
         self.assertEqual("Justificativa e obrigatoria.", mensagem)
         self.assertIsNone(requisicao)
 
+    def test_exige_tipo_custo_quando_placa_do_veiculo_e_selecionada(self):
+        subcentro_veiculo = CentroCusto(
+            codigo="VEI-001",
+            nome="ABC1D23",
+            classe="CENTRO DE EGP VEÍCULOS",
+            ativo=True,
+        )
+        db.session.add(subcentro_veiculo)
+        db.session.commit()
+
+        sucesso, mensagem, requisicao = salvar_requisicao_compra(
+            {
+                "sub_centro_custo_veiculo_id": str(subcentro_veiculo.id),
+                "justificativa": "Comprar item",
+            },
+            self.admin,
+        )
+
+        self.assertFalse(sucesso)
+        self.assertEqual(
+            "Tipo de Custo e obrigatorio quando uma placa do veiculo for selecionada.",
+            mensagem,
+        )
+        self.assertIsNone(requisicao)
+
+        sucesso, _, requisicao = salvar_requisicao_compra(
+            {
+                "sub_centro_custo_veiculo_id": str(subcentro_veiculo.id),
+                "tipo_custo": "Manutenção",
+                "justificativa": "Comprar item",
+            },
+            self.admin,
+        )
+
+        self.assertTrue(sucesso)
+        self.assertEqual("Manutenção", requisicao.tipo_custo)
+
+    def test_descarta_tipo_custo_sem_placa_do_veiculo(self):
+        sucesso, _, requisicao = salvar_requisicao_compra(
+            {
+                "tipo_custo": "Diversos",
+                "justificativa": "Comprar item",
+            },
+            self.admin,
+        )
+
+        self.assertTrue(sucesso)
+        self.assertIsNone(requisicao.tipo_custo)
+
     def test_nao_aceita_texto_livre_nos_centros_de_custo_pesquisaveis(self):
         cenarios = [
             (

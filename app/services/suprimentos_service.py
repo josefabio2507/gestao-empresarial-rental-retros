@@ -1200,6 +1200,7 @@ def salvar_requisicao_compra(form_data, usuario, requisicao=None):
     centro_custo_id = inteiro_ou_none(form_data.get("centro_custo_id"))
     sub_centro_custo_equipe_id = inteiro_ou_none(form_data.get("sub_centro_custo_equipe_id"))
     sub_centro_custo_veiculo_id = inteiro_ou_none(form_data.get("sub_centro_custo_veiculo_id"))
+    tipo_custo = texto(form_data.get("tipo_custo")) or None
     equipe_id = inteiro_ou_none(form_data.get("equipe_id"))
     veiculo_placa = texto_maiusculo(form_data.get("veiculo_placa")) or None
     centro_custo_busca = texto(form_data.get("centro_custo_busca"))
@@ -1217,6 +1218,16 @@ def salvar_requisicao_compra(form_data, usuario, requisicao=None):
 
     if sub_centro_custo_veiculo_busca and not sub_centro_custo_veiculo_id:
         return False, "Selecione um sub centro de custo - Placa do veiculo da lista.", requisicao
+
+    tipos_custo_permitidos = {"Abastecimento", "Diversos", "Manutenção"}
+    if sub_centro_custo_veiculo_id and not tipo_custo:
+        return False, "Tipo de Custo e obrigatorio quando uma placa do veiculo for selecionada.", requisicao
+
+    if tipo_custo and tipo_custo not in tipos_custo_permitidos:
+        return False, "Selecione um Tipo de Custo valido.", requisicao
+
+    if not sub_centro_custo_veiculo_id:
+        tipo_custo = None
 
     if centro_custo_id and not buscar_centro_custo_ativo_por_classe(centro_custo_id, CLASSE_CENTRO_CUSTO):
         return False, "Centro de custo nao encontrado, inativo ou fora da classe permitida.", requisicao
@@ -1256,6 +1267,7 @@ def salvar_requisicao_compra(form_data, usuario, requisicao=None):
     requisicao.centro_custo_id = centro_custo_id
     requisicao.sub_centro_custo_equipe_id = sub_centro_custo_equipe_id
     requisicao.sub_centro_custo_veiculo_id = sub_centro_custo_veiculo_id
+    requisicao.tipo_custo = tipo_custo
     requisicao.equipe_id = equipe_id
     requisicao.veiculo_placa = veiculo_placa
     requisicao.justificativa = justificativa
@@ -2818,6 +2830,7 @@ def gerar_mensagem_ordem_compra_fornecedor(ordem):
         f"Ordem de compra: {ordem.numero}",
         f"Cotacao: {cotacao.numero if cotacao else '-'}",
         f"Requisicao: {requisicao.numero if requisicao else '-'}",
+        f"Tipo de Custo: {ordem.tipo_custo or '-'}",
         f"Fornecedor: {fornecedor.razao_social if fornecedor else ordem.fornecedor_razao_social_snapshot}",
         f"CNPJ/CPF: {ordem.fornecedor_cnpj_cpf_snapshot or '-'}",
         f"Condicao de pagamento: {ordem.condicao_pagamento_snapshot or '-'}",
@@ -3974,6 +3987,11 @@ def gerar_ordens_compra_cotacao(cotacao, usuario, form_data=None):
             fornecedor_razao_social_snapshot=fornecedor.razao_social,
             fornecedor_cnpj_cpf_snapshot=fornecedor.cnpj_cpf,
             condicao_pagamento_snapshot=" | ".join(condicoes) if condicoes else None,
+            tipo_custo=(
+                cotacao.requisicao.tipo_custo
+                if cotacao.requisicao and cotacao.requisicao.sub_centro_custo_veiculo_id
+                else None
+            ),
             tipo_pagamento_financeiro=tipo_pagamento_financeiro,
             forma_pagamento_financeiro=forma_pagamento,
             cartao_credito_id=cartao_credito_id if forma_pagamento == "Cartao de Credito" else None,

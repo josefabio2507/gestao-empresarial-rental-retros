@@ -3,7 +3,15 @@ from decimal import Decimal
 
 from sqlalchemy import or_
 
-from app.models import OperacaoAbastecimento, OperacaoHistoricoManutencao, OperacaoImpostoTaxa, OperacaoMultaTransito, OperacaoVeiculoEquipamento
+from app.models import (
+    OperacaoAbastecimento,
+    OperacaoHistoricoManutencao,
+    OperacaoImpostoTaxa,
+    OperacaoMultaTransito,
+    OperacaoVeiculoEquipamento,
+    SuprimentosOrdemCompra,
+    SuprimentosRequisicaoCompra,
+)
 
 STATUS_CENTRAL_CUSTOS = ["ativos", "inativos", "todos"]
 TIPOS_CUSTO_CENTRAL = ["Abastecimento", "Manutenção", "Multas", "Impostos e Taxas"]
@@ -154,6 +162,60 @@ def linhas_manutencao(veiculo, inicio=None, fim=None):
     return linhas, total
 
 
+def _data_recebimento_ordem(ordem):
+    datas = [recebimento.recebido_em for recebimento in ordem.recebimentos if recebimento.recebido_em]
+    return max(datas).date() if datas else (ordem.atualizado_em.date() if ordem.atualizado_em else None)
+
+
+def _ordens_recebidas_veiculo(veiculo, tipos_custo, inicio=None, fim=None, excluir_ids=None):
+    if not veiculo.centro_custo_id:
+        return [], Decimal("0")
+
+    excluir_ids = set(excluir_ids or [])
+    ordens = (
+        SuprimentosOrdemCompra.query
+        .join(
+            SuprimentosRequisicaoCompra,
+            SuprimentosOrdemCompra.requisicao_id == SuprimentosRequisicaoCompra.id,
+        )
+        .filter(
+            SuprimentosOrdemCompra.status == "Recebida",
+            SuprimentosRequisicaoCompra.sub_centro_custo_veiculo_id == veiculo.centro_custo_id,
+            SuprimentosOrdemCompra.tipo_custo.in_(tipos_custo),
+        )
+        .order_by(SuprimentosOrdemCompra.id.desc())
+        .all()
+    )
+
+    linhas = []
+    total = Decimal("0")
+    for ordem in ordens:
+        if ordem.id in excluir_ids:
+            continue
+        data_recebimento = _data_recebimento_ordem(ordem)
+        if inicio and (not data_recebimento or data_recebimento < inicio):
+            continue
+        if fim and (not data_recebimento or data_recebimento > fim):
+            continue
+
+        valor = decimal_zero(ordem.valor_total)
+        total += valor
+        itens = ", ".join(item.item_descricao_snapshot for item in ordem.itens)
+        linhas.append(
+            {
+                "id": ordem.id,
+                "data": data_recebimento,
+                "descricao": f"{ordem.tipo_custo} | {itens or 'Ordem de compra recebida'}",
+                "documento": ordem.numero,
+                "valor": valor,
+                "ordem_compra_id": ordem.id,
+                "origem": "ordem_compra",
+                "registro": ordem,
+            }
+        )
+    return linhas, total
+
+
 def _filtrar_data_multa(query, inicio, fim):
     if inicio:
         query = query.filter(OperacaoMultaTransito.data_infracao >= inicio)
@@ -218,6 +280,25 @@ def linhas_impostos_taxas(veiculo, inicio=None, fim=None):
 def central_custos_veiculo(veiculo, inicio=None, fim=None):
     abastecimentos, total_abastecimento = linhas_abastecimento(veiculo, inicio, fim)
     manutencoes, total_manutencao = linhas_manutencao(veiculo, inicio, fim)
+    ordens_abastecimento, total_ordens_abastecimento = _ordens_recebidas_veiculo(
+        veiculo,
+        ("Abastecimento",),
+        inicio,
+        fim,
+    )
+    ordens_manutencao, total_ordens_manutencao = _ordens_recebidas_veiculo(
+        veiculo,
+        ("Manutenção", "Diversos"),
+        inicio,
+        fim,
+        excluir_ids={linha["ordem_compra_id"] for linha in manutencoes if linha.get("ordem_compra_id")},
+    )
+    abastecimentos.extend(ordens_abastecimento)
+    manutencoes.extend(ordens_manutencao)
+    abastecimentos.sort(key=lambda linha: (linha.get("data") is not None, linha.get("data")), reverse=True)
+    manutencoes.sort(key=lambda linha: (linha.get("data") is not None, linha.get("data")), reverse=True)
+    total_abastecimento += total_ordens_abastecimento
+    total_manutencao += total_ordens_manutencao
     multas, total_multas = linhas_multas(veiculo, inicio, fim)
     impostos_taxas, total_impostos_taxas = linhas_impostos_taxas(veiculo, inicio, fim)
 

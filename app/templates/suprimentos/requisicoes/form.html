@@ -43,6 +43,15 @@
                 {% endfor %}
             </datalist>
         </div>
+        <div class="form-group" data-conditional-field data-controller="sub_centro_custo_veiculo_busca" hidden>
+            <label for="tipo_custo">Tipo de Custo</label>
+            <select id="tipo_custo" name="tipo_custo">
+                <option value="">Selecione</option>
+                {% for opcao in ["Abastecimento", "Diversos", "Manutenção"] %}
+                    <option value="{{ opcao }}" {% if requisicao and requisicao.tipo_custo == opcao %}selected{% endif %}>{{ opcao }}</option>
+                {% endfor %}
+            </select>
+        </div>
         <div class="form-group">
             <label for="justificativa">Justificativa</label>
             <textarea id="justificativa" name="justificativa" required data-uppercase>{{ requisicao.justificativa if requisicao else '' }}</textarea>
