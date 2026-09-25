@@ -932,6 +932,7 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         self.assertEqual("h", indicadores["unidade_uso"])
         self.assertEqual(Decimal("20"), indicadores["uso_periodo"])
         self.assertEqual(Decimal("1"), indicadores["consumo_por_litro"])
+        self.assertEqual("l/h", indicadores["unidade_consumo"])
         self.assertEqual(Decimal("5"), indicadores["custo_por_unidade"])
 
     def test_salva_multa_transito_com_motorista_vinculado_e_custo_total(self):

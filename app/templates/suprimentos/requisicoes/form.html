@@ -39,9 +39,15 @@
             <input type="hidden" id="sub_centro_custo_veiculo_id" name="sub_centro_custo_veiculo_id" value="{{ requisicao.sub_centro_custo_veiculo_id if requisicao and requisicao.sub_centro_custo_veiculo_id else '' }}">
             <datalist id="subcentros_veiculo_lista">
                 {% for centro in subcentros_veiculo %}
-                    <option value="{{ centro.codigo or '-' }} - {{ centro.nome }}" data-value="{{ centro.id }}"></option>
+                    {% set ativo = veiculos_por_centro.get(centro.id) %}
+                    <option value="{{ centro.codigo or '-' }} - {{ centro.nome }}" data-value="{{ centro.id }}" data-tipo-leitura="{{ 'horimetro' if ativo and ativo.tipo|upper in ['MAQUINA', 'EQUIPAMENTO'] else 'odometro' }}"></option>
                 {% endfor %}
             </datalist>
+        </div>
+        <div class="form-group" data-abastecimento-reading hidden>
+            <label for="leitura_abastecimento" data-reading-label>Odômetro</label>
+            <input id="leitura_abastecimento" name="leitura_abastecimento" maxlength="6" inputmode="decimal" value="{{ requisicao.leitura_abastecimento if requisicao and requisicao.leitura_abastecimento is not none else '' }}">
+            <small data-reading-help>Informe a leitura atual do veículo (máximo de 6 caracteres).</small>
         </div>
         <div class="form-group" data-conditional-field data-controller="sub_centro_custo_veiculo_busca" hidden>
             <label for="tipo_custo">Tipo de Custo</label>

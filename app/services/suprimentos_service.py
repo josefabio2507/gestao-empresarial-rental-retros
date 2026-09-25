@@ -1201,6 +1201,8 @@ def salvar_requisicao_compra(form_data, usuario, requisicao=None):
     sub_centro_custo_equipe_id = inteiro_ou_none(form_data.get("sub_centro_custo_equipe_id"))
     sub_centro_custo_veiculo_id = inteiro_ou_none(form_data.get("sub_centro_custo_veiculo_id"))
     tipo_custo = texto(form_data.get("tipo_custo")) or None
+    leitura_abastecimento_texto = texto(form_data.get("leitura_abastecimento"))
+    leitura_abastecimento = decimal_ou_none(leitura_abastecimento_texto)
     equipe_id = inteiro_ou_none(form_data.get("equipe_id"))
     veiculo_placa = texto_maiusculo(form_data.get("veiculo_placa")) or None
     centro_custo_busca = texto(form_data.get("centro_custo_busca"))
@@ -1228,6 +1230,27 @@ def salvar_requisicao_compra(form_data, usuario, requisicao=None):
 
     if not sub_centro_custo_veiculo_id:
         tipo_custo = None
+
+    veiculo_custo = None
+    tipo_leitura_abastecimento = None
+    if sub_centro_custo_veiculo_id:
+        veiculo_custo = OperacaoVeiculoEquipamento.query.filter_by(
+            centro_custo_id=sub_centro_custo_veiculo_id,
+        ).first()
+
+    if tipo_custo == "Abastecimento":
+        if not leitura_abastecimento_texto:
+            return False, "Odometro ou horimetro e obrigatorio para abastecimento.", requisicao
+        if len(leitura_abastecimento_texto) > 6:
+            return False, "Odometro ou horimetro deve ter no maximo 6 caracteres.", requisicao
+        if leitura_abastecimento is None or leitura_abastecimento < 0:
+            return False, "Informe um odometro ou horimetro valido.", requisicao
+        tipo_ativo = texto_maiusculo(veiculo_custo.tipo) if veiculo_custo else ""
+        tipo_leitura_abastecimento = (
+            "horimetro" if tipo_ativo in {"MAQUINA", "EQUIPAMENTO"} else "odometro"
+        )
+    else:
+        leitura_abastecimento = None
 
     if centro_custo_id and not buscar_centro_custo_ativo_por_classe(centro_custo_id, CLASSE_CENTRO_CUSTO):
         return False, "Centro de custo nao encontrado, inativo ou fora da classe permitida.", requisicao
@@ -1268,6 +1291,8 @@ def salvar_requisicao_compra(form_data, usuario, requisicao=None):
     requisicao.sub_centro_custo_equipe_id = sub_centro_custo_equipe_id
     requisicao.sub_centro_custo_veiculo_id = sub_centro_custo_veiculo_id
     requisicao.tipo_custo = tipo_custo
+    requisicao.tipo_leitura_abastecimento = tipo_leitura_abastecimento
+    requisicao.leitura_abastecimento = leitura_abastecimento
     requisicao.equipe_id = equipe_id
     requisicao.veiculo_placa = veiculo_placa
     requisicao.justificativa = justificativa
@@ -3990,6 +4015,16 @@ def gerar_ordens_compra_cotacao(cotacao, usuario, form_data=None):
             tipo_custo=(
                 cotacao.requisicao.tipo_custo
                 if cotacao.requisicao and cotacao.requisicao.sub_centro_custo_veiculo_id
+                else None
+            ),
+            tipo_leitura_abastecimento=(
+                cotacao.requisicao.tipo_leitura_abastecimento
+                if cotacao.requisicao and cotacao.requisicao.tipo_custo == "Abastecimento"
+                else None
+            ),
+            leitura_abastecimento=(
+                cotacao.requisicao.leitura_abastecimento
+                if cotacao.requisicao and cotacao.requisicao.tipo_custo == "Abastecimento"
                 else None
             ),
             tipo_pagamento_financeiro=tipo_pagamento_financeiro,

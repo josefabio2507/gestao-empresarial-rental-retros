@@ -26,6 +26,7 @@
         </p>
         <p><strong>Condicao de pagamento:</strong> {{ ordem.condicao_pagamento_snapshot or "-" }}</p>
         {% if ordem.tipo_custo %}<p><strong>Tipo de Custo:</strong> {{ ordem.tipo_custo }}</p>{% endif %}
+        {% if ordem.leitura_abastecimento is not none %}<p><strong>{{ 'Horímetro' if ordem.tipo_leitura_abastecimento == 'horimetro' else 'Odômetro' }}:</strong> {{ ordem.leitura_abastecimento }}</p>{% endif %}
         <p><strong>Gerada por:</strong> {{ ordem.criado_por.nome }}</p>
         <p><strong>Gerada em:</strong> {{ ordem.gerada_em.strftime("%d/%m/%Y %H:%M") }}</p>
         <p><strong>Observacoes:</strong> {{ ordem.observacoes or "-" }}</p>

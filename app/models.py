@@ -2682,6 +2682,8 @@ class SuprimentosRequisicaoCompra(db.Model):
         index=True,
     )
     tipo_custo = db.Column(db.String(20), nullable=True)
+    tipo_leitura_abastecimento = db.Column(db.String(20), nullable=True)
+    leitura_abastecimento = db.Column(db.Numeric(8, 2), nullable=True)
     equipe_id = db.Column(
         db.Integer,
         db.ForeignKey("equipes.id"),
@@ -2723,6 +2725,14 @@ class SuprimentosRequisicaoCompra(db.Model):
         db.CheckConstraint(
             "tipo_custo IS NULL OR tipo_custo IN ('Abastecimento', 'Diversos', 'Manutenção')",
             name="ck_suprimentos_requisicoes_compra_tipo_custo",
+        ),
+        db.CheckConstraint(
+            "tipo_leitura_abastecimento IS NULL OR tipo_leitura_abastecimento IN ('odometro', 'horimetro')",
+            name="ck_suprimentos_requisicoes_compra_tipo_leitura_abastecimento",
+        ),
+        db.CheckConstraint(
+            "leitura_abastecimento IS NULL OR leitura_abastecimento >= 0",
+            name="ck_suprimentos_requisicoes_compra_leitura_abastecimento",
         ),
     )
 
@@ -3112,6 +3122,8 @@ class SuprimentosOrdemCompra(db.Model):
     fornecedor_cnpj_cpf_snapshot = db.Column(db.String(20), nullable=True)
     condicao_pagamento_snapshot = db.Column(db.String(160), nullable=True)
     tipo_custo = db.Column(db.String(20), nullable=True)
+    tipo_leitura_abastecimento = db.Column(db.String(20), nullable=True)
+    leitura_abastecimento = db.Column(db.Numeric(8, 2), nullable=True)
     status = db.Column(db.String(30), default="Gerada", nullable=False, index=True)
     status_financeiro = db.Column(db.String(30), default="Pendente de Financeiro", nullable=False, index=True)
     previsao_vencimento = db.Column(db.Date, nullable=True, index=True)
@@ -3210,6 +3222,14 @@ class SuprimentosOrdemCompra(db.Model):
         db.CheckConstraint(
             "tipo_custo IS NULL OR tipo_custo IN ('Abastecimento', 'Diversos', 'Manutenção')",
             name="ck_suprimentos_ordens_compra_tipo_custo",
+        ),
+        db.CheckConstraint(
+            "tipo_leitura_abastecimento IS NULL OR tipo_leitura_abastecimento IN ('odometro', 'horimetro')",
+            name="ck_suprimentos_ordens_compra_tipo_leitura_abastecimento",
+        ),
+        db.CheckConstraint(
+            "leitura_abastecimento IS NULL OR leitura_abastecimento >= 0",
+            name="ck_suprimentos_ordens_compra_leitura_abastecimento",
         ),
     )
 
