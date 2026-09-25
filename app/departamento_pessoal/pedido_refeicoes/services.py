@@ -720,6 +720,18 @@ def converter_quantidade(valor):
     return quantidade
 
 
+def converter_identificador(valor):
+    try:
+        identificador = int(valor)
+    except (TypeError, ValueError):
+        return None
+
+    if identificador <= 0:
+        return None
+
+    return identificador
+
+
 def buscar_consumo_existente_por_tipo(
     pedido_id,
     colaborador_id,
@@ -809,6 +821,10 @@ def validar_consumo(
     if not colaborador_id:
         return False, "Colaborador é obrigatório.", None, None, None
 
+    colaborador_id = converter_identificador(colaborador_id)
+    if not colaborador_id:
+        return False, "Colaborador não encontrado ou inativo.", None, None, None
+
     colaborador = Colaborador.query.filter_by(
         id=colaborador_id,
         ativo=True,
@@ -822,6 +838,10 @@ def validar_consumo(
 
     if not item_cardapio_id:
         return False, "Item do cardápio é obrigatório.", None, None, None
+
+    item_cardapio_id = converter_identificador(item_cardapio_id)
+    if not item_cardapio_id:
+        return False, "Item do cardápio não encontrado ou inativo.", None, None, None
 
     item = ItemCardapio.query.filter_by(
         id=item_cardapio_id,
