@@ -6,6 +6,7 @@ Flask-WTF
 Werkzeug
 python-dotenv
 psycopg2-binary
+psycopg[binary]
 gunicorn
 email-validator
 reportlab
