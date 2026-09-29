@@ -3,6 +3,8 @@ from datetime import date
 from unittest.mock import patch
 import unittest
 
+from openpyxl import load_workbook
+
 from app import create_app
 from app.extensions import db
 from app.models import (
@@ -160,24 +162,39 @@ class FinanceiroContasPagarTestCase(unittest.TestCase):
         self.assertEqual(302, novo.status_code)
         self.assertIn("/acesso-negado", novo.headers["Location"])
 
-    def test_exporta_titulos_filtrados_em_pdf(self):
+    def test_exporta_titulos_filtrados_em_excel_com_filtro_e_ordem_decrescente(self):
         self._autenticar(self.admin)
         self.client.post(
             "/financeiro/contas-a-pagar/novo",
-            data=self._dados_titulo(),
+            data=self._dados_titulo(valor_original="100,00", numero_documento="MENOR"),
+        )
+        self.client.post(
+            "/financeiro/contas-a-pagar/novo",
+            data=self._dados_titulo(valor_original="900,00", numero_documento="MAIOR"),
         )
 
         resposta = self.client.get(
-            "/financeiro/contas-a-pagar/titulos/exportar-pdf"
+            "/financeiro/contas-a-pagar/titulos/exportar-excel"
             "?vencimento_inicio=2026-08-30&vencimento_fim=2026-08-30"
         )
 
         self.assertEqual(200, resposta.status_code)
-        self.assertTrue(resposta.data.startswith(b"%PDF-"))
-        self.assertIn("application/pdf", resposta.headers["Content-Type"])
+        self.assertTrue(resposta.data.startswith(b"PK"))
+        self.assertIn(
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            resposta.headers["Content-Type"],
+        )
         self.assertIn("relatorio_titulos_a_pagar_", resposta.headers["Content-Disposition"])
+        workbook = load_workbook(BytesIO(resposta.data))
+        planilha = workbook["Títulos a Pagar"]
+        self.assertEqual("A10:G12", planilha.tables["TitulosAPagar"].ref)
+        self.assertEqual("A10:G12", planilha.tables["TitulosAPagar"].autoFilter.ref)
+        self.assertEqual("MAIOR", planilha["E11"].value)
+        self.assertEqual(900, planilha["G11"].value)
+        self.assertEqual("MENOR", planilha["E12"].value)
+        self.assertEqual(100, planilha["G12"].value)
 
-    def test_pdf_nao_inclui_titulos_cancelados(self):
+    def test_excel_nao_inclui_titulos_cancelados(self):
         self._autenticar(self.admin)
         sucesso, mensagem, ativo = salvar_titulo(
             self._dados_titulo(descricao="Titulo ativo", numero_documento="ATIVO"),
@@ -194,15 +211,15 @@ class FinanceiroContasPagarTestCase(unittest.TestCase):
 
         capturados = {}
 
-        def gerar_pdf_fake(titulos, filtros):
+        def gerar_excel_fake(titulos, filtros):
             capturados["titulos"] = list(titulos)
-            return BytesIO(b"%PDF- teste")
+            return BytesIO(b"PK teste")
 
         with patch(
-            "app.financeiro.contas_pagar.routes.gerar_pdf_titulos",
-            side_effect=gerar_pdf_fake,
+            "app.financeiro.contas_pagar.routes.gerar_excel_titulos",
+            side_effect=gerar_excel_fake,
         ):
-            resposta = self.client.get("/financeiro/contas-a-pagar/titulos/exportar-pdf")
+            resposta = self.client.get("/financeiro/contas-a-pagar/titulos/exportar-excel")
 
         ids = [titulo.id for titulo in capturados["titulos"]]
         self.assertEqual(200, resposta.status_code)
