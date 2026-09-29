@@ -104,6 +104,7 @@ MENSAGEM_MANIFESTACAO_FALHOU = (
     "Verifique o certificado, o ambiente configurado e tente novamente."
 )
 BLOQUEIO_CONSULTA_SEFAZ = timedelta(hours=1)
+BLOQUEIO_DOWNLOAD_XML_SEFAZ = timedelta(hours=1)
 STATUS_CONTROLE_COM_ESPERA = {"Uso indevido", "Sem novos documentos"}
 
 STATUS_DOCUMENTOS_FISCAIS = [
@@ -1106,6 +1107,53 @@ def _mensagem_consulta_bloqueada(controle, agora=None):
     )
 
 
+def proximo_download_xml_sefaz_permitido(controle, agora=None):
+    if not controle or not controle.download_xml_bloqueado_ate:
+        return None
+    return (
+        controle.download_xml_bloqueado_ate
+        if controle.download_xml_bloqueado_ate > (agora or agora_brasil())
+        else None
+    )
+
+
+def _mensagem_download_xml_bloqueado(controle, agora=None):
+    liberado_em = proximo_download_xml_sefaz_permitido(controle, agora=agora)
+    if not liberado_em:
+        return ""
+    return (
+        "Os downloads de XML pela chave estão temporariamente suspensos para proteger o CNPJ "
+        "de uma nova rejeição por consumo indevido. "
+        f"Tente novamente após {liberado_em.strftime('%d/%m/%Y às %H:%M')}. "
+        "A consulta de novas notas por NSU continua com controle independente."
+    )
+
+
+def _mensagem_download_documento_bloqueado(documento, agora=None):
+    if not documento or not documento.xml_consultado_em:
+        return ""
+    liberado_em = documento.xml_consultado_em + BLOQUEIO_DOWNLOAD_XML_SEFAZ
+    if liberado_em <= (agora or agora_brasil()):
+        return ""
+    return (
+        "A Sefaz ainda não disponibilizou o XML completo desta NF-e. "
+        f"Uma nova tentativa poderá ser feita após {liberado_em.strftime('%d/%m/%Y às %H:%M')}."
+    )
+
+
+def _registrar_resultado_download_xml(controle, documento, resultado, consultado_em):
+    documento.xml_consultado_em = consultado_em
+    controle.ultimo_download_xml_em = consultado_em
+    controle.download_xml_mensagem = resultado["motivo"] or "Retorno recebido da Sefaz."
+
+    if resultado["cstat"] == "656":
+        controle.download_xml_status = "Uso indevido"
+        controle.download_xml_bloqueado_ate = consultado_em + BLOQUEIO_DOWNLOAD_XML_SEFAZ
+    else:
+        controle.download_xml_status = "Liberado"
+        controle.download_xml_bloqueado_ate = None
+
+
 def _atualizar_controle_distribuicao(controle, resultado, consultado_em=None):
     controle.consultado_em = consultado_em or agora_brasil()
     if resultado["ultimo_nsu"]:
@@ -1314,16 +1362,17 @@ def manifestar_documento_fiscal(documento_id, evento, usuario, justificativa=Non
             controle = FiscalControleNSU(cnpj_empresa=cnpj, ultimo_nsu=documento.nsu or "0")
             db.session.add(controle)
             db.session.flush()
-        mensagem_bloqueio = _mensagem_consulta_bloqueada(controle)
+        mensagem_bloqueio = _mensagem_download_xml_bloqueado(controle)
         if mensagem_bloqueio:
             return True, f"{mensagem_final} {mensagem_bloqueio}", documento
         ultimo_nsu = controle.ultimo_nsu if controle else documento.nsu or "0"
+        consultado_em = agora_brasil()
         resposta_xml = cliente.baixar_xml_completo(cnpj, documento.chave_acesso, ultimo_nsu)
         resultado = processar_resposta_distribuicao_dfe(resposta_xml, cnpj_destinatario=cnpj)
-        _atualizar_controle_distribuicao(controle, resultado)
+        _registrar_resultado_download_xml(controle, documento, resultado, consultado_em)
         db.session.commit()
         if resultado["cstat"] == "656":
-            return True, f"{mensagem_final} {controle.mensagem}", documento
+            return True, f"{mensagem_final} {_mensagem_download_xml_bloqueado(controle)}", documento
         db.session.refresh(documento)
         if documento.tem_xml_completo and documento.xml_path:
             mensagem_final += " XML completo baixado e DANFE gerado automaticamente."
@@ -1348,9 +1397,13 @@ def baixar_xml_completo_documento(documento_id, usuario, cliente_cls=None):
     try:
         cnpj_documento = somente_digitos(documento.destinatario_cnpj)
         controle = FiscalControleNSU.query.filter_by(cnpj_empresa=cnpj_documento).first()
-        mensagem_bloqueio = _mensagem_consulta_bloqueada(controle)
+        mensagem_bloqueio = _mensagem_download_xml_bloqueado(controle)
         if mensagem_bloqueio:
             return False, mensagem_bloqueio, documento
+
+        mensagem_documento = _mensagem_download_documento_bloqueado(documento)
+        if mensagem_documento:
+            return False, mensagem_documento, documento
 
         cliente, cnpj, mensagem = _cliente_fiscal_documento(documento, cliente_cls=cliente_cls)
         if not cliente:
@@ -1361,9 +1414,10 @@ def baixar_xml_completo_documento(documento_id, usuario, cliente_cls=None):
             db.session.add(controle)
             db.session.flush()
         ultimo_nsu = controle.ultimo_nsu if controle else documento.nsu or "0"
+        consultado_em = agora_brasil()
         resposta = cliente.baixar_xml_completo(cnpj, documento.chave_acesso, ultimo_nsu)
         resultado = processar_resposta_distribuicao_dfe(resposta, cnpj_destinatario=cnpj)
-        _atualizar_controle_distribuicao(controle, resultado)
+        _registrar_resultado_download_xml(controle, documento, resultado, consultado_em)
         db.session.commit()
     except FiscalIntegracaoErro as exc:
         return False, str(exc), documento
@@ -1371,7 +1425,7 @@ def baixar_xml_completo_documento(documento_id, usuario, cliente_cls=None):
         return False, f"Falha ao baixar XML completo na Sefaz: {exc}", documento
 
     if resultado["cstat"] == "656":
-        return False, controle.mensagem, documento
+        return False, _mensagem_download_xml_bloqueado(controle), documento
 
     db.session.refresh(documento)
     if documento.tem_xml_completo and documento.xml_path:

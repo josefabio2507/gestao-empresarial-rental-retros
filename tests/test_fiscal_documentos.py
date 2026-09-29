@@ -42,6 +42,7 @@ from app.services.fiscal_service import (
     SOAP_ACTION_DISTRIBUICAO_DFE,
     SOAP_ACTION_RECEPCAO_EVENTO,
     buscar_documentos_para_ordem_compra,
+    baixar_xml_completo_documento,
     consultar_documentos_sefaz,
     manifestar_documento_fiscal,
     salvar_certificado_a1,
@@ -584,6 +585,104 @@ class FiscalDocumentosTestCase(unittest.TestCase):
         self.assertTrue(sucesso)
         self.assertEqual("3783", self.FakePyNFeClient.chamadas[0]["ultimo_nsu"])
         self.assertEqual("Sem novos documentos", controle.status)
+
+    def test_download_por_chave_nao_usa_bloqueio_da_consulta_nsu(self):
+        sucesso, _, _ = salvar_certificado_a1(
+            {
+                "cnpj_empresa": "44.555.666/0001-77",
+                "razao_social": "Rental Retros LTDA",
+                "senha": "segredo",
+            },
+            self._arquivo_certificado(),
+            self.admin,
+        )
+        self.assertTrue(sucesso)
+        _, _, documento = salvar_resumo_nfe_bytes(
+            XML_RESUMO_NFE,
+            nsu="101",
+            cnpj_destinatario="44555666000177",
+        )
+        documento.manifestacao_status = "Confirmada"
+        controle = FiscalControleNSU(
+            cnpj_empresa="44555666000177",
+            ultimo_nsu="3826",
+            max_nsu="3826",
+            status="Uso indevido",
+            consultado_em=datetime.now() - timedelta(minutes=10),
+        )
+        db.session.add(controle)
+        db.session.commit()
+        self.FakePyNFeClient.chamadas = []
+        self.FakePyNFeClient.resposta_download = self._retorno_distribuicao_dfe()
+
+        with patch("app.services.fiscal_service.gerar_danfe_pdf", return_value="danfe-teste.pdf"):
+            sucesso, mensagem, documento = baixar_xml_completo_documento(
+                documento.id,
+                self.admin,
+                cliente_cls=self.FakePyNFeClient,
+            )
+
+        self.assertTrue(sucesso)
+        self.assertIn("XML completo baixado", mensagem)
+        self.assertTrue(documento.tem_xml_completo)
+        self.assertEqual("3826", controle.ultimo_nsu)
+        self.assertEqual("3826", controle.max_nsu)
+        self.assertEqual("Uso indevido", controle.status)
+        self.assertEqual("Liberado", controle.download_xml_status)
+        self.assertEqual(1, len(self.FakePyNFeClient.chamadas))
+
+    def test_rejeicao_download_por_chave_preserva_nsu_e_bloqueia_apenas_downloads(self):
+        sucesso, _, _ = salvar_certificado_a1(
+            {
+                "cnpj_empresa": "44.555.666/0001-77",
+                "razao_social": "Rental Retros LTDA",
+                "senha": "segredo",
+            },
+            self._arquivo_certificado(),
+            self.admin,
+        )
+        self.assertTrue(sucesso)
+        _, _, documento = salvar_resumo_nfe_bytes(
+            XML_RESUMO_NFE,
+            nsu="101",
+            cnpj_destinatario="44555666000177",
+        )
+        documento.manifestacao_status = "Confirmada"
+        controle = FiscalControleNSU(
+            cnpj_empresa="44555666000177",
+            ultimo_nsu="3826",
+            max_nsu="3826",
+            status="Consultado",
+        )
+        db.session.add(controle)
+        db.session.commit()
+        self.FakePyNFeClient.chamadas = []
+        self.FakePyNFeClient.resposta_download = self._retorno_consumo_indevido("9999")
+
+        sucesso, mensagem, _ = baixar_xml_completo_documento(
+            documento.id,
+            self.admin,
+            cliente_cls=self.FakePyNFeClient,
+        )
+
+        self.assertFalse(sucesso)
+        self.assertIn("downloads de XML pela chave", mensagem)
+        self.assertEqual("3826", controle.ultimo_nsu)
+        self.assertEqual("3826", controle.max_nsu)
+        self.assertEqual("Consultado", controle.status)
+        self.assertEqual("Uso indevido", controle.download_xml_status)
+        self.assertIsNotNone(controle.download_xml_bloqueado_ate)
+        self.assertEqual(1, len(self.FakePyNFeClient.chamadas))
+
+        sucesso, mensagem, _ = baixar_xml_completo_documento(
+            documento.id,
+            self.admin,
+            cliente_cls=self.FakePyNFeClient,
+        )
+
+        self.assertFalse(sucesso)
+        self.assertIn("temporariamente suspensos", mensagem)
+        self.assertEqual(1, len(self.FakePyNFeClient.chamadas))
 
     def test_manifestacao_registra_protocolo_baixa_xml_completo_e_gera_danfe(self):
         sucesso, _, _ = salvar_certificado_a1(
