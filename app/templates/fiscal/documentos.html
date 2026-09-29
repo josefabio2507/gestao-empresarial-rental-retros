@@ -209,11 +209,13 @@
                     <th>Status</th>
                     <th>Última consulta</th>
                     <th>Próxima consulta</th>
+                    <th>Downloads XML</th>
                 </tr>
             </thead>
             <tbody>
                 {% for controle in controles_nsu %}
                     {% set proxima_consulta = proxima_consulta_sefaz_permitida(controle) %}
+                    {% set proximo_download = proximo_download_xml_sefaz_permitido(controle) %}
                     <tr>
                         <td>{{ controle.cnpj_empresa }}</td>
                         <td>{{ controle.ultimo_nsu }}</td>
@@ -227,9 +229,16 @@
                                 <span class="badge badge-success">Liberada</span>
                             {% endif %}
                         </td>
+                        <td>
+                            {% if proximo_download %}
+                                <span class="badge badge-warning">Após {{ proximo_download.strftime("%d/%m/%Y %H:%M") }}</span>
+                            {% else %}
+                                <span class="badge badge-success">Liberados</span>
+                            {% endif %}
+                        </td>
                     </tr>
                 {% else %}
-                    <tr><td class="empty-state" colspan="6">Nenhuma consulta registrada.</td></tr>
+                    <tr><td class="empty-state" colspan="7">Nenhuma consulta registrada.</td></tr>
                 {% endfor %}
             </tbody>
         </table>

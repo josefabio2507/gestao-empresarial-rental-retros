@@ -3301,6 +3301,10 @@ class FiscalControleNSU(db.Model):
     consultado_em = db.Column(db.DateTime, nullable=True)
     status = db.Column(db.String(30), default="Pendente", nullable=False, index=True)
     mensagem = db.Column(db.Text, nullable=True)
+    ultimo_download_xml_em = db.Column(db.DateTime, nullable=True)
+    download_xml_bloqueado_ate = db.Column(db.DateTime, nullable=True)
+    download_xml_status = db.Column(db.String(30), nullable=True)
+    download_xml_mensagem = db.Column(db.Text, nullable=True)
 
     criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
     atualizado_em = db.Column(
@@ -3346,6 +3350,7 @@ class FiscalDocumento(db.Model):
     )
     xml_completo_baixado_em = db.Column(db.DateTime, nullable=True)
     ultima_consulta_em = db.Column(db.DateTime, nullable=True)
+    xml_consultado_em = db.Column(db.DateTime, nullable=True)
     financeiro_status = db.Column(db.String(40), default="Pendente de geracao", nullable=False, index=True)
     financeiro_integrado = db.Column(db.Boolean, default=False, nullable=False, index=True)
     financeiro_integrado_em = db.Column(db.DateTime, nullable=True)
