@@ -55,9 +55,9 @@ from app.services.financeiro_relatorios_service import (
     periodo_valido,
     valor_coluna,
 )
-from app.services.financeiro_relatorios_pdf_service import (
-    gerar_pdf_titulos,
-    nome_arquivo_titulos_pdf,
+from app.services.financeiro_relatorios_excel_service import (
+    gerar_excel_titulos,
+    nome_arquivo_titulos_excel,
 )
 from app.services.suprimentos_service import (
     buscar_agendamentos_oc_contas_pagar,
@@ -185,25 +185,25 @@ def titulos():
     )
 
 
-@financeiro_contas_pagar_bp.route("/titulos/exportar-pdf")
+@financeiro_contas_pagar_bp.route("/titulos/exportar-excel")
 @login_required
 @module_permission_required("financeiro", "contas_a_pagar", "visualizar")
-def exportar_titulos_pdf():
+def exportar_titulos_excel():
     titulos = [
         titulo
         for titulo in listar_titulos(request.args)
         if titulo.status not in ("Cancelado", "Estornado")
     ]
-    pdf_buffer = gerar_pdf_titulos(titulos, request.args)
+    excel_buffer = gerar_excel_titulos(titulos, request.args)
     registrar_log(
-        "financeiro_contas_pagar_titulos_pdf_exportado",
-        "Relatorio de titulos a pagar exportado em PDF.",
+        "financeiro_contas_pagar_titulos_excel_exportado",
+        "Relatorio de titulos a pagar exportado em Excel.",
     )
     return send_file(
-        pdf_buffer,
+        excel_buffer,
         as_attachment=True,
-        download_name=nome_arquivo_titulos_pdf(),
-        mimetype="application/pdf",
+        download_name=nome_arquivo_titulos_excel(),
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
 
 

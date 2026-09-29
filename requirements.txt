@@ -10,6 +10,7 @@ psycopg[binary]
 gunicorn
 email-validator
 reportlab
+openpyxl
 google-api-python-client
 google-auth
 Pillow
