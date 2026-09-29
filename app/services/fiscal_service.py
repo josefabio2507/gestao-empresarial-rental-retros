@@ -105,6 +105,7 @@ MENSAGEM_MANIFESTACAO_FALHOU = (
 )
 BLOQUEIO_CONSULTA_SEFAZ = timedelta(hours=1)
 BLOQUEIO_DOWNLOAD_XML_SEFAZ = timedelta(hours=1)
+TIMEOUT_CONSULTA_SEFAZ_SEGUNDOS = 20
 STATUS_CONTROLE_COM_ESPERA = {"Uso indevido", "Sem novos documentos"}
 
 STATUS_DOCUMENTOS_FISCAIS = [
@@ -873,6 +874,7 @@ class PyNFeDistribuicaoClient:
             ) from exc
 
         self.comunicacao = ComunicacaoSefaz(uf, certificado_path, senha, homologacao)
+        self._configurar_timeout_consulta()
         self.adaptador_manifestacao = SefazManifestacaoDestinatarioAdapter(
             self.comunicacao,
             certificado_path,
@@ -880,6 +882,27 @@ class PyNFeDistribuicaoClient:
             uf,
             homologacao,
         )
+
+    def _configurar_timeout_consulta(self):
+        post_original = getattr(self.comunicacao, "_post", None)
+        if not callable(post_original):
+            return
+
+        try:
+            timeout_padrao = int(
+                current_app.config.get(
+                    "FISCAL_SEFAZ_TIMEOUT_SEGUNDOS",
+                    TIMEOUT_CONSULTA_SEFAZ_SEGUNDOS,
+                )
+            )
+        except (TypeError, ValueError):
+            timeout_padrao = TIMEOUT_CONSULTA_SEFAZ_SEGUNDOS
+        timeout_padrao = max(5, min(timeout_padrao, 25))
+
+        def post_com_timeout(url, xml, timeout=None):
+            return post_original(url, xml, timeout=timeout if timeout is not None else timeout_padrao)
+
+        self.comunicacao._post = post_com_timeout
 
     def consultar(self, cnpj, ultimo_nsu):
         nsu = int(ultimo_nsu or 0)
