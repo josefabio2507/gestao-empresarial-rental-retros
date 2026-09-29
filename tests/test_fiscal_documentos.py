@@ -923,6 +923,34 @@ class FiscalDocumentosTestCase(unittest.TestCase):
         self.assertIn(b"35260811222333000181550010000001231000001234", payload)
         self.assertIn("retDistDFeInt", retorno)
 
+    def test_cliente_pynfe_aplica_timeout_na_consulta_distribuicao(self):
+        class RespostaFake:
+            text = "<retDistDFeInt><cStat>137</cStat></retDistDFeInt>"
+
+        class ComunicacaoFake:
+            def __init__(self, uf, certificado_path, senha, homologacao):
+                self.timeout_recebido = None
+
+            def _post(self, url, xml, timeout=None):
+                self.timeout_recebido = timeout
+                return RespostaFake()
+
+            def consulta_distribuicao(self, cnpj, nsu):
+                return self._post("https://sefaz.exemplo", "<distDFeInt />")
+
+        self.app.config["FISCAL_SEFAZ_TIMEOUT_SEGUNDOS"] = 12
+        with patch(
+            "pynfe.processamento.comunicacao.ComunicacaoSefaz",
+            ComunicacaoFake,
+        ), patch(
+            "app.services.fiscal_service.SefazManifestacaoDestinatarioAdapter",
+        ):
+            cliente = PyNFeDistribuicaoClient("certificado.pfx", "segredo", "sp", False)
+            resposta = cliente.consultar("44555666000177", "3826")
+
+        self.assertIn("137", resposta)
+        self.assertEqual(12, cliente.comunicacao.timeout_recebido)
+
     def test_manifestacao_nao_exibe_erro_tecnico_da_pynfe_ao_usuario(self):
         sucesso, _, _ = salvar_certificado_a1(
             {
