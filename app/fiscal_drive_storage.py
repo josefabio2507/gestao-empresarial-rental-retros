@@ -161,8 +161,8 @@ def aplicar_upload_drive_fiscal(app):
     original_salvar_xml = fiscal_service.salvar_xml_documento_bytes
     original_baixar_xml_completo = fiscal_service.baixar_xml_completo_documento
 
-    def salvar_xml_documento_bytes_com_drive(xml_bytes, nsu=None, drive_service=None):
-        sucesso, mensagem, documento = original_salvar_xml(xml_bytes, nsu=nsu)
+    def salvar_xml_documento_bytes_com_drive(xml_bytes, nsu=None, commit=True, drive_service=None):
+        sucesso, mensagem, documento = original_salvar_xml(xml_bytes, nsu=nsu, commit=commit)
         if not sucesso or not documento:
             return sucesso, mensagem, documento
 

@@ -11,15 +11,18 @@ from app.services.fiscal_service import (
     baixar_xml_completo_documento,
     buscar_certificados,
     buscar_controles_nsu,
+    buscar_historico_consultas_nsu,
     buscar_documentos_fiscais,
     consultar_documentos_sefaz,
     eventos_manifestacao_disponiveis,
+    hipotese_consumo_externo,
     manifestar_documento_fiscal,
     proximo_download_xml_sefaz_permitido,
     proxima_consulta_sefaz_permitida,
     rotulos_status_documento,
     salvar_certificado_a1,
     salvar_xml_documento,
+    status_diagnostico_consulta,
 )
 from app.services.logs_service import registrar_log
 from app.services.financeiro_contas_pagar_service import status_financeiro_xml, titulos_ativos_documento_fiscal
@@ -57,6 +60,9 @@ def documentos():
         titulos_ativos_documento_fiscal=titulos_ativos_documento_fiscal,
         cnpj_consulta=cnpj_consulta,
         consulta_automatica_ativa=current_app.config.get("FISCAL_CONSULTA_AUTOMATICA_ENABLED", False),
+        historico_consultas=buscar_historico_consultas_nsu(cnpj_consulta),
+        status_diagnostico=status_diagnostico_consulta(controle_consulta),
+        hipotese_consumo_externo=hipotese_consumo_externo(controle_consulta),
     )
 
 

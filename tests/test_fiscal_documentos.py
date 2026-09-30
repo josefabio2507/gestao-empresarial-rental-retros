@@ -25,6 +25,7 @@ from app.extensions import db
 from app.models import (
     Departamento,
     FiscalCertificadoA1,
+    FiscalConsultaNSUHistorico,
     FiscalControleNSU,
     FiscalDocumento,
     FiscalManifestacaoNFe,
@@ -236,6 +237,20 @@ class FiscalDocumentosTestCase(unittest.TestCase):
 </retDistDFeInt>
 """
 
+    def _retorno_lote_pendente(self, ultimo_nsu, max_nsu, nsu_documento):
+        doc_zip = base64.b64encode(gzip.compress(XML_RESUMO_NFE)).decode()
+        return f"""<?xml version="1.0" encoding="UTF-8"?>
+<retDistDFeInt xmlns="http://www.portalfiscal.inf.br/nfe" versao="1.01">
+  <cStat>138</cStat>
+  <xMotivo>Documentos localizados</xMotivo>
+  <ultNSU>{ultimo_nsu}</ultNSU>
+  <maxNSU>{max_nsu}</maxNSU>
+  <loteDistDFeInt>
+    <docZip NSU="{nsu_documento}" schema="resNFe_v1.01.xsd">{doc_zip}</docZip>
+  </loteDistDFeInt>
+</retDistDFeInt>
+"""
+
     def _retorno_manifestacao(self):
         return """<?xml version="1.0" encoding="UTF-8"?>
 <retEnvEvento xmlns="http://www.portalfiscal.inf.br/nfe" versao="1.00">
@@ -286,6 +301,20 @@ class FiscalDocumentosTestCase(unittest.TestCase):
                 "ultimo_nsu": ultimo_nsu,
             }
             return self.__class__.resposta_download
+
+    class FakePyNFeClientSequencial:
+        chamadas = []
+        respostas = []
+
+        def __init__(self, certificado_path, senha, uf, homologacao):
+            pass
+
+        def consultar(self, cnpj, ultimo_nsu):
+            self.__class__.chamadas.append({"cnpj": cnpj, "ultimo_nsu": ultimo_nsu})
+            resposta = self.__class__.respostas.pop(0)
+            if isinstance(resposta, Exception):
+                raise resposta
+            return resposta
 
     class FakePyNFeClientManifestacaoErro:
         def __init__(self, certificado_path, senha, uf, homologacao):
@@ -622,6 +651,245 @@ class FiscalDocumentosTestCase(unittest.TestCase):
         self.assertEqual(controle.id, retorno.id)
         self.assertEqual("08026664000131", self.FakePyNFeClient.chamadas[0]["cnpj"])
         self.assertEqual("3826", self.FakePyNFeClient.chamadas[0]["ultimo_nsu"])
+
+    def test_consulta_automatica_nao_espera_quando_ha_lotes_pendentes(self):
+        self.app.config["FISCAL_SEFAZ_CNPJ_AUTOMATICO"] = "08026664000131"
+        sucesso, _, _ = salvar_certificado_a1(
+            {"cnpj_empresa": "08.026.664/0001-31", "razao_social": "Rental", "senha": "segredo"},
+            self._arquivo_certificado(),
+            self.admin,
+        )
+        self.assertTrue(sucesso)
+        db.session.add(
+            FiscalControleNSU(
+                cnpj_empresa="08026664000131",
+                ultimo_nsu="000000000003825",
+                max_nsu="000000000003826",
+                status="Lotes pendentes",
+                consultado_em=datetime.now(),
+            )
+        )
+        db.session.commit()
+        self.FakePyNFeClientSequencial.respostas = [self._retorno_sem_documentos("000000000003826")]
+        self.FakePyNFeClientSequencial.chamadas = []
+
+        sucesso, _, _ = executar_consulta_automatica_sefaz(
+            cliente_cls=self.FakePyNFeClientSequencial,
+        )
+
+        self.assertTrue(sucesso)
+        self.assertEqual("000000000003825", self.FakePyNFeClientSequencial.chamadas[0]["ultimo_nsu"])
+
+    def test_consulta_138_percorre_lotes_pendentes_sem_esperar_uma_hora(self):
+        sucesso, _, _ = salvar_certificado_a1(
+            {
+                "cnpj_empresa": "44.555.666/0001-77",
+                "razao_social": "Rental Retros LTDA",
+                "senha": "segredo",
+            },
+            self._arquivo_certificado(),
+            self.admin,
+        )
+        self.assertTrue(sucesso)
+        controle = FiscalControleNSU(
+            cnpj_empresa="44555666000177",
+            ultimo_nsu="000000000000100",
+            status="Pendente",
+        )
+        db.session.add(controle)
+        db.session.commit()
+        self.FakePyNFeClientSequencial.chamadas = []
+        self.FakePyNFeClientSequencial.respostas = [
+            self._retorno_lote_pendente("000000000000101", "000000000000102", "000000000000101"),
+            self._retorno_lote_pendente("000000000000102", "000000000000102", "000000000000102"),
+        ]
+
+        sucesso, _, controle = consultar_documentos_sefaz(
+            "44.555.666/0001-77",
+            cliente_cls=self.FakePyNFeClientSequencial,
+        )
+
+        self.assertTrue(sucesso)
+        self.assertEqual(
+            ["000000000000100", "000000000000101"],
+            [chamada["ultimo_nsu"] for chamada in self.FakePyNFeClientSequencial.chamadas],
+        )
+        self.assertEqual("000000000000102", controle.ultimo_nsu)
+        self.assertEqual("000000000000102", controle.max_nsu)
+        self.assertEqual("Consultado", controle.status)
+        historicos = FiscalConsultaNSUHistorico.query.order_by(FiscalConsultaNSUHistorico.id).all()
+        self.assertEqual(2, len(historicos))
+        self.assertIsNone(historicos[0].proxima_consulta_em)
+        self.assertIsNotNone(historicos[1].proxima_consulta_em)
+        self.assertEqual("000000000000101", historicos[0].menor_nsu_documento)
+
+    def test_consulta_138_em_dia_programa_intervalo_com_margem(self):
+        sucesso, _, _ = salvar_certificado_a1(
+            {"cnpj_empresa": "44.555.666/0001-77", "razao_social": "Rental", "senha": "segredo"},
+            self._arquivo_certificado(),
+            self.admin,
+        )
+        self.assertTrue(sucesso)
+        self.FakePyNFeClientSequencial.chamadas = []
+        self.FakePyNFeClientSequencial.respostas = [self._retorno_distribuicao_resumo()]
+
+        sucesso, _, controle = consultar_documentos_sefaz(
+            "44.555.666/0001-77",
+            cliente_cls=self.FakePyNFeClientSequencial,
+        )
+
+        self.assertTrue(sucesso)
+        self.assertEqual("138", controle.ultimo_cstat)
+        self.assertEqual(1, controle.documentos_ultima_consulta)
+        self.assertEqual(timedelta(hours=1, minutes=5), controle.proxima_consulta_em - controle.consultado_em)
+
+    def test_consulta_137_atualiza_nsus_e_historico(self):
+        sucesso, _, _ = salvar_certificado_a1(
+            {"cnpj_empresa": "44.555.666/0001-77", "razao_social": "Rental", "senha": "segredo"},
+            self._arquivo_certificado(),
+            self.admin,
+        )
+        self.assertTrue(sucesso)
+        self.FakePyNFeClientSequencial.respostas = [self._retorno_sem_documentos("000000000003826")]
+        self.FakePyNFeClientSequencial.chamadas = []
+
+        sucesso, _, controle = consultar_documentos_sefaz(
+            "44.555.666/0001-77",
+            cliente_cls=self.FakePyNFeClientSequencial,
+        )
+
+        self.assertTrue(sucesso)
+        self.assertEqual("000000000003826", controle.ultimo_nsu)
+        self.assertEqual("000000000003826", controle.max_nsu)
+        historico = FiscalConsultaNSUHistorico.query.one()
+        self.assertEqual("137", historico.cstat)
+        self.assertEqual(0, historico.documentos_quantidade)
+
+    def test_consulta_656_registra_resposta_integral_e_bloqueia(self):
+        sucesso, _, _ = salvar_certificado_a1(
+            {"cnpj_empresa": "44.555.666/0001-77", "razao_social": "Rental", "senha": "segredo"},
+            self._arquivo_certificado(),
+            self.admin,
+        )
+        self.assertTrue(sucesso)
+        resposta = self._retorno_consumo_indevido("000000000003826")
+        self.FakePyNFeClientSequencial.respostas = [resposta]
+        self.FakePyNFeClientSequencial.chamadas = []
+
+        sucesso, _, controle = consultar_documentos_sefaz(
+            "44.555.666/0001-77",
+            cliente_cls=self.FakePyNFeClientSequencial,
+        )
+
+        self.assertFalse(sucesso)
+        self.assertEqual("656", controle.ultimo_cstat)
+        historico = FiscalConsultaNSUHistorico.query.one()
+        self.assertEqual(resposta, historico.resposta_xml)
+        self.assertEqual("000000000003826", historico.nsu_gravado)
+        self.assertIsNotNone(historico.proxima_consulta_em)
+
+    def test_falha_conexao_registra_erro_sem_repeticao_imediata(self):
+        sucesso, _, _ = salvar_certificado_a1(
+            {"cnpj_empresa": "44.555.666/0001-77", "razao_social": "Rental", "senha": "segredo"},
+            self._arquivo_certificado(),
+            self.admin,
+        )
+        self.assertTrue(sucesso)
+        self.FakePyNFeClientSequencial.respostas = [RuntimeError("conexao indisponivel")]
+        self.FakePyNFeClientSequencial.chamadas = []
+
+        sucesso, mensagem, controle = consultar_documentos_sefaz(
+            "44.555.666/0001-77",
+            cliente_cls=self.FakePyNFeClientSequencial,
+        )
+
+        self.assertFalse(sucesso)
+        self.assertIn("conexao indisponivel", mensagem)
+        self.assertIsNotNone(controle.proxima_consulta_em)
+        historico = FiscalConsultaNSUHistorico.query.one()
+        self.assertEqual("Erro técnico", historico.gravacao_status)
+
+    def test_excecao_no_commit_nao_altera_nsu_persistido(self):
+        sucesso, _, _ = salvar_certificado_a1(
+            {"cnpj_empresa": "44.555.666/0001-77", "razao_social": "Rental", "senha": "segredo"},
+            self._arquivo_certificado(),
+            self.admin,
+        )
+        self.assertTrue(sucesso)
+        controle = FiscalControleNSU(cnpj_empresa="44555666000177", ultimo_nsu="000000000000100")
+        db.session.add(controle)
+        db.session.commit()
+        self.FakePyNFeClientSequencial.respostas = [self._retorno_sem_documentos("000000000000101")]
+        self.FakePyNFeClientSequencial.chamadas = []
+
+        with patch.object(db.session, "commit", side_effect=RuntimeError("commit falhou")):
+            sucesso, mensagem, _ = consultar_documentos_sefaz(
+                "44.555.666/0001-77",
+                cliente_cls=self.FakePyNFeClientSequencial,
+            )
+
+        self.assertFalse(sucesso)
+        self.assertIn("commit falhou", mensagem)
+        db.session.expire_all()
+        controle = FiscalControleNSU.query.filter_by(cnpj_empresa="44555666000177").one()
+        self.assertEqual("000000000000100", controle.ultimo_nsu)
+        self.assertEqual(0, FiscalConsultaNSUHistorico.query.count())
+
+    def test_execucao_simultanea_e_recusada_antes_de_consultar(self):
+        from app.services import fiscal_service
+
+        fiscal_service._trava_consulta_sefaz_local.acquire()
+        self.FakePyNFeClientSequencial.chamadas = []
+        try:
+            sucesso, mensagem, _ = consultar_documentos_sefaz(
+                "44.555.666/0001-77",
+                cliente_cls=self.FakePyNFeClientSequencial,
+            )
+        finally:
+            fiscal_service._trava_consulta_sefaz_local.release()
+
+        self.assertFalse(sucesso)
+        self.assertIn("em andamento", mensagem)
+        self.assertEqual([], self.FakePyNFeClientSequencial.chamadas)
+
+    def test_reinicio_processo_recarrega_nsu_persistido_com_zeros(self):
+        sucesso, _, _ = salvar_certificado_a1(
+            {"cnpj_empresa": "44.555.666/0001-77", "razao_social": "Rental", "senha": "segredo"},
+            self._arquivo_certificado(),
+            self.admin,
+        )
+        self.assertTrue(sucesso)
+        controle = FiscalControleNSU(
+            cnpj_empresa="44555666000177",
+            ultimo_nsu="000000000003826",
+            status="Consultado",
+            consultado_em=datetime.now() - timedelta(hours=2),
+            proxima_consulta_em=datetime.now() - timedelta(minutes=1),
+        )
+        db.session.add(controle)
+        db.session.commit()
+        db.session.remove()
+        self.FakePyNFeClientSequencial.respostas = [self._retorno_sem_documentos("000000000003826")]
+        self.FakePyNFeClientSequencial.chamadas = []
+
+        sucesso, _, _ = consultar_documentos_sefaz(
+            "44.555.666/0001-77",
+            cliente_cls=self.FakePyNFeClientSequencial,
+        )
+
+        self.assertTrue(sucesso)
+        self.assertEqual("000000000003826", self.FakePyNFeClientSequencial.chamadas[0]["ultimo_nsu"])
+
+    def test_rotina_automatica_recusa_outro_cnpj(self):
+        sucesso, mensagem, controle = consultar_documentos_sefaz(
+            "44.555.666/0001-77",
+            cliente_cls=self.FakePyNFeClientSequencial,
+            origem="automatica",
+        )
+
+        self.assertFalse(sucesso)
+        self.assertIn("não autorizado", mensagem)
+        self.assertIsNone(controle)
 
     def test_consumo_indevido_salva_nsu_e_bloqueia_nova_consulta_por_uma_hora(self):
         sucesso, _, _ = salvar_certificado_a1(

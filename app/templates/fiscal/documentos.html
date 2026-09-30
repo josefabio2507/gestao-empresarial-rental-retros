@@ -209,6 +209,87 @@
     </div>
 
     <div class="table-card table-responsive">
+        <h2>Diagnóstico da consulta SEFAZ</h2>
+        {% if controle_consulta %}
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>CNPJ monitorado</th>
+                        <th>Último NSU salvo</th>
+                        <th>Último maxNSU</th>
+                        <th>Última consulta</th>
+                        <th>cStat</th>
+                        <th>Motivo</th>
+                        <th>Próxima consulta</th>
+                        <th>Documentos</th>
+                        <th>Situação</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>{{ controle_consulta.cnpj_empresa }}</td>
+                        <td>{{ controle_consulta.ultimo_nsu }}</td>
+                        <td>{{ controle_consulta.max_nsu or "-" }}</td>
+                        <td>{{ controle_consulta.consultado_em.strftime("%d/%m/%Y %H:%M") if controle_consulta.consultado_em else "-" }}</td>
+                        <td>{{ controle_consulta.ultimo_cstat or "-" }}</td>
+                        <td>{{ controle_consulta.ultimo_motivo or controle_consulta.mensagem or "-" }}</td>
+                        <td>{{ controle_consulta.proxima_consulta_em.strftime("%d/%m/%Y %H:%M") if controle_consulta.proxima_consulta_em else "Liberada" }}</td>
+                        <td>{{ controle_consulta.documentos_ultima_consulta }}</td>
+                        <td><span class="badge {{ 'badge-success' if status_diagnostico == 'Em dia' else 'badge-warning' }}">{{ status_diagnostico }}</span></td>
+                    </tr>
+                </tbody>
+            </table>
+            {% if hipotese_consumo_externo %}
+                <p class="alert alert-warning">{{ hipotese_consumo_externo }}</p>
+            {% endif %}
+        {% else %}
+            <p class="empty-state">Ainda não existe estado de sincronização para o CNPJ monitorado.</p>
+        {% endif %}
+    </div>
+
+    <div class="table-card table-responsive">
+        <h2>Histórico de consultas SEFAZ</h2>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Data/hora</th>
+                    <th>Origem</th>
+                    <th>NSU enviado</th>
+                    <th>cStat</th>
+                    <th>ultNSU recebido</th>
+                    <th>maxNSU recebido</th>
+                    <th>Documentos</th>
+                    <th>Faixa do lote</th>
+                    <th>NSU gravado</th>
+                    <th>Gravação</th>
+                    <th>Próxima consulta</th>
+                    <th>Erro</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for consulta in historico_consultas %}
+                    <tr>
+                        <td>{{ consulta.consultado_em.strftime("%d/%m/%Y %H:%M:%S") }}</td>
+                        <td>{{ consulta.origem }}</td>
+                        <td>{{ consulta.nsu_enviado }}</td>
+                        <td>{{ consulta.cstat or "-" }}</td>
+                        <td>{{ consulta.ultimo_nsu_recebido or "-" }}</td>
+                        <td>{{ consulta.max_nsu_recebido or "-" }}</td>
+                        <td>{{ consulta.documentos_quantidade }}</td>
+                        <td>{{ consulta.menor_nsu_documento or "-" }} → {{ consulta.maior_nsu_documento or "-" }}</td>
+                        <td>{{ consulta.nsu_gravado or "-" }}</td>
+                        <td>{{ consulta.gravacao_status }}</td>
+                        <td>{{ consulta.proxima_consulta_em.strftime("%d/%m/%Y %H:%M") if consulta.proxima_consulta_em else "Imediata" }}</td>
+                        <td>{{ consulta.erro_tecnico or "-" }}</td>
+                    </tr>
+                {% else %}
+                    <tr><td class="empty-state" colspan="12">Nenhuma tentativa registrada no novo histórico.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="table-card table-responsive">
         <h2>Controle de NSU</h2>
         <table class="table">
             <thead>

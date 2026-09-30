@@ -3,7 +3,9 @@ import re
 import base64
 import gzip
 import tempfile
+import threading
 import uuid
+from contextlib import contextmanager
 from importlib import metadata
 from datetime import datetime, timedelta
 from decimal import Decimal, InvalidOperation
@@ -17,12 +19,19 @@ from lxml import etree
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 import requests
+from sqlalchemy import text
 from signxml import XMLSigner, methods
 from werkzeug.security import generate_password_hash
 from werkzeug.utils import secure_filename
 
 from app.extensions import db
-from app.models import FiscalCertificadoA1, FiscalControleNSU, FiscalDocumento, FiscalManifestacaoNFe
+from app.models import (
+    FiscalCertificadoA1,
+    FiscalConsultaNSUHistorico,
+    FiscalControleNSU,
+    FiscalDocumento,
+    FiscalManifestacaoNFe,
+)
 from app.utils.datas import agora_brasil
 
 
@@ -104,9 +113,13 @@ MENSAGEM_MANIFESTACAO_FALHOU = (
     "Verifique o certificado, o ambiente configurado e tente novamente."
 )
 BLOQUEIO_CONSULTA_SEFAZ = timedelta(hours=1)
+MARGEM_CONSULTA_SEFAZ = timedelta(minutes=5)
 BLOQUEIO_DOWNLOAD_XML_SEFAZ = timedelta(hours=1)
 TIMEOUT_CONSULTA_SEFAZ_SEGUNDOS = 20
 STATUS_CONTROLE_COM_ESPERA = {"Consultado", "Uso indevido", "Sem novos documentos"}
+CNPJ_CONSULTA_AUTOMATICA = "08026664000131"
+CHAVE_TRAVA_CONSULTA_SEFAZ = 8026664000131
+_trava_consulta_sefaz_local = threading.Lock()
 
 STATUS_DOCUMENTOS_FISCAIS = [
     STATUS_RESUMO_LOCALIZADO,
@@ -319,7 +332,7 @@ def gerar_danfe_pdf(documento):
     return caminho
 
 
-def salvar_xml_documento_bytes(xml_bytes, nsu=None):
+def salvar_xml_documento_bytes(xml_bytes, nsu=None, commit=True):
     if not xml_bytes:
         return False, "Envie um arquivo XML válido.", None
 
@@ -347,7 +360,10 @@ def salvar_xml_documento_bytes(xml_bytes, nsu=None):
         existente.xml_completo_baixado_em = agora_brasil()
         existente.ultima_consulta_em = agora_brasil()
         existente.danfe_path = gerar_danfe_pdf(existente)
-        db.session.commit()
+        if commit:
+            db.session.commit()
+        else:
+            db.session.flush()
         return True, "XML já existia na Central Fiscal e foi atualizado.", existente
 
     documento = FiscalDocumento(
@@ -363,11 +379,14 @@ def salvar_xml_documento_bytes(xml_bytes, nsu=None):
     db.session.add(documento)
     db.session.flush()
     documento.danfe_path = gerar_danfe_pdf(documento)
-    db.session.commit()
+    if commit:
+        db.session.commit()
+    else:
+        db.session.flush()
     return True, "XML armazenado e DANFE gerado com sucesso.", documento
 
 
-def salvar_resumo_nfe_bytes(xml_bytes, nsu=None, cnpj_destinatario=None):
+def salvar_resumo_nfe_bytes(xml_bytes, nsu=None, cnpj_destinatario=None, commit=True):
     if not xml_bytes:
         return False, "Resumo de NF-e vazio.", None
 
@@ -386,7 +405,10 @@ def salvar_resumo_nfe_bytes(xml_bytes, nsu=None, cnpj_destinatario=None):
     documento = FiscalDocumento.query.filter_by(chave_acesso=metadados["chave_acesso"]).first()
     if documento and documento.tem_xml_completo:
         documento.ultima_consulta_em = agora_brasil()
-        db.session.commit()
+        if commit:
+            db.session.commit()
+        else:
+            db.session.flush()
         return True, "Resumo ignorado porque o XML completo ja esta armazenado.", documento
 
     if not documento:
@@ -413,7 +435,10 @@ def salvar_resumo_nfe_bytes(xml_bytes, nsu=None, cnpj_destinatario=None):
         documento.manifestacao_status = documento.manifestacao_status or STATUS_AGUARDANDO_MANIFESTACAO
         documento.ultima_consulta_em = agora_brasil()
 
-    db.session.commit()
+    if commit:
+        db.session.commit()
+    else:
+        db.session.flush()
     return True, "Resumo da NF-e localizado e aguardando manifestacao.", documento
 
 
@@ -1066,8 +1091,11 @@ def processar_resposta_distribuicao_dfe(xml_resposta, cnpj_destinatario=None):
     importados = 0
     resumos = 0
     ignorados = 0
+    nsus_documentos = []
 
     for nsu, schema, conteudo in _doczips(raiz):
+        if nsu:
+            nsus_documentos.append(nsu)
         try:
             xml_documento = _xml_doczip(conteudo)
         except (OSError, ValueError):
@@ -1080,6 +1108,7 @@ def processar_resposta_distribuicao_dfe(xml_resposta, cnpj_destinatario=None):
                 xml_documento,
                 nsu=nsu,
                 cnpj_destinatario=cnpj_destinatario,
+                commit=False,
             )
             if sucesso:
                 resumos += 1
@@ -1091,7 +1120,7 @@ def processar_resposta_distribuicao_dfe(xml_resposta, cnpj_destinatario=None):
             ignorados += 1
             continue
 
-        sucesso, _, _ = salvar_xml_documento_bytes(xml_documento, nsu=nsu)
+        sucesso, _, _ = salvar_xml_documento_bytes(xml_documento, nsu=nsu, commit=False)
         if sucesso:
             importados += 1
         else:
@@ -1105,10 +1134,23 @@ def processar_resposta_distribuicao_dfe(xml_resposta, cnpj_destinatario=None):
         "importados": importados,
         "resumos": resumos,
         "ignorados": ignorados,
+        "documentos_quantidade": len(nsus_documentos),
+        "nsus_documentos": nsus_documentos,
+        "menor_nsu_documento": min(nsus_documentos, key=lambda valor: int(valor)) if nsus_documentos else None,
+        "maior_nsu_documento": max(nsus_documentos, key=lambda valor: int(valor)) if nsus_documentos else None,
+        "resposta_xml": xml_bytes.decode(errors="replace"),
     }
 
 
 def proxima_consulta_sefaz_permitida(controle, agora=None):
+    if controle and controle.proxima_consulta_em:
+        return (
+            controle.proxima_consulta_em
+            if controle.proxima_consulta_em > (agora or agora_brasil())
+            else None
+        )
+    if controle and _nsu_inteiro(controle.ultimo_nsu) < _nsu_inteiro(controle.max_nsu):
+        return None
     if (
         not controle
         or controle.status not in STATUS_CONTROLE_COM_ESPERA
@@ -1116,7 +1158,7 @@ def proxima_consulta_sefaz_permitida(controle, agora=None):
     ):
         return None
 
-    liberado_em = controle.consultado_em + BLOQUEIO_CONSULTA_SEFAZ
+    liberado_em = controle.consultado_em + BLOQUEIO_CONSULTA_SEFAZ + MARGEM_CONSULTA_SEFAZ
     return liberado_em if liberado_em > (agora or agora_brasil()) else None
 
 
@@ -1189,7 +1231,7 @@ def _atualizar_controle_distribuicao(controle, resultado, consultado_em=None):
     if resultado["cstat"] == "137":
         controle.status = "Sem novos documentos"
     elif resultado["cstat"] == "138":
-        controle.status = "Consultado"
+        controle.status = "Lotes pendentes" if _lotes_pendentes(resultado) else "Consultado"
     elif resultado["cstat"] == "656":
         controle.status = "Uso indevido"
     else:
@@ -1201,13 +1243,91 @@ def _atualizar_controle_distribuicao(controle, resultado, consultado_em=None):
         f"Resumos localizados: {resultado['resumos']}. "
         f"Documentos ignorados/resumidos: {resultado['ignorados']}."
     )
+    controle.ultimo_cstat = resultado["cstat"] or None
+    controle.ultimo_motivo = resultado["motivo"] or None
+    controle.documentos_ultima_consulta = resultado["documentos_quantidade"]
+    controle.proxima_consulta_em = (
+        None
+        if _lotes_pendentes(resultado)
+        else controle.consultado_em + BLOQUEIO_CONSULTA_SEFAZ + MARGEM_CONSULTA_SEFAZ
+    )
 
     if resultado["cstat"] == "656":
-        liberado_em = controle.consultado_em + BLOQUEIO_CONSULTA_SEFAZ
+        liberado_em = controle.proxima_consulta_em
         controle.mensagem = (
             f"{controle.mensagem} O último NSU informado pela Sefaz foi salvo. "
             f"Novas consultas ficarão bloqueadas até {liberado_em.strftime('%d/%m/%Y às %H:%M')}."
         )
+
+
+def _nsu_inteiro(valor):
+    try:
+        return int(valor or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _lotes_pendentes(resultado):
+    return (
+        resultado.get("cstat") == "138"
+        and _nsu_inteiro(resultado.get("ultimo_nsu")) < _nsu_inteiro(resultado.get("max_nsu"))
+    )
+
+
+def _registrar_historico_consulta(
+    controle,
+    origem,
+    consultado_em,
+    nsu_enviado,
+    resultado=None,
+    erro_tecnico=None,
+    gravacao_status="Gravado",
+):
+    resultado = resultado or {}
+    historico = FiscalConsultaNSUHistorico(
+        cnpj_empresa=controle.cnpj_empresa,
+        origem=origem,
+        consultado_em=consultado_em,
+        nsu_enviado=nsu_enviado or "0",
+        cstat=resultado.get("cstat") or None,
+        motivo=resultado.get("motivo") or None,
+        ultimo_nsu_recebido=resultado.get("ultimo_nsu") or None,
+        max_nsu_recebido=resultado.get("max_nsu") or None,
+        documentos_quantidade=resultado.get("documentos_quantidade", 0),
+        menor_nsu_documento=resultado.get("menor_nsu_documento"),
+        maior_nsu_documento=resultado.get("maior_nsu_documento"),
+        nsu_gravado=controle.ultimo_nsu,
+        gravacao_status=gravacao_status,
+        proxima_consulta_em=controle.proxima_consulta_em,
+        erro_tecnico=erro_tecnico,
+        resposta_xml=resultado.get("resposta_xml") if resultado.get("cstat") == "656" else None,
+    )
+    db.session.add(historico)
+    return historico
+
+
+@contextmanager
+def _trava_consulta_sefaz(cnpj):
+    if db.engine.dialect.name != "postgresql":
+        adquiriu = _trava_consulta_sefaz_local.acquire(blocking=False)
+        try:
+            yield adquiriu
+        finally:
+            if adquiriu:
+                _trava_consulta_sefaz_local.release()
+        return
+
+    chave = int(cnpj) if cnpj.isdigit() else CHAVE_TRAVA_CONSULTA_SEFAZ
+    adquiriu = bool(
+        db.session.execute(
+            text("SELECT pg_try_advisory_xact_lock(:chave)"),
+            {"chave": chave},
+        ).scalar()
+    )
+    try:
+        yield adquiriu
+    finally:
+        db.session.rollback()
 
 
 def certificado_ativo_empresa(cnpj):
@@ -1219,61 +1339,127 @@ def certificado_ativo_empresa(cnpj):
     )
 
 
-def consultar_documentos_sefaz(cnpj_empresa, cliente_cls=None):
+def consultar_documentos_sefaz(cnpj_empresa, cliente_cls=None, origem="manual"):
     cnpj = somente_digitos(cnpj_empresa)
     if len(cnpj) != 14:
         return False, "Informe o CNPJ da Rental Retros para consulta.", None
+    if origem == "automatica" and cnpj != CNPJ_CONSULTA_AUTOMATICA:
+        return False, "CNPJ automático não autorizado.", None
 
-    controle = FiscalControleNSU.query.filter_by(cnpj_empresa=cnpj).first()
-    if not controle:
-        controle = FiscalControleNSU(cnpj_empresa=cnpj, ultimo_nsu="0")
-        db.session.add(controle)
-        db.session.flush()
+    with _trava_consulta_sefaz(cnpj) as adquiriu:
+        if not adquiriu:
+            controle = FiscalControleNSU.query.filter_by(cnpj_empresa=cnpj).first()
+            return False, "Já existe uma consulta à Sefaz em andamento para este CNPJ.", controle
 
-    mensagem_bloqueio = _mensagem_consulta_bloqueada(controle)
-    if mensagem_bloqueio:
-        return False, mensagem_bloqueio, controle
+        controle = FiscalControleNSU.query.filter_by(cnpj_empresa=cnpj).first()
+        if not controle:
+            controle = FiscalControleNSU(cnpj_empresa=cnpj, ultimo_nsu="0")
+            db.session.add(controle)
+            db.session.flush()
 
-    consultado_em = agora_brasil()
-    controle.consultado_em = consultado_em
-    certificado = certificado_ativo_empresa(cnpj)
-    if not certificado:
-        controle.status = "Aguardando certificado"
-        controle.mensagem = "Cadastre um certificado A1 ativo para este CNPJ antes de consultar a Sefaz."
-        db.session.commit()
-        return False, controle.mensagem, controle
+        mensagem_bloqueio = _mensagem_consulta_bloqueada(controle)
+        if mensagem_bloqueio:
+            return False, mensagem_bloqueio, controle
 
-    uf = (current_app.config.get("FISCAL_SEFAZ_UF") or "").strip().lower()
-    if not uf:
-        controle.status = "Aguardando configuração"
-        controle.mensagem = "Configure FISCAL_SEFAZ_UF para consultar a Sefaz com PyNFe."
-        db.session.commit()
-        return False, controle.mensagem, controle
+        certificado = certificado_ativo_empresa(cnpj)
+        if not certificado:
+            controle.status = "Aguardando certificado"
+            controle.mensagem = "Cadastre um certificado A1 ativo para este CNPJ antes de consultar a Sefaz."
+            db.session.commit()
+            return False, controle.mensagem, controle
 
-    try:
-        senha = descriptografar_senha_certificado(certificado)
-        cliente = (cliente_cls or PyNFeDistribuicaoClient)(
-            certificado.arquivo_path,
-            senha,
-            uf,
-            current_app.config.get("FISCAL_SEFAZ_HOMOLOGACAO", False),
+        uf = (current_app.config.get("FISCAL_SEFAZ_UF") or "").strip().lower()
+        if not uf:
+            controle.status = "Aguardando configuração"
+            controle.mensagem = "Configure FISCAL_SEFAZ_UF para consultar a Sefaz com PyNFe."
+            db.session.commit()
+            return False, controle.mensagem, controle
+
+        try:
+            senha = descriptografar_senha_certificado(certificado)
+            cliente = (cliente_cls or PyNFeDistribuicaoClient)(
+                certificado.arquivo_path,
+                senha,
+                uf,
+                current_app.config.get("FISCAL_SEFAZ_HOMOLOGACAO", False),
+            )
+        except Exception as exc:
+            controle.status = "Erro"
+            controle.mensagem = f"Falha ao preparar consulta Sefaz: {exc}"
+            db.session.commit()
+            return False, controle.mensagem, controle
+
+        limite_lotes = max(1, int(current_app.config.get("FISCAL_SEFAZ_MAX_LOTES_POR_CICLO", 50)))
+        ultimo_resultado = None
+
+        for indice_lote in range(limite_lotes):
+            db.session.flush()
+            db.session.expire_all()
+            controle = (
+                FiscalControleNSU.query
+                .filter_by(cnpj_empresa=cnpj)
+                .populate_existing()
+                .one()
+            )
+            nsu_enviado = controle.ultimo_nsu
+            consultado_em = agora_brasil()
+            controle.consultado_em = consultado_em
+
+            try:
+                resposta = cliente.consultar(cnpj, nsu_enviado)
+                resultado = processar_resposta_distribuicao_dfe(resposta, cnpj_destinatario=cnpj)
+            except Exception as exc:
+                erro = str(exc)
+                controle.status = "Aguardando integração" if isinstance(exc, FiscalIntegracaoErro) else "Erro"
+                controle.mensagem = erro if isinstance(exc, FiscalIntegracaoErro) else f"Falha ao consultar Sefaz: {erro}"
+                controle.proxima_consulta_em = consultado_em + BLOQUEIO_CONSULTA_SEFAZ + MARGEM_CONSULTA_SEFAZ
+                _registrar_historico_consulta(
+                    controle,
+                    origem,
+                    consultado_em,
+                    nsu_enviado,
+                    erro_tecnico=erro,
+                    gravacao_status="Erro técnico",
+                )
+                db.session.commit()
+                return False, controle.mensagem, controle
+
+            _atualizar_controle_distribuicao(controle, resultado, consultado_em=consultado_em)
+            _registrar_historico_consulta(
+                controle,
+                origem,
+                consultado_em,
+                nsu_enviado,
+                resultado=resultado,
+            )
+            ultimo_resultado = resultado
+
+            if not _lotes_pendentes(resultado):
+                try:
+                    db.session.commit()
+                except Exception as exc:
+                    db.session.rollback()
+                    controle = FiscalControleNSU.query.filter_by(cnpj_empresa=cnpj).first()
+                    return False, f"Falha ao gravar o retorno da Sefaz: {exc}", controle
+                return resultado["cstat"] != "656", controle.mensagem, controle
+
+        controle.status = "Lotes pendentes"
+        controle.proxima_consulta_em = agora_brasil() + timedelta(minutes=1)
+        controle.mensagem = (
+            f"Limite de {limite_lotes} lotes atingido com documentos ainda pendentes. "
+            "O ciclo continuará automaticamente na próxima verificação."
         )
-        resposta = cliente.consultar(cnpj, controle.ultimo_nsu)
-        resultado = processar_resposta_distribuicao_dfe(resposta, cnpj_destinatario=cnpj)
-    except FiscalIntegracaoErro as exc:
-        controle.status = "Aguardando integração"
-        controle.mensagem = str(exc)
+        if ultimo_resultado:
+            ultimo_historico = (
+                FiscalConsultaNSUHistorico.query
+                .filter_by(cnpj_empresa=cnpj)
+                .order_by(FiscalConsultaNSUHistorico.id.desc())
+                .first()
+            )
+            if ultimo_historico:
+                ultimo_historico.proxima_consulta_em = controle.proxima_consulta_em
         db.session.commit()
-        return False, controle.mensagem, controle
-    except Exception as exc:
-        controle.status = "Erro"
-        controle.mensagem = f"Falha ao consultar Sefaz: {exc}"
-        db.session.commit()
-        return False, controle.mensagem, controle
-
-    _atualizar_controle_distribuicao(controle, resultado, consultado_em=consultado_em)
-    db.session.commit()
-    return resultado["cstat"] != "656", controle.mensagem, controle
+        return True, controle.mensagem, controle
 
 
 def _cliente_fiscal_documento(documento, cliente_cls=None):
@@ -1466,3 +1652,39 @@ def buscar_certificados():
 
 def buscar_controles_nsu():
     return FiscalControleNSU.query.order_by(FiscalControleNSU.cnpj_empresa.asc()).all()
+
+
+def buscar_historico_consultas_nsu(cnpj_empresa, limite=30):
+    cnpj = somente_digitos(cnpj_empresa)
+    return (
+        FiscalConsultaNSUHistorico.query
+        .filter_by(cnpj_empresa=cnpj)
+        .order_by(FiscalConsultaNSUHistorico.consultado_em.desc(), FiscalConsultaNSUHistorico.id.desc())
+        .limit(limite)
+        .all()
+    )
+
+
+def status_diagnostico_consulta(controle, agora=None):
+    if not controle:
+        return "Erro"
+    if controle.ultimo_cstat == "656" or controle.status == "Uso indevido":
+        return "Bloqueada por consumo indevido"
+    if controle.status in {"Erro", "Aguardando integração", "Aguardando certificado", "Aguardando configuração"}:
+        return "Erro"
+    if _nsu_inteiro(controle.ultimo_nsu) < _nsu_inteiro(controle.max_nsu):
+        return "Existem lotes pendentes"
+    if proxima_consulta_sefaz_permitida(controle, agora=agora):
+        return "Aguardando janela SEFAZ"
+    return "Em dia"
+
+
+def hipotese_consumo_externo(controle):
+    if not controle or controle.ultimo_cstat != "656":
+        return ""
+    return (
+        "Hipótese compatível com consumo externo: a Sefaz retornou cStat 656 para o CNPJ monitorado. "
+        f"O estado conhecido é ultNSU={controle.ultimo_nsu or '-'} e maxNSU={controle.max_nsu or '-'}. "
+        "Esse retorno pode ser provocado por outro ERP, contador ou aplicação, mas não confirma sozinho "
+        "qual sistema realizou a consulta."
+    )
