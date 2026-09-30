@@ -260,7 +260,12 @@ def listar_empresas_transporte_ativas():
 
 
 def buscar_colaborador_por_id(colaborador_id):
-    return Colaborador.query.get(colaborador_id)
+    try:
+        colaborador_id = normalizar_id_opcional(colaborador_id, "Colaborador")
+    except ValueError:
+        return None
+
+    return Colaborador.query.get(colaborador_id) if colaborador_id else None
 
 
 def buscar_vinculo_por_id(vinculo_id):
@@ -304,6 +309,17 @@ def salvar_vinculo_colaborador_linha(
 
     if not colaborador.vale_transporte_optante:
         return False, "Este colaborador não está marcado como optante de Vale Transporte."
+
+    try:
+        linha_onibus_id = normalizar_id_opcional(
+            linha_onibus_id,
+            "Linha de ônibus",
+        )
+    except ValueError:
+        return False, "Selecione uma linha de ônibus ativa."
+
+    if not linha_onibus_id:
+        return False, "Selecione uma linha de ônibus ativa."
 
     linha = LinhaOnibus.query.filter_by(
         id=linha_onibus_id,

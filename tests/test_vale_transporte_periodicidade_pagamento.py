@@ -49,14 +49,26 @@ class ValeTransportePeriodicidadePagamentoTestCase(unittest.TestCase):
     def test_salva_periodicidade_semanal_no_vinculo(self):
         sucesso, mensagem = salvar_vinculo_colaborador_linha(
             colaborador=self.colaborador,
-            linha_onibus_id=self.linha.id,
+            linha_onibus_id=str(self.linha.id),
             tipo_pagamento="dinheiro",
             periodicidade_pagamento="semanal",
         )
 
         self.assertTrue(sucesso, mensagem)
         vinculo = self.colaborador.linhas_vale_transporte[0]
+        self.assertEqual(self.linha.id, vinculo.linha_onibus_id)
         self.assertEqual("semanal", vinculo.periodicidade_pagamento)
+
+    def test_rejeita_identificador_de_linha_invalido_sem_consultar_com_texto(self):
+        sucesso, mensagem = salvar_vinculo_colaborador_linha(
+            colaborador=self.colaborador,
+            linha_onibus_id="linha-invalida",
+            tipo_pagamento="dinheiro",
+            periodicidade_pagamento="semanal",
+        )
+
+        self.assertFalse(sucesso)
+        self.assertEqual("Selecione uma linha de ônibus ativa.", mensagem)
 
     def test_rejeita_periodicidade_invalida(self):
         sucesso, mensagem = salvar_vinculo_colaborador_linha(
