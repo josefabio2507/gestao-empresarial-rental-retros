@@ -54,21 +54,16 @@ def _trava_consulta_automatica():
                 _trava_local.release()
         return
 
-    with db.engine.connect() as conexao:
-        adquiriu = bool(
-            conexao.execute(
-                text("SELECT pg_try_advisory_lock(:chave)"),
-                {"chave": CHAVE_TRAVA_POSTGRES},
-            ).scalar()
-        )
-        try:
-            yield adquiriu
-        finally:
-            if adquiriu:
-                conexao.execute(
-                    text("SELECT pg_advisory_unlock(:chave)"),
-                    {"chave": CHAVE_TRAVA_POSTGRES},
-                )
+    adquiriu = bool(
+        db.session.execute(
+            text("SELECT pg_try_advisory_xact_lock(:chave)"),
+            {"chave": CHAVE_TRAVA_POSTGRES},
+        ).scalar()
+    )
+    try:
+        yield adquiriu
+    finally:
+        db.session.rollback()
 
 
 def _ciclo_consulta_automatica(app, parar):
