@@ -84,6 +84,20 @@ class Config:
     FISCAL_CERTIFICADO_CRYPTO_KEY = os.getenv("FISCAL_CERTIFICADO_CRYPTO_KEY", "").strip()
     FISCAL_SEFAZ_UF = os.getenv("FISCAL_SEFAZ_UF", "SP").strip().lower()
     FISCAL_SEFAZ_HOMOLOGACAO = os.getenv("FISCAL_SEFAZ_HOMOLOGACAO", "false").lower() == "true"
+    FISCAL_SEFAZ_CNPJ_AUTOMATICO = os.getenv(
+        "FISCAL_SEFAZ_CNPJ_AUTOMATICO",
+        "08026664000131",
+    ).strip()
+    FISCAL_CONSULTA_AUTOMATICA_ENABLED = os.getenv(
+        "FISCAL_CONSULTA_AUTOMATICA_ENABLED",
+        "true" if SQLALCHEMY_DATABASE_URI.startswith("postgresql://") else "false",
+    ).lower() == "true"
+    FISCAL_CONSULTA_AUTOMATICA_INTERVALO_SEGUNDOS = int(
+        os.getenv("FISCAL_CONSULTA_AUTOMATICA_INTERVALO_SEGUNDOS", "60")
+    )
+    FISCAL_CONSULTA_AUTOMATICA_MARGEM_MINUTOS = int(
+        os.getenv("FISCAL_CONSULTA_AUTOMATICA_MARGEM_MINUTOS", "5")
+    )
     FISCAL_SEFAZ_RECEPCAO_EVENTO_URL = os.getenv(
         "FISCAL_SEFAZ_RECEPCAO_EVENTO_URL",
         "",

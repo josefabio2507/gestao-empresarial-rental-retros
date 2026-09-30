@@ -86,14 +86,13 @@
         </div>
     </form>
 
-    {% set controle_consulta = controles_nsu|first %}
     {% set proxima_consulta_form = proxima_consulta_sefaz_permitida(controle_consulta) %}
     <form class="form-card" method="POST" action="{{ url_for('fiscal.consultar_sefaz') }}">
         <h2>Consulta NF-e por NSU</h2>
         <div class="form-grid">
             <div class="form-group">
                 <label for="cnpj_empresa">CNPJ Rental Retros</label>
-                <input id="cnpj_empresa" name="cnpj_empresa" inputmode="numeric" maxlength="18" required>
+                <input id="cnpj_empresa" name="cnpj_empresa" inputmode="numeric" maxlength="18" value="{{ cnpj_consulta }}" readonly required>
             </div>
         </div>
         <div class="form-actions">
@@ -105,6 +104,9 @@
                 <button class="btn btn-primary" type="submit">Consultar Sefaz</button>
             {% endif %}
         </div>
+        {% if consulta_automatica_ativa %}
+            <p class="form-hint">Consulta automática ativa para este CNPJ, com intervalo de segurança de 1 hora e 5 minutos.</p>
+        {% endif %}
     </form>
 
     <div class="table-card">

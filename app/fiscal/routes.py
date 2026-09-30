@@ -1,6 +1,6 @@
 import os
 
-from flask import flash, redirect, render_template, request, send_file, url_for
+from flask import current_app, flash, redirect, render_template, request, send_file, url_for
 from flask_login import current_user, login_required
 
 from app.decorators import module_permission_required
@@ -36,18 +36,27 @@ def index():
 @login_required
 @module_permission_required("fiscal", "documentos_fiscais", "visualizar")
 def documentos():
+    cnpj_consulta = current_app.config.get("FISCAL_SEFAZ_CNPJ_AUTOMATICO", "")
+    controles_nsu = buscar_controles_nsu()
+    controle_consulta = next(
+        (controle for controle in controles_nsu if controle.cnpj_empresa == cnpj_consulta),
+        None,
+    )
     return render_template(
         "fiscal/documentos.html",
         documentos=buscar_documentos_fiscais(request.args),
         filtros=request.args,
         certificados=buscar_certificados(),
-        controles_nsu=buscar_controles_nsu(),
+        controles_nsu=controles_nsu,
+        controle_consulta=controle_consulta,
         status_documentos=rotulos_status_documento(),
         eventos_manifestacao=eventos_manifestacao_disponiveis(),
         proximo_download_xml_sefaz_permitido=proximo_download_xml_sefaz_permitido,
         proxima_consulta_sefaz_permitida=proxima_consulta_sefaz_permitida,
         status_financeiro_xml=status_financeiro_xml,
         titulos_ativos_documento_fiscal=titulos_ativos_documento_fiscal,
+        cnpj_consulta=cnpj_consulta,
+        consulta_automatica_ativa=current_app.config.get("FISCAL_CONSULTA_AUTOMATICA_ENABLED", False),
     )
 
 
@@ -93,7 +102,8 @@ def certificado():
 @login_required
 @module_permission_required("fiscal", "documentos_fiscais", "criar")
 def consultar_sefaz():
-    sucesso, mensagem, controle = consultar_documentos_sefaz(request.form.get("cnpj_empresa"))
+    cnpj_consulta = current_app.config.get("FISCAL_SEFAZ_CNPJ_AUTOMATICO", "")
+    sucesso, mensagem, controle = consultar_documentos_sefaz(cnpj_consulta)
     if controle:
         registrar_log("fiscal_consulta_nsu", f"Consulta fiscal registrada. Controle NSU ID: {controle.id}.")
     flash(mensagem, "success" if sucesso else "danger")
