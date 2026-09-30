@@ -44,6 +44,16 @@ def normalizar_email(email):
     return email.strip().lower() if email else ""
 
 
+def normalizar_equipe_id(equipe_id):
+    if equipe_id is None or isinstance(equipe_id, bool):
+        return None
+
+    try:
+        return int(equipe_id)
+    except (TypeError, ValueError):
+        return None
+
+
 def buscar_equipes_ativas():
     return (
         Equipe.query
@@ -167,10 +177,15 @@ def validar_dados_colaborador(
     if cpf_ja_existe(cpf_limpo, colaborador_id_ignorado):
         return False, "CPF já cadastrado."
 
-    if not equipe_id:
+    equipe_id_normalizado = normalizar_equipe_id(equipe_id)
+
+    if equipe_id_normalizado is None:
         return False, "Equipe é obrigatória."
 
-    equipe = Equipe.query.filter_by(id=equipe_id, ativo=True).first()
+    equipe = Equipe.query.filter_by(
+        id=equipe_id_normalizado,
+        ativo=True,
+    ).first()
 
     if not equipe:
         return False, "Equipe inválida ou inativa."
@@ -194,6 +209,8 @@ def criar_colaborador(
     vale_transporte_optante=False,
     ativo=True
 ):
+    equipe_id = normalizar_equipe_id(equipe_id)
+
     valido, mensagem = validar_dados_colaborador(
         matricula=matricula,
         nome=nome,
@@ -250,6 +267,8 @@ def atualizar_colaborador(
     vale_transporte_optante=False,
     ativo=True
 ):
+    equipe_id = normalizar_equipe_id(equipe_id)
+
     valido, mensagem = validar_dados_colaborador(
         matricula=matricula,
         nome=nome,
