@@ -7,6 +7,7 @@ from app import create_app
 from app.extensions import db
 from app.departamento_pessoal.colaboradores.services import (
     criar_colaborador,
+    normalizar_equipe_id,
     validar_dados_colaborador,
 )
 from app.models import Equipe
@@ -58,6 +59,12 @@ class ColaboradoresValidacaoTestCase(unittest.TestCase):
                 valido, mensagem = validar_dados_colaborador(**dados)
                 self.assertFalse(valido)
                 self.assertEqual(mensagem_esperada, mensagem)
+
+    def test_normaliza_id_da_equipe_recebido_pelo_formulario(self):
+        self.assertEqual(11, normalizar_equipe_id("11"))
+        self.assertEqual(11, normalizar_equipe_id(11))
+        self.assertIsNone(normalizar_equipe_id("equipe-invalida"))
+        self.assertIsNone(normalizar_equipe_id(""))
 
     def test_falha_de_commit_retorna_mensagem_sem_erro_500(self):
         with patch.object(
