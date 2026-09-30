@@ -23,6 +23,7 @@
                     name="matricula"
                     id="matricula"
                     value="{{ colaborador.matricula if colaborador else '' }}"
+                    maxlength="40"
                     required
                 >
             </div>
@@ -34,6 +35,7 @@
                     name="nome"
                     id="nome"
                     value="{{ colaborador.nome if colaborador else '' }}"
+                    maxlength="150"
                     required
                 >
             </div>
@@ -45,6 +47,7 @@
                     name="cpf"
                     id="cpf"
                     value="{{ colaborador.cpf if colaborador else '' }}"
+                    maxlength="14"
                     placeholder="Somente números ou com máscara"
                     required
                 >
@@ -57,6 +60,7 @@
                     name="email"
                     id="email"
                     value="{{ colaborador.email if colaborador else '' }}"
+                    maxlength="150"
                 >
             </div>
 
@@ -67,6 +71,7 @@
                     name="telefone"
                     id="telefone"
                     value="{{ colaborador.telefone if colaborador else '' }}"
+                    maxlength="20"
                     placeholder="Ex: 5513999999999"
                 >
                 <small>Recomendado: 55 + DDD + número.</small>
