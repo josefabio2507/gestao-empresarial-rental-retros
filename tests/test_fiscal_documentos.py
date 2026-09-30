@@ -520,6 +520,36 @@ class FiscalDocumentosTestCase(unittest.TestCase):
         self.assertIsNone(documento.danfe_path)
         self.assertEqual("44555666000177", documento.destinatario_cnpj)
 
+    def test_consulta_nsu_com_sucesso_bloqueia_nova_consulta_por_uma_hora(self):
+        sucesso, _, _ = salvar_certificado_a1(
+            {
+                "cnpj_empresa": "44.555.666/0001-77",
+                "razao_social": "Rental Retros LTDA",
+                "senha": "segredo",
+            },
+            self._arquivo_certificado(),
+            self.admin,
+        )
+        self.assertTrue(sucesso)
+        self.FakePyNFeClient.chamadas = []
+        self.FakePyNFeClient.resposta = self._retorno_distribuicao_resumo()
+
+        sucesso, _, controle = consultar_documentos_sefaz(
+            "44.555.666/0001-77",
+            cliente_cls=self.FakePyNFeClient,
+        )
+        self.assertTrue(sucesso)
+        self.assertEqual("Consultado", controle.status)
+
+        sucesso, mensagem, _ = consultar_documentos_sefaz(
+            "44.555.666/0001-77",
+            cliente_cls=self.FakePyNFeClient,
+        )
+
+        self.assertFalse(sucesso)
+        self.assertIn("temporariamente bloqueada", mensagem)
+        self.assertEqual(1, len(self.FakePyNFeClient.chamadas))
+
     def test_consumo_indevido_salva_nsu_e_bloqueia_nova_consulta_por_uma_hora(self):
         sucesso, _, _ = salvar_certificado_a1(
             {
@@ -996,6 +1026,27 @@ class FiscalDocumentosTestCase(unittest.TestCase):
 
         self.assertEqual(200, resposta.status_code)
         self.assertIn(b"Documentos Fiscais", resposta.data)
+        self.assertIn(b"Consultar Sefaz", resposta.data)
+
+    def test_rota_documentos_oculta_consulta_sefaz_durante_intervalo(self):
+        self._liberar_usuario(self.modulo_fiscal, visualizar=True)
+        self._autenticar(self.usuario)
+        db.session.add(
+            FiscalControleNSU(
+                cnpj_empresa="44555666000177",
+                ultimo_nsu="101",
+                max_nsu="101",
+                status="Consultado",
+                consultado_em=datetime.now(),
+            )
+        )
+        db.session.commit()
+
+        resposta = self.client.get("/fiscal/documentos")
+
+        self.assertEqual(200, resposta.status_code)
+        self.assertNotIn(b">Consultar Sefaz</button>", resposta.data)
+        self.assertIn(b"Nova consulta dispon", resposta.data)
 
 
 if __name__ == "__main__":
