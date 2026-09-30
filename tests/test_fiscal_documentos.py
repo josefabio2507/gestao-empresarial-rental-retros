@@ -50,6 +50,7 @@ from app.services.fiscal_service import (
     salvar_resumo_nfe_bytes,
     vincular_documento_ordem_compra,
 )
+from app.services.fiscal_scheduler import executar_consulta_automatica_sefaz
 
 
 XML_NFE = b"""<?xml version="1.0" encoding="UTF-8"?>
@@ -550,6 +551,78 @@ class FiscalDocumentosTestCase(unittest.TestCase):
         self.assertIn("temporariamente bloqueada", mensagem)
         self.assertEqual(1, len(self.FakePyNFeClient.chamadas))
 
+    def test_consulta_automatica_aguarda_uma_hora_e_cinco_minutos(self):
+        self.app.config.update(
+            FISCAL_SEFAZ_CNPJ_AUTOMATICO="08026664000131",
+            FISCAL_CONSULTA_AUTOMATICA_MARGEM_MINUTOS=5,
+        )
+        controle = FiscalControleNSU(
+            cnpj_empresa="08026664000131",
+            ultimo_nsu="3826",
+            max_nsu="3826",
+            status="Consultado",
+            consultado_em=datetime.now() - timedelta(hours=1, minutes=2),
+        )
+        db.session.add(controle)
+        db.session.commit()
+        self.FakePyNFeClient.chamadas = []
+
+        sucesso, mensagem, retorno = executar_consulta_automatica_sefaz(
+            cliente_cls=self.FakePyNFeClient,
+        )
+
+        self.assertFalse(sucesso)
+        self.assertIn("aguardando", mensagem)
+        self.assertEqual(controle.id, retorno.id)
+        self.assertEqual([], self.FakePyNFeClient.chamadas)
+
+    def test_consulta_automatica_executa_somente_para_cnpj_autorizado(self):
+        self.app.config["FISCAL_SEFAZ_CNPJ_AUTOMATICO"] = "44555666000177"
+
+        sucesso, mensagem, controle = executar_consulta_automatica_sefaz(
+            cliente_cls=self.FakePyNFeClient,
+        )
+
+        self.assertFalse(sucesso)
+        self.assertIn("não autorizado", mensagem)
+        self.assertIsNone(controle)
+
+    def test_consulta_automatica_executa_quando_intervalo_foi_cumprido(self):
+        self.app.config.update(
+            FISCAL_SEFAZ_CNPJ_AUTOMATICO="08026664000131",
+            FISCAL_CONSULTA_AUTOMATICA_MARGEM_MINUTOS=5,
+        )
+        sucesso, _, _ = salvar_certificado_a1(
+            {
+                "cnpj_empresa": "08.026.664/0001-31",
+                "razao_social": "Rental Retros LTDA",
+                "senha": "segredo",
+            },
+            self._arquivo_certificado(),
+            self.admin,
+        )
+        self.assertTrue(sucesso)
+        controle = FiscalControleNSU(
+            cnpj_empresa="08026664000131",
+            ultimo_nsu="3826",
+            max_nsu="3826",
+            status="Consultado",
+            consultado_em=datetime.now() - timedelta(hours=1, minutes=6),
+        )
+        db.session.add(controle)
+        db.session.commit()
+        self.FakePyNFeClient.chamadas = []
+        self.FakePyNFeClient.resposta = self._retorno_sem_documentos("3826")
+
+        sucesso, _, retorno = executar_consulta_automatica_sefaz(
+            cliente_cls=self.FakePyNFeClient,
+        )
+
+        self.assertTrue(sucesso)
+        self.assertEqual(controle.id, retorno.id)
+        self.assertEqual("08026664000131", self.FakePyNFeClient.chamadas[0]["cnpj"])
+        self.assertEqual("3826", self.FakePyNFeClient.chamadas[0]["ultimo_nsu"])
+
     def test_consumo_indevido_salva_nsu_e_bloqueia_nova_consulta_por_uma_hora(self):
         sucesso, _, _ = salvar_certificado_a1(
             {
@@ -1029,6 +1102,7 @@ class FiscalDocumentosTestCase(unittest.TestCase):
         self.assertIn(b"Consultar Sefaz", resposta.data)
 
     def test_rota_documentos_oculta_consulta_sefaz_durante_intervalo(self):
+        self.app.config["FISCAL_SEFAZ_CNPJ_AUTOMATICO"] = "44555666000177"
         self._liberar_usuario(self.modulo_fiscal, visualizar=True)
         self._autenticar(self.usuario)
         db.session.add(

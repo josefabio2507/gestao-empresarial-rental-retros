@@ -47,6 +47,9 @@ def create_app():
     aplicar_upload_drive_fiscal(app)
     aplicar_busca_documentos_oc(app)
 
+    from app.services.fiscal_scheduler import iniciar_consulta_automatica_sefaz
+    iniciar_consulta_automatica_sefaz(app)
+
     # Importação dos Blueprints
     from app.main.routes import main_bp
     from app.auth.routes import auth_bp
