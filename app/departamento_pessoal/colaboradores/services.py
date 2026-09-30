@@ -1,6 +1,8 @@
+import logging
 import re
 
 from sqlalchemy import func, or_
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.extensions import db
 from app.models import Cargo, Colaborador, Equipe, Usuario
@@ -10,6 +12,9 @@ from app.utils.mascaras_lgpd import (
     formatar_telefone_completo,
     normalizar_telefone_brasil,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 def limpar_numeros(valor):
@@ -128,6 +133,7 @@ def validar_dados_colaborador(
     cpf,
     equipe_id,
     telefone=None,
+    email=None,
     colaborador_id_ignorado=None
 ):
     matricula = matricula.strip()
@@ -137,11 +143,20 @@ def validar_dados_colaborador(
     if not matricula:
         return False, "Matrícula é obrigatória."
 
+    if len(matricula) > 40:
+        return False, "Matrícula deve conter no máximo 40 caracteres."
+
     if matricula_ja_existe(matricula, colaborador_id_ignorado):
         return False, "Matrícula já cadastrada."
 
     if not nome:
         return False, "Nome é obrigatório."
+
+    if len(nome) > 150:
+        return False, "Nome deve conter no máximo 150 caracteres."
+
+    if len(normalizar_email(email)) > 150:
+        return False, "E-mail deve conter no máximo 150 caracteres."
 
     if not cpf_limpo:
         return False, "CPF é obrigatório."
@@ -185,6 +200,7 @@ def criar_colaborador(
         cpf=cpf,
         equipe_id=equipe_id,
         telefone=telefone,
+        email=email,
     )
 
     if not valido:
@@ -207,8 +223,17 @@ def criar_colaborador(
         ativo=ativo,
     )
 
-    db.session.add(colaborador)
-    db.session.commit()
+    try:
+        db.session.add(colaborador)
+        db.session.commit()
+    except SQLAlchemyError:
+        db.session.rollback()
+        logger.exception("Falha de banco de dados ao criar colaborador.")
+        return (
+            False,
+            "Não foi possível salvar o colaborador. "
+            "Revise os dados e tente novamente.",
+        )
 
     return True, "Colaborador criado com sucesso."
 
@@ -231,6 +256,7 @@ def atualizar_colaborador(
         cpf=cpf,
         equipe_id=equipe_id,
         telefone=telefone,
+        email=email,
         colaborador_id_ignorado=colaborador.id,
     )
 
@@ -264,7 +290,19 @@ def atualizar_colaborador(
     if colaborador_ativo_anterior and not colaborador.ativo:
         inativar_usuarios_vinculados(colaborador)
 
-    db.session.commit()
+    try:
+        db.session.commit()
+    except SQLAlchemyError:
+        db.session.rollback()
+        logger.exception(
+            "Falha de banco de dados ao atualizar colaborador id=%s.",
+            colaborador.id,
+        )
+        return (
+            False,
+            "Não foi possível salvar as alterações. "
+            "Revise os dados e tente novamente.",
+        )
 
     return True, "Colaborador atualizado com sucesso."
 
