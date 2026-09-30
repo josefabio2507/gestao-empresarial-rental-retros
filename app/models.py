@@ -3301,6 +3301,10 @@ class FiscalControleNSU(db.Model):
     consultado_em = db.Column(db.DateTime, nullable=True)
     status = db.Column(db.String(30), default="Pendente", nullable=False, index=True)
     mensagem = db.Column(db.Text, nullable=True)
+    proxima_consulta_em = db.Column(db.DateTime, nullable=True)
+    ultimo_cstat = db.Column(db.String(10), nullable=True)
+    ultimo_motivo = db.Column(db.Text, nullable=True)
+    documentos_ultima_consulta = db.Column(db.Integer, default=0, nullable=False)
     ultimo_download_xml_em = db.Column(db.DateTime, nullable=True)
     download_xml_bloqueado_ate = db.Column(db.DateTime, nullable=True)
     download_xml_status = db.Column(db.String(30), nullable=True)
@@ -3316,6 +3320,28 @@ class FiscalControleNSU(db.Model):
 
     def __repr__(self):
         return f"<FiscalControleNSU {self.cnpj_empresa} nsu={self.ultimo_nsu}>"
+
+
+class FiscalConsultaNSUHistorico(db.Model):
+    __tablename__ = "fiscal_consultas_nsu_historico"
+
+    id = db.Column(db.Integer, primary_key=True)
+    cnpj_empresa = db.Column(db.String(14), nullable=False, index=True)
+    origem = db.Column(db.String(20), nullable=False, index=True)
+    consultado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False, index=True)
+    nsu_enviado = db.Column(db.String(20), nullable=False)
+    cstat = db.Column(db.String(10), nullable=True, index=True)
+    motivo = db.Column(db.Text, nullable=True)
+    ultimo_nsu_recebido = db.Column(db.String(20), nullable=True)
+    max_nsu_recebido = db.Column(db.String(20), nullable=True)
+    documentos_quantidade = db.Column(db.Integer, default=0, nullable=False)
+    menor_nsu_documento = db.Column(db.String(20), nullable=True)
+    maior_nsu_documento = db.Column(db.String(20), nullable=True)
+    nsu_gravado = db.Column(db.String(20), nullable=True)
+    gravacao_status = db.Column(db.String(30), nullable=False)
+    proxima_consulta_em = db.Column(db.DateTime, nullable=True)
+    erro_tecnico = db.Column(db.Text, nullable=True)
+    resposta_xml = db.Column(db.Text, nullable=True)
 
 
 class FiscalDocumento(db.Model):
