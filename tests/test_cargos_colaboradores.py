@@ -51,3 +51,25 @@ class CargosColaboradoresTestCase(unittest.TestCase):
 
         self.assertIn("Cargo Antigo (inativo)", html)
         self.assertIn('value="Cargo Antigo" selected', html)
+
+    def test_listagem_exibe_dez_linhas_em_area_rolavel(self):
+        with self.app.test_request_context():
+            html = render_template(
+                "departamento_pessoal/colaboradores/listar.html",
+                colaboradores=[],
+                equipes=[],
+                filtro_texto="",
+                equipe_id_selecionada="",
+                pode_criar=False,
+                pode_editar=False,
+                pode_excluir=False,
+                pode_importar=False,
+                pode_ver_dados_sensiveis=False,
+                exibir_cpf=lambda valor, permitido: valor,
+                exibir_telefone=lambda valor, permitido: valor,
+            )
+
+        self.assertIn("table-card table-responsive listbox-10-linhas", html)
+        self.assertIn('role="region"', html)
+        self.assertIn('aria-label="Lista de colaboradores"', html)
+        self.assertIn('tabindex="0"', html)
