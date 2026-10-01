@@ -339,6 +339,19 @@ class SuprimentosEstoqueTestCase(unittest.TestCase):
         self.assertEqual(302, resposta.status_code)
         self.assertIn("/acesso-negado", resposta.headers["Location"])
 
+    def test_rota_nova_movimentacao_exibe_filtro_digitavel_restrito_a_lista(self):
+        self._liberar_usuario(editar=True)
+        self._autenticar(self.usuario)
+
+        resposta = self.client.get("/suprimentos/estoque/movimentacoes/nova")
+
+        self.assertEqual(200, resposta.status_code)
+        self.assertIn(b'id="item_busca"', resposta.data)
+        self.assertIn(b'list="itens_estoque_lista"', resposta.data)
+        self.assertIn(b'data-datalist-target="item_id"', resposta.data)
+        self.assertIn(b'<input type="hidden" id="item_id" name="item_id">', resposta.data)
+        self.assertNotIn(b'<select id="item_id"', resposta.data)
+
     def test_rota_nova_movimentacao_com_item_fixado_bloqueia_troca_item(self):
         self._liberar_usuario(editar=True)
         self._autenticar(self.usuario)

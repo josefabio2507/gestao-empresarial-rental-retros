@@ -22,18 +22,23 @@
                         readonly
                     >
                 {% else %}
-                    <select id="item_id" name="item_id" required>
-                        <option value="">Selecione</option>
+                    <input
+                        id="item_busca"
+                        list="itens_estoque_lista"
+                        data-datalist-target="item_id"
+                        required
+                        autocomplete="off"
+                        placeholder="Digite para filtrar e selecione um item"
+                    >
+                    <input type="hidden" id="item_id" name="item_id">
+                    <datalist id="itens_estoque_lista">
                         {% for item in itens %}
                             <option
-                                value="{{ item.id }}"
-                                {{ "selected" if filtros.get('item_id')|string == item.id|string else "" }}
-                            >
-                                {{ item.codigo_interno or "-" }} - {{ item.descricao }}
-                                | Saldo: {{ formatar_decimal_brasil(item.saldo_estoque) }} {{ item.unidade_medida.sigla }}
-                            </option>
+                                value="{{ item.codigo_interno or '-' }} - {{ item.descricao }} | Saldo: {{ formatar_decimal_brasil(item.saldo_estoque) }} {{ item.unidade_medida.sigla }}"
+                                data-value="{{ item.id }}"
+                            ></option>
                         {% endfor %}
-                    </select>
+                    </datalist>
                 {% endif %}
             </div>
             <div class="form-group">
