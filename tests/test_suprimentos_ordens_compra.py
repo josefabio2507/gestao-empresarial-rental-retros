@@ -532,6 +532,21 @@ class SuprimentosOrdensCompraTestCase(unittest.TestCase):
                 "condicao_pagamento_financeiro": "Parcelado",
                 "data_primeiro_vencimento_financeiro": "2026-09-15",
                 "numero_parcelas_financeiro": "3",
+                "observacoes_financeiras": "   ",
+            },
+        )
+
+        self.assertFalse(sucesso)
+        self.assertEqual("Informe as observacoes financeiras.", mensagem)
+
+        sucesso, mensagem = preparar_financeiro_ordem_compra(
+            ordem,
+            {
+                "tipo_pagamento_financeiro": "Faturado",
+                "forma_pagamento_financeiro": "Boleto",
+                "condicao_pagamento_financeiro": "Parcelado",
+                "data_primeiro_vencimento_financeiro": "2026-09-15",
+                "numero_parcelas_financeiro": "3",
                 "observacoes_financeiras": "parcelar compra",
             },
         )
@@ -557,6 +572,10 @@ class SuprimentosOrdensCompraTestCase(unittest.TestCase):
         self.assertEqual(3, len(titulos))
         self.assertEqual([Decimal("83.67"), Decimal("83.67"), Decimal("83.66")], [titulo.valor_original for titulo in titulos])
         self.assertTrue(all(titulo.origem_lancamento == "Ordem de Compra" for titulo in titulos))
+        self.assertEqual(
+            f"ORDEM DE COMPRA {ordem.numero} - PARCELAR COMPRA - PARCELA 1/3",
+            titulos[0].descricao,
+        )
 
         sucesso, mensagem = provisionar_financeiro_ordem_compra(ordem, usuario=self.admin)
         self.assertFalse(sucesso)
@@ -592,6 +611,7 @@ class SuprimentosOrdensCompraTestCase(unittest.TestCase):
                 "forma_pagamento_financeiro": "Pix",
                 "data_primeiro_vencimento_financeiro": "2026-09-17",
                 "numero_parcelas_financeiro": "1",
+                "observacoes_financeiras": "Pagamento da compra",
             },
         )
         self.assertTrue(sucesso)
@@ -646,6 +666,7 @@ class SuprimentosOrdensCompraTestCase(unittest.TestCase):
                 "data_primeiro_vencimento_financeiro": "2026-09-15",
                 "numero_parcelas_financeiro": "2",
                 "cartao_credito_id": str(cartao.id),
+                "observacoes_financeiras": "Compra no cartao administrativo",
             },
         )
         self.assertTrue(sucesso, mensagem)

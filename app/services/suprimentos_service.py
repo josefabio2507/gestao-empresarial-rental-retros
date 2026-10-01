@@ -1771,6 +1771,8 @@ def validar_dados_financeiros_ordem(ordem):
         return False, "Informe a data do primeiro vencimento."
     if not ordem.numero_parcelas_financeiro or ordem.numero_parcelas_financeiro < 1:
         return False, "Numero de parcelas deve ser no minimo 1."
+    if not texto(ordem.observacoes_financeiras):
+        return False, "Informe as observacoes financeiras."
     if ordem.tipo_pagamento_financeiro == "Cartao de Credito" and not ordem.cartao_credito_id:
         return False, "Informe o cartao de credito para compras pagas com cartao."
     return True, None
@@ -1803,6 +1805,8 @@ def preparar_financeiro_ordem_compra(ordem, form_data):
         return False, "Informe a data do primeiro vencimento."
     if quantidade_parcelas < 1:
         return False, "Numero de parcelas deve ser no minimo 1."
+    if not observacoes:
+        return False, "Informe as observacoes financeiras."
     if tipo_pagamento == "Cartao de Credito":
         if not cartao_credito_id:
             return False, "Informe o cartao de credito para compras pagas com cartao."
@@ -1856,6 +1860,15 @@ def _subcentro_veiculo_ordem(ordem):
     return veiculo.id if veiculo else None
 
 
+def _descricao_titulo_ordem_compra(ordem, indice):
+    partes = [f"ORDEM DE COMPRA {ordem.numero}"]
+    observacoes_financeiras = (ordem.observacoes_financeiras or "").strip()
+    if observacoes_financeiras:
+        partes.append(observacoes_financeiras)
+    partes.append(f"PARCELA {indice}/{ordem.numero_parcelas_financeiro}")
+    return " - ".join(partes)
+
+
 def gerar_contas_pagar_ordem_compra(ordem, usuario=None):
     sucesso, mensagem = validar_dados_financeiros_ordem(ordem)
     if not sucesso:
@@ -1880,7 +1893,7 @@ def gerar_contas_pagar_ordem_compra(ordem, usuario=None):
             fornecedor_id=ordem.fornecedor_id,
             fornecedor_nome_snapshot=ordem.fornecedor_razao_social_snapshot,
             fornecedor_cnpj_cpf_snapshot=somente_digitos(ordem.fornecedor_cnpj_cpf_snapshot),
-            descricao=f"ORDEM DE COMPRA {ordem.numero} - PARCELA {indice}/{ordem.numero_parcelas_financeiro}",
+            descricao=_descricao_titulo_ordem_compra(ordem, indice),
             numero_documento=f"{ordem.numero}-{indice:02d}/{ordem.numero_parcelas_financeiro:02d}",
             ordem_compra_id=ordem.id,
             origem_lancamento="Ordem de Compra",
