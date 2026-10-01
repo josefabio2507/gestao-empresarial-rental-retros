@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Vale Transporte</span>
+            <h1>Histórico por colaborador</h1>
+            <p>Consulte os lançamentos de Vale Transporte dos colaboradores ativos.</p>
+        </div>
+
+        <a class="btn btn-secondary" href="{{ url_for('vale_transporte.index') }}">Voltar</a>
+    </div>
+
+    <form class="filter-card" id="form-historico-colaborador" method="get" action="{{ url_for('vale_transporte.historico_colaborador') }}">
+        <div class="filter-form">
+            <div class="form-group">
+                <label for="colaborador_busca">Colaborador ativo</label>
+                <input
+                    type="text"
+                    name="colaborador"
+                    id="colaborador_busca"
+                    list="colaboradores_ativos"
+                    value="{{ colaborador_texto }}"
+                    placeholder="Digite o nome ou a matrícula"
+                    autocomplete="off"
+                    required
+                >
+                <input type="hidden" name="colaborador_id" id="colaborador_id" value="{{ colaborador.id if colaborador else '' }}">
+                <datalist id="colaboradores_ativos">
+                    {% for item in colaboradores %}
+                        <option value="{{ item.matricula }} - {{ item.nome }}"></option>
+                    {% endfor %}
+                </datalist>
+            </div>
+
+            <div class="form-actions">
+                <button class="btn btn-primary" type="submit">Pesquisar</button>
+                <a class="btn btn-secondary" href="{{ url_for('vale_transporte.historico_colaborador') }}">Limpar</a>
+            </div>
+        </div>
+    </form>
+
+    {% if colaborador %}
+        <div class="details-card">
+            <div class="stat-grid">
+                <div class="stat-card">
+                    <span>Matrícula</span>
+                    <strong>{{ colaborador.matricula }}</strong>
+                </div>
+                <div class="stat-card">
+                    <span>Colaborador</span>
+                    <strong>{{ colaborador.nome }}</strong>
+                </div>
+                <div class="stat-card">
+                    <span>Equipe</span>
+                    <strong>{{ colaborador.equipe.nome if colaborador.equipe else '-' }}</strong>
+                </div>
+                <div class="stat-card">
+                    <span>Lançamentos</span>
+                    <strong>{{ lancamentos|length }}</strong>
+                </div>
+            </div>
+        </div>
+
+        <div class="table-card table-responsive listbox-10-linhas historico-vt-listbox" role="region" aria-label="Lançamentos de Vale Transporte" tabindex="0">
+            <table class="table historico-vt-table">
+                <thead>
+                    <tr>
+                        <th>Criado em</th>
+                        <th>Pedido</th>
+                        <th>Competência</th>
+                        <th>Período</th>
+                        <th>Status</th>
+                        <th>Empresa</th>
+                        <th>Linha de transporte</th>
+                        <th>Pagamento</th>
+                        <th>Tarifa diária</th>
+                        <th>Dias</th>
+                        <th>Valor base</th>
+                        <th>Acréscimo</th>
+                        <th>Desconto</th>
+                        <th>Total</th>
+                        <th>Observação</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in lancamentos %}
+                        <tr>
+                            <td class="col-nowrap">{{ item.pedido.criado_em.strftime('%d/%m/%Y %H:%M') if item.pedido.criado_em else '-' }}</td>
+                            <td class="col-nowrap">#{{ item.pedido.id }}</td>
+                            <td class="col-nowrap">{{ item.pedido.competencia }}</td>
+                            <td class="col-nowrap">{{ formatar_data_brl(item.pedido.data_inicial) }} a {{ formatar_data_brl(item.pedido.data_final) }}</td>
+                            <td>{{ item.pedido.status }}</td>
+                            <td>{{ item.empresa_transporte_snapshot }}</td>
+                            <td>{{ item.linha_transporte_snapshot }}</td>
+                            <td>{{ tipos_pagamento.get(item.forma_pagamento, item.forma_pagamento) }}</td>
+                            <td class="col-nowrap">{{ formatar_moeda_brl(item.tarifa_diaria) }}</td>
+                            <td>{{ item.quantidade_dias }}</td>
+                            <td class="col-nowrap">{{ formatar_moeda_brl(item.valor_base) }}</td>
+                            <td class="col-nowrap">{{ formatar_moeda_brl(item.valor_acrescimo) }}</td>
+                            <td class="col-nowrap">{{ formatar_moeda_brl(item.valor_desconto) }}</td>
+                            <td class="col-nowrap"><strong>{{ formatar_moeda_brl(item.valor_total) }}</strong></td>
+                            <td>{{ item.observacao or '-' }}</td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td class="empty-state" colspan="15">Nenhum lançamento de Vale Transporte encontrado para este colaborador.</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endif %}
+</section>
+
+<script>
+    const colaboradoresAtivos = [
+        {% for item in colaboradores %}
+            { id: "{{ item.id }}", texto: {{ (item.matricula ~ " - " ~ item.nome)|tojson }} }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ];
+    const campoBusca = document.getElementById("colaborador_busca");
+    const campoId = document.getElementById("colaborador_id");
+    const formulario = document.getElementById("form-historico-colaborador");
+
+    function sincronizarColaboradorSelecionado() {
+        const texto = campoBusca.value.trim().toLowerCase();
+        const encontrado = colaboradoresAtivos.find((item) => item.texto.toLowerCase() === texto);
+        campoId.value = encontrado ? encontrado.id : "";
+        campoBusca.setCustomValidity(
+            encontrado || !texto ? "" : "Selecione um colaborador disponível na lista."
+        );
+        return encontrado;
+    }
+
+    campoBusca.addEventListener("input", sincronizarColaboradorSelecionado);
+    campoBusca.addEventListener("change", sincronizarColaboradorSelecionado);
+    formulario.addEventListener("submit", (evento) => {
+        if (!sincronizarColaboradorSelecionado()) {
+            evento.preventDefault();
+            campoBusca.reportValidity();
+        }
+    });
+</script>
+{% endblock %}

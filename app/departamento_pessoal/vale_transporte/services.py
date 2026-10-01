@@ -228,6 +228,71 @@ def listar_colaboradores_para_filtro_pedido():
     )
 
 
+def listar_colaboradores_ativos_para_historico():
+    return (
+        Colaborador.query
+        .filter(Colaborador.ativo.is_(True))
+        .order_by(Colaborador.nome.asc(), Colaborador.matricula.asc())
+        .all()
+    )
+
+
+def resolver_colaborador_ativo_para_historico(colaborador_texto=None, colaborador_id=None):
+    colaborador_id = normalizar_id_opcional(colaborador_id, "Colaborador")
+    texto = (colaborador_texto or "").strip()
+
+    if colaborador_id:
+        colaborador = Colaborador.query.filter_by(
+            id=colaborador_id,
+            ativo=True,
+        ).first()
+        if not colaborador:
+            raise ValueError("Colaborador ativo não encontrado.")
+        return colaborador
+
+    if not texto:
+        return None
+
+    if " - " in texto:
+        texto = texto.split(" - ", 1)[0].strip()
+
+    colaborador = Colaborador.query.filter(
+        Colaborador.ativo.is_(True),
+        Colaborador.matricula == texto,
+    ).first()
+    if colaborador:
+        return colaborador
+
+    termo = texto.lower()
+    colaboradores = listar_colaboradores_ativos_para_historico()
+    exatos = [
+        colaborador
+        for colaborador in colaboradores
+        if (colaborador.nome or "").strip().lower() == termo
+    ]
+    if len(exatos) == 1:
+        return exatos[0]
+
+    raise ValueError("Selecione um colaborador ativo disponível na lista.")
+
+
+def buscar_historico_vale_transporte_colaborador(colaborador_id):
+    return (
+        ValeTransportePedidoItem.query
+        .join(ValeTransportePedido)
+        .filter(
+            ValeTransportePedidoItem.colaborador_id == colaborador_id,
+            ValeTransportePedidoItem.ativo.is_(True),
+        )
+        .order_by(
+            ValeTransportePedido.criado_em.desc(),
+            ValeTransportePedido.id.desc(),
+            ValeTransportePedidoItem.id.asc(),
+        )
+        .all()
+    )
+
+
 def listar_linhas_ativas():
     return (
         LinhaOnibus.query
