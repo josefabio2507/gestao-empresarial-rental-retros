@@ -13,6 +13,7 @@ from app.departamento_pessoal.vale_transporte.services import (
     alternar_status_vinculo,
     atualizar_pagamento_vinculo,
     buscar_colaborador_por_id,
+    buscar_historico_vale_transporte_colaborador,
     buscar_linha_por_id,
     buscar_linhas_onibus,
     buscar_pedido_vale_transporte_por_id,
@@ -26,10 +27,12 @@ from app.departamento_pessoal.vale_transporte.services import (
     listar_empresas_transporte_ativas,
     listar_equipes_ativas,
     listar_colaboradores_para_filtro_pedido,
+    listar_colaboradores_ativos_para_historico,
     listar_colaboradores_para_vinculo,
     listar_linhas_ativas,
     montar_previa_pedido_vale_transporte,
     pedido_vale_transporte_pode_ser_cancelado,
+    resolver_colaborador_ativo_para_historico,
     salvar_linha_onibus,
     salvar_vinculo_colaborador_linha,
 )
@@ -51,6 +54,36 @@ def _pode(acao):
 @module_permission_required("departamento_pessoal", "vale_transporte", "visualizar")
 def index():
     return render_template("departamento_pessoal/vale_transporte/index.html")
+
+
+@vale_transporte_bp.route("/historico-colaborador")
+@module_permission_required("departamento_pessoal", "vale_transporte", "visualizar")
+def historico_colaborador():
+    colaborador_texto = request.args.get("colaborador", "").strip()
+    colaborador_id = request.args.get("colaborador_id", "").strip()
+    colaborador = None
+    lancamentos = []
+
+    if colaborador_texto or colaborador_id:
+        try:
+            colaborador = resolver_colaborador_ativo_para_historico(
+                colaborador_texto=colaborador_texto,
+                colaborador_id=colaborador_id,
+            )
+            lancamentos = buscar_historico_vale_transporte_colaborador(colaborador.id)
+        except ValueError as erro:
+            flash(str(erro), "warning")
+
+    return render_template(
+        "departamento_pessoal/vale_transporte/historico_colaborador.html",
+        colaboradores=listar_colaboradores_ativos_para_historico(),
+        colaborador=colaborador,
+        colaborador_texto=colaborador_texto,
+        lancamentos=lancamentos,
+        tipos_pagamento=TIPOS_PAGAMENTO,
+        formatar_moeda_brl=formatar_moeda_brl,
+        formatar_data_brl=formatar_data_brl,
+    )
 
 
 def _filtros_pedido_form():

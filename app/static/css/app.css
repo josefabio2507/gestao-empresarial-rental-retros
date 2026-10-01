@@ -100,6 +100,14 @@
     min-height: var(--listbox-row-height);
 }
 
+.historico-vt-listbox {
+    scrollbar-gutter: stable;
+}
+
+.historico-vt-table {
+    min-width: 2100px !important;
+}
+
 .cotacoes-listbox {
     --cotacoes-header-height: 46px;
     --cotacoes-row-height: 61px;
