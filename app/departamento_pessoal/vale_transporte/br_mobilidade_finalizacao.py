@@ -123,6 +123,39 @@ def registrar_finalizacao_sucesso(
     return integracao
 
 
+def reconciliar_finalizacao_incerta(
+    integracao_id,
+    *,
+    numero_pedido_portal,
+    status_portal="Novo",
+    finalizado_em=None,
+):
+    """Registra localmente um pedido confirmado no histórico, sem reenviá-lo."""
+    integracao = db.session.get(ValeTransporteIntegracaoBRMobilidade, integracao_id)
+    if not integracao or integracao.status_interno != STATUS_INCERTO:
+        raise ValueError("Não existe uma finalização incerta para reconciliar.")
+
+    numero = str(numero_pedido_portal or "").strip()
+    if not numero.isdigit():
+        raise ValueError("Informe um número de pedido válido, conforme o histórico do portal.")
+
+    integracao.numero_pedido_portal = numero
+    integracao.status_portal = str(status_portal or "").strip() or "Novo"
+    integracao.status_interno = STATUS_FINALIZADO
+    integracao.finalizado_portal_em = finalizado_em or datetime.now()
+    integracao.comentario_portal = (
+        "Pedido localizado no Histórico da BR Mobilidade e reconciliado manualmente."
+    )
+    integracao.erro_etapa = None
+    integracao.erro_mensagem = None
+    try:
+        db.session.commit()
+    except IntegrityError as erro:
+        db.session.rollback()
+        raise ValueError("Este número de pedido do portal já foi registrado.") from erro
+    return integracao
+
+
 def registrar_falha_finalizacao(integracao_id, mensagem, *, resultado_incerto=True):
     integracao = db.session.get(ValeTransporteIntegracaoBRMobilidade, integracao_id)
     if not integracao:

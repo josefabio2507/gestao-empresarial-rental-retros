@@ -26,6 +26,7 @@ from app.departamento_pessoal.vale_transporte.br_mobilidade_finalizacao import (
     autorizar_finalizacao,
     iniciar_finalizacao,
     preparar_conferencia_finalizacao,
+    reconciliar_finalizacao_incerta,
     registrar_falha_finalizacao,
     registrar_finalizacao_sucesso,
 )
@@ -239,6 +240,57 @@ class IntegracaoBRMobilidadeTestCase(unittest.TestCase):
         self.assertEqual("FINALIZACAO_INCERTA", integracao.status_interno)
         with self.assertRaisesRegex(ValueError, "já foi iniciada"):
             iniciar_finalizacao(integracao.id)
+
+    def test_reconcilia_resultado_incerto_sem_repetir_finalizacao(self):
+        integracao = preparar_integracao_br_mobilidade(
+            self.pedido,
+            data_liberacao=date(2026, 10, 7),
+            modo_manual=True,
+        )
+        integracao.status_interno = "FINALIZANDO_PORTAL"
+        db.session.commit()
+        integracao = registrar_falha_finalizacao(
+            integracao.id,
+            "O portal não confirmou o número do pedido.",
+            resultado_incerto=True,
+        )
+
+        integracao = reconciliar_finalizacao_incerta(
+            integracao.id,
+            numero_pedido_portal="2973000",
+            status_portal="Novo",
+        )
+
+        self.assertEqual("FINALIZADO_PORTAL", integracao.status_interno)
+        self.assertEqual("2973000", integracao.numero_pedido_portal)
+        self.assertEqual("Novo", integracao.status_portal)
+        self.assertIsNotNone(integracao.finalizado_portal_em)
+        self.assertIsNone(integracao.erro_etapa)
+        self.assertIsNone(integracao.erro_mensagem)
+        self.assertIn("reconciliado manualmente", integracao.comentario_portal)
+
+    def test_reconciliacao_exige_numero_valido_e_status_incerto(self):
+        integracao = preparar_integracao_br_mobilidade(
+            self.pedido,
+            data_liberacao=date(2026, 10, 7),
+            modo_manual=True,
+        )
+        integracao.status_interno = "FINALIZACAO_INCERTA"
+        db.session.commit()
+
+        with self.assertRaisesRegex(ValueError, "número de pedido válido"):
+            reconciliar_finalizacao_incerta(
+                integracao.id,
+                numero_pedido_portal="pedido-errado",
+            )
+
+        integracao.status_interno = "FINALIZADO_PORTAL"
+        db.session.commit()
+        with self.assertRaisesRegex(ValueError, "finalização incerta"):
+            reconciliar_finalizacao_incerta(
+                integracao.id,
+                numero_pedido_portal="2973001",
+            )
 
     def test_fase_8_entrega_boleto_relatorio_sem_armazenar_arquivos(self):
         integracao = preparar_integracao_br_mobilidade(

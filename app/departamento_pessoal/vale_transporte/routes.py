@@ -69,6 +69,7 @@ from app.departamento_pessoal.vale_transporte.br_mobilidade_finalizacao import (
     autorizar_finalizacao,
     iniciar_finalizacao,
     preparar_conferencia_finalizacao,
+    reconciliar_finalizacao_incerta,
     registrar_falha_finalizacao,
     registrar_finalizacao_sucesso,
 )
@@ -308,6 +309,7 @@ def detalhes_pedido_vale_transporte(pedido_id):
         pedido_pode_cancelar=pedido_vale_transporte_pode_ser_cancelado,
         validacao_br_mobilidade=validacao_br_mobilidade,
         pode_exportar=_pode("exportar"),
+        pode_reconciliar_br_mobilidade=_pode("criar"),
         pode_preparar_br_mobilidade=(
             _pode("criar") and current_app.config.get("BR_MOBILIDADE_INTEGRACAO_ATIVA")
             and not any(
@@ -595,6 +597,42 @@ def finalizar_pedido_br_mobilidade(pedido_id):
             "FINALIZANDO_PORTAL",
         }:
             registrar_falha_finalizacao(integracao.id, str(erro), resultado_incerto=False)
+        flash(str(erro), "danger")
+
+    return redirect(
+        url_for("vale_transporte.detalhes_pedido_vale_transporte", pedido_id=pedido.id)
+    )
+
+
+@vale_transporte_bp.route(
+    "/pedidos/<int:pedido_id>/br-mobilidade/reconciliar-finalizacao", methods=["POST"]
+)
+@module_permission_required("departamento_pessoal", "vale_transporte", "criar")
+def reconciliar_finalizacao_br_mobilidade(pedido_id):
+    """Confirma localmente um pedido já encontrado no histórico do portal."""
+    pedido = buscar_pedido_vale_transporte_por_id(pedido_id)
+    if not pedido:
+        flash("Pedido de Vale Transporte não encontrado.", "warning")
+        return redirect(url_for("vale_transporte.listar_pedidos_vale_transporte"))
+
+    try:
+        integracao = _integracao_do_pedido(pedido, request.form.get("integracao_id"))
+        integracao = reconciliar_finalizacao_incerta(
+            integracao.id,
+            numero_pedido_portal=request.form.get("numero_pedido_portal", ""),
+            status_portal=request.form.get("status_portal", "Novo"),
+        )
+        registrar_log(
+            "vale_transporte_br_mobilidade_finalizacao_reconciliada",
+            f"Finalização incerta reconciliada pelo histórico. Pedido local: {pedido.id}. "
+            f"Pedido portal: {integracao.numero_pedido_portal}.",
+        )
+        flash(
+            f"Pedido {integracao.numero_pedido_portal} confirmado no Portal BR Mobilidade. "
+            "O boleto e o relatório já podem ser baixados quando estiverem disponíveis.",
+            "success",
+        )
+    except ValueError as erro:
         flash(str(erro), "danger")
 
     return redirect(

@@ -231,7 +231,30 @@
             {% endif %}
             {% if integracao.status_interno == 'FINALIZACAO_INCERTA' %}
                 <div class="alert alert-danger">
-                    <strong>Resultado incerto:</strong> não tente novamente. Confira o Histórico de Pedidos no portal e registre o resultado manualmente.
+                    <p><strong>Resultado incerto:</strong> não tente criar o pedido novamente.</p>
+                    <p>Confira o Histórico de Pedidos no portal. Se o pedido estiver lá, informe abaixo o número exibido no portal para reconciliar o resultado no sistema.</p>
+                    {% if pode_reconciliar_br_mobilidade %}
+                        <form method="post" action="{{ url_for('vale_transporte.reconciliar_finalizacao_br_mobilidade', pedido_id=pedido.id) }}">
+                            <input name="integracao_id" type="hidden" value="{{ integracao.id }}">
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label>Número do pedido no portal</label>
+                                    <input name="numero_pedido_portal" inputmode="numeric" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Status no portal</label>
+                                    <input name="status_portal" value="{{ integracao.status_portal or 'Novo' }}" required>
+                                </div>
+                            </div>
+                            <button
+                                class="btn btn-primary"
+                                type="submit"
+                                onclick="return confirm('Confirma que este número foi localizado no Histórico de Pedidos da BR Mobilidade?');"
+                            >
+                                Registrar pedido localizado
+                            </button>
+                        </form>
+                    {% endif %}
                 </div>
             {% endif %}
             {% if integracao.status_interno == 'FINALIZADO_PORTAL' and pode_exportar %}
