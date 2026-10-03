@@ -1631,6 +1631,12 @@ class ValeTransportePedido(db.Model):
         back_populates="pedido",
         cascade="all, delete-orphan",
     )
+    integracoes_br_mobilidade = db.relationship(
+        "ValeTransporteIntegracaoBRMobilidade",
+        back_populates="pedido",
+        cascade="all, delete-orphan",
+        order_by="ValeTransporteIntegracaoBRMobilidade.criado_em.desc()",
+    )
 
     __table_args__ = (
         db.CheckConstraint(
@@ -1649,6 +1655,74 @@ class ValeTransportePedido(db.Model):
 
     def __repr__(self):
         return f"<ValeTransportePedido competencia={self.competencia} status={self.status}>"
+
+
+class ValeTransporteIntegracaoBRMobilidade(db.Model):
+    __tablename__ = "vale_transporte_integracoes_br_mobilidade"
+
+    id = db.Column(db.Integer, primary_key=True)
+    pedido_id = db.Column(
+        db.Integer,
+        db.ForeignKey("vale_transporte_pedidos.id"),
+        nullable=False,
+        index=True,
+    )
+    chave_idempotencia = db.Column(db.String(64), nullable=False, unique=True)
+    ambiente = db.Column(db.String(20), nullable=False)
+    data_liberacao = db.Column(db.Date, nullable=False)
+    quantidade_colaboradores = db.Column(db.Integer, nullable=False)
+    valor_creditos = db.Column(db.Numeric(12, 2), nullable=False)
+    taxa_administrativa = db.Column(db.Numeric(12, 2), nullable=True)
+    valor_cartoes = db.Column(db.Numeric(12, 2), nullable=True)
+    valor_total_portal = db.Column(db.Numeric(12, 2), nullable=True)
+    data_pedido_portal = db.Column(db.Date, nullable=True)
+    nome_arquivo = db.Column(db.String(180), nullable=False)
+    hash_arquivo = db.Column(db.String(64), nullable=False)
+    arquivo_conteudo = db.Column(db.LargeBinary, nullable=False)
+    status_interno = db.Column(db.String(50), nullable=False, index=True)
+    status_portal = db.Column(db.String(100), nullable=True)
+    numero_pedido_portal = db.Column(db.String(30), nullable=True, unique=True, index=True)
+    comentario_portal = db.Column(db.Text, nullable=True)
+    erros_portal = db.Column(db.Text, nullable=True)
+    erro_etapa = db.Column(db.String(60), nullable=True)
+    erro_mensagem = db.Column(db.Text, nullable=True)
+    criado_por_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=True)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
+    atualizado_em = db.Column(
+        db.DateTime, default=agora_brasil, onupdate=agora_brasil, nullable=False
+    )
+    enviado_em = db.Column(db.DateTime, nullable=True)
+    consultado_em = db.Column(db.DateTime, nullable=True)
+    autorizado_finalizacao_em = db.Column(db.DateTime, nullable=True)
+    autorizado_finalizacao_por_id = db.Column(
+        db.Integer,
+        db.ForeignKey("usuarios.id"),
+        nullable=True,
+    )
+    finalizado_portal_em = db.Column(db.DateTime, nullable=True)
+
+    pedido = db.relationship("ValeTransportePedido", back_populates="integracoes_br_mobilidade")
+    criado_por = db.relationship("Usuario", foreign_keys=[criado_por_id])
+    autorizado_finalizacao_por = db.relationship(
+        "Usuario",
+        foreign_keys=[autorizado_finalizacao_por_id],
+    )
+
+    __table_args__ = (
+        db.CheckConstraint(
+            "status_interno in ('AGUARDANDO_ENVIO', 'ENVIANDO', 'AGUARDANDO_STATUS', "
+            "'IMPORTADO', 'ERRO_IMPORTACAO', 'ERRO_ENVIO', "
+            "'AGUARDANDO_CRIACAO_MANUAL', 'CRIADO_MANUAL_SEM_CONFERENCIA', "
+            "'AGUARDANDO_AUTORIZACAO_FINALIZACAO', 'AUTORIZADO_FINALIZACAO', "
+            "'FINALIZANDO_PORTAL', 'FINALIZADO_PORTAL', "
+            "'ERRO_FINALIZACAO', 'FINALIZACAO_INCERTA')",
+            name="ck_vt_br_integracao_status",
+        ),
+        db.CheckConstraint(
+            "ambiente in ('local', 'producao')",
+            name="ck_vt_br_integracao_ambiente",
+        ),
+    )
 
 
 class ValeTransportePedidoItem(db.Model):

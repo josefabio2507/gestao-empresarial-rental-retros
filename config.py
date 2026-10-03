@@ -3,6 +3,7 @@ import os
 
 class Config:
     SECRET_KEY = os.getenv("SECRET_KEY", "chave-local-desenvolvimento")
+    APP_TEST_ENV_LABEL = os.getenv("APP_TEST_ENV_LABEL", "").strip()
 
     DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 
@@ -49,6 +50,39 @@ class Config:
     MAIL_PASSWORD = os.getenv("MAIL_PASSWORD")
     MAIL_DEFAULT_SENDER = os.getenv("MAIL_DEFAULT_SENDER", MAIL_USERNAME)
     BASE_URL = os.getenv("BASE_URL", "http://127.0.0.1:5000").rstrip("/")
+    BR_MOBILIDADE_ARQUIVO_ENCODING = os.getenv(
+        "BR_MOBILIDADE_ARQUIVO_ENCODING",
+        "cp1252",
+    ).strip() or "cp1252"
+    BR_MOBILIDADE_PORTAL_URL = os.getenv(
+        "BR_MOBILIDADE_PORTAL_URL",
+        "https://portalvt.brmobilidadebs.com.br/wfm_default.aspx",
+    ).strip()
+    BR_MOBILIDADE_LOGIN = os.getenv("BR_MOBILIDADE_LOGIN", "").strip()
+    BR_MOBILIDADE_SENHA = os.getenv("BR_MOBILIDADE_SENHA", "")
+    BR_MOBILIDADE_HEADLESS = os.getenv(
+        "BR_MOBILIDADE_HEADLESS",
+        "true",
+    ).lower() == "true"
+    BR_MOBILIDADE_TIMEOUT_MS = int(
+        os.getenv("BR_MOBILIDADE_TIMEOUT_MS", "30000")
+    )
+    BR_MOBILIDADE_BROWSER_EXECUTABLE_PATH = os.getenv(
+        "BR_MOBILIDADE_BROWSER_EXECUTABLE_PATH",
+        "",
+    ).strip()
+    BR_MOBILIDADE_AMBIENTE = os.getenv(
+        "BR_MOBILIDADE_AMBIENTE",
+        "producao" if SQLALCHEMY_DATABASE_URI.startswith("postgresql://") else "local",
+    ).strip().lower()
+    BR_MOBILIDADE_INTEGRACAO_ATIVA = os.getenv(
+        "BR_MOBILIDADE_INTEGRACAO_ATIVA",
+        "false",
+    ).lower() == "true"
+    BR_MOBILIDADE_EXECUCAO_SINCRONA = os.getenv(
+        "BR_MOBILIDADE_EXECUCAO_SINCRONA",
+        "false" if SQLALCHEMY_DATABASE_URI.startswith("postgresql://") else "true",
+    ).lower() == "true"
     OUTLOOK_CLASSIC_EMAIL_ENABLED = os.getenv("OUTLOOK_CLASSIC_EMAIL_ENABLED", "auto").lower()
     RECUPERACAO_SENHA_EXPIRACAO_MINUTOS = int(
         os.getenv("RECUPERACAO_SENHA_EXPIRACAO_MINUTOS", "60")

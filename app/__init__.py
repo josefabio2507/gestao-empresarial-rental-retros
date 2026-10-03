@@ -15,9 +15,11 @@ def _formatar_moeda_brl(valor):
     return f"R$ {texto}"
 
 
-def create_app():
+def create_app(config_overrides=None):
     app = Flask(__name__)
     app.config.from_object(Config)
+    if config_overrides:
+        app.config.update(config_overrides)
     app.jinja_env.globals["formatar_moeda_brl"] = _formatar_moeda_brl
 
     # Inicialização das extensões
@@ -46,6 +48,11 @@ def create_app():
     aplicar_gerador_danfe_completo(app)
     aplicar_upload_drive_fiscal(app)
     aplicar_busca_documentos_oc(app)
+
+    from app.departamento_pessoal.vale_transporte.br_mobilidade_worker import (
+        registrar_comandos_br_mobilidade,
+    )
+    registrar_comandos_br_mobilidade(app)
 
     from app.services.fiscal_scheduler import iniciar_consulta_automatica_sefaz
     iniciar_consulta_automatica_sefaz(app)

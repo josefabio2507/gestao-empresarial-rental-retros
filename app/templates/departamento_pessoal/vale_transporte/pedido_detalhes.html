@@ -96,6 +96,181 @@
         <strong>Total geral:</strong> {{ formatar_moeda_brl(totais.total) }}
     </div>
 
+    <div class="details-card">
+        <h2>Arquivo BR Mobilidade — Layout 0200</h2>
+        <p>
+            <strong>Colaboradores:</strong> {{ validacao_br_mobilidade.quantidade_colaboradores }} ·
+            <strong>Créditos:</strong> {{ formatar_moeda_brl(validacao_br_mobilidade.valor_total_creditos) }} ·
+            <strong>Itens não enviados (valor zero ou outra modalidade):</strong> {{ validacao_br_mobilidade.itens_ignorados }}
+        </p>
+
+        {% if validacao_br_mobilidade.valido %}
+            <p><span class="badge badge-success">Arquivo válido para geração</span></p>
+        {% else %}
+            <p><span class="badge badge-danger">Arquivo bloqueado</span></p>
+            <ul>
+                {% for erro in validacao_br_mobilidade.erros %}
+                    <li>{{ erro }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+
+        <div class="page-actions">
+            <form class="inline-form" method="post" action="{{ url_for('vale_transporte.validar_arquivo_br_mobilidade_rota', pedido_id=pedido.id) }}">
+                <button class="btn btn-secondary" type="submit">Validar arquivo</button>
+            </form>
+            {% if pode_exportar and validacao_br_mobilidade.valido %}
+                <a class="btn btn-primary" href="{{ url_for('vale_transporte.baixar_arquivo_br_mobilidade', pedido_id=pedido.id) }}">
+                    Gerar arquivo 0200
+                </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="details-card">
+        <h2>Integração com o Portal BR Mobilidade</h2>
+        <p><strong>Ambiente:</strong> {{ ambiente_br_mobilidade|capitalize }} · A criação manual não finaliza nem paga pedidos.</p>
+        <p>Para definir a data de liberação, use <strong>Pedidos &gt; Incluir</strong> no Portal BR Mobilidade. O upload do arquivo 0200 não transmite essa data e não será usado para novos pedidos com data planejada.</p>
+
+        {% if pode_preparar_br_mobilidade and validacao_br_mobilidade.valido %}
+            <form method="post" action="{{ url_for('vale_transporte.preparar_pedido_br_mobilidade_manual', pedido_id=pedido.id) }}">
+                <div class="form-group">
+                    <label for="data_liberacao">Data planejada de liberação da recarga</label>
+                    <input id="data_liberacao" name="data_liberacao" type="date" required>
+                    <p>Esta preparação salva a data no sistema, mas não cria o pedido no portal. No Passo 3 do portal, informe a mesma data.</p>
+                </div>
+                <button class="btn btn-primary" type="submit">
+                    Preparar criação manual
+                </button>
+            </form>
+        {% endif %}
+
+        {% for integracao in pedido.integracoes_br_mobilidade %}
+            {% if integracao.status_interno == 'AGUARDANDO_CRIACAO_MANUAL' %}
+                {% if automacao_br_mobilidade_disponivel %}
+                    <p><strong>Fase 7:</strong> a automação pode preencher o pedido, chegar ao Passo 4 e conferir os dados sem clicar em “Finalizar Pedido”.</p>
+                    <form method="post" action="{{ url_for('vale_transporte.conferir_finalizacao_br_mobilidade', pedido_id=pedido.id) }}">
+                        <input name="integracao_id" type="hidden" value="{{ integracao.id }}">
+                        <button class="btn btn-primary" type="submit">Conferir no portal sem finalizar</button>
+                    </form>
+                {% else %}
+                    <p><strong>Automação indisponível:</strong> configure as credenciais do Portal BR Mobilidade no ambiente da aplicação.</p>
+                {% endif %}
+                <p><strong>Alternativa manual:</strong> abra o <a href="https://portalvt.brmobilidadebs.com.br/wfm_default.aspx" target="_blank" rel="noopener">Portal BR Mobilidade</a>, vá em Pedidos &gt; Incluir &gt; Valor por usuário, informe os valores abaixo e, no Passo 3, selecione <strong>{{ formatar_data_brl(integracao.data_liberacao) }}</strong>.</p>
+                <ul>
+                    {% for registro in validacao_br_mobilidade.registros %}
+                        <li>{{ registro.nome }} — {{ registro.quantidade_dias }} dia(s), {{ formatar_moeda_brl(registro.valor_total) }}</li>
+                    {% endfor %}
+                </ul>
+                <form method="post" action="{{ url_for('vale_transporte.confirmar_pedido_br_mobilidade_manual', pedido_id=pedido.id) }}">
+                    <input name="integracao_id" type="hidden" value="{{ integracao.id }}">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Número do pedido no portal</label>
+                            <input name="numero_pedido_portal" inputmode="numeric" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Data do pedido</label>
+                            <input name="data_pedido" type="date" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Data de liberação no portal</label>
+                            <input name="data_liberacao_portal" type="date" value="{{ integracao.data_liberacao.isoformat() }}" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Status no portal</label>
+                            <input name="status_portal" value="Novo" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Créditos</label>
+                            <input name="valor_creditos" value="{{ '%.2f'|format(integracao.valor_creditos)|replace('.', ',') }}" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Taxa administrativa</label>
+                            <input name="taxa_administrativa" value="0,00" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Impressão de cartões</label>
+                            <input name="valor_cartoes" value="0,00" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Total no portal</label>
+                            <input name="valor_total" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Quantidade de usuários</label>
+                            <input name="quantidade_usuarios" type="number" min="1" value="{{ integracao.quantidade_colaboradores }}" required>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" type="submit">Confirmar criação manual</button>
+                </form>
+            {% endif %}
+            {% if integracao.status_interno == 'AGUARDANDO_AUTORIZACAO_FINALIZACAO' %}
+                <div class="alert alert-warning">
+                    <p><strong>Conferência aprovada; o pedido ainda não foi finalizado.</strong></p>
+                    <p>
+                        Data do pedido: {{ formatar_data_brl(integracao.data_pedido_portal) }} ·
+                        Liberação: {{ formatar_data_brl(integracao.data_liberacao) }} ·
+                        Créditos: {{ formatar_moeda_brl(integracao.valor_creditos) }} ·
+                        Taxa: {{ formatar_moeda_brl(integracao.taxa_administrativa or 0) }} ·
+                        Cartões: {{ formatar_moeda_brl(integracao.valor_cartoes or 0) }} ·
+                        <strong>Total: {{ formatar_moeda_brl(integracao.valor_total_portal) }}</strong>
+                    </p>
+                    <form method="post" action="{{ url_for('vale_transporte.finalizar_pedido_br_mobilidade', pedido_id=pedido.id) }}">
+                        <input name="integracao_id" type="hidden" value="{{ integracao.id }}">
+                        <input name="confirmacao" type="hidden" value="FINALIZAR">
+                        <button
+                            class="btn btn-warning"
+                            type="submit"
+                            onclick="return confirm('Esta ação criará um pedido real no Portal BR Mobilidade. Confirma a finalização?');"
+                        >
+                            Autorizar e finalizar pedido real
+                        </button>
+                    </form>
+                </div>
+            {% endif %}
+            {% if integracao.status_interno == 'FINALIZACAO_INCERTA' %}
+                <div class="alert alert-danger">
+                    <strong>Resultado incerto:</strong> não tente novamente. Confira o Histórico de Pedidos no portal e registre o resultado manualmente.
+                </div>
+            {% endif %}
+            {% if integracao.status_interno == 'FINALIZADO_PORTAL' and pode_exportar %}
+                <div class="alert alert-warning">
+                    <p><strong>Fase 8:</strong> o pedido está finalizado. Baixe o boleto e o relatório quando estiverem disponíveis no Portal.</p>
+                    <form method="post" action="{{ url_for('vale_transporte.capturar_documentos_pedido_br_mobilidade', pedido_id=pedido.id) }}">
+                        <input name="integracao_id" type="hidden" value="{{ integracao.id }}">
+                        <button class="btn btn-primary" type="submit">Baixar boleto e relatório</button>
+                    </form>
+                    {% if integracao.erro_mensagem %}<p>{{ integracao.erro_mensagem }}</p>{% endif %}
+                </div>
+            {% endif %}
+        {% endfor %}
+
+        {% if pedido.integracoes_br_mobilidade %}
+            <div class="table-responsive">
+                <table class="table">
+                    <thead><tr><th>Data</th><th>Arquivo 0200</th><th>Pedido Portal</th><th>Liberação planejada</th><th>Status interno</th><th>Status Portal</th><th>Retorno</th></tr></thead>
+                    <tbody>
+                        {% for integracao in pedido.integracoes_br_mobilidade %}
+                            <tr>
+                                <td>{{ integracao.criado_em.strftime("%d/%m/%Y %H:%M") }}</td>
+                                <td>{{ integracao.nome_arquivo }}</td>
+                                <td>{{ integracao.numero_pedido_portal or "-" }}</td>
+                                <td>{{ formatar_data_brl(integracao.data_liberacao) }}</td>
+                                <td>{{ integracao.status_interno }}</td>
+                                <td>{{ integracao.status_portal or "-" }}</td>
+                                <td>{{ integracao.comentario_portal or integracao.erro_mensagem or "-" }}</td>
+                            </tr>
+                            {% for erro in erros_integracao_br(integracao) %}
+                                <tr><td colspan="7"><strong>Linha {{ erro.linha or "-" }}:</strong> {{ erro.mensagem }}</td></tr>
+                            {% endfor %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% endif %}
+    </div>
+
     <div class="page-actions">
         {% if pode_excluir and pedido_pode_cancelar(pedido) %}
             <form class="inline-form" method="post" action="{{ url_for('vale_transporte.cancelar_pedido_vale_transporte_rota', pedido_id=pedido.id) }}">

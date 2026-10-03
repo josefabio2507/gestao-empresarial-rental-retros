@@ -21,3 +21,4 @@ signxml
 pyOpenSSL
 requests
 brazilfiscalreport
+playwright

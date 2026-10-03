@@ -1,0 +1,11 @@
+.git
+.env
+venv
+.venv
+__pycache__
+*.pyc
+*.db
+instance
+output
+tmp
+.codex_tmp
