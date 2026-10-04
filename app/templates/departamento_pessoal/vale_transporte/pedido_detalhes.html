@@ -96,6 +96,7 @@
         <strong>Total geral:</strong> {{ formatar_moeda_brl(totais.total) }}
     </div>
 
+    {% if operadora_integracao.codigo == codigo_br_mobilidade %}
     <div class="details-card">
         <h2>Arquivo BR Mobilidade — Layout 0200</h2>
         <p>
@@ -293,6 +294,37 @@
             </div>
         {% endif %}
     </div>
+    {% elif operadora_integracao.codigo == codigo_city_transportes %}
+    <div class="details-card">
+        <h2>Integração com o Portal City Transportes</h2>
+        <p><span class="badge badge-success">Operadora identificada automaticamente</span></p>
+        <p>
+            <strong>Fase 1 — ambiente local:</strong> o pedido foi reconhecido como exclusivo da
+            City Transportes. As ações de criação e envio permanecerão desabilitadas até a
+            validação do layout e do fluxo real do portal nas próximas fases.
+        </p>
+        <p>
+            Portal mapeado: Pedidos &gt; Incluir, Histórico de Pedidos,
+            Pagamento de pedidos e Importar.
+        </p>
+    </div>
+    {% elif operadora_integracao.codigo == codigo_pedido_misto %}
+    <div class="details-card">
+        <h2>Integração com portal de transporte</h2>
+        <div class="alert alert-danger">
+            <p><strong>Integração bloqueada:</strong> este pedido possui mais de uma empresa de transporte.</p>
+            <p>Crie um pedido separado para cada operadora antes de iniciar a integração.</p>
+            {% if operadora_integracao.empresas %}
+                <p><strong>Empresas encontradas:</strong> {{ operadora_integracao.empresas|join(', ') }}</p>
+            {% endif %}
+        </div>
+    </div>
+    {% else %}
+    <div class="details-card">
+        <h2>Integração com portal de transporte</h2>
+        <p>Nenhuma integração automática está configurada para a empresa deste pedido.</p>
+    </div>
+    {% endif %}
 
     <div class="page-actions">
         {% if pode_excluir and pedido_pode_cancelar(pedido) %}

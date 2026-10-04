@@ -81,6 +81,12 @@ from app.departamento_pessoal.vale_transporte.br_mobilidade_portal import (
 from app.departamento_pessoal.vale_transporte.br_mobilidade_documentos import (
     capturar_documentos_para_download,
 )
+from app.departamento_pessoal.vale_transporte.operadoras import (
+    BR_MOBILIDADE,
+    CITY_TRANSPORTES,
+    PEDIDO_MISTO,
+    resolver_operadora_pedido,
+)
 
 
 vale_transporte_bp = Blueprint("vale_transporte", __name__)
@@ -297,6 +303,7 @@ def detalhes_pedido_vale_transporte(pedido_id):
         return redirect(url_for("vale_transporte.listar_pedidos_vale_transporte"))
 
     validacao_br_mobilidade = validar_pedido_br_mobilidade(pedido)
+    operadora_integracao = resolver_operadora_pedido(pedido)
 
     return render_template(
         "departamento_pessoal/vale_transporte/pedido_detalhes.html",
@@ -308,6 +315,10 @@ def detalhes_pedido_vale_transporte(pedido_id):
         pode_excluir=_pode("excluir"),
         pedido_pode_cancelar=pedido_vale_transporte_pode_ser_cancelado,
         validacao_br_mobilidade=validacao_br_mobilidade,
+        operadora_integracao=operadora_integracao,
+        codigo_br_mobilidade=BR_MOBILIDADE,
+        codigo_city_transportes=CITY_TRANSPORTES,
+        codigo_pedido_misto=PEDIDO_MISTO,
         pode_exportar=_pode("exportar"),
         pode_reconciliar_br_mobilidade=_pode("criar"),
         pode_preparar_br_mobilidade=(

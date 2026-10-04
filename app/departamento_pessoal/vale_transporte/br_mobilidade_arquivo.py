@@ -3,6 +3,12 @@ from decimal import Decimal, ROUND_HALF_UP
 import re
 import unicodedata
 
+from app.departamento_pessoal.vale_transporte.operadoras import (
+    BR_MOBILIDADE,
+    PEDIDO_MISTO,
+    resolver_operadora_pedido,
+)
+
 
 VERSAO_LAYOUT = "0200"
 LIMITE_REGISTROS = 5000
@@ -94,6 +100,19 @@ def validar_pedido_br_mobilidade(pedido):
 
     if pedido.status == "Cancelado":
         resultado.erros.append("Pedido cancelado não pode gerar arquivo BR Mobilidade.")
+        return resultado
+
+    operadora = resolver_operadora_pedido(pedido)
+    if operadora.codigo != BR_MOBILIDADE:
+        if operadora.codigo == PEDIDO_MISTO:
+            resultado.erros.append(
+                "O pedido possui mais de uma empresa de transporte. "
+                "Crie um pedido separado para cada operadora antes de integrar."
+            )
+        else:
+            resultado.erros.append(
+                "Este pedido não pertence exclusivamente à BR Mobilidade."
+            )
         return resultado
 
     grupos = {}
