@@ -18,6 +18,7 @@ def item_city(
     forma="cartao_transporte",
     design="04",
     aplicacao="400",
+    linha="",
     total=None,
 ):
     tarifa_decimal = Decimal(tarifa)
@@ -35,6 +36,7 @@ def item_city(
         valor_total=Decimal(total) if total is not None else tarifa_decimal * dias,
         city_design_cartao_snapshot=design,
         city_aplicacao_snapshot=aplicacao,
+        linha_transporte_snapshot=linha,
     )
 
 
@@ -58,6 +60,33 @@ class ArquivoCityTransportesTestCase(unittest.TestCase):
         conteudo, resultado = gerar_arquivo_city_transportes(pedido(item_city(), zero))
         self.assertEqual(1, resultado.itens_ignorados)
         self.assertNotIn(b"11144477735", conteudo)
+
+    def test_inclui_city_e_ignora_outra_operadora_em_dinheiro_sem_duplicar(self):
+        city = item_city(
+            tarifa="10.60",
+            dias=3,
+            total="31.80",
+            aplicacao="",
+            linha="LINHA MUNICIPAL GUARUJÁ - 2",
+        )
+        dinheiro = item_city(
+            empresa="TRANSPORTE MARÍTIMO",
+            forma="dinheiro",
+            tarifa="6.00",
+            dias=3,
+            total="0.00",
+        )
+        dinheiro.id = 2
+
+        conteudo, resultado = gerar_arquivo_city_transportes(
+            pedido(city, dinheiro)
+        )
+
+        self.assertEqual(1, resultado.quantidade_colaboradores)
+        self.assertEqual(1, resultado.itens_ignorados)
+        self.assertEqual(Decimal("31.80"), resultado.valor_total_creditos)
+        self.assertEqual(1, conteudo.count(b"52998224725"))
+        self.assertIn(b"|3|1060|JOS\xc9 DA SILVA|04|400", conteudo)
 
     def test_exige_design_e_aplicacao(self):
         resultado = validar_pedido_city_transportes(

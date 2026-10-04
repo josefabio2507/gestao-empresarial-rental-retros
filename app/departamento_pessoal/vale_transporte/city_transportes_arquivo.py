@@ -10,6 +10,7 @@ from app.departamento_pessoal.vale_transporte.operadoras import (
     CITY_TRANSPORTES,
     PEDIDO_MISTO,
     codigo_operadora_por_nome,
+    normalizar_nome_operadora,
     resolver_operadora_pedido,
 )
 
@@ -148,6 +149,14 @@ def validar_pedido_city_transportes(pedido):
 
         design = somente_digitos(getattr(item, "city_design_cartao_snapshot", ""))
         aplicacao = str(getattr(item, "city_aplicacao_snapshot", "") or "").strip()
+        if aplicacao not in APLICACOES_VALIDAS:
+            linha_normalizada = normalizar_nome_operadora(
+                getattr(item, "linha_transporte_snapshot", "")
+            )
+            if "guaruja" in linha_normalizada:
+                aplicacao = "400"
+            elif "bertioga" in linha_normalizada:
+                aplicacao = "410"
         if len(design) != 2:
             resultado.erros.append(
                 f"{identificacao}: informe os 2 dígitos do design do cartão City Transportes."
