@@ -775,19 +775,29 @@ def capturar_documentos_br_mobilidade(
             provedor, transacao, sequencia = parametros.groups()
             base_pages = urljoin(portal_url, "/Pages/")
 
+            parametros_boleto = (
+                f"ProviderID={provedor}&TransactionID={transacao}"
+                f"&SequenceID={sequencia}"
+            )
+            # O portal precisa executar o Pré-Boleto antes de servir o PDF.
+            # Acessar wfm_Billet.aspx diretamente pode devolver a página de
+            # erro ORA-01403, mesmo quando o boleto abre normalmente pela UI.
             resposta_boleto = contexto_navegador.request.get(
-                urljoin(
-                    base_pages,
-                    "wfm_Billet.aspx?"
-                    f"ProviderID={provedor}&TransactionID={transacao}"
-                    f"&SequenceID={sequencia}",
-                ),
+                urljoin(base_pages, f"wfm_PreBillet.aspx?{parametros_boleto}"),
                 timeout=timeout_ms,
             )
             boleto_pdf = resposta_boleto.body()
-            content_type = (
-                resposta_boleto.headers.get("content-type", "")
-            )
+            content_type = resposta_boleto.headers.get("content-type", "")
+
+            # Algumas versões do portal apenas inicializam o boleto no
+            # Pré-Boleto. Nesse caso, a segunda consulta devolve o PDF pronto.
+            if not boleto_pdf.startswith(b"%PDF"):
+                resposta_boleto = contexto_navegador.request.get(
+                    urljoin(base_pages, f"wfm_Billet.aspx?{parametros_boleto}"),
+                    timeout=timeout_ms,
+                )
+                boleto_pdf = resposta_boleto.body()
+                content_type = resposta_boleto.headers.get("content-type", "")
             if (
                 not resposta_boleto.ok
                 or "application/pdf" not in content_type
