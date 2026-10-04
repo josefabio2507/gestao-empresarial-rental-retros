@@ -14,7 +14,12 @@ from app.departamento_pessoal.vale_transporte.operadoras import (
 def _pedido(*empresas):
     return SimpleNamespace(
         itens=[
-            SimpleNamespace(ativo=True, empresa_transporte_snapshot=empresa)
+            SimpleNamespace(
+                ativo=True,
+                empresa_transporte_snapshot=empresa,
+                forma_pagamento="cartao_transporte",
+                valor_total="10.00",
+            )
             for empresa in empresas
         ]
     )
@@ -55,6 +60,35 @@ class OperadorasValeTransporteTestCase(unittest.TestCase):
                 empresa_transporte_snapshot="BR Mobilidade",
             )
         )
+        self.assertEqual(CITY_TRANSPORTES, resolver_operadora_pedido(pedido).codigo)
+
+    def test_item_com_valor_zero_nao_transforma_pedido_em_misto(self):
+        pedido = _pedido("City Transportes")
+        pedido.itens.append(
+            SimpleNamespace(
+                ativo=True,
+                empresa_transporte_snapshot="Transporte Marítimo",
+                forma_pagamento="dinheiro",
+                valor_total="0.00",
+            )
+        )
+
+        resultado = resolver_operadora_pedido(pedido)
+
+        self.assertEqual(CITY_TRANSPORTES, resultado.codigo)
+        self.assertEqual(("City Transportes",), resultado.empresas)
+
+    def test_item_em_dinheiro_nao_define_operadora_do_portal(self):
+        pedido = _pedido("City Transportes")
+        pedido.itens.append(
+            SimpleNamespace(
+                ativo=True,
+                empresa_transporte_snapshot="Outra Empresa",
+                forma_pagamento="dinheiro",
+                valor_total="25.00",
+            )
+        )
+
         self.assertEqual(CITY_TRANSPORTES, resolver_operadora_pedido(pedido).codigo)
 
 

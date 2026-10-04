@@ -1,6 +1,7 @@
 """Identificação da operadora responsável pela integração de um pedido de VT."""
 
 from dataclasses import dataclass
+from decimal import Decimal, InvalidOperation
 import unicodedata
 
 
@@ -46,6 +47,14 @@ def resolver_operadora_pedido(pedido):
     empresas_por_nome = {}
     for item in pedido.itens:
         if not item.ativo:
+            continue
+        if getattr(item, "forma_pagamento", "cartao_transporte") != "cartao_transporte":
+            continue
+        try:
+            valor_total = Decimal(str(getattr(item, "valor_total", "1") or "0"))
+        except (InvalidOperation, TypeError, ValueError):
+            valor_total = Decimal("0")
+        if valor_total <= 0:
             continue
         nome = str(item.empresa_transporte_snapshot or "").strip()
         normalizado = normalizar_nome_operadora(nome)
