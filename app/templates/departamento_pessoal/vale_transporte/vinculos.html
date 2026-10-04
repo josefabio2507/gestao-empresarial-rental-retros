@@ -110,6 +110,11 @@
                             {% endfor %}
                         </select>
                     </div>
+                    <div class="form-group">
+                        <label for="city_design_cartao">Design do cartão City</label>
+                        <input name="city_design_cartao" id="city_design_cartao" inputmode="numeric" maxlength="2" placeholder="Ex.: 04">
+                        <small>Os 2 dígitos após o primeiro ponto do cartão. Obrigatório somente para City Transportes.</small>
+                    </div>
                 </div>
 
                 <div class="form-actions">
@@ -135,6 +140,7 @@
                         <th class="col-nowrap">Valor da Tarifa por Dia</th>
                         <th>Tipo de pagamento</th>
                         <th>Periodicidade</th>
+                        <th>Design City</th>
                         <th class="col-nowrap">Status</th>
                         <th class="col-acoes">Ações</th>
                     </tr>
@@ -194,6 +200,13 @@
                                     {{ periodicidades_pagamento.get(vinculo.periodicidade_pagamento, vinculo.periodicidade_pagamento) }}
                                 {% endif %}
                             </td>
+                            <td>
+                                {% if pode_editar %}
+                                    <input class="payment-select" name="city_design_cartao" form="form-pagamento-{{ vinculo.id }}" inputmode="numeric" maxlength="2" value="{{ vinculo.city_design_cartao or '' }}" placeholder="--">
+                                {% else %}
+                                    {{ vinculo.city_design_cartao or '-' }}
+                                {% endif %}
+                            </td>
                             <td class="col-nowrap">
                                 {% if vinculo.ativo %}
                                     <span class="badge badge-success">Ativo</span>
@@ -219,7 +232,7 @@
                         </tr>
                     {% else %}
                         <tr>
-                            <td class="empty-state" colspan="9">Nenhuma linha vinculada a este colaborador.</td>
+                            <td class="empty-state" colspan="10">Nenhuma linha vinculada a este colaborador.</td>
                         </tr>
                     {% endfor %}
                 </tbody>

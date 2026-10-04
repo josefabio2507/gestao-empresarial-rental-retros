@@ -60,6 +60,17 @@
                     required
                 >
             </div>
+
+            <div class="form-group">
+                <label for="city_aplicacao">Aplicação City Transportes</label>
+                <select name="city_aplicacao" id="city_aplicacao">
+                    <option value="">Não se aplica</option>
+                    {% for valor, rotulo in city_aplicacoes.items() %}
+                        <option value="{{ valor }}" {% if linha and linha.city_aplicacao == valor %}selected{% endif %}>{{ valor }} — {{ rotulo }}</option>
+                    {% endfor %}
+                </select>
+                <small>Obrigatória somente para linhas da City Transportes.</small>
+            </div>
         </div>
 
         {% if linha %}

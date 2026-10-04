@@ -21,6 +21,7 @@ from app.models import LinhaOnibus
 from app.services.logs_service import registrar_log
 from app.services.permissoes_service import usuario_tem_permissao
 from app.departamento_pessoal.vale_transporte.services import (
+    CITY_APLICACOES,
     PERIODICIDADES_PAGAMENTO,
     STATUS_PEDIDOS,
     TIPOS_PAGAMENTO,
@@ -55,6 +56,11 @@ from app.departamento_pessoal.vale_transporte.br_mobilidade_arquivo import (
     gerar_arquivo_br_mobilidade,
     nome_arquivo_br_mobilidade,
     validar_pedido_br_mobilidade,
+)
+from app.departamento_pessoal.vale_transporte.city_transportes_arquivo import (
+    gerar_arquivo_city_transportes,
+    nome_arquivo_city_transportes,
+    validar_pedido_city_transportes,
 )
 from app.departamento_pessoal.vale_transporte.br_mobilidade_integracao import (
     STATUS_ATIVOS,
@@ -303,6 +309,7 @@ def detalhes_pedido_vale_transporte(pedido_id):
         return redirect(url_for("vale_transporte.listar_pedidos_vale_transporte"))
 
     validacao_br_mobilidade = validar_pedido_br_mobilidade(pedido)
+    validacao_city_transportes = validar_pedido_city_transportes(pedido)
     operadora_integracao = resolver_operadora_pedido(pedido)
 
     return render_template(
@@ -315,6 +322,7 @@ def detalhes_pedido_vale_transporte(pedido_id):
         pode_excluir=_pode("excluir"),
         pedido_pode_cancelar=pedido_vale_transporte_pode_ser_cancelado,
         validacao_br_mobilidade=validacao_br_mobilidade,
+        validacao_city_transportes=validacao_city_transportes,
         operadora_integracao=operadora_integracao,
         codigo_br_mobilidade=BR_MOBILIDADE,
         codigo_city_transportes=CITY_TRANSPORTES,
@@ -391,6 +399,54 @@ def baixar_arquivo_br_mobilidade(pedido_id):
         mimetype="text/plain",
         as_attachment=True,
         download_name=nome_arquivo_br_mobilidade(pedido),
+    )
+
+
+@vale_transporte_bp.route("/pedidos/<int:pedido_id>/city-transportes/validar", methods=["POST"])
+@module_permission_required("departamento_pessoal", "vale_transporte", "visualizar")
+def validar_arquivo_city_transportes_rota(pedido_id):
+    pedido = buscar_pedido_vale_transporte_por_id(pedido_id)
+    if not pedido:
+        flash("Pedido de Vale Transporte não encontrado.", "warning")
+        return redirect(url_for("vale_transporte.listar_pedidos_vale_transporte"))
+    resultado = validar_pedido_city_transportes(pedido)
+    if resultado.valido:
+        flash(
+            f"Arquivo City Transportes válido: {resultado.quantidade_colaboradores} "
+            f"colaborador(es), total de {formatar_moeda_brl(resultado.valor_total_creditos)}.",
+            "success",
+        )
+    else:
+        for erro in resultado.erros:
+            flash(erro, "danger")
+    return redirect(url_for("vale_transporte.detalhes_pedido_vale_transporte", pedido_id=pedido.id))
+
+
+@vale_transporte_bp.route("/pedidos/<int:pedido_id>/city-transportes/arquivo")
+@module_permission_required("departamento_pessoal", "vale_transporte", "exportar")
+def baixar_arquivo_city_transportes(pedido_id):
+    pedido = buscar_pedido_vale_transporte_por_id(pedido_id)
+    if not pedido:
+        flash("Pedido de Vale Transporte não encontrado.", "warning")
+        return redirect(url_for("vale_transporte.listar_pedidos_vale_transporte"))
+    try:
+        conteudo, resultado = gerar_arquivo_city_transportes(
+            pedido,
+            encoding=current_app.config["CITY_TRANSPORTES_ARQUIVO_ENCODING"],
+        )
+    except ValueError as erro:
+        for mensagem in str(erro).splitlines():
+            flash(mensagem, "danger")
+        return redirect(url_for("vale_transporte.detalhes_pedido_vale_transporte", pedido_id=pedido.id))
+    registrar_log(
+        "vale_transporte_city_transportes_arquivo_gerado",
+        f"Arquivo 0800 gerado. Pedido: {pedido.id}. Registros: {resultado.quantidade_colaboradores}.",
+    )
+    return send_file(
+        BytesIO(conteudo),
+        mimetype="text/plain",
+        as_attachment=True,
+        download_name=nome_arquivo_city_transportes(pedido),
     )
 
 
@@ -759,6 +815,7 @@ def nova_linha():
             codigo=request.form.get("codigo", ""),
             empresa_transporte=request.form.get("empresa_transporte", ""),
             valor_tarifa_dia=request.form.get("valor_tarifa_dia", ""),
+            city_aplicacao=request.form.get("city_aplicacao", ""),
         )
 
         if sucesso:
@@ -773,6 +830,7 @@ def nova_linha():
         linha=None,
         modo="nova",
         formatar_moeda_brl=formatar_moeda_brl,
+        city_aplicacoes=CITY_APLICACOES,
     )
 
 
@@ -792,6 +850,7 @@ def editar_linha(linha_id):
             codigo=request.form.get("codigo", ""),
             empresa_transporte=request.form.get("empresa_transporte", ""),
             valor_tarifa_dia=request.form.get("valor_tarifa_dia", ""),
+            city_aplicacao=request.form.get("city_aplicacao", ""),
         )
 
         if sucesso:
@@ -809,6 +868,7 @@ def editar_linha(linha_id):
         linha=linha,
         modo="editar",
         formatar_moeda_brl=formatar_moeda_brl,
+        city_aplicacoes=CITY_APLICACOES,
     )
 
 
@@ -851,6 +911,7 @@ def vinculos():
             linha_onibus_id=request.form.get("linha_onibus_id"),
             tipo_pagamento=request.form.get("tipo_pagamento"),
             periodicidade_pagamento=request.form.get("periodicidade_pagamento"),
+            city_design_cartao=request.form.get("city_design_cartao"),
         )
 
         if sucesso:
@@ -882,6 +943,7 @@ def vinculos():
         vinculos=vinculos_colaborador,
         tipos_pagamento=TIPOS_PAGAMENTO,
         periodicidades_pagamento=PERIODICIDADES_PAGAMENTO,
+        city_aplicacoes=CITY_APLICACOES,
         formatar_moeda_brl=formatar_moeda_brl,
         pode_criar=_pode("criar"),
         pode_editar=_pode("editar"),
@@ -902,6 +964,7 @@ def editar_vinculo(vinculo_id):
         vinculo,
         request.form.get("tipo_pagamento"),
         request.form.get("periodicidade_pagamento"),
+        request.form.get("city_design_cartao"),
     )
 
     if sucesso:

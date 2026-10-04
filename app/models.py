@@ -1497,6 +1497,7 @@ class LinhaOnibus(db.Model):
     codigo = db.Column(db.String(60), nullable=True)
     empresa_transporte = db.Column(db.String(150), nullable=False)
     valor_tarifa_dia = db.Column(db.Numeric(10, 2), nullable=False)
+    city_aplicacao = db.Column(db.String(3), nullable=True)
     ativo = db.Column(db.Boolean, default=True, nullable=False)
 
     criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
@@ -1545,6 +1546,7 @@ class ValeTransporteColaboradorLinha(db.Model):
         default="mensal",
         nullable=False,
     )
+    city_design_cartao = db.Column(db.String(2), nullable=True)
     ativo = db.Column(db.Boolean, default=True, nullable=False)
 
     criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
@@ -1762,6 +1764,8 @@ class ValeTransportePedidoItem(db.Model):
     valor_desconto = db.Column(db.Numeric(10, 2), default=0, nullable=False)
     valor_total = db.Column(db.Numeric(10, 2), nullable=False)
     observacao = db.Column(db.Text, nullable=True)
+    city_aplicacao_snapshot = db.Column(db.String(3), nullable=True)
+    city_design_cartao_snapshot = db.Column(db.String(2), nullable=True)
     ativo = db.Column(db.Boolean, default=True, nullable=False, index=True)
 
     criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)

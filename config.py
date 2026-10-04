@@ -54,6 +54,10 @@ class Config:
         "BR_MOBILIDADE_ARQUIVO_ENCODING",
         "cp1252",
     ).strip() or "cp1252"
+    CITY_TRANSPORTES_ARQUIVO_ENCODING = os.getenv(
+        "CITY_TRANSPORTES_ARQUIVO_ENCODING",
+        "cp1252",
+    ).strip() or "cp1252"
     BR_MOBILIDADE_PORTAL_URL = os.getenv(
         "BR_MOBILIDADE_PORTAL_URL",
         "https://portalvt.brmobilidadebs.com.br/wfm_default.aspx",

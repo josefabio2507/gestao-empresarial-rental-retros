@@ -296,17 +296,28 @@
     </div>
     {% elif operadora_integracao.codigo == codigo_city_transportes %}
     <div class="details-card">
-        <h2>Integração com o Portal City Transportes</h2>
-        <p><span class="badge badge-success">Operadora identificada automaticamente</span></p>
+        <h2>Arquivo City Transportes — Layout 0800</h2>
         <p>
-            <strong>Fase 1 — ambiente local:</strong> o pedido foi reconhecido como exclusivo da
-            City Transportes. As ações de criação e envio permanecerão desabilitadas até a
-            validação do layout e do fluxo real do portal nas próximas fases.
+            <strong>Colaboradores:</strong> {{ validacao_city_transportes.quantidade_colaboradores }} ·
+            <strong>Créditos:</strong> {{ formatar_moeda_brl(validacao_city_transportes.valor_total_creditos) }} ·
+            <strong>Itens não enviados (valor zero ou outra modalidade):</strong> {{ validacao_city_transportes.itens_ignorados }}
         </p>
-        <p>
-            Portal mapeado: Pedidos &gt; Incluir, Histórico de Pedidos,
-            Pagamento de pedidos e Importar.
-        </p>
+        {% if validacao_city_transportes.valido %}
+            <p><span class="badge badge-success">Arquivo válido para geração</span></p>
+        {% else %}
+            <div class="alert alert-danger">
+                {% for erro in validacao_city_transportes.erros %}<p>{{ erro }}</p>{% endfor %}
+            </div>
+        {% endif %}
+        <div class="page-actions">
+            <form method="post" action="{{ url_for('vale_transporte.validar_arquivo_city_transportes_rota', pedido_id=pedido.id) }}">
+                <button class="btn btn-secondary" type="submit">Validar arquivo</button>
+            </form>
+            {% if pode_exportar and validacao_city_transportes.valido %}
+                <a class="btn btn-primary" href="{{ url_for('vale_transporte.baixar_arquivo_city_transportes', pedido_id=pedido.id) }}">Gerar arquivo 0800</a>
+            {% endif %}
+        </div>
+        <p><strong>Fase 2 — ambiente local:</strong> nenhum dado é enviado ao portal nesta etapa.</p>
     </div>
     {% elif operadora_integracao.codigo == codigo_pedido_misto %}
     <div class="details-card">

@@ -13,6 +13,10 @@ from app.models import (
     ValeTransportePedido,
     ValeTransportePedidoItem,
 )
+from app.departamento_pessoal.vale_transporte.operadoras import (
+    CITY_TRANSPORTES,
+    codigo_operadora_por_nome,
+)
 
 
 TIPOS_PAGAMENTO = {
@@ -36,6 +40,19 @@ STATUS_PEDIDOS = {
 }
 
 FILTRO_TODOS = "todos"
+CITY_APLICACOES = {
+    "400": "Guarujá",
+    "410": "Bertioga",
+}
+
+
+def normalizar_dados_city(empresa_transporte, city_aplicacao=None, city_design_cartao=None):
+    if codigo_operadora_por_nome(empresa_transporte) != CITY_TRANSPORTES:
+        return None, None
+
+    aplicacao = str(city_aplicacao or "").strip()
+    design = re.sub(r"\D", "", str(city_design_cartao or ""))
+    return aplicacao or None, design or None
 
 
 def formatar_moeda_brl(valor):
@@ -168,6 +185,7 @@ def salvar_linha_onibus(
     codigo,
     empresa_transporte,
     valor_tarifa_dia,
+    city_aplicacao=None,
 ):
     nome = (nome or "").strip()
     codigo = (codigo or "").strip()
@@ -178,6 +196,11 @@ def salvar_linha_onibus(
 
     if not empresa_transporte:
         return False, "Empresa de transporte é obrigatória."
+
+    aplicacao, _ = normalizar_dados_city(empresa_transporte, city_aplicacao)
+    if codigo_operadora_por_nome(empresa_transporte) == CITY_TRANSPORTES:
+        if aplicacao not in CITY_APLICACOES:
+            return False, "Selecione a aplicação City Transportes da linha."
 
     try:
         valor_decimal = parse_decimal_brasileiro(valor_tarifa_dia)
@@ -192,6 +215,7 @@ def salvar_linha_onibus(
     linha.codigo = codigo
     linha.empresa_transporte = empresa_transporte
     linha.valor_tarifa_dia = valor_decimal
+    linha.city_aplicacao = aplicacao
 
     db.session.commit()
 
@@ -368,6 +392,7 @@ def salvar_vinculo_colaborador_linha(
     linha_onibus_id,
     tipo_pagamento,
     periodicidade_pagamento,
+    city_design_cartao=None,
 ):
     if not colaborador:
         return False, "Colaborador não encontrado."
@@ -400,6 +425,14 @@ def salvar_vinculo_colaborador_linha(
     if periodicidade_pagamento not in PERIODICIDADES_PAGAMENTO:
         return False, "Periodicidade do pagamento inválida."
 
+    _, design = normalizar_dados_city(
+        linha.empresa_transporte,
+        city_design_cartao=city_design_cartao,
+    )
+    if codigo_operadora_por_nome(linha.empresa_transporte) == CITY_TRANSPORTES:
+        if tipo_pagamento == "cartao_transporte" and len(design or "") != 2:
+            return False, "Informe os 2 dígitos do design do cartão City Transportes."
+
     if existe_vinculo_ativo(colaborador.id, linha.id):
         return False, "Esta linha de ônibus já está vinculada a este colaborador."
 
@@ -408,6 +441,7 @@ def salvar_vinculo_colaborador_linha(
         linha_onibus_id=linha.id,
         tipo_pagamento=tipo_pagamento,
         periodicidade_pagamento=periodicidade_pagamento,
+        city_design_cartao=design,
         ativo=True,
     )
     db.session.add(vinculo)
@@ -420,6 +454,7 @@ def atualizar_pagamento_vinculo(
     vinculo,
     tipo_pagamento,
     periodicidade_pagamento,
+    city_design_cartao=None,
 ):
     if not vinculo:
         return False, "Vínculo não encontrado."
@@ -430,8 +465,17 @@ def atualizar_pagamento_vinculo(
     if periodicidade_pagamento not in PERIODICIDADES_PAGAMENTO:
         return False, "Periodicidade do pagamento inválida."
 
+    _, design = normalizar_dados_city(
+        vinculo.linha_onibus.empresa_transporte,
+        city_design_cartao=city_design_cartao,
+    )
+    if codigo_operadora_por_nome(vinculo.linha_onibus.empresa_transporte) == CITY_TRANSPORTES:
+        if tipo_pagamento == "cartao_transporte" and len(design or "") != 2:
+            return False, "Informe os 2 dígitos do design do cartão City Transportes."
+
     vinculo.tipo_pagamento = tipo_pagamento
     vinculo.periodicidade_pagamento = periodicidade_pagamento
+    vinculo.city_design_cartao = design
     db.session.commit()
 
     return True, "Dados de pagamento atualizados com sucesso."
@@ -897,6 +941,8 @@ def montar_item_pedido(vinculo, quantidade_dias, valor_acrescimo, valor_desconto
         valor_desconto=valor_desconto,
         valor_total=valor_total,
         observacao=(observacao or "").strip(),
+        city_aplicacao_snapshot=linha.city_aplicacao,
+        city_design_cartao_snapshot=vinculo.city_design_cartao,
         ativo=True,
     )
 
