@@ -735,6 +735,11 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         self.assertEqual(200, resposta.status_code)
         self.assertIn(veiculo.identificacao.encode(), resposta.data)
         self.assertIn(f"/operacao/abastecimentos/veiculos/{veiculo.id}/novo".encode(), resposta.data)
+        formulario = self.client.get(f"/operacao/abastecimentos/veiculos/{veiculo.id}/novo")
+        self.assertIn(b'data-datalist-target="colaborador_id"', formulario.data)
+        self.assertIn(b'data-datalist-target="equipe_id"', formulario.data)
+        self.assertIn(b"M002 - Operador Dois", formulario.data)
+        self.assertIn(b"Operacao", formulario.data)
 
         resposta = self.client.post(
             f"/operacao/abastecimentos/veiculos/{veiculo.id}/novo",
@@ -744,6 +749,10 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
                 "tipo_combustivel": "Diesel S10",
                 "qtd_litros": "10,00",
                 "preco": "5,00",
+                "colaborador_busca": "M002 - Operador Dois",
+                "colaborador_id": str(self.operador.id),
+                "equipe_busca": "Operacao",
+                "equipe_id": str(self.equipe.id),
             },
             follow_redirects=True,
         )
@@ -751,7 +760,8 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         self.assertEqual(200, resposta.status_code)
         abastecimento = OperacaoAbastecimento.query.filter_by(veiculo_id=veiculo.id).one()
         self.assertIsNone(abastecimento.vinculo_id)
-        self.assertIsNone(abastecimento.colaborador_id)
+        self.assertEqual(self.operador.id, abastecimento.colaborador_id)
+        self.assertEqual(self.equipe.id, abastecimento.equipe_id)
         self.assertEqual(self.usuario.id, abastecimento.usuario_id)
 
     def test_admin_visualiza_todos_veiculos_em_abastecimento_sem_vinculo(self):

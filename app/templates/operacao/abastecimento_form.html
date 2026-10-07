@@ -20,11 +20,31 @@
             </div>
             <div class="form-group">
                 <label>Motorista/Operador</label>
-                <input value="{{ colaborador.nome if colaborador else 'Sem responsável vinculado' }}" readonly>
+                {% if vinculo %}
+                    <input value="{{ colaborador.nome }}" readonly>
+                {% else %}
+                    <input id="colaborador_busca" name="colaborador_busca" list="colaboradores_lista" data-datalist-target="colaborador_id" autocomplete="off" value="{{ colaborador_busca }}">
+                    <input type="hidden" id="colaborador_id" name="colaborador_id" value="{{ colaborador_id }}">
+                    <datalist id="colaboradores_lista">
+                        {% for opcao in colaboradores %}
+                            <option value="{{ opcao.matricula }} - {{ opcao.nome }}" data-value="{{ opcao.id }}"></option>
+                        {% endfor %}
+                    </datalist>
+                {% endif %}
             </div>
             <div class="form-group">
                 <label>Equipe</label>
-                <input value="{{ equipe.nome if equipe else 'Sem equipe vinculada' }}" readonly>
+                {% if vinculo %}
+                    <input value="{{ equipe.nome if equipe else 'Sem equipe vinculada' }}" readonly>
+                {% else %}
+                    <input id="equipe_busca" name="equipe_busca" list="equipes_lista" data-datalist-target="equipe_id" autocomplete="off" value="{{ equipe_busca }}">
+                    <input type="hidden" id="equipe_id" name="equipe_id" value="{{ equipe_id }}">
+                    <datalist id="equipes_lista">
+                        {% for opcao in equipes %}
+                            <option value="{{ opcao.nome }}" data-value="{{ opcao.id }}"></option>
+                        {% endfor %}
+                    </datalist>
+                {% endif %}
             </div>
             <div class="form-group">
                 <label for="leitura_atual">{{ 'Horímetro' if tipo_leitura == 'horimetro' else 'Hodômetro' }}</label>

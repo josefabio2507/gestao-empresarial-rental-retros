@@ -5,7 +5,7 @@ from datetime import date, datetime
 from flask import current_app
 
 from app.extensions import db
-from app.models import OperacaoAbastecimento, OperacaoAbastecimentoCustoExtra, OperacaoVeiculoEquipamento, OperacaoVeiculoResponsavel
+from app.models import Colaborador, Equipe, OperacaoAbastecimento, OperacaoAbastecimentoCustoExtra, OperacaoVeiculoEquipamento, OperacaoVeiculoResponsavel
 from app.services.google_drive_service import (
     GOOGLE_DRIVE_UPLOAD_SCOPES,
     GoogleDriveConfiguracaoErro,
@@ -16,6 +16,7 @@ from app.services.google_drive_service import (
 from app.services.operacao_pool_service import (
     TIPOS_LEITURA,
     decimal_ou_none,
+    inteiro_ou_none,
     registrar_leitura,
     texto,
     tipo_leitura_padrao_veiculo,
@@ -264,6 +265,17 @@ def salvar_abastecimento(form_data, files_data, usuario, veiculo=None, abastecim
 
     colaborador = vinculo.colaborador if vinculo else None
     equipe = (vinculo.equipe or (colaborador.equipe if colaborador else None)) if vinculo else None
+    if not vinculo:
+        colaborador_id = inteiro_ou_none(form_data.get("colaborador_id"))
+        equipe_id = inteiro_ou_none(form_data.get("equipe_id"))
+        if colaborador_id:
+            colaborador = Colaborador.query.filter_by(id=colaborador_id, ativo=True).first()
+            if not colaborador:
+                return False, "Colaborador invalido ou inativo.", abastecimento
+        if equipe_id:
+            equipe = Equipe.query.filter_by(id=equipe_id, ativo=True).first()
+            if not equipe:
+                return False, "Equipe invalida ou inativa.", abastecimento
     data_abastecimento = data_ou_none(form_data.get("data_abastecimento"))
     tipo_leitura = texto(getattr(vinculo, "tipo_leitura", None)) or tipo_leitura_padrao_veiculo(veiculo)
     leitura_atual = decimal_ou_none(form_data.get("leitura_atual"))
