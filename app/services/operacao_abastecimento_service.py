@@ -258,12 +258,12 @@ def cancelar_custo_extra_abastecimento(custo_extra_id, usuario, motivo):
 def salvar_abastecimento(form_data, files_data, usuario, veiculo=None, abastecimento=None, drive_service=None):
     veiculo_id = veiculo.id if veiculo else getattr(abastecimento, "veiculo_id", None)
     vinculo = vinculo_ativo_veiculo(veiculo_id)
-    if not vinculo:
-        return False, "Veiculo/equipamento nao possui vinculo ativo.", abastecimento
+    veiculo = veiculo or (vinculo.veiculo if vinculo else None)
+    if not veiculo:
+        return False, "Veiculo/equipamento nao encontrado.", abastecimento
 
-    veiculo = veiculo or vinculo.veiculo
-    colaborador = vinculo.colaborador
-    equipe = vinculo.equipe or (colaborador.equipe if colaborador else None)
+    colaborador = vinculo.colaborador if vinculo else None
+    equipe = (vinculo.equipe or (colaborador.equipe if colaborador else None)) if vinculo else None
     data_abastecimento = data_ou_none(form_data.get("data_abastecimento"))
     tipo_leitura = texto(getattr(vinculo, "tipo_leitura", None)) or tipo_leitura_padrao_veiculo(veiculo)
     leitura_atual = decimal_ou_none(form_data.get("leitura_atual"))
@@ -301,8 +301,8 @@ def salvar_abastecimento(form_data, files_data, usuario, veiculo=None, abastecim
     if not abastecimento:
         abastecimento = OperacaoAbastecimento(
             veiculo_id=veiculo.id,
-            vinculo_id=vinculo.id,
-            colaborador_id=colaborador.id,
+            vinculo_id=vinculo.id if vinculo else None,
+            colaborador_id=colaborador.id if colaborador else None,
             equipe_id=equipe.id if equipe else None,
             usuario_id=getattr(usuario, "id", None),
         )
@@ -322,7 +322,7 @@ def salvar_abastecimento(form_data, files_data, usuario, veiculo=None, abastecim
     abastecimento.valor_total_nota_fiscal = _moeda(valor_total_nota_fiscal) if valor_total_nota_fiscal is not None else None
     abastecimento.observacoes_conferencia = texto(form_data.get("observacoes_conferencia")) or None
     abastecimento.observacoes = texto(form_data.get("observacoes")) or None
-    abastecimento.vinculo_id = vinculo.id
+    abastecimento.vinculo_id = vinculo.id if vinculo else None
     abastecimento.equipe_id = equipe.id if equipe else None
 
     if upload:

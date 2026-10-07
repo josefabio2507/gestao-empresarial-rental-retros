@@ -725,6 +725,35 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         self.assertEqual(302, resposta.status_code)
         self.assertIn("/acesso-negado", resposta.location)
 
+    def test_operador_registra_abastecimento_em_veiculo_sem_vinculo(self):
+        veiculo = self._criar_veiculo("SEM001", "VEICULO SEM RESPONSAVEL")
+        self._liberar_usuario("abastecimento", visualizar=True, criar=True)
+        self._autenticar(self.usuario)
+
+        resposta = self.client.get("/operacao/abastecimentos")
+
+        self.assertEqual(200, resposta.status_code)
+        self.assertIn(veiculo.identificacao.encode(), resposta.data)
+        self.assertIn(f"/operacao/abastecimentos/veiculos/{veiculo.id}/novo".encode(), resposta.data)
+
+        resposta = self.client.post(
+            f"/operacao/abastecimentos/veiculos/{veiculo.id}/novo",
+            data={
+                "data_abastecimento": "2026-08-23",
+                "leitura_atual": "30",
+                "tipo_combustivel": "Diesel S10",
+                "qtd_litros": "10,00",
+                "preco": "5,00",
+            },
+            follow_redirects=True,
+        )
+
+        self.assertEqual(200, resposta.status_code)
+        abastecimento = OperacaoAbastecimento.query.filter_by(veiculo_id=veiculo.id).one()
+        self.assertIsNone(abastecimento.vinculo_id)
+        self.assertIsNone(abastecimento.colaborador_id)
+        self.assertEqual(self.usuario.id, abastecimento.usuario_id)
+
     def test_admin_visualiza_todos_veiculos_em_abastecimento_sem_vinculo(self):
         veiculo_um = self._criar_veiculo("ADM101", "CAMINHAO ADMIN UM")
         veiculo_dois = self._criar_veiculo("ADM202", "CAMINHAO ADMIN DOIS")

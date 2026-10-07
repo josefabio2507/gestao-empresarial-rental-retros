@@ -382,8 +382,8 @@ class OperacaoAbastecimento(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     veiculo_id = db.Column(db.Integer, db.ForeignKey("operacao_veiculos_equipamentos.id"), nullable=False, index=True)
-    vinculo_id = db.Column(db.Integer, db.ForeignKey("operacao_veiculos_responsaveis.id"), nullable=False, index=True)
-    colaborador_id = db.Column(db.Integer, db.ForeignKey("colaboradores.id"), nullable=False, index=True)
+    vinculo_id = db.Column(db.Integer, db.ForeignKey("operacao_veiculos_responsaveis.id"), nullable=True, index=True)
+    colaborador_id = db.Column(db.Integer, db.ForeignKey("colaboradores.id"), nullable=True, index=True)
     equipe_id = db.Column(db.Integer, db.ForeignKey("equipes.id"), nullable=True, index=True)
     usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=False, index=True)
     data_abastecimento = db.Column(db.Date, nullable=False, index=True)

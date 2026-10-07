@@ -24,13 +24,13 @@
             <tbody>
                 {% for veiculo in veiculos %}
                     {% set vinculo = veiculo.vinculo_ativo %}
-                    {% set equipe_linha = vinculo.equipe if vinculo and vinculo.equipe else colaborador.equipe if colaborador else none %}
+                    {% set equipe_linha = vinculo.equipe if vinculo and vinculo.equipe else vinculo.colaborador.equipe if vinculo and vinculo.colaborador else none %}
                     <tr>
                         <td><strong>{{ veiculo.identificacao }}</strong><br><small>{{ veiculo.descricao }}</small></td>
-                        <td>{{ vinculo.colaborador.nome if vinculo and vinculo.colaborador else colaborador.nome if colaborador else '-' }}</td>
+                        <td>{{ vinculo.colaborador.nome if vinculo and vinculo.colaborador else '-' }}</td>
                         <td>{{ equipe_linha.nome if equipe_linha else '-' }}</td>
                         <td class="col-acoes">
-                            {% if vinculo and pode_criar %}
+                            {% if pode_criar %}
                                 <a class="btn btn-primary" href="{{ url_for('operacao.novo_abastecimento', veiculo_id=veiculo.id) }}">Abastecer</a>
                             {% else %}
                                 <span>-</span>

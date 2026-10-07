@@ -232,8 +232,8 @@ def abastecimentos():
 def novo_abastecimento(veiculo_id):
     veiculo = buscar_por_id(OperacaoVeiculoEquipamento, veiculo_id)
     vinculo = vinculo_ativo_veiculo(veiculo_id)
-    if not veiculo or not vinculo:
-        flash("Veiculo/equipamento nao possui vinculo ativo.", "danger")
+    if not veiculo or not veiculo.ativo:
+        flash("Veiculo/equipamento nao encontrado ou inativo.", "danger")
         return redirect(url_for("operacao.abastecimentos"))
 
     leitura_atual_form = ""
@@ -251,8 +251,9 @@ def novo_abastecimento(veiculo_id):
         abastecimento=None,
         veiculo=veiculo,
         vinculo=vinculo,
-        colaborador=vinculo.colaborador,
-        equipe=vinculo.equipe or vinculo.colaborador.equipe,
+        colaborador=vinculo.colaborador if vinculo else None,
+        equipe=(vinculo.equipe or vinculo.colaborador.equipe) if vinculo else None,
+        tipo_leitura=(vinculo.tipo_leitura if vinculo else tipo_leitura_padrao_veiculo(veiculo)),
         tipos_combustivel=TIPOS_COMBUSTIVEL,
         categorias_custo_extra=CATEGORIAS_CUSTO_EXTRA,
         data_padrao=data_padrao_form(),
@@ -314,6 +315,7 @@ def editar_abastecimento(abastecimento_id):
         vinculo=vinculo,
         colaborador=abastecimento.colaborador,
         equipe=abastecimento.equipe,
+        tipo_leitura=abastecimento.tipo_leitura,
         tipos_combustivel=TIPOS_COMBUSTIVEL,
         categorias_custo_extra=CATEGORIAS_CUSTO_EXTRA,
         data_padrao=abastecimento.data_abastecimento.isoformat(),
