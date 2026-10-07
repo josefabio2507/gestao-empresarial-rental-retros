@@ -19,7 +19,6 @@ from app.services.operacao_pool_service import (
     registrar_leitura,
     texto,
     tipo_leitura_padrao_veiculo,
-    veiculos_vinculados_ao_colaborador,
 )
 from app.services.permissoes_service import usuario_eh_administrador
 from app.services.suprimentos_service import _normalizar_imagem_para_jpg
@@ -61,17 +60,22 @@ def vinculo_ativo_usuario_veiculo(usuario, veiculo_id):
     ).first()
 
 
+def vinculo_ativo_veiculo(veiculo_id):
+    if not veiculo_id:
+        return None
+    return OperacaoVeiculoResponsavel.query.filter_by(
+        veiculo_id=veiculo_id,
+        status="Ativo",
+        encerrado_em=None,
+    ).first()
+
+
 def listar_veiculos_abastecimento_usuario(usuario):
-    if usuario_eh_administrador(usuario):
-        return (
-            OperacaoVeiculoEquipamento.query.filter_by(ativo=True)
-            .order_by(OperacaoVeiculoEquipamento.identificacao.asc())
-            .all()
-        )
-    colaborador = colaborador_do_usuario(usuario)
-    if not colaborador:
-        return []
-    return veiculos_vinculados_ao_colaborador(colaborador.id)
+    return (
+        OperacaoVeiculoEquipamento.query.filter_by(ativo=True)
+        .order_by(OperacaoVeiculoEquipamento.identificacao.asc())
+        .all()
+    )
 
 
 def listar_abastecimentos_usuario(usuario):
@@ -253,13 +257,13 @@ def cancelar_custo_extra_abastecimento(custo_extra_id, usuario, motivo):
 
 def salvar_abastecimento(form_data, files_data, usuario, veiculo=None, abastecimento=None, drive_service=None):
     veiculo_id = veiculo.id if veiculo else getattr(abastecimento, "veiculo_id", None)
-    vinculo = vinculo_ativo_usuario_veiculo(usuario, veiculo_id)
+    vinculo = vinculo_ativo_veiculo(veiculo_id)
     if not vinculo:
-        return False, "Usuario nao possui vinculo ativo com este veiculo/equipamento.", abastecimento
+        return False, "Veiculo/equipamento nao possui vinculo ativo.", abastecimento
 
     veiculo = veiculo or vinculo.veiculo
-    colaborador = colaborador_do_usuario(usuario)
-    equipe = colaborador.equipe if colaborador else None
+    colaborador = vinculo.colaborador
+    equipe = vinculo.equipe or (colaborador.equipe if colaborador else None)
     data_abastecimento = data_ou_none(form_data.get("data_abastecimento"))
     tipo_leitura = texto(getattr(vinculo, "tipo_leitura", None)) or tipo_leitura_padrao_veiculo(veiculo)
     leitura_atual = decimal_ou_none(form_data.get("leitura_atual"))
@@ -283,8 +287,6 @@ def salvar_abastecimento(form_data, files_data, usuario, veiculo=None, abastecim
         return False, "Quantidade de litros e obrigatoria.", abastecimento
     if preco is None or preco < 0:
         return False, "Preco e obrigatorio.", abastecimento
-    if not abastecimento and not (arquivo_cupom and texto(arquivo_cupom.filename)):
-        return False, "Foto do cupom fiscal e obrigatoria.", abastecimento
     if valor_total_nota_fiscal is not None and valor_total_nota_fiscal < 0:
         return False, "Valor total da nota fiscal deve ser maior ou igual a zero.", abastecimento
     if chave_acesso_nfe and len(chave_acesso_nfe) != 44:
