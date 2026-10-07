@@ -101,7 +101,7 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         db.create_all()
 
         admin = NivelAcesso(nome="Administrador", slug="administrador", ativo=True)
-        comum = NivelAcesso(nome="Usuario", slug="usuario", ativo=True)
+        comum = NivelAcesso(nome="Operador", slug="operador", ativo=True)
         db.session.add_all([admin, comum])
         db.session.flush()
 
@@ -675,7 +675,7 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         self.assertEqual("12.50", str(abastecimento.valor_total_custos_extras))
         self.assertEqual("Divergente", abastecimento.status_conferencia_nota_fiscal)
 
-    def test_rota_abastecimentos_lista_apenas_veiculos_vinculados_ao_usuario(self):
+    def test_operador_lista_veiculos_nao_vinculados_e_registra_abastecimento_sem_foto(self):
         veiculo_vinculado = self._criar_veiculo("CAR101", "CAMINHAO DO USUARIO")
         veiculo_outro = self._criar_veiculo("CAR202", "CAMINHAO DE OUTRO MOTORISTA")
         self.usuario.colaborador_id = self.motorista.id
@@ -690,14 +690,40 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
             usuario=self.admin,
             veiculo=veiculo_outro,
         )
-        self._liberar_usuario("abastecimento", visualizar=True)
+        self._liberar_usuario("abastecimento", visualizar=True, criar=True)
         self._autenticar(self.usuario)
 
         resposta = self.client.get("/operacao/abastecimentos")
 
         self.assertEqual(200, resposta.status_code)
         self.assertIn(b"CAR101", resposta.data)
-        self.assertNotIn(b"CAR202", resposta.data)
+        self.assertIn(b"CAR202", resposta.data)
+
+        resposta = self.client.post(
+            f"/operacao/abastecimentos/veiculos/{veiculo_outro.id}/novo",
+            data={
+                "data_abastecimento": "2026-08-23",
+                "leitura_atual": "30",
+                "tipo_combustivel": "Diesel S10",
+                "qtd_litros": "10,00",
+                "preco": "5,00",
+            },
+            follow_redirects=True,
+        )
+
+        self.assertEqual(200, resposta.status_code)
+        abastecimento = OperacaoAbastecimento.query.filter_by(veiculo_id=veiculo_outro.id).one()
+        self.assertEqual(self.usuario.id, abastecimento.usuario_id)
+        self.assertEqual(self.operador.id, abastecimento.colaborador_id)
+        self.assertIsNone(abastecimento.cupom_link)
+
+    def test_usuario_sem_permissao_nao_acessa_abastecimentos(self):
+        self._autenticar(self.usuario)
+
+        resposta = self.client.get("/operacao/abastecimentos")
+
+        self.assertEqual(302, resposta.status_code)
+        self.assertIn("/acesso-negado", resposta.location)
 
     def test_admin_visualiza_todos_veiculos_em_abastecimento_sem_vinculo(self):
         veiculo_um = self._criar_veiculo("ADM101", "CAMINHAO ADMIN UM")
@@ -714,9 +740,9 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         self.assertEqual(200, resposta.status_code)
         self.assertIn(veiculo_um.identificacao.encode(), resposta.data)
         self.assertIn(veiculo_dois.identificacao.encode(), resposta.data)
-        self.assertNotIn(b">Abastecer</a>", resposta.data)
+        self.assertIn(b">Abastecer</a>", resposta.data)
 
-    def test_formulario_abastecimento_usa_camera_do_celular_para_cupom(self):
+    def test_formulario_abastecimento_permite_selecionar_imagem_sem_camera(self):
         veiculo = self._criar_veiculo("CAR303", "CAMINHAO ABASTECIMENTO")
         self.usuario.colaborador_id = self.motorista.id
         db.session.commit()
@@ -732,7 +758,8 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
 
         self.assertEqual(200, resposta.status_code)
         self.assertIn(b'accept="image/*"', resposta.data)
-        self.assertIn(b'capture="environment"', resposta.data)
+        self.assertNotIn(b'capture=', resposta.data)
+        self.assertIn(b'name="cupom_fiscal" type="file" accept="image/*">', resposta.data)
         self.assertIn(b'value="Diesel S10"', resposta.data)
         self.assertIn(b'value="Etanol aditivado"', resposta.data)
         self.assertIn(b'value="Gasolina Premium"', resposta.data)

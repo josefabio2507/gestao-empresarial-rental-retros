@@ -22,6 +22,7 @@ from app.services.operacao_abastecimento_service import (
     listar_abastecimentos_usuario,
     listar_veiculos_abastecimento_usuario,
     salvar_abastecimento,
+    vinculo_ativo_veiculo,
     vinculo_ativo_usuario_veiculo,
 )
 from app.services.operacao_impostos_taxas_service import (
@@ -213,16 +214,14 @@ def relatorio_custos_geral_pdf():
 @module_permission_required("operacao", MODULO_ABASTECIMENTO, "visualizar")
 def abastecimentos():
     colaborador = colaborador_do_usuario(current_user)
-    if not colaborador and not current_user.is_admin:
-        flash("Usuario logado precisa estar vinculado a um colaborador ativo para registrar abastecimentos.", "danger")
-        return redirect(url_for("operacao.pool"))
 
     return render_template(
         "operacao/abastecimentos.html",
         colaborador=colaborador,
         veiculos=listar_veiculos_abastecimento_usuario(current_user),
         abastecimentos=listar_abastecimentos_usuario(current_user),
-        eh_admin=current_user.is_admin,
+        pode_criar=usuario_tem_permissao_operacao(current_user, MODULO_ABASTECIMENTO, "criar"),
+        pode_editar=usuario_tem_permissao_operacao(current_user, MODULO_ABASTECIMENTO, "editar"),
         formatar_moeda_brl=formatar_moeda_brl,
     )
 
@@ -232,9 +231,9 @@ def abastecimentos():
 @module_permission_required("operacao", MODULO_ABASTECIMENTO, "criar")
 def novo_abastecimento(veiculo_id):
     veiculo = buscar_por_id(OperacaoVeiculoEquipamento, veiculo_id)
-    vinculo = vinculo_ativo_usuario_veiculo(current_user, veiculo_id)
+    vinculo = vinculo_ativo_veiculo(veiculo_id)
     if not veiculo or not vinculo:
-        flash("Veiculo/equipamento nao esta vinculado ao usuario logado.", "danger")
+        flash("Veiculo/equipamento nao possui vinculo ativo.", "danger")
         return redirect(url_for("operacao.abastecimentos"))
 
     leitura_atual_form = ""
