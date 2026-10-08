@@ -21,6 +21,7 @@ from app.services.suprimentos_service import (
     buscar_itens_ativos,
     buscar_movimentacoes_estoque,
     buscar_saldos_estoque,
+    buscar_tipos_itens_estoque,
     formatar_decimal_brasil,
     formatar_moeda_brl,
     registrar_movimentacao_manual_estoque,
@@ -35,11 +36,13 @@ def listar():
     return render_template(
         "suprimentos/estoque/listar.html",
         itens=buscar_saldos_estoque(
-            request.args.get("descricao"),
-            request.args.get("categoria_id"),
-            request.args.get("abaixo_minimo"),
+            descricao=request.args.get("descricao"),
+            categoria_id=request.args.get("categoria_id"),
+            somente_abaixo_minimo=request.args.get("abaixo_minimo"),
+            tipo=request.args.get("tipo"),
         ),
         categorias=buscar_categorias_ativas(),
+        tipos=buscar_tipos_itens_estoque(),
         filtros=request.args,
         formatar_decimal_brasil=formatar_decimal_brasil,
     )
@@ -51,9 +54,10 @@ def listar():
 def exportar_pdf():
     categorias = buscar_categorias_ativas()
     itens = buscar_saldos_estoque(
-        request.args.get("descricao"),
-        request.args.get("categoria_id"),
-        request.args.get("abaixo_minimo"),
+        descricao=request.args.get("descricao"),
+        categoria_id=request.args.get("categoria_id"),
+        somente_abaixo_minimo=request.args.get("abaixo_minimo"),
+        tipo=request.args.get("tipo"),
     )
     pdf_buffer = gerar_pdf_estoque_materiais(itens, request.args, categorias)
     registrar_log(

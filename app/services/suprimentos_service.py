@@ -1978,9 +1978,27 @@ def indicadores_financeiro_ordens_compra(hoje=None):
         "ocs_prontas_gerar": prontas,
         "ocs_pendencia_financeira": pendentes,
     }
-def buscar_saldos_estoque(descricao=None, categoria_id=None, somente_abaixo_minimo=False):
+def buscar_tipos_itens_estoque():
+    return [
+        tipo
+        for (tipo,) in (
+            SuprimentosItem.query
+            .with_entities(SuprimentosItem.tipo)
+            .filter(
+                SuprimentosItem.item_estocavel.is_(True),
+                SuprimentosItem.ativo.is_(True),
+            )
+            .distinct()
+            .order_by(SuprimentosItem.tipo.asc())
+            .all()
+        )
+    ]
+
+
+def buscar_saldos_estoque(descricao=None, categoria_id=None, somente_abaixo_minimo=False, tipo=None):
     descricao = texto(descricao).upper()
     categoria_id = inteiro_ou_none(categoria_id)
+    tipo = texto(tipo)
     somente_abaixo_minimo = bool(somente_abaixo_minimo)
 
     query = (
@@ -2004,6 +2022,9 @@ def buscar_saldos_estoque(descricao=None, categoria_id=None, somente_abaixo_mini
 
     if categoria_id:
         query = query.filter(SuprimentosItem.categoria_id == categoria_id)
+
+    if tipo:
+        query = query.filter(SuprimentosItem.tipo == tipo)
 
     itens = query.order_by(SuprimentosItem.descricao.asc()).all()
 
