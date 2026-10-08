@@ -30,6 +30,15 @@
             </select>
         </div>
         <div class="form-group">
+            <label for="tipo">Tipo</label>
+            <select id="tipo" name="tipo">
+                <option value="">Todos</option>
+                {% for tipo in tipos %}
+                    <option value="{{ tipo }}" {{ "selected" if filtros.get('tipo') == tipo else "" }}>{{ tipo }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
             <label for="abaixo_minimo">Estoque minimo</label>
             <select id="abaixo_minimo" name="abaixo_minimo">
                 <option value="">Todos</option>

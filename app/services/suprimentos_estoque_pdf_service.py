@@ -43,6 +43,8 @@ def _filtros_descricao(filtros, categorias):
     if categoria_id:
         categoria = next((item for item in categorias if str(item.id) == str(categoria_id)), None)
         partes.append(f"Categoria: {categoria.nome if categoria else categoria_id}")
+    if filtros.get("tipo"):
+        partes.append(f"Tipo: {filtros['tipo']}")
     if filtros.get("abaixo_minimo"):
         partes.append("Somente abaixo do estoque mínimo")
     return " | ".join(partes) if partes else "Todos os materiais estocáveis"

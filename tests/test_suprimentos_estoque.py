@@ -16,7 +16,7 @@ from app.models import (
     SuprimentosUnidadeMedida,
     Usuario,
 )
-from app.services.suprimentos_service import registrar_movimentacao_manual_estoque
+from app.services.suprimentos_service import buscar_saldos_estoque, registrar_movimentacao_manual_estoque
 
 
 class SuprimentosEstoqueTestCase(unittest.TestCase):
@@ -108,6 +108,16 @@ class SuprimentosEstoqueTestCase(unittest.TestCase):
             estoque_minimo=Decimal("1.000"),
             ativo=True,
         )
+        self.item_ferramenta = SuprimentosItem(
+            codigo_interno="FER-001",
+            descricao="CHAVE DE IMPACTO",
+            categoria_id=self.categoria.id,
+            unidade_medida_id=self.unidade.id,
+            tipo="ferramenta",
+            item_estocavel=True,
+            estoque_minimo=Decimal("1.000"),
+            ativo=True,
+        )
         self.servico = SuprimentosItem(
             codigo_interno="SRV-001",
             descricao="SERVICO DE CALIBRAGEM",
@@ -117,7 +127,7 @@ class SuprimentosEstoqueTestCase(unittest.TestCase):
             item_estocavel=False,
             ativo=True,
         )
-        db.session.add_all([self.item, self.item_normal, self.servico])
+        db.session.add_all([self.item, self.item_normal, self.item_ferramenta, self.servico])
         db.session.flush()
 
         db.session.add_all(
@@ -230,6 +240,30 @@ class SuprimentosEstoqueTestCase(unittest.TestCase):
         self.assertEqual(200, resposta.status_code)
         self.assertIn(b"FILTRO DE OLEO", resposta.data)
         self.assertNotIn(b"FILTRO DE AR", resposta.data)
+
+    def test_filtro_tipo_lista_valores_distintos_e_restringe_consulta(self):
+        self._liberar_usuario()
+        self._autenticar(self.usuario)
+
+        resposta = self.client.get(
+            f"/suprimentos/estoque/?descricao=CHAVE&categoria_id={self.categoria.id}&tipo=ferramenta&abaixo_minimo=1"
+        )
+
+        self.assertEqual(200, resposta.status_code)
+        self.assertIn(b'<select id="tipo" name="tipo">', resposta.data)
+        self.assertIn(b'<option value="ferramenta" selected>', resposta.data)
+        self.assertIn(b"CHAVE DE IMPACTO", resposta.data)
+        self.assertNotIn(b"FILTRO DE OLEO", resposta.data)
+        self.assertEqual([self.item_ferramenta.id], [item.id for item in buscar_saldos_estoque(tipo="ferramenta")])
+
+    def test_exporta_estoque_filtrado_por_tipo_em_pdf(self):
+        self._liberar_usuario()
+        self._autenticar(self.usuario)
+
+        resposta = self.client.get("/suprimentos/estoque/exportar-pdf?tipo=ferramenta")
+
+        self.assertEqual(200, resposta.status_code)
+        self.assertTrue(resposta.data.startswith(b"%PDF-"))
 
     def test_historico_movimentacoes_filtra_por_item_e_documento(self):
         self._liberar_usuario()
