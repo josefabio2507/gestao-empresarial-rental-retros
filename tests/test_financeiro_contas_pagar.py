@@ -226,6 +226,70 @@ class FinanceiroContasPagarTestCase(unittest.TestCase):
         self.assertIn(ativo.id, ids)
         self.assertNotIn(cancelado.id, ids)
 
+    def test_exporta_excel_por_data_com_saldos_subtotais_e_total_geral(self):
+        self._autenticar(self.admin)
+        for vencimento, valor, documento in (
+            ("2026-08-30", "100,00", "DIA-30-A"),
+            ("2026-08-30", "250,00", "DIA-30-B"),
+            ("2026-09-05", "400,00", "DIA-05"),
+        ):
+            sucesso, mensagem, _ = salvar_titulo(
+                self._dados_titulo(
+                    data_vencimento=vencimento,
+                    valor_original=valor,
+                    numero_documento=documento,
+                ),
+                usuario=self.admin,
+            )
+            self.assertTrue(sucesso, mensagem)
+
+        titulo_parcial = FinanceiroContaPagarTitulo.query.filter_by(numero_documento="DIA-30-B").one()
+        titulo_parcial.valor_pago = 50
+        titulo_parcial.status = "Pago parcialmente"
+        db.session.commit()
+
+        resposta = self.client.get(
+            "/financeiro/contas-a-pagar/titulos/exportar-excel-por-data"
+            "?vencimento_inicio=2026-08-01&vencimento_fim=2026-09-30"
+        )
+
+        self.assertEqual(200, resposta.status_code)
+        self.assertTrue(resposta.data.startswith(b"PK"))
+        self.assertIn("relatorio_titulos_a_pagar_por_data_", resposta.headers["Content-Disposition"])
+        workbook = load_workbook(BytesIO(resposta.data))
+        planilha = workbook["Títulos por Data"]
+        valores_coluna_a = [planilha.cell(linha, 1).value for linha in range(1, planilha.max_row + 1)]
+        valores_coluna_d = [planilha.cell(linha, 4).value for linha in range(1, planilha.max_row + 1)]
+
+        self.assertIn("Data de pagamento: 30/08/2026", valores_coluna_a)
+        self.assertIn("Data de pagamento: 05/09/2026", valores_coluna_a)
+        linha_total_30 = valores_coluna_a.index("Total de 30/08/2026") + 1
+        linha_total_05 = valores_coluna_a.index("Total de 05/09/2026") + 1
+        linha_total_geral = valores_coluna_d.index("Total geral do relatório") + 1
+        self.assertEqual(300, planilha.cell(linha_total_30, 7).value)
+        self.assertEqual(400, planilha.cell(linha_total_05, 7).value)
+        self.assertEqual(700, planilha.cell(linha_total_geral, 7).value)
+
+    def test_excel_por_data_exclui_titulo_pago(self):
+        self._autenticar(self.admin)
+        sucesso, mensagem, titulo = salvar_titulo(
+            self._dados_titulo(valor_original="100,00", numero_documento="PAGO"),
+            usuario=self.admin,
+        )
+        self.assertTrue(sucesso, mensagem)
+        titulo.valor_pago = 100
+        titulo.status = "Pago"
+        db.session.commit()
+
+        resposta = self.client.get("/financeiro/contas-a-pagar/titulos/exportar-excel-por-data")
+
+        workbook = load_workbook(BytesIO(resposta.data))
+        planilha = workbook["Títulos por Data"]
+        valores = [celula.value for linha in planilha.iter_rows() for celula in linha]
+        self.assertEqual(200, resposta.status_code)
+        self.assertNotIn("PAGO", valores)
+        self.assertIn("Nenhum título a pagar encontrado para os filtros informados.", valores)
+
     def test_cria_edita_filtra_e_cancela_titulo_manual(self):
         self._autenticar(self.admin)
 

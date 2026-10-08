@@ -57,7 +57,9 @@ from app.services.financeiro_relatorios_service import (
 )
 from app.services.financeiro_relatorios_excel_service import (
     gerar_excel_titulos,
+    gerar_excel_titulos_por_data,
     nome_arquivo_titulos_excel,
+    nome_arquivo_titulos_por_data_excel,
 )
 from app.services.suprimentos_service import (
     buscar_agendamentos_oc_contas_pagar,
@@ -203,6 +205,29 @@ def exportar_titulos_excel():
         excel_buffer,
         as_attachment=True,
         download_name=nome_arquivo_titulos_excel(),
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+
+
+@financeiro_contas_pagar_bp.route("/titulos/exportar-excel-por-data")
+@login_required
+@module_permission_required("financeiro", "contas_a_pagar", "visualizar")
+def exportar_titulos_por_data_excel():
+    titulos = [
+        titulo
+        for titulo in listar_titulos(request.args)
+        if titulo.status not in ("Pago", "Cancelado", "Estornado")
+        and calcular_saldo_titulo(titulo) > 0
+    ]
+    excel_buffer = gerar_excel_titulos_por_data(titulos, request.args)
+    registrar_log(
+        "financeiro_contas_pagar_titulos_por_data_excel_exportado",
+        "Relatorio de titulos a pagar por data exportado em Excel.",
+    )
+    return send_file(
+        excel_buffer,
+        as_attachment=True,
+        download_name=nome_arquivo_titulos_por_data_excel(),
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
 
