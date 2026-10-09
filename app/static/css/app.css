@@ -1898,12 +1898,19 @@ textarea:focus {
     text-decoration: none;
 }
 
-.app-nav-link > span:first-child {
+.app-nav-link > span:first-child,
+.app-nav-link .app-nav-icon {
     color: var(--rr-gold);
     font-size: 18px;
     line-height: 1;
     text-align: center;
     width: 16px;
+}
+
+.app-nav-link .app-nav-icon {
+    display: inline-flex;
+    flex: 0 0 16px;
+    justify-content: center;
 }
 
 .app-nav-link:hover,

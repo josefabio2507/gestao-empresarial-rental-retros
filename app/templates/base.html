@@ -53,17 +53,25 @@
 
             <nav class="app-navigation">
                 <a class="app-nav-link {{ 'is-active' if request.endpoint == 'main.inicio' else '' }}" href="{{ url_for('main.inicio') }}">
-                    <span aria-hidden="true">⌂</span>
+                    <span class="app-nav-icon" aria-hidden="true">⌂</span>
                     <span>Início</span>
                 </a>
 
                 {% for departamento in navegacao_departamentos %}
                     {% if not (current_user.is_admin and departamento.slug == 'administracao') %}
                         {% set departamento_ativo = request.view_args and request.view_args.get('slug_departamento') == departamento.slug %}
+                        {% set icone_departamento = {
+                            'financeiro': '◉',
+                            'suprimentos': '▦',
+                            'operacao': '⚒',
+                            'departamento_pessoal': '♟',
+                            'seguranca_trabalho': '⬢',
+                            'fiscal': '▤'
+                        }.get(departamento.slug, '•') %}
                         <div class="app-nav-group {{ 'is-open' if departamento_ativo else '' }}">
                             <div class="app-nav-group-row">
                                 <a class="app-nav-link {{ 'is-active' if departamento_ativo else '' }}" href="{{ url_for('departamentos.detalhe_departamento', slug_departamento=departamento.slug) }}">
-                                    <span aria-hidden="true">•</span>
+                                    <span class="app-nav-icon" aria-hidden="true">{{ icone_departamento }}</span>
                                     <span>{{ departamento.nome }}</span>
                                 </a>
                                 {% if departamento.navegacao_modulos %}
@@ -83,7 +91,7 @@
 
                 {% if current_user.is_admin %}
                     <a class="app-nav-link {{ 'is-active' if request.blueprint in ['admin', 'usuarios', 'permissoes', 'cargos', 'equipes'] else '' }}" href="{{ url_for('admin.index') }}">
-                        <span aria-hidden="true">•</span>
+                        <span class="app-nav-icon" aria-hidden="true">⚙</span>
                         <span>Administração</span>
                     </a>
                 {% endif %}
