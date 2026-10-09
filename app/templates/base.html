@@ -8,8 +8,11 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
+    {% if request.blueprint and request.blueprint.startswith('financeiro') %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/financeiro.css') }}">
+    {% endif %}
 </head>
-<body class="app-shell-body">
+<body class="app-shell-body {{ 'financeiro-ui' if request.blueprint and request.blueprint.startswith('financeiro') else '' }}">
     <div class="app-shell">
         <aside class="app-sidebar" id="app-sidebar" aria-label="Navegação principal">
             <a class="app-brand" href="{{ url_for('main.inicio') }}">
