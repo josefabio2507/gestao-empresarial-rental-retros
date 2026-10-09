@@ -365,6 +365,23 @@
     color: var(--rr-blue);
 }
 
+/* Todos os retornos usam a mesma superfície branca, independentemente do módulo. */
+.app-main a.btn.rr-back-button,
+.app-main button.btn.rr-back-button {
+    background: #ffffff !important;
+    border: 1px solid var(--rr-border) !important;
+    color: var(--rr-navy) !important;
+}
+
+.app-main a.btn.rr-back-button:hover,
+.app-main a.btn.rr-back-button:focus-visible,
+.app-main button.btn.rr-back-button:hover,
+.app-main button.btn.rr-back-button:focus-visible {
+    background: #f7faff !important;
+    border-color: var(--rr-blue) !important;
+    color: var(--rr-blue) !important;
+}
+
 .titulos-piloto-tabela-cabecalho {
     align-items: center;
     display: flex;

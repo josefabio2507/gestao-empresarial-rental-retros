@@ -48,6 +48,16 @@ document.addEventListener("DOMContentLoaded", () => {
         card.appendChild(acoes);
     });
 
+    const marcarBotoesVoltar = (raiz = document) => {
+        raiz.querySelectorAll("a.btn, button.btn").forEach((botao) => {
+            if (/^voltar\b/i.test(botao.textContent.trim())) {
+                botao.classList.add("rr-back-button");
+            }
+        });
+    };
+
+    marcarBotoesVoltar();
+
     document.querySelectorAll(".header-actions-card, .submodule-tabs, .subnav").forEach((bloco) => {
         const acoes = bloco.classList.contains("header-actions-card")
             ? bloco.querySelector(":scope > .actions, :scope > .action-bar, :scope > .page-actions")
@@ -61,12 +71,15 @@ document.addEventListener("DOMContentLoaded", () => {
             return /^voltar\b/i.test(botao.textContent.trim());
         });
         if (botoesVoltar.length) {
-            botoesVoltar.forEach((botao) => acoes.appendChild(botao));
+            botoesVoltar.forEach((botao) => {
+                botao.classList.add("rr-back-button");
+                acoes.appendChild(botao);
+            });
             return;
         }
 
         const voltar = document.createElement("button");
-        voltar.className = "btn btn-secondary";
+        voltar.className = "btn btn-secondary rr-back-button";
         voltar.type = "button";
         voltar.dataset.historyBack = "true";
         voltar.textContent = "Voltar";
