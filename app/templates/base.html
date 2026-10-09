@@ -60,7 +60,7 @@
 
                 {% for departamento in navegacao_departamentos %}
                     {% if not (current_user.is_admin and departamento.slug == 'administracao') %}
-                        {% set departamento_ativo = request.view_args and request.view_args.get('slug_departamento') == departamento.slug %}
+                        {% set departamento_ativo = departamento.slug == departamento_tema %}
                         {% set icone_departamento = {
                             'financeiro': '◉',
                             'suprimentos': '▦',
