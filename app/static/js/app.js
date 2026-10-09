@@ -89,7 +89,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const marcarBotoesVoltar = (raiz = document) => {
         raiz.querySelectorAll("a.btn, button.btn").forEach((botao) => {
-            if (/^voltar\b/i.test(botao.textContent.trim())) {
+            const texto = botao.textContent.trim().replace(/^[^A-Za-zÀ-ÿ0-9]+/, "");
+            if (/^voltar\b/i.test(texto)) {
                 botao.classList.add("rr-back-button");
             }
         });
@@ -107,7 +108,8 @@ document.addEventListener("DOMContentLoaded", () => {
         acoes.dataset.backButtonReady = "true";
 
         const botoesVoltar = Array.from(acoes.querySelectorAll("a, button")).filter((botao) => {
-            return /^voltar\b/i.test(botao.textContent.trim());
+            const texto = botao.textContent.trim().replace(/^[^A-Za-zÀ-ÿ0-9]+/, "");
+            return /^voltar\b/i.test(texto);
         });
         if (botoesVoltar.length) {
             botoesVoltar.forEach((botao) => {
