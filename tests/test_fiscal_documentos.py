@@ -78,6 +78,9 @@ XML_NFE = b"""<?xml version="1.0" encoding="UTF-8"?>
           <vNF>251.00</vNF>
         </ICMSTot>
       </total>
+      <transp>
+        <modFrete>9</modFrete>
+      </transp>
     </infNFe>
   </NFe>
 </nfeProc>

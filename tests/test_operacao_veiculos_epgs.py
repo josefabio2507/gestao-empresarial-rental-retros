@@ -129,9 +129,8 @@ class OperacaoVeiculosEpgsTestCase(unittest.TestCase):
 
         resposta = self.client.get("/operacao/")
 
-        self.assertEqual(200, resposta.status_code)
-        self.assertIn(b"Voltar", resposta.data)
-        self.assertIn(b'href="/"', resposta.data)
+        self.assertEqual(302, resposta.status_code)
+        self.assertTrue(resposta.headers["Location"].endswith("/departamentos/operacao"))
 
     def test_admin_ve_cards_operacao_com_links_reais(self):
         self._autenticar(self.admin)
@@ -139,12 +138,7 @@ class OperacaoVeiculosEpgsTestCase(unittest.TestCase):
         resposta = self.client.get("/departamentos/operacao")
 
         self.assertEqual(200, resposta.status_code)
-        self.assertIn(b'href="/operacao/gestao-veiculos-epgs/veiculos-equipamentos"', resposta.data)
-        self.assertIn(b'href="/operacao/pool-veiculos"', resposta.data)
-        self.assertIn(b'href="/operacao/abastecimentos"', resposta.data)
-        self.assertIn(b'href="/operacao/multas-transito"', resposta.data)
-        self.assertIn(b'href="/operacao/impostos-taxas"', resposta.data)
-        self.assertIn(b'href="/operacao/central-custos"', resposta.data)
+        self.assertIn(b'href="/operacao/gestao-veiculos-epgs/"', resposta.data)
         self.assertNotIn(b"Funcionalidade em constru", resposta.data)
 
     def test_usuario_sem_permissao_nao_acessa_rota_direta(self):

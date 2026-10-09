@@ -1255,6 +1255,9 @@ def salvar_requisicao_compra(form_data, usuario, requisicao=None):
     if centro_custo_id and not buscar_centro_custo_ativo_por_classe(centro_custo_id, CLASSE_CENTRO_CUSTO):
         return False, "Centro de custo nao encontrado, inativo ou fora da classe permitida.", requisicao
 
+    if equipe_id and not Equipe.query.filter_by(id=equipe_id, ativo=True).first():
+        return False, "Equipe nao encontrada ou inativa.", requisicao
+
     if (
         sub_centro_custo_equipe_id
         and not buscar_centro_custo_ativo_por_classe(
