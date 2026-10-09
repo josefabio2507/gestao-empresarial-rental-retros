@@ -14,6 +14,45 @@ document.addEventListener("DOMContentLoaded", () => {
 
     sidebarClose?.addEventListener("click", fecharSidebar);
 
+    const iconesBotoes = [
+        [/^pesquisar\b|^buscar\b|^consultar\b|^filtrar\b/i, "⌕"],
+        [/^limpar\b|^resetar\b/i, "↻"],
+        [/^voltar\b|^retornar\b/i, "←"],
+        [/^\+?\s*(novo|nova|adicionar|incluir)\b/i, "＋"],
+        [/^salvar\b|^guardar\b/i, "▣"],
+        [/^editar\b|^corrigir\b/i, "✎"],
+        [/^excluir\b|^remover\b|^apagar\b/i, "×"],
+        [/^cancelar\b|^inativar\b/i, "⊘"],
+        [/^ativar\b|^reativar\b|^aprovar\b|^validar\b/i, "✓"],
+        [/^exportar\b|^baixar\b|^download\b|^gerar arquivo\b/i, "⇩"],
+        [/^importar\b|^anexar\b/i, "⇧"],
+        [/^ver\b|^visualizar\b|^detalhe\b|^abrir\b/i, "◉"],
+        [/^gerar\b|^processar\b|^sincronizar\b/i, "⚙"],
+        [/^dashboard\b/i, "⌂"],
+        [/^t[ií]tulos?\b|^faturas?\b|^notas?\b/i, "▤"],
+    ];
+
+    const aplicarIconesBotoes = () => {
+        document.querySelectorAll("a.btn, button.btn, .submodule-tab, .fluxo-caixa-subnav a").forEach((botao) => {
+            if (botao.dataset.uiIconReady === "true") {
+                return;
+            }
+            const texto = botao.textContent.trim();
+            const entrada = iconesBotoes.find(([padrao]) => padrao.test(texto));
+            if (!entrada) {
+                return;
+            }
+            const icone = document.createElement("span");
+            icone.className = "ui-button-icon";
+            icone.setAttribute("aria-hidden", "true");
+            icone.textContent = entrada[1];
+            botao.prepend(icone);
+            botao.dataset.uiIconReady = "true";
+        });
+    };
+
+    aplicarIconesBotoes();
+
     document.querySelectorAll("[data-nav-toggle]").forEach((toggle) => {
         toggle.addEventListener("click", () => {
             const subnav = document.getElementById(toggle.getAttribute("aria-controls"));
@@ -89,6 +128,8 @@ document.addEventListener("DOMContentLoaded", () => {
     document.querySelectorAll("[data-history-back]").forEach((voltar) => {
         voltar.addEventListener("click", () => window.history.back());
     });
+
+    aplicarIconesBotoes();
 
     const apenasDigitos = (valor) => (valor || "").replace(/\D/g, "");
 

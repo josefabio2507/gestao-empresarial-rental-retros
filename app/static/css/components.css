@@ -336,6 +336,17 @@
     padding: 10px;
 }
 
+.ui-button-icon {
+    align-items: center;
+    display: inline-flex;
+    flex: 0 0 auto;
+    font-size: 1.15em;
+    font-weight: 800;
+    justify-content: center;
+    line-height: 1;
+    margin-right: 6px;
+}
+
 .app-main .header-actions-card > .actions,
 .app-main .header-actions-card > .action-bar,
 .app-main .header-actions-card > .page-actions {
