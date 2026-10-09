@@ -33,3 +33,7 @@ Data da execução: 08/10/2026
 As alterações visuais da Missão 18 permanecem limitadas a templates e CSS. A suíte de regressão expôs 17 falhas funcionais que exigem uma missão corretiva separada, pois envolvem regras de negócio, dependência de DANFE e expectativas de testes fora do escopo da modernização visual.
 
 Os 621 avisos são majoritariamente avisos de uso legado do SQLAlchemy (`Query.get`) e não bloquearam a execução.
+
+## Contexto de homologação
+
+Em 08/10/2026, foi confirmado que essas falhas ocorrem somente no ambiente local de testes; a versão em produção segue funcionando corretamente. Assim, elas não bloqueiam a homologação visual local da Missão 18, mas permanecem registradas como pendência de compatibilidade do ambiente de testes local.
