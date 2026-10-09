@@ -9,9 +9,6 @@
             <p>{{ departamento.descricao or "Módulos disponíveis neste departamento." }}</p>
         </div>
 
-        <a class="btn btn-secondary" href="{{ url_for('main.inicio') }}">
-            Voltar ao início
-        </a>
     </div>
 
     {% if modulos_liberados %}
