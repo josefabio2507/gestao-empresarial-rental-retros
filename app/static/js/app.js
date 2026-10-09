@@ -14,6 +14,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
     sidebarClose?.addEventListener("click", fecharSidebar);
 
+    document.querySelectorAll("[data-nav-toggle]").forEach((toggle) => {
+        toggle.addEventListener("click", () => {
+            const subnav = document.getElementById(toggle.getAttribute("aria-controls"));
+            if (!subnav) {
+                return;
+            }
+            const aberto = toggle.getAttribute("aria-expanded") === "true";
+            toggle.setAttribute("aria-expanded", String(!aberto));
+            subnav.hidden = aberto;
+            toggle.closest(".app-nav-group")?.classList.toggle("is-open", !aberto);
+        });
+    });
+
     document.querySelectorAll(".top-bar > .actions, .top-bar > .action-bar, .top-bar > .page-actions").forEach((acoes) => {
         const cabecalho = acoes.parentElement;
         if (!cabecalho || cabecalho.nextElementSibling?.classList.contains("header-actions-card")) {

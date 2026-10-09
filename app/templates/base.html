@@ -49,10 +49,25 @@
 
                 {% for departamento in navegacao_departamentos %}
                     {% if not (current_user.is_admin and departamento.slug == 'administracao') %}
-                        <a class="app-nav-link {{ 'is-active' if request.view_args and request.view_args.get('slug_departamento') == departamento.slug else '' }}" href="{{ url_for('departamentos.detalhe_departamento', slug_departamento=departamento.slug) }}">
-                            <span aria-hidden="true">•</span>
-                            <span>{{ departamento.nome }}</span>
-                        </a>
+                        {% set departamento_ativo = request.view_args and request.view_args.get('slug_departamento') == departamento.slug %}
+                        <div class="app-nav-group {{ 'is-open' if departamento_ativo else '' }}">
+                            <div class="app-nav-group-row">
+                                <a class="app-nav-link {{ 'is-active' if departamento_ativo else '' }}" href="{{ url_for('departamentos.detalhe_departamento', slug_departamento=departamento.slug) }}">
+                                    <span aria-hidden="true">•</span>
+                                    <span>{{ departamento.nome }}</span>
+                                </a>
+                                {% if departamento.navegacao_modulos %}
+                                    <button class="app-nav-toggle" type="button" data-nav-toggle aria-expanded="{{ 'true' if departamento_ativo else 'false' }}" aria-controls="app-subnav-{{ departamento.slug }}" aria-label="Exibir submódulos de {{ departamento.nome }}">⌄</button>
+                                {% endif %}
+                            </div>
+                            {% if departamento.navegacao_modulos %}
+                                <div class="app-subnav" id="app-subnav-{{ departamento.slug }}" {{ '' if departamento_ativo else 'hidden' }}>
+                                    {% for modulo in departamento.navegacao_modulos %}
+                                        <a href="{{ modulo.url }}">{{ modulo.nome }}</a>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
                     {% endif %}
                 {% endfor %}
 

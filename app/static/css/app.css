@@ -1822,6 +1822,68 @@ textarea:focus {
     gap: 6px;
 }
 
+.app-nav-group {
+    display: grid;
+    gap: 2px;
+}
+
+.app-nav-group-row {
+    align-items: stretch;
+    display: flex;
+}
+
+.app-nav-group-row .app-nav-link {
+    flex: 1;
+}
+
+.app-nav-toggle {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    color: #dbe7f3;
+    cursor: pointer;
+    font-size: 16px;
+    min-width: 34px;
+}
+
+.app-nav-toggle:hover,
+.app-nav-toggle:focus-visible {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+    outline: none;
+}
+
+.app-nav-group.is-open .app-nav-toggle {
+    transform: rotate(180deg);
+}
+
+.app-subnav {
+    display: grid;
+    gap: 2px;
+    margin-left: 18px;
+    padding: 2px 0 4px;
+}
+
+.app-subnav[hidden] {
+    display: none;
+}
+
+.app-subnav a {
+    border-radius: 7px;
+    color: #b9c9da;
+    font-size: 12px;
+    padding: 7px 10px;
+    text-decoration: none;
+}
+
+.app-subnav a:hover,
+.app-subnav a:focus-visible {
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+    outline: none;
+}
+
 .app-nav-link {
     align-items: center;
     border: 1px solid transparent;
