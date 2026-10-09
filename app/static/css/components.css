@@ -323,6 +323,38 @@
     margin: 16px 0;
 }
 
+/* Ações de cabeçalho compartilhadas entre módulos e submódulos. */
+.header-actions-card {
+    align-items: center;
+    background: #ffffff;
+    border: 1px solid var(--rr-border);
+    border-radius: 12px;
+    box-shadow: var(--rr-shadow);
+    display: flex;
+    margin: 14px 0 18px;
+    overflow-x: auto;
+    padding: 10px;
+}
+
+.app-main .header-actions-card > .actions,
+.app-main .header-actions-card > .action-bar,
+.app-main .header-actions-card > .page-actions {
+    align-items: center;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+}
+
+.header-actions-card .btn {
+    flex: 0 0 auto;
+}
+
 .titulos-piloto-tabela-cabecalho {
     align-items: center;
     display: flex;
@@ -343,6 +375,15 @@
 }
 
 @media (max-width: 640px) {
+    .header-actions-card {
+        align-items: stretch;
+        overflow: visible;
+    }
+
+    .header-actions-card .btn {
+        flex: 1 1 100%;
+    }
+
     .titulos-piloto-tabela-cabecalho {
         align-items: flex-start;
         flex-direction: column;

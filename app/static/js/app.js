@@ -14,6 +14,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
     sidebarClose?.addEventListener("click", fecharSidebar);
 
+    document.querySelectorAll(".top-bar > .actions, .top-bar > .action-bar, .top-bar > .page-actions").forEach((acoes) => {
+        const cabecalho = acoes.parentElement;
+        if (!cabecalho || cabecalho.nextElementSibling?.classList.contains("header-actions-card")) {
+            return;
+        }
+
+        const card = document.createElement("div");
+        card.className = "header-actions-card";
+        cabecalho.insertAdjacentElement("afterend", card);
+        card.appendChild(acoes);
+    });
+
     const apenasDigitos = (valor) => (valor || "").replace(/\D/g, "");
 
     const aplicarMascaraDocumento = (valor) => {

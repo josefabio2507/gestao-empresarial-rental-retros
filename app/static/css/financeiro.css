@@ -1,7 +1,6 @@
 /* Missão 18.5: acabamento visual do módulo Financeiro.
  * Atua somente quando o blueprint financeiro está ativo. */
 
-.financeiro-ui .top-bar,
 .financeiro-ui .filter-card,
 .financeiro-ui .table-card,
 .financeiro-ui .form-card,
@@ -14,9 +13,11 @@
 
 .financeiro-ui .top-bar {
     align-items: flex-start;
+    background: linear-gradient(135deg, var(--rr-navy), var(--rr-blue));
+    border: 1px solid transparent;
     gap: 20px;
     margin-bottom: 18px;
-    padding: 24px;
+    padding: 24px calc(var(--page-header-logo-width) + 72px) 24px 24px;
 }
 
 .financeiro-ui .top-bar h1,
@@ -24,8 +25,12 @@
     color: var(--rr-navy);
 }
 
+.financeiro-ui .top-bar h1 {
+    color: #ffffff;
+}
+
 .financeiro-ui .top-bar p {
-    color: var(--rr-muted);
+    color: #dbe7f3;
     margin-bottom: 0;
 }
 
