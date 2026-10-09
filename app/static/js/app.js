@@ -48,6 +48,35 @@ document.addEventListener("DOMContentLoaded", () => {
         card.appendChild(acoes);
     });
 
+    document.querySelectorAll(".header-actions-card, .submodule-tabs, .subnav").forEach((bloco) => {
+        const acoes = bloco.classList.contains("header-actions-card")
+            ? bloco.querySelector(":scope > .actions, :scope > .action-bar, :scope > .page-actions")
+            : bloco;
+        if (!acoes || acoes.dataset.backButtonReady === "true") {
+            return;
+        }
+        acoes.dataset.backButtonReady = "true";
+
+        const botoesVoltar = Array.from(acoes.querySelectorAll("a, button")).filter((botao) => {
+            return /^voltar\b/i.test(botao.textContent.trim());
+        });
+        if (botoesVoltar.length) {
+            botoesVoltar.forEach((botao) => acoes.appendChild(botao));
+            return;
+        }
+
+        const voltar = document.createElement("button");
+        voltar.className = "btn btn-secondary";
+        voltar.type = "button";
+        voltar.dataset.historyBack = "true";
+        voltar.textContent = "Voltar";
+        acoes.appendChild(voltar);
+    });
+
+    document.querySelectorAll("[data-history-back]").forEach((voltar) => {
+        voltar.addEventListener("click", () => window.history.back());
+    });
+
     const apenasDigitos = (valor) => (valor || "").replace(/\D/g, "");
 
     const aplicarMascaraDocumento = (valor) => {
