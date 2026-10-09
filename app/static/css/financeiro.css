@@ -50,11 +50,40 @@
     gap: 8px;
 }
 
+.financeiro-ui .fluxo-caixa-subnav {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    overflow-x: auto;
+}
+
 .financeiro-ui .action-bar .btn,
 .financeiro-ui .submodule-tab,
 .financeiro-ui .fluxo-caixa-subnav a {
+    align-items: center;
+    background: #ffffff;
+    border: 1px solid var(--rr-border);
     border-radius: 8px;
+    color: var(--rr-navy);
+    display: inline-flex;
     font-weight: 700;
+    justify-content: center;
+    min-height: 38px;
+    padding: 8px 14px;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.financeiro-ui .fluxo-caixa-subnav a:hover {
+    border-color: var(--rr-blue);
+    color: var(--rr-blue);
+}
+
+.financeiro-ui .fluxo-caixa-subnav a.active {
+    background: var(--rr-blue);
+    border-color: var(--rr-blue);
+    color: #ffffff;
 }
 
 .financeiro-ui .filter-card,
