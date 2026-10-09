@@ -29,7 +29,7 @@ A direção visual aprovada para a Missão 18 utiliza:
 - badges de status e menus de ações em substituição à repetição de botões textuais;
 - composição limpa para as telas de Colaboradores, Ficha do Colaborador, Pedido de Refeições e Títulos a Pagar.
 
-As imagens que originaram a direção visual ainda não estão versionadas nesta branch. Quando disponibilizadas, devem ser armazenadas sem alterar o conteúdo deste documento em:
+As imagens que originaram a direção visual estão versionadas nesta branch em:
 
 ```text
 docs/ui/references/
@@ -269,4 +269,3 @@ Prioridades de validação futura: sidebar, cabeçalho, filtros, ações de tabe
 ## 11. Próximo passo autorizado apenas mediante aprovação
 
 A Missão 18.2 deverá implementar a estrutura global (layout base, sidebar e topbar) com base neste documento. Ela não deve iniciar sem aprovação explícita.
-
