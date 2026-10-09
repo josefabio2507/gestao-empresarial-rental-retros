@@ -1,4 +1,19 @@
 document.addEventListener("DOMContentLoaded", () => {
+    const sidebarToggle = document.querySelector("[data-sidebar-toggle]");
+    const sidebarClose = document.querySelector("[data-sidebar-close]");
+
+    const fecharSidebar = () => {
+        document.body.classList.remove("sidebar-open");
+        sidebarToggle?.setAttribute("aria-expanded", "false");
+    };
+
+    sidebarToggle?.addEventListener("click", () => {
+        const sidebarAberta = document.body.classList.toggle("sidebar-open");
+        sidebarToggle.setAttribute("aria-expanded", String(sidebarAberta));
+    });
+
+    sidebarClose?.addEventListener("click", fecharSidebar);
+
     const apenasDigitos = (valor) => (valor || "").replace(/\D/g, "");
 
     const aplicarMascaraDocumento = (valor) => {

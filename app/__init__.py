@@ -2,6 +2,7 @@ from flask import Flask
 from config import Config
 from app.extensions import db, migrate, login_manager
 from decimal import Decimal, InvalidOperation
+from flask_login import current_user
 
 
 def _formatar_moeda_brl(valor):
@@ -21,6 +22,17 @@ def create_app(config_overrides=None):
     if config_overrides:
         app.config.update(config_overrides)
     app.jinja_env.globals["formatar_moeda_brl"] = _formatar_moeda_brl
+
+    @app.context_processor
+    def injetar_navegacao_global():
+        if not current_user.is_authenticated:
+            return {"navegacao_departamentos": []}
+
+        from app.services.permissoes_service import buscar_departamentos_liberados_usuario
+
+        return {
+            "navegacao_departamentos": buscar_departamentos_liberados_usuario(current_user),
+        }
 
     # Inicialização das extensões
     db.init_app(app)

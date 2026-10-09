@@ -8,27 +8,77 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
 </head>
-<body>
+<body class="app-shell-body">
+    <div class="app-shell">
+        <aside class="app-sidebar" id="app-sidebar" aria-label="Navegação principal">
+            <a class="app-brand" href="{{ url_for('main.inicio') }}">
+                <img src="{{ url_for('static', filename='img/logo-rental-retros.png') }}" alt="Rental Retros">
+                <span>Gestão Empresarial</span>
+            </a>
 
-    <main>
-        {% with mensagens = get_flashed_messages(with_categories=true) %}
-            {% if mensagens %}
-                <div class="flash-area">
-                    {% for categoria, mensagem in mensagens %}
-                        <div class="flash flash-{{ categoria }}">
-                            {{ mensagem }}
-                        </div>
-                    {% endfor %}
+            <nav class="app-navigation">
+                <a class="app-nav-link {{ 'is-active' if request.endpoint == 'main.inicio' else '' }}" href="{{ url_for('main.inicio') }}">
+                    <span aria-hidden="true">⌂</span>
+                    <span>Início</span>
+                </a>
+
+                {% for departamento in navegacao_departamentos %}
+                    {% if not (current_user.is_admin and departamento.slug == 'administracao') %}
+                        <a class="app-nav-link {{ 'is-active' if request.view_args and request.view_args.get('slug_departamento') == departamento.slug else '' }}" href="{{ url_for('departamentos.detalhe_departamento', slug_departamento=departamento.slug) }}">
+                            <span aria-hidden="true">•</span>
+                            <span>{{ departamento.nome }}</span>
+                        </a>
+                    {% endif %}
+                {% endfor %}
+
+                {% if current_user.is_admin %}
+                    <a class="app-nav-link {{ 'is-active' if request.blueprint in ['admin', 'usuarios', 'permissoes', 'cargos', 'equipes'] else '' }}" href="{{ url_for('admin.index') }}">
+                        <span aria-hidden="true">•</span>
+                        <span>Administração</span>
+                    </a>
+                {% endif %}
+            </nav>
+        </aside>
+
+        <button class="app-sidebar-backdrop" type="button" data-sidebar-close aria-label="Fechar menu"></button>
+
+        <div class="app-shell-content">
+            <header class="app-topbar">
+                <button class="app-sidebar-toggle" type="button" data-sidebar-toggle aria-controls="app-sidebar" aria-expanded="false">
+                    <span aria-hidden="true">☰</span>
+                    <span class="visually-hidden">Abrir menu</span>
+                </button>
+
+                <a class="app-topbar-home" href="{{ url_for('main.inicio') }}">Rental Retros</a>
+
+                <div class="app-user-menu">
+                    <span class="app-user-name">{{ current_user.nome }}</span>
+                    <a href="{{ url_for('auth.minha_senha') }}">Minha senha</a>
+                    <a class="app-logout" href="{{ url_for('auth.logout') }}">Sair</a>
                 </div>
-            {% endif %}
-        {% endwith %}
+            </header>
 
-        {% block content %}{% endblock %}
-    </main>
+            <main class="app-main" id="conteudo-principal">
+                {% with mensagens = get_flashed_messages(with_categories=true) %}
+                    {% if mensagens %}
+                        <div class="flash-area">
+                            {% for categoria, mensagem in mensagens %}
+                                <div class="flash flash-{{ categoria }}">
+                                    {{ mensagem }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                {% endwith %}
 
-    <footer class="app-footer">
-        Rental Retros · Gestão Empresarial
-    </footer>
+                {% block content %}{% endblock %}
+            </main>
+
+            <footer class="app-footer">
+                Rental Retros · Gestão Empresarial
+            </footer>
+        </div>
+    </div>
 
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 </body>
