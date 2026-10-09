@@ -237,7 +237,7 @@ class FinanceiroRelatoriosContasPagarTestCase(unittest.TestCase):
         resposta = self.client.get("/financeiro/relatorios")
         self.assertEqual(resposta.status_code, 200)
         self.assertIn(b"Relatorios operacionais", resposta.data)
-        self.assertIn(b"Financeiro &gt; Relatorios", resposta.data)
+        self.assertIn("Financeiro &gt; Relatórios".encode("utf-8"), resposta.data)
 
         bloqueado = self.client.get("/financeiro/relatorios/exportar")
         self.assertIn(b"Redirecting", bloqueado.data)

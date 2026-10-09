@@ -92,7 +92,7 @@ class ArquivoBRMobilidadeTestCase(unittest.TestCase):
         self.assertFalse(resultado.valido)
         self.assertTrue(any("acréscimos ou descontos" in erro for erro in resultado.erros))
 
-    def test_ignora_dinheiro_e_outras_operadoras(self):
+    def test_bloqueia_pedido_com_outras_operadoras(self):
         dinheiro = item_br(forma="dinheiro")
         outra_empresa = item_br(empresa="Outra Empresa")
         valido = item_br()
@@ -101,9 +101,8 @@ class ArquivoBRMobilidadeTestCase(unittest.TestCase):
             pedido(dinheiro, outra_empresa, valido)
         )
 
-        self.assertTrue(resultado.valido)
-        self.assertEqual(2, resultado.itens_ignorados)
-        self.assertEqual(1, resultado.quantidade_colaboradores)
+        self.assertFalse(resultado.valido)
+        self.assertTrue(any("mais de uma empresa" in erro for erro in resultado.erros))
 
     def test_arquivo_0200_ignora_colaborador_com_total_zero(self):
         com_credito = item_br()
@@ -134,14 +133,14 @@ class ArquivoBRMobilidadeTestCase(unittest.TestCase):
         resultado = validar_pedido_br_mobilidade(pedido(sem_credito))
 
         self.assertFalse(resultado.valido)
-        self.assertEqual(1, resultado.itens_ignorados)
-        self.assertTrue(any("maior que R$ 0,00" in erro for erro in resultado.erros))
+        self.assertEqual(0, resultado.itens_ignorados)
+        self.assertTrue(any("não pertence exclusivamente" in erro for erro in resultado.erros))
 
     def test_bloqueia_valor_a_receber_negativo(self):
         negativo = item_br()
         negativo.valor_total = Decimal("-1.00")
 
-        resultado = validar_pedido_br_mobilidade(pedido(negativo))
+        resultado = validar_pedido_br_mobilidade(pedido(item_br(), negativo))
 
         self.assertFalse(resultado.valido)
         self.assertTrue(any("não pode ser negativo" in erro for erro in resultado.erros))

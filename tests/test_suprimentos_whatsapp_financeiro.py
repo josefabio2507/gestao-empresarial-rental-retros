@@ -18,12 +18,17 @@ class SuprimentosWhatsAppFinanceiroTestCase(unittest.TestCase):
             veiculo_placa="ABC1D23",
         )
         proposta = SimpleNamespace(
+            id=1,
             selecionada=True,
+            fornecedor_id=1,
             fornecedor_razao_social_snapshot="FORNECEDOR TESTE LTDA",
             item_descricao_snapshot="PECA TESTE",
             quantidade_snapshot=Decimal("2"),
             unidade_medida_snapshot="UN",
+            preco_unitario=Decimal("150.00"),
+            valor_subtotal=Decimal("300.00"),
             valor_total=Decimal("300.00"),
+            valor_frete=Decimal("0.00"),
         )
         return SimpleNamespace(
             id=10,
@@ -31,6 +36,7 @@ class SuprimentosWhatsAppFinanceiroTestCase(unittest.TestCase):
             requisicao=requisicao,
             aprovador=SimpleNamespace(nome="Aprovador Teste"),
             propostas=[proposta],
+            frete_fornecedor_id=None,
             aprovacao_publica_token_hash=None,
             aprovacao_publica_expira_em=None,
         )

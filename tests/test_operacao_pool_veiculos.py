@@ -1,5 +1,5 @@
 import unittest
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from io import BytesIO
 
@@ -1009,10 +1009,11 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
             veiculo=veiculo,
         )
         self.assertTrue(sucesso, mensagem)
+        data_infracao = (date.today() + timedelta(days=1)).isoformat()
 
         sucesso, mensagem, multa = salvar_multa_transito(
             {
-                "data_infracao": "2026-08-26",
+                "data_infracao": data_infracao,
                 "hora_infracao": "14:30",
                 "veiculo_id": str(veiculo.id),
                 "numero_auto_infracao": "AUTO-001",
@@ -1169,9 +1170,11 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
             usuario=self.admin,
             veiculo=veiculo_operador,
         )
+        data_primeira_multa = (date.today() + timedelta(days=1)).isoformat()
+        data_segunda_multa = (date.today() + timedelta(days=2)).isoformat()
         salvar_multa_transito(
             {
-                "data_infracao": "2026-08-25",
+                "data_infracao": data_primeira_multa,
                 "hora_infracao": "08:15",
                 "veiculo_id": str(veiculo_motorista.id),
                 "numero_auto_infracao": "AUTO-FLT-001",
@@ -1187,7 +1190,7 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         )
         salvar_multa_transito(
             {
-                "data_infracao": "2026-08-26",
+                "data_infracao": data_segunda_multa,
                 "hora_infracao": "09:30",
                 "veiculo_id": str(veiculo_operador.id),
                 "numero_auto_infracao": "AUTO-FLT-999",
@@ -1204,7 +1207,9 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         self._liberar_usuario("multas_transito", visualizar=True)
         self._autenticar(self.usuario)
 
-        filtro_periodo = self.client.get("/operacao/multas-transito?data_inicio=2026-08-25&data_fim=2026-08-25")
+        filtro_periodo = self.client.get(
+            f"/operacao/multas-transito?data_inicio={data_primeira_multa}&data_fim={data_primeira_multa}"
+        )
         self.assertEqual(200, filtro_periodo.status_code)
         self.assertIn(b"AUTO-FLT-001", filtro_periodo.data)
         self.assertNotIn(b"AUTO-FLT-999", filtro_periodo.data)

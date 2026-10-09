@@ -327,7 +327,7 @@ class SuprimentosCadastrosBaseTestCase(unittest.TestCase):
 
         self.assertTrue(sucesso, mensagem)
         self.assertIsNotNone(item.categoria_id)
-        self.assertEqual("ITEM SEM CATEGORIA", item.categoria.nome)
+        self.assertEqual("Pecas", item.categoria.nome)
         self.assertEqual("MATERIAL SEM CATEGORIA", item.descricao)
 
     def test_vinculo_fornecedor_item_bloqueia_duplicidade(self):
