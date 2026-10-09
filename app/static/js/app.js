@@ -102,19 +102,20 @@ document.addEventListener("DOMContentLoaded", () => {
         const acoes = bloco.classList.contains("header-actions-card")
             ? bloco.querySelector(":scope > .actions, :scope > .action-bar, :scope > .page-actions, :scope > .form-actions")
             : bloco;
-        if (!acoes || acoes.dataset.backButtonReady === "true") {
+        const alvo = acoes || (bloco.classList.contains("header-actions-card") && bloco.querySelector(":scope > a.btn, :scope > button.btn") ? bloco : null);
+        if (!alvo || alvo.dataset.backButtonReady === "true") {
             return;
         }
-        acoes.dataset.backButtonReady = "true";
+        alvo.dataset.backButtonReady = "true";
 
-        const botoesVoltar = Array.from(acoes.querySelectorAll("a, button")).filter((botao) => {
+        const botoesVoltar = Array.from(alvo.querySelectorAll("a, button")).filter((botao) => {
             const texto = botao.textContent.trim().replace(/^[^A-Za-zÀ-ÿ0-9]+/, "");
             return /^voltar\b/i.test(texto);
         });
         if (botoesVoltar.length) {
             botoesVoltar.forEach((botao) => {
                 botao.classList.add("rr-back-button");
-                acoes.appendChild(botao);
+                alvo.appendChild(botao);
             });
             return;
         }
@@ -124,7 +125,7 @@ document.addEventListener("DOMContentLoaded", () => {
         voltar.type = "button";
         voltar.dataset.historyBack = "true";
         voltar.textContent = "Voltar";
-        acoes.appendChild(voltar);
+        alvo.appendChild(voltar);
     });
 
     document.querySelectorAll("[data-history-back]").forEach((voltar) => {

@@ -363,6 +363,12 @@
     width: 100%;
 }
 
+.app-main .header-actions-card > a.btn,
+.app-main .header-actions-card > button.btn {
+    flex: 0 0 auto;
+    margin: 0;
+}
+
 .app-main .header-actions-card .btn {
     background: #ffffff;
     border-color: var(--rr-border);
