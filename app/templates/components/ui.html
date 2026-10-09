@@ -1,0 +1,18 @@
+{% macro link_button(label, href, variant='primary', extra_classes='') -%}
+<a class="ui-button ui-button--{{ variant }} {{ extra_classes }}" href="{{ href }}">{{ label }}</a>
+{%- endmacro %}
+
+{% macro submit_button(label, variant='primary', extra_classes='', disabled=false) -%}
+<button class="ui-button ui-button--{{ variant }} {{ extra_classes }}" type="submit"{% if disabled %} disabled{% endif %}>{{ label }}</button>
+{%- endmacro %}
+
+{% macro badge(label, tone='neutral') -%}
+<span class="ui-badge ui-badge--{{ tone }}">{{ label }}</span>
+{%- endmacro %}
+
+{% macro empty_state(title, description) -%}
+<div class="ui-empty-state">
+    <h3>{{ title }}</h3>
+    <p>{{ description }}</p>
+</div>
+{%- endmacro %}
