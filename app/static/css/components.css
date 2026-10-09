@@ -349,7 +349,8 @@
 
 .app-main .header-actions-card > .actions,
 .app-main .header-actions-card > .action-bar,
-.app-main .header-actions-card > .page-actions {
+.app-main .header-actions-card > .page-actions,
+.app-main .header-actions-card > .form-actions {
     align-items: center;
     background: transparent;
     border: 0;

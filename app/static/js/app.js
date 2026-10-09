@@ -67,7 +67,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     document.querySelectorAll(".top-bar").forEach((cabecalho) => {
-        let acoes = cabecalho.querySelector(":scope > .actions, :scope > .action-bar, :scope > .page-actions");
+        let acoes = cabecalho.querySelector(":scope > .actions, :scope > .action-bar, :scope > .page-actions, :scope > .form-actions");
         if (!acoes) {
             const botoesDiretos = Array.from(cabecalho.children).filter((filho) => filho.matches("a.btn, button.btn"));
             if (botoesDiretos.length) {
@@ -100,7 +100,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     document.querySelectorAll(".header-actions-card, .submodule-tabs, .subnav").forEach((bloco) => {
         const acoes = bloco.classList.contains("header-actions-card")
-            ? bloco.querySelector(":scope > .actions, :scope > .action-bar, :scope > .page-actions")
+            ? bloco.querySelector(":scope > .actions, :scope > .action-bar, :scope > .page-actions, :scope > .form-actions")
             : bloco;
         if (!acoes || acoes.dataset.backButtonReady === "true") {
             return;
