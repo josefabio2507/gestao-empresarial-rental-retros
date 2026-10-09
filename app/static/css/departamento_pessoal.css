@@ -1,0 +1,125 @@
+/* Missão 18.6: acabamento visual do Departamento Pessoal.
+ * Carregado somente para os módulos de pessoas, documentos, refeições e vale-transporte. */
+
+.departamento-pessoal-ui .top-bar,
+.departamento-pessoal-ui .filter-card,
+.departamento-pessoal-ui .table-card,
+.departamento-pessoal-ui .form-card,
+.departamento-pessoal-ui .details-card {
+    background: var(--rr-surface);
+    border: 1px solid var(--rr-border);
+    border-radius: 14px;
+    box-shadow: var(--rr-shadow);
+}
+
+.departamento-pessoal-ui .top-bar {
+    align-items: flex-start;
+    gap: 20px;
+    margin-bottom: 18px;
+    padding: 24px;
+}
+
+.departamento-pessoal-ui .top-bar h1,
+.departamento-pessoal-ui .table-card h2,
+.departamento-pessoal-ui .details-card h2,
+.departamento-pessoal-ui .section-title {
+    color: var(--rr-navy);
+}
+
+.departamento-pessoal-ui .top-bar p,
+.departamento-pessoal-ui .details-card > p:first-child {
+    color: var(--rr-muted);
+}
+
+.departamento-pessoal-ui .action-bar,
+.departamento-pessoal-ui .page-actions {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.departamento-pessoal-ui .filter-card,
+.departamento-pessoal-ui .form-card,
+.departamento-pessoal-ui .details-card {
+    margin-bottom: 18px;
+    padding: 20px;
+}
+
+.departamento-pessoal-ui .filter-card > p,
+.departamento-pessoal-ui .details-card > p:first-child {
+    background: #fff8df;
+    border-left: 3px solid var(--rr-gold);
+    border-radius: 6px;
+    margin-top: 0;
+    padding: 10px 12px;
+}
+
+.departamento-pessoal-ui .table-card {
+    padding: 18px;
+}
+
+.departamento-pessoal-ui .table thead th {
+    background: #f5f8fc;
+    color: var(--rr-navy);
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.departamento-pessoal-ui .table tbody tr:hover {
+    background: #f8fbff;
+}
+
+.departamento-pessoal-ui .module-card {
+    border-color: var(--rr-border);
+    border-radius: 14px;
+    box-shadow: var(--rr-shadow);
+}
+
+.departamento-pessoal-ui .module-card:hover {
+    border-color: var(--rr-gold);
+    transform: translateY(-2px);
+}
+
+.departamento-pessoal-ui .module-card-icon {
+    background: var(--rr-gold-soft);
+    color: #7c5606;
+}
+
+.departamento-pessoal-ui .badge {
+    border-radius: 999px;
+    font-weight: 800;
+}
+
+.departamento-pessoal-ui .acoes-botoes,
+.departamento-pessoal-ui .filter-actions,
+.departamento-pessoal-ui .form-actions {
+    gap: 10px;
+}
+
+.departamento-pessoal-ui .btn {
+    border-radius: 9px;
+    font-weight: 700;
+}
+
+.departamento-pessoal-ui .listbox-10-linhas,
+.departamento-pessoal-ui .table-responsive {
+    border-color: var(--rr-border);
+    border-radius: 10px;
+}
+
+@media (max-width: 640px) {
+    .departamento-pessoal-ui .top-bar,
+    .departamento-pessoal-ui .filter-card,
+    .departamento-pessoal-ui .form-card,
+    .departamento-pessoal-ui .details-card,
+    .departamento-pessoal-ui .table-card {
+        padding: 16px;
+    }
+
+    .departamento-pessoal-ui .top-bar .action-bar,
+    .departamento-pessoal-ui .top-bar .btn,
+    .departamento-pessoal-ui .page-actions .btn {
+        width: 100%;
+    }
+}

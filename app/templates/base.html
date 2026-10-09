@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <title>Gestão Empresarial Rental Retros</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    {% set ui_departamento_pessoal = request.blueprint in ['departamento_pessoal', 'colaboradores', 'documentos', 'pedido_refeicoes', 'vale_transporte'] %}
 
     <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
@@ -11,8 +12,11 @@
     {% if request.blueprint and request.blueprint.startswith('financeiro') %}
     <link rel="stylesheet" href="{{ url_for('static', filename='css/financeiro.css') }}">
     {% endif %}
+    {% if ui_departamento_pessoal %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/departamento_pessoal.css') }}">
+    {% endif %}
 </head>
-<body class="app-shell-body {{ 'financeiro-ui' if request.blueprint and request.blueprint.startswith('financeiro') else '' }}">
+<body class="app-shell-body {{ 'financeiro-ui' if request.blueprint and request.blueprint.startswith('financeiro') else '' }} {{ 'departamento-pessoal-ui' if ui_departamento_pessoal else '' }}">
     <div class="app-shell">
         <aside class="app-sidebar" id="app-sidebar" aria-label="Navegação principal">
             <a class="app-brand" href="{{ url_for('main.inicio') }}">
