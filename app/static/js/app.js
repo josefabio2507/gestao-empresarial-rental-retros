@@ -27,9 +27,18 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 
-    document.querySelectorAll(".top-bar > .actions, .top-bar > .action-bar, .top-bar > .page-actions").forEach((acoes) => {
-        const cabecalho = acoes.parentElement;
-        if (!cabecalho || cabecalho.nextElementSibling?.classList.contains("header-actions-card")) {
+    document.querySelectorAll(".top-bar").forEach((cabecalho) => {
+        let acoes = cabecalho.querySelector(":scope > .actions, :scope > .action-bar, :scope > .page-actions");
+        if (!acoes) {
+            const botoesDiretos = Array.from(cabecalho.children).filter((filho) => filho.matches("a.btn, button.btn"));
+            if (botoesDiretos.length) {
+                acoes = document.createElement("div");
+                acoes.className = "actions";
+                botoesDiretos.forEach((botao) => acoes.appendChild(botao));
+                cabecalho.appendChild(acoes);
+            }
+        }
+        if (!acoes || cabecalho.nextElementSibling?.classList.contains("header-actions-card")) {
             return;
         }
 
