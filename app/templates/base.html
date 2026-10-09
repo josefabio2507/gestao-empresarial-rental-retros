@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     {% set ui_departamento_pessoal = request.blueprint in ['departamento_pessoal', 'colaboradores', 'documentos', 'pedido_refeicoes', 'vale_transporte'] %}
     {% set ui_pedido_refeicoes = request.blueprint == 'pedido_refeicoes' %}
+    {% set ui_suprimentos_fiscal = (request.blueprint and request.blueprint.startswith('suprimentos')) or request.blueprint == 'fiscal' %}
 
     <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
@@ -19,8 +20,11 @@
     {% if ui_pedido_refeicoes %}
     <link rel="stylesheet" href="{{ url_for('static', filename='css/pedido_refeicoes.css') }}">
     {% endif %}
+    {% if ui_suprimentos_fiscal %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/suprimentos_fiscal.css') }}">
+    {% endif %}
 </head>
-<body class="app-shell-body {{ 'financeiro-ui' if request.blueprint and request.blueprint.startswith('financeiro') else '' }} {{ 'departamento-pessoal-ui' if ui_departamento_pessoal else '' }} {{ 'pedido-refeicoes-ui' if ui_pedido_refeicoes else '' }}">
+<body class="app-shell-body {{ 'financeiro-ui' if request.blueprint and request.blueprint.startswith('financeiro') else '' }} {{ 'departamento-pessoal-ui' if ui_departamento_pessoal else '' }} {{ 'pedido-refeicoes-ui' if ui_pedido_refeicoes else '' }} {{ 'suprimentos-fiscal-ui' if ui_suprimentos_fiscal else '' }}">
     <div class="app-shell">
         <aside class="app-sidebar" id="app-sidebar" aria-label="Navegação principal">
             <a class="app-brand" href="{{ url_for('main.inicio') }}">
