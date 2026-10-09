@@ -8,48 +8,48 @@
     display: none;
 }
 
-.department-theme-financeiro .top-bar,
+.department-theme-financeiro section.page > .top-bar,
 .department-top-bar-financeiro {
     background-image: linear-gradient(90deg, rgba(7, 26, 47, 0.96) 0%, rgba(7, 35, 67, 0.88) 42%, rgba(7, 43, 78, 0.56) 100%), url("../img/departamentos/financeiro.png");
 }
 
-.department-theme-suprimentos .top-bar,
+.department-theme-suprimentos section.page > .top-bar,
 .department-top-bar-suprimentos {
     background-image: linear-gradient(90deg, rgba(7, 26, 47, 0.96) 0%, rgba(7, 35, 67, 0.88) 42%, rgba(7, 43, 78, 0.56) 100%), url("../img/departamentos/suprimentos.png");
 }
 
-.department-theme-operacao .top-bar,
+.department-theme-operacao section.page > .top-bar,
 .department-top-bar-operacao {
     background-image: linear-gradient(90deg, rgba(7, 26, 47, 0.96) 0%, rgba(7, 35, 67, 0.88) 42%, rgba(7, 43, 78, 0.56) 100%), url("../img/departamentos/operacao.png");
 }
 
-.department-theme-departamento_pessoal .top-bar,
+.department-theme-departamento_pessoal section.page > .top-bar,
 .department-top-bar-departamento_pessoal {
     background-image: linear-gradient(90deg, rgba(7, 26, 47, 0.96) 0%, rgba(7, 35, 67, 0.88) 42%, rgba(7, 43, 78, 0.56) 100%), url("../img/departamentos/departamento_pessoal.png");
 }
 
-.department-theme-seguranca_trabalho .top-bar,
+.department-theme-seguranca_trabalho section.page > .top-bar,
 .department-top-bar-seguranca_trabalho {
     background-image: linear-gradient(90deg, rgba(7, 26, 47, 0.96) 0%, rgba(7, 35, 67, 0.88) 42%, rgba(7, 43, 78, 0.56) 100%), url("../img/departamentos/seguranca_trabalho.png");
 }
 
-.department-theme-fiscal .top-bar,
+.department-theme-fiscal section.page > .top-bar,
 .department-top-bar-fiscal {
     background-image: linear-gradient(90deg, rgba(7, 26, 47, 0.96) 0%, rgba(7, 35, 67, 0.88) 42%, rgba(7, 43, 78, 0.56) 100%), url("../img/departamentos/fiscal.png");
 }
 
-.department-theme-administracao .top-bar,
+.department-theme-administracao section.page > .top-bar,
 .department-top-bar-administracao {
     background-image: linear-gradient(90deg, rgba(7, 26, 47, 0.96) 0%, rgba(7, 35, 67, 0.88) 42%, rgba(7, 43, 78, 0.56) 100%), url("../img/departamentos/administracao.png");
 }
 
-.department-theme-financeiro .top-bar,
-.department-theme-suprimentos .top-bar,
-.department-theme-operacao .top-bar,
-.department-theme-departamento_pessoal .top-bar,
-.department-theme-seguranca_trabalho .top-bar,
-.department-theme-fiscal .top-bar,
-.department-theme-administracao .top-bar {
+.department-theme-financeiro section.page > .top-bar,
+.department-theme-suprimentos section.page > .top-bar,
+.department-theme-operacao section.page > .top-bar,
+.department-theme-departamento_pessoal section.page > .top-bar,
+.department-theme-seguranca_trabalho section.page > .top-bar,
+.department-theme-fiscal section.page > .top-bar,
+.department-theme-administracao section.page > .top-bar {
     background-position: center;
     background-size: cover;
 }
