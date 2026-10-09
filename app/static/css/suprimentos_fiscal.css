@@ -15,9 +15,10 @@
     align-items: flex-start;
     background: linear-gradient(120deg, var(--rr-navy), var(--rr-blue));
     border-color: var(--rr-navy);
+    flex-wrap: wrap;
     gap: 20px;
     margin-bottom: 18px;
-    padding: 24px;
+    padding: 24px calc(var(--page-header-logo-width) + 72px) 24px 24px;
 }
 
 .suprimentos-fiscal-ui .top-bar h1,
@@ -109,6 +110,10 @@
     .suprimentos-fiscal-ui .details-card,
     .suprimentos-fiscal-ui .table-card {
         padding: 16px;
+    }
+
+    .suprimentos-fiscal-ui .top-bar {
+        padding: 16px calc(var(--page-header-logo-width) + 28px) 16px 16px;
     }
 
     .suprimentos-fiscal-ui .top-bar .btn,
