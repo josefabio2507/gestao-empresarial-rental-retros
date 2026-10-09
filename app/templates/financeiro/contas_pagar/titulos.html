@@ -8,11 +8,14 @@
             <h1>Titulos a Pagar</h1>
             <p>Consulta dos titulos cadastrados e preparados para integracoes futuras.</p>
         </div>
+    </div>
+
+    <div class="titulos-piloto-nav">
         {% include "financeiro/contas_pagar/_nav.html" %}
     </div>
 
-    <form class="filter-card" method="GET">
-        <div class="filter-grid">
+    <form class="filter-card ui-card titulos-piloto-filtros" method="GET">
+        <div class="filter-grid ui-filter-grid">
             <div class="form-group"><label for="fornecedor">Fornecedor</label><input id="fornecedor" name="fornecedor" value="{{ filtros.get('fornecedor', '') }}"></div>
             <div class="form-group"><label for="cnpj_cpf">CNPJ/CPF</label><input id="cnpj_cpf" name="cnpj_cpf" value="{{ filtros.get('cnpj_cpf', '') }}" data-documento-br></div>
             <div class="form-group"><label for="status">Status</label><select id="status" name="status"><option value="">Todos</option>{% for item in status_titulo %}<option value="{{ item }}" {{ "selected" if filtros.get('status') == item else "" }}>{{ item }}</option>{% endfor %}</select></div>
@@ -30,21 +33,25 @@
             <div class="form-group"><label for="pagamento_fim">Pagamento final</label><input id="pagamento_fim" name="pagamento_fim" type="date" value="{{ filtros.get('pagamento_fim', '') }}"></div>
         </div>
         <div class="form-actions">
-            <button class="btn btn-primary" type="submit">Pesquisar</button>
-            <button class="btn btn-secondary" type="submit" formaction="{{ url_for('financeiro_contas_pagar.exportar_titulos_excel') }}" formmethod="get">Gerar Excel</button>
-            <button class="btn btn-secondary" type="submit" formaction="{{ url_for('financeiro_contas_pagar.exportar_titulos_por_data_excel') }}" formmethod="get">Excel por data</button>
-            <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.titulos') }}">Limpar</a>
+            <button class="btn btn-primary ui-button ui-button--primary" type="submit">Pesquisar</button>
+            <button class="btn btn-secondary ui-button ui-button--secondary" type="submit" formaction="{{ url_for('financeiro_contas_pagar.exportar_titulos_excel') }}" formmethod="get">Gerar Excel</button>
+            <button class="btn btn-secondary ui-button ui-button--secondary" type="submit" formaction="{{ url_for('financeiro_contas_pagar.exportar_titulos_por_data_excel') }}" formmethod="get">Excel por data</button>
+            <a class="btn btn-secondary ui-button ui-button--secondary" href="{{ url_for('financeiro_contas_pagar.titulos') }}">Limpar</a>
         </div>
     </form>
 
     <form id="baixa-massa-form" method="GET" action="{{ url_for('financeiro_contas_pagar.baixa_em_massa') }}">
-        <div class="form-actions">
+        <div class="form-actions ui-card ui-card--compact titulos-piloto-selecao">
             <strong><span id="bulk-count">0</span> selecionado(s)</strong>
             <span>Saldo selecionado: R$ <span id="bulk-total">0,00</span></span>
-            <button class="btn btn-primary" id="bulk-submit" type="submit" disabled>Registrar pagamento em massa</button>
+            <button class="btn btn-primary ui-button ui-button--primary" id="bulk-submit" type="submit" disabled>Registrar pagamento em massa</button>
         </div>
-    <div class="table-card table-responsive listbox-5-linhas">
-        <table class="table financeiro-contas-pagar-table">
+    <div class="table-card ui-card ui-card--compact table-responsive listbox-5-linhas titulos-piloto-tabela">
+        <div class="titulos-piloto-tabela-cabecalho">
+            <div><span class="ui-page-kicker">Financeiro</span><h2>Títulos a Pagar</h2></div>
+            <span>{{ titulos|length }} registro(s) exibido(s)</span>
+        </div>
+        <table class="table ui-table financeiro-contas-pagar-table">
             <thead>
                 <tr>
                     <th><input type="checkbox" id="selecionar-todos-baixa" aria-label="Selecionar todos os titulos elegiveis"></th><th>ID</th><th>Fornecedor</th><th>CNPJ/CPF</th><th>Descricao</th><th>Documento</th><th>NF-e</th><th>O.C.</th><th>Origem</th><th>Tipo</th><th>Forma</th><th>Cartao</th><th>Fatura</th><th>Vencimento</th><th>Valor original</th><th>Valor pago</th><th>Saldo</th><th>Status</th><th>Acoes</th>
@@ -71,15 +78,15 @@
                         <td>{{ formatar_moeda_brl(titulo.valor_pago) }}</td>
                         <td>{{ formatar_moeda_brl(titulo.saldo_aberto) }}</td>
                         {% set status_view = titulo.status_exibicao() %}
-                        <td><span class="badge {{ 'badge-danger' if status_view in ['Vencido', 'Cancelado'] else 'badge-success' if status_view == 'Pago' else 'badge-warning' }}">{{ status_view }}</span></td>
+                        <td><span class="badge ui-badge {{ 'badge-danger ui-badge--danger' if status_view in ['Vencido', 'Cancelado'] else 'badge-success ui-badge--success' if status_view == 'Pago' else 'badge-warning ui-badge--warning' }}">{{ status_view }}</span></td>
                         <td class="col-acoes">
-                            <div class="acoes-botoes">
-                                <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.detalhes', titulo_id=titulo.id) }}">Ver</a>
-                                <a class="btn btn-primary" href="{{ url_for('financeiro_contas_pagar.editar', titulo_id=titulo.id) }}">Editar</a>
+                            <div class="acoes-botoes ui-table-actions">
+                                <a class="btn btn-secondary ui-button ui-button--secondary" href="{{ url_for('financeiro_contas_pagar.detalhes', titulo_id=titulo.id) }}">Ver</a>
+                                <a class="btn btn-primary ui-button ui-button--primary" href="{{ url_for('financeiro_contas_pagar.editar', titulo_id=titulo.id) }}">Editar</a>
                                 {% if titulo.status not in ['Pago', 'Cancelado', 'Estornado'] %}
-                                    <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.registrar_pagamento', titulo_id=titulo.id) }}">Pagar</a>
+                                    <a class="btn btn-secondary ui-button ui-button--secondary" href="{{ url_for('financeiro_contas_pagar.registrar_pagamento', titulo_id=titulo.id) }}">Pagar</a>
                                     <form class="inline-form" method="POST" action="{{ url_for('financeiro_contas_pagar.cancelar', titulo_id=titulo.id) }}">
-                                        <button class="btn btn-warning" type="submit">Cancelar</button>
+                                        <button class="btn btn-warning ui-button ui-button--warning" type="submit">Cancelar</button>
                                     </form>
                                 {% endif %}
                             </div>
@@ -92,7 +99,7 @@
         </table>
     </div>
     </form>
-    <div class="page-actions"><a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.dashboard') }}">Voltar</a></div>
+    <div class="page-actions"><a class="btn btn-secondary ui-button ui-button--secondary" href="{{ url_for('financeiro_contas_pagar.dashboard') }}">Voltar</a></div>
 </section>
 <script>
 (function () {
