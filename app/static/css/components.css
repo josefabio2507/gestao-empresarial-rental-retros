@@ -351,8 +351,18 @@
     width: 100%;
 }
 
-.header-actions-card .btn {
+.app-main .header-actions-card .btn {
+    background: #ffffff;
+    border-color: var(--rr-border);
+    color: var(--rr-navy);
     flex: 0 0 auto;
+}
+
+.app-main .header-actions-card .btn:hover,
+.app-main .header-actions-card .btn:focus-visible {
+    background: #f7faff;
+    border-color: var(--rr-blue);
+    color: var(--rr-blue);
 }
 
 .titulos-piloto-tabela-cabecalho {
