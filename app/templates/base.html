@@ -4,31 +4,140 @@
     <meta charset="UTF-8">
     <title>Gestão Empresarial Rental Retros</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    {% set ui_departamento_pessoal = request.blueprint in ['departamento_pessoal', 'colaboradores', 'documentos', 'pedido_refeicoes', 'vale_transporte'] %}
+    {% set ui_pedido_refeicoes = request.blueprint == 'pedido_refeicoes' %}
+    {% set ui_suprimentos_fiscal = (request.blueprint and request.blueprint.startswith('suprimentos')) or request.blueprint == 'fiscal' %}
+    {% set ui_operacao = request.blueprint in ['operacao', 'veiculos_equipamentos'] %}
+    {% set ui_administracao = request.blueprint in ['admin', 'usuarios', 'permissoes', 'cargos', 'equipes'] %}
+    {% set departamento_rota = request.view_args.get('slug_departamento') if request.view_args else '' %}
+    {% set departamento_tema = departamento_rota or (
+        'financeiro' if request.blueprint and request.blueprint.startswith('financeiro') else
+        'suprimentos' if request.blueprint and request.blueprint.startswith('suprimentos') else
+        'fiscal' if request.blueprint == 'fiscal' else
+        'operacao' if request.blueprint in ['operacao', 'veiculos_equipamentos'] else
+        'seguranca_trabalho' if request.blueprint == 'seguranca_trabalho' else
+        'departamento_pessoal' if ui_departamento_pessoal else
+        'administracao' if ui_administracao else ''
+    ) %}
 
     <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/responsividade.css') }}">
+    {% if request.blueprint and request.blueprint.startswith('financeiro') %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/financeiro.css') }}">
+    {% endif %}
+    {% if ui_departamento_pessoal %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/departamento_pessoal.css') }}">
+    {% endif %}
+    {% if ui_pedido_refeicoes %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/pedido_refeicoes.css') }}">
+    {% endif %}
+    {% if ui_suprimentos_fiscal %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/suprimentos_fiscal.css') }}">
+    {% endif %}
+    {% if ui_operacao %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/operacao.css') }}">
+    {% endif %}
+    {% if ui_administracao %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/administracao.css') }}">
+    {% endif %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/department_themes.css') }}">
 </head>
-<body>
+<body class="app-shell-body {{ 'financeiro-ui' if request.blueprint and request.blueprint.startswith('financeiro') else '' }} {{ 'departamento-pessoal-ui' if ui_departamento_pessoal else '' }} {{ 'pedido-refeicoes-ui' if ui_pedido_refeicoes else '' }} {{ 'suprimentos-fiscal-ui' if ui_suprimentos_fiscal else '' }} {{ 'operacao-ui' if ui_operacao else '' }} {{ 'administracao-ui' if ui_administracao else '' }} {{ 'department-theme-' ~ departamento_tema if departamento_tema else '' }}">
+    <div class="app-shell">
+        <aside class="app-sidebar" id="app-sidebar" aria-label="Navegação principal">
+            <a class="app-brand" href="{{ url_for('main.inicio') }}">
+                <img src="{{ url_for('static', filename='img/logo-rental-retros.png') }}" alt="Rental Retros">
+                <span>Gestão Empresarial</span>
+            </a>
 
-    <main>
-        {% with mensagens = get_flashed_messages(with_categories=true) %}
-            {% if mensagens %}
-                <div class="flash-area">
-                    {% for categoria, mensagem in mensagens %}
-                        <div class="flash flash-{{ categoria }}">
-                            {{ mensagem }}
+            <nav class="app-navigation">
+                <a class="app-nav-link {{ 'is-active' if request.endpoint == 'main.inicio' else '' }}" href="{{ url_for('main.inicio') }}">
+                    <span class="app-nav-icon" aria-hidden="true">⌂</span>
+                    <span>Início</span>
+                </a>
+
+                {% for departamento in navegacao_departamentos %}
+                    {% if not (current_user.is_admin and departamento.slug == 'administracao') %}
+                        {% set departamento_ativo = departamento.slug == departamento_tema %}
+                        {% set icone_departamento = {
+                            'financeiro': '◉',
+                            'suprimentos': '▦',
+                            'operacao': '⚒',
+                            'departamento_pessoal': '♟',
+                            'seguranca_trabalho': '⬢',
+                            'fiscal': '▤'
+                        }.get(departamento.slug, '•') %}
+                        <div class="app-nav-group {{ 'is-open' if departamento_ativo else '' }}">
+                            <div class="app-nav-group-row">
+                                <a class="app-nav-link {{ 'is-active' if departamento_ativo else '' }}" href="{{ url_for('departamentos.detalhe_departamento', slug_departamento=departamento.slug) }}">
+                                    <span class="app-nav-icon" aria-hidden="true">{{ icone_departamento }}</span>
+                                    <span>{{ departamento.nome }}</span>
+                                </a>
+                                {% if departamento.navegacao_modulos %}
+                                    <button class="app-nav-toggle" type="button" data-nav-toggle aria-expanded="{{ 'true' if departamento_ativo else 'false' }}" aria-controls="app-subnav-{{ departamento.slug }}" aria-label="Exibir submódulos de {{ departamento.nome }}">⌄</button>
+                                {% endif %}
+                            </div>
+                            {% if departamento.navegacao_modulos %}
+                                <div class="app-subnav" id="app-subnav-{{ departamento.slug }}" {{ '' if departamento_ativo else 'hidden' }}>
+                                    {% for modulo in departamento.navegacao_modulos %}
+                                        <a href="{{ modulo.url }}">{{ modulo.nome }}</a>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
                         </div>
-                    {% endfor %}
+                    {% endif %}
+                {% endfor %}
+
+                {% if current_user.is_admin %}
+                    <a class="app-nav-link {{ 'is-active' if request.blueprint in ['admin', 'usuarios', 'permissoes', 'cargos', 'equipes'] else '' }}" href="{{ url_for('admin.index') }}">
+                        <span class="app-nav-icon" aria-hidden="true">⚙</span>
+                        <span>Administração</span>
+                    </a>
+                {% endif %}
+            </nav>
+        </aside>
+
+        <button class="app-sidebar-backdrop" type="button" data-sidebar-close aria-label="Fechar menu"></button>
+
+        <div class="app-shell-content">
+            <header class="app-topbar">
+                <button class="app-sidebar-toggle" type="button" data-sidebar-toggle aria-controls="app-sidebar" aria-expanded="false">
+                    <span aria-hidden="true">☰</span>
+                    <span class="visually-hidden">Abrir menu</span>
+                </button>
+
+                <a class="app-topbar-home" href="{{ url_for('main.inicio') }}">Rental Retros</a>
+
+                <div class="app-user-menu">
+                    <span class="app-user-name">{{ current_user.nome }}</span>
+                    <a href="{{ url_for('auth.minha_senha') }}">Minha senha</a>
+                    <a class="app-logout" href="{{ url_for('auth.logout') }}">Sair</a>
                 </div>
-            {% endif %}
-        {% endwith %}
+            </header>
 
-        {% block content %}{% endblock %}
-    </main>
+            <main class="app-main" id="conteudo-principal">
+                {% with mensagens = get_flashed_messages(with_categories=true) %}
+                    {% if mensagens %}
+                        <div class="flash-area">
+                            {% for categoria, mensagem in mensagens %}
+                                <div class="flash flash-{{ categoria }}">
+                                    {{ mensagem }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                {% endwith %}
 
-    <footer class="app-footer">
-        Rental Retros · Gestão Empresarial
-    </footer>
+                {% block content %}{% endblock %}
+            </main>
+
+            <footer class="app-footer">
+                Rental Retros · Gestão Empresarial
+            </footer>
+        </div>
+    </div>
 
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 </body>

@@ -1,7 +1,8 @@
-from flask import Flask
+from flask import Flask, url_for
 from config import Config
 from app.extensions import db, migrate, login_manager
 from decimal import Decimal, InvalidOperation
+from flask_login import current_user
 
 
 def _formatar_moeda_brl(valor):
@@ -15,12 +16,72 @@ def _formatar_moeda_brl(valor):
     return f"R$ {texto}"
 
 
+def _url_modulo_navegacao(departamento_slug, modulo_slug):
+    destinos = {
+        ("financeiro", "contas_a_pagar"): ("financeiro_contas_pagar.dashboard", {}),
+        ("financeiro", "contas_a_receber"): ("financeiro_contas_receber.dashboard", {}),
+        ("financeiro", "fluxo_caixa"): ("financeiro.fluxo_caixa_dashboard", {}),
+        ("financeiro", "clientes"): ("financeiro_clientes.listar", {}),
+        ("financeiro", "relatorios"): ("financeiro.relatorios", {}),
+        ("suprimentos", "fornecedores"): ("suprimentos_fornecedores.listar", {}),
+        ("suprimentos", "categorias"): ("suprimentos_categorias.listar", {}),
+        ("suprimentos", "unidades_medida"): ("suprimentos_unidades_medida.listar", {}),
+        ("suprimentos", "itens"): ("suprimentos_itens.listar", {}),
+        ("suprimentos", "centros_custo"): ("suprimentos_centros_custo.listar", {}),
+        ("suprimentos", "fornecedor_itens"): ("suprimentos_fornecedor_itens.listar", {}),
+        ("suprimentos", "requisicoes_compra"): ("suprimentos_requisicoes.listar", {}),
+        ("suprimentos", "cotacoes"): ("suprimentos_cotacoes.listar", {}),
+        ("suprimentos", "ordens_compra"): ("suprimentos_ordens_compra.listar", {}),
+        ("suprimentos", "estoque"): ("suprimentos_estoque.listar", {}),
+        ("suprimentos", "indicadores"): ("suprimentos_indicadores.painel", {}),
+        ("suprimentos", "alcadas_aprovacao"): ("suprimentos_alcadas_aprovacao.listar", {}),
+        ("suprimentos", "compradores"): ("suprimentos_compradores.listar", {}),
+        ("operacao", "veiculos_equipamentos"): ("veiculos_equipamentos.index", {}),
+        ("departamento_pessoal", "colaboradores"): ("colaboradores.listar_colaboradores", {}),
+        ("departamento_pessoal", "documentos"): ("documentos.index", {}),
+        ("departamento_pessoal", "vale_transporte"): ("vale_transporte.index", {}),
+        ("departamento_pessoal", "pedido_refeicoes"): ("pedido_refeicoes.index", {}),
+        ("seguranca_trabalho", "epis"): ("seguranca_trabalho.epis", {}),
+        ("fiscal", "documentos_fiscais"): ("fiscal.documentos", {}),
+        ("administracao", "usuarios"): ("usuarios.listar_usuarios", {}),
+        ("administracao", "permissoes"): ("permissoes.listar_permissoes", {}),
+        ("administracao", "auditoria"): ("admin.logs", {}),
+    }
+    endpoint, valores = destinos.get((departamento_slug, modulo_slug), ("departamentos.detalhe_departamento", {"slug_departamento": departamento_slug}))
+    return url_for(endpoint, **valores)
+
+
 def create_app(config_overrides=None):
     app = Flask(__name__)
     app.config.from_object(Config)
     if config_overrides:
         app.config.update(config_overrides)
     app.jinja_env.globals["formatar_moeda_brl"] = _formatar_moeda_brl
+
+    @app.context_processor
+    def injetar_navegacao_global():
+        if not current_user.is_authenticated:
+            return {"navegacao_departamentos": []}
+
+        from app.services.permissoes_service import (
+            buscar_departamentos_liberados_usuario,
+            buscar_modulos_liberados,
+        )
+
+        departamentos = buscar_departamentos_liberados_usuario(current_user)
+        for departamento in departamentos:
+            departamento.navegacao_modulos = [
+                {
+                    "nome": modulo.nome,
+                    "slug": modulo.slug,
+                    "url": _url_modulo_navegacao(departamento.slug, modulo.slug),
+                }
+                for modulo in buscar_modulos_liberados(current_user, departamento.slug)
+            ]
+
+        return {
+            "navegacao_departamentos": departamentos,
+        }
 
     # Inicialização das extensões
     db.init_app(app)

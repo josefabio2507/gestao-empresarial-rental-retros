@@ -1,0 +1,113 @@
+/* Missão 18.9: acabamento visual do módulo Operação. */
+
+.operacao-ui .top-bar,
+.operacao-ui .filter-card,
+.operacao-ui .form-card,
+.operacao-ui .table-card,
+.operacao-ui .details-card {
+    background: var(--rr-surface);
+    border: 1px solid var(--rr-border);
+    border-radius: 14px;
+    box-shadow: var(--rr-shadow);
+}
+
+.operacao-ui .top-bar {
+    align-items: flex-start;
+    background: linear-gradient(120deg, var(--rr-navy), var(--rr-blue));
+    border-color: var(--rr-navy);
+    gap: 20px;
+    margin-bottom: 18px;
+    padding: 24px;
+}
+
+.operacao-ui .top-bar h1,
+.operacao-ui .top-bar p,
+.operacao-ui .top-bar .page-kicker {
+    color: #ffffff;
+}
+
+.operacao-ui .top-bar .page-kicker {
+    opacity: 0.82;
+}
+
+.operacao-ui .top-bar .btn-secondary {
+    background: #ffffff;
+    border-color: #ffffff;
+    color: var(--rr-navy);
+}
+
+.operacao-ui .filter-card,
+.operacao-ui .form-card,
+.operacao-ui .details-card,
+.operacao-ui .table-card {
+    margin-bottom: 18px;
+    padding: 20px;
+}
+
+.operacao-ui .table-card h2,
+.operacao-ui .details-card h2,
+.operacao-ui .form-card h2 {
+    color: var(--rr-navy);
+    font-size: 18px;
+    margin-top: 0;
+}
+
+.operacao-ui .stat-grid {
+    gap: 16px;
+    margin-bottom: 18px;
+}
+
+.operacao-ui .stat-card {
+    background: #f8fbff;
+    border: 1px solid var(--rr-border);
+    border-radius: 12px;
+    box-shadow: none;
+}
+
+.operacao-ui .table thead th {
+    background: #f5f8fc;
+    color: var(--rr-navy);
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.operacao-ui .table tbody tr:hover {
+    background: #f8fbff;
+}
+
+.operacao-ui .table-responsive,
+.operacao-ui .listbox-10-linhas {
+    border-color: var(--rr-border);
+    border-radius: 10px;
+}
+
+.operacao-ui .btn {
+    border-radius: 9px;
+    font-weight: 700;
+}
+
+.operacao-ui .badge {
+    border-radius: 999px;
+    font-weight: 800;
+}
+
+.operacao-ui .page-actions,
+.operacao-ui .form-actions,
+.operacao-ui .acoes-botoes {
+    gap: 10px;
+}
+
+@media (max-width: 640px) {
+    .operacao-ui .top-bar,
+    .operacao-ui .filter-card,
+    .operacao-ui .form-card,
+    .operacao-ui .details-card,
+    .operacao-ui .table-card {
+        padding: 16px;
+    }
+
+    .operacao-ui .top-bar .btn,
+    .operacao-ui .page-actions .btn {
+        width: 100%;
+    }
+}
