@@ -66,6 +66,29 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 
+    const caminhoAtual = window.location.pathname.replace(/\/+$/, "") || "/";
+    document.querySelectorAll(".app-nav-group").forEach((grupo) => {
+        const linksDoGrupo = grupo.querySelectorAll(".app-nav-link, .app-subnav a");
+        const grupoAtivo = Array.from(linksDoGrupo).some((link) => {
+            try {
+                const caminho = new URL(link.href, window.location.origin).pathname.replace(/\/+$/, "") || "/";
+                return caminho === caminhoAtual;
+            } catch (erro) {
+                return false;
+            }
+        });
+        if (!grupoAtivo) {
+            return;
+        }
+        const toggle = grupo.querySelector("[data-nav-toggle]");
+        const subnav = toggle ? document.getElementById(toggle.getAttribute("aria-controls")) : null;
+        grupo.classList.add("is-open");
+        toggle?.setAttribute("aria-expanded", "true");
+        if (subnav) {
+            subnav.hidden = false;
+        }
+    });
+
     document.querySelectorAll(".top-bar").forEach((cabecalho) => {
         let acoes = cabecalho.querySelector(":scope > .actions, :scope > .action-bar, :scope > .page-actions, :scope > .form-actions");
         if (!acoes) {
