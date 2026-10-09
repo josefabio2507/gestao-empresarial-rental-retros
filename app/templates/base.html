@@ -7,10 +7,23 @@
     {% set ui_departamento_pessoal = request.blueprint in ['departamento_pessoal', 'colaboradores', 'documentos', 'pedido_refeicoes', 'vale_transporte'] %}
     {% set ui_pedido_refeicoes = request.blueprint == 'pedido_refeicoes' %}
     {% set ui_suprimentos_fiscal = (request.blueprint and request.blueprint.startswith('suprimentos')) or request.blueprint == 'fiscal' %}
+    {% set ui_operacao = request.blueprint in ['operacao', 'veiculos_equipamentos'] %}
+    {% set ui_administracao = request.blueprint in ['admin', 'usuarios', 'permissoes', 'cargos', 'equipes'] %}
+    {% set departamento_rota = request.view_args.get('slug_departamento') if request.view_args else '' %}
+    {% set departamento_tema = departamento_rota or (
+        'financeiro' if request.blueprint and request.blueprint.startswith('financeiro') else
+        'suprimentos' if request.blueprint and request.blueprint.startswith('suprimentos') else
+        'fiscal' if request.blueprint == 'fiscal' else
+        'operacao' if request.blueprint in ['operacao', 'veiculos_equipamentos'] else
+        'seguranca_trabalho' if request.blueprint == 'seguranca_trabalho' else
+        'departamento_pessoal' if ui_departamento_pessoal else
+        'administracao' if ui_administracao else ''
+    ) %}
 
     <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/responsividade.css') }}">
     {% if request.blueprint and request.blueprint.startswith('financeiro') %}
     <link rel="stylesheet" href="{{ url_for('static', filename='css/financeiro.css') }}">
     {% endif %}
@@ -23,8 +36,15 @@
     {% if ui_suprimentos_fiscal %}
     <link rel="stylesheet" href="{{ url_for('static', filename='css/suprimentos_fiscal.css') }}">
     {% endif %}
+    {% if ui_operacao %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/operacao.css') }}">
+    {% endif %}
+    {% if ui_administracao %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/administracao.css') }}">
+    {% endif %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/department_themes.css') }}">
 </head>
-<body class="app-shell-body {{ 'financeiro-ui' if request.blueprint and request.blueprint.startswith('financeiro') else '' }} {{ 'departamento-pessoal-ui' if ui_departamento_pessoal else '' }} {{ 'pedido-refeicoes-ui' if ui_pedido_refeicoes else '' }} {{ 'suprimentos-fiscal-ui' if ui_suprimentos_fiscal else '' }}">
+<body class="app-shell-body {{ 'financeiro-ui' if request.blueprint and request.blueprint.startswith('financeiro') else '' }} {{ 'departamento-pessoal-ui' if ui_departamento_pessoal else '' }} {{ 'pedido-refeicoes-ui' if ui_pedido_refeicoes else '' }} {{ 'suprimentos-fiscal-ui' if ui_suprimentos_fiscal else '' }} {{ 'operacao-ui' if ui_operacao else '' }} {{ 'administracao-ui' if ui_administracao else '' }} {{ 'department-theme-' ~ departamento_tema if departamento_tema else '' }}">
     <div class="app-shell">
         <aside class="app-sidebar" id="app-sidebar" aria-label="Navegação principal">
             <a class="app-brand" href="{{ url_for('main.inicio') }}">
@@ -34,22 +54,45 @@
 
             <nav class="app-navigation">
                 <a class="app-nav-link {{ 'is-active' if request.endpoint == 'main.inicio' else '' }}" href="{{ url_for('main.inicio') }}">
-                    <span aria-hidden="true">⌂</span>
+                    <span class="app-nav-icon" aria-hidden="true">⌂</span>
                     <span>Início</span>
                 </a>
 
                 {% for departamento in navegacao_departamentos %}
                     {% if not (current_user.is_admin and departamento.slug == 'administracao') %}
-                        <a class="app-nav-link {{ 'is-active' if request.view_args and request.view_args.get('slug_departamento') == departamento.slug else '' }}" href="{{ url_for('departamentos.detalhe_departamento', slug_departamento=departamento.slug) }}">
-                            <span aria-hidden="true">•</span>
-                            <span>{{ departamento.nome }}</span>
-                        </a>
+                        {% set departamento_ativo = departamento.slug == departamento_tema %}
+                        {% set icone_departamento = {
+                            'financeiro': '◉',
+                            'suprimentos': '▦',
+                            'operacao': '⚒',
+                            'departamento_pessoal': '♟',
+                            'seguranca_trabalho': '⬢',
+                            'fiscal': '▤'
+                        }.get(departamento.slug, '•') %}
+                        <div class="app-nav-group {{ 'is-open' if departamento_ativo else '' }}">
+                            <div class="app-nav-group-row">
+                                <a class="app-nav-link {{ 'is-active' if departamento_ativo else '' }}" href="{{ url_for('departamentos.detalhe_departamento', slug_departamento=departamento.slug) }}">
+                                    <span class="app-nav-icon" aria-hidden="true">{{ icone_departamento }}</span>
+                                    <span>{{ departamento.nome }}</span>
+                                </a>
+                                {% if departamento.navegacao_modulos %}
+                                    <button class="app-nav-toggle" type="button" data-nav-toggle aria-expanded="{{ 'true' if departamento_ativo else 'false' }}" aria-controls="app-subnav-{{ departamento.slug }}" aria-label="Exibir submódulos de {{ departamento.nome }}">⌄</button>
+                                {% endif %}
+                            </div>
+                            {% if departamento.navegacao_modulos %}
+                                <div class="app-subnav" id="app-subnav-{{ departamento.slug }}" {{ '' if departamento_ativo else 'hidden' }}>
+                                    {% for modulo in departamento.navegacao_modulos %}
+                                        <a href="{{ modulo.url }}">{{ modulo.nome }}</a>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
                     {% endif %}
                 {% endfor %}
 
                 {% if current_user.is_admin %}
                     <a class="app-nav-link {{ 'is-active' if request.blueprint in ['admin', 'usuarios', 'permissoes', 'cargos', 'equipes'] else '' }}" href="{{ url_for('admin.index') }}">
-                        <span aria-hidden="true">•</span>
+                        <span class="app-nav-icon" aria-hidden="true">⚙</span>
                         <span>Administração</span>
                     </a>
                 {% endif %}
