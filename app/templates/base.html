@@ -15,6 +15,7 @@
         'suprimentos' if request.blueprint and request.blueprint.startswith('suprimentos') else
         'fiscal' if request.blueprint == 'fiscal' else
         'operacao' if request.blueprint in ['operacao', 'veiculos_equipamentos'] else
+        'seguranca_trabalho' if request.blueprint == 'seguranca_trabalho' else
         'departamento_pessoal' if ui_departamento_pessoal else
         'administracao' if ui_administracao else ''
     ) %}
