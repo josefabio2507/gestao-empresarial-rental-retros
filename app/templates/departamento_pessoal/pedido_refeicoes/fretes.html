@@ -11,7 +11,7 @@
       <div class="form-actions"><button class="btn btn-primary" type="submit">Salvar</button>{% if frete %}<a class="btn btn-secondary" href="{{ url_for('pedido_refeicoes.fretes') }}">Cancelar</a>{% endif %}</div>
     </form>
   </div>
-  <div class="details-card"><h2>Fretes cadastrados</h2><div class="table-card table-card-inner table-responsive"><table class="table"><thead><tr><th>Data</th><th>Restaurante</th><th>Valor</th><th>Status</th><th>Ações</th></tr></thead><tbody>
+  <div class="details-card"><h2>Fretes cadastrados</h2><div class="table-card table-card-inner table-responsive listbox-10-linhas"><table class="table"><thead><tr><th>Data</th><th>Restaurante</th><th>Valor</th><th>Status</th><th>Ações</th></tr></thead><tbody>
     {% for item in fretes %}<tr><td>{{ item.data.strftime('%d/%m/%Y') }}</td><td>{{ item.restaurante.nome }}</td><td>{{ formatar_moeda(item.valor) }}</td><td>{{ 'Ativo' if item.ativo else 'Inativo' }}</td><td class="col-acoes"><a class="btn btn-secondary" href="{{ url_for('pedido_refeicoes.editar_frete', frete_id=item.id) }}">Editar</a><a class="btn btn-warning" href="{{ url_for('pedido_refeicoes.alterar_status_frete_rota', frete_id=item.id) }}">{{ 'Inativar' if item.ativo else 'Ativar' }}</a></td></tr>{% else %}<tr><td colspan="5" class="empty-state">Nenhum frete cadastrado.</td></tr>{% endfor %}
   </tbody></table></div></div>
 </section>
