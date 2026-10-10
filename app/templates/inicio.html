@@ -38,13 +38,13 @@
                     <a class="card department-card" href="{{ url_for('departamentos.detalhe_departamento', slug_departamento=departamento.slug) }}">
                         <span class="department-card-icon" aria-hidden="true">
                             {% if departamento.slug == "departamento_pessoal" %}
-                                <svg viewBox="0 0 48 48" role="img"><circle cx="24" cy="13" r="6"></circle><path d="M13 35c0-6 4.8-10 11-10s11 4 11 10"></path><path d="M7 36c0-4.6 2.8-7.5 7-8.5M41 36c0-4.6-2.8-7.5-7-8.5"></path></svg>
+                                <svg viewBox="0 0 48 48" role="img"><circle cx="24" cy="13" r="5"></circle><circle cx="12" cy="18" r="4"></circle><circle cx="36" cy="18" r="4"></circle><path d="M15 36c0-6 3.7-10 9-10s9 4 9 10M4 35c0-4.5 3-7.5 8-7.5M44 35c0-4.5-3-7.5-8-7.5"></path></svg>
                             {% elif departamento.slug == "financeiro" %}
                                 <svg viewBox="0 0 48 48" role="img"><rect x="8" y="12" width="25" height="21" rx="3"></rect><path d="M8 18h25M14 24h7"></path><circle cx="34" cy="32" r="7"></circle><path d="M34 28v8M31 31h5"></path></svg>
                             {% elif departamento.slug == "fiscal" %}
                                 <svg viewBox="0 0 48 48" role="img"><path d="M11 7h18l8 8v25H11z"></path><path d="M29 7v9h8M17 23h13M17 29h8"></path><circle cx="33" cy="34" r="7"></circle><path d="m30 34 2 2 4-5"></path></svg>
                             {% elif departamento.slug == "operacao" %}
-                                <svg viewBox="0 0 48 48" role="img"><circle cx="24" cy="24" r="8"></circle><path d="m24 8 2.2 4.2 4.6 1.2 4-2.4 3.2 3.2-2.4 4 1.2 4.6L41 25l-1.2 4.6 2.4 4-3.2 3.2-4-2.4-4.6 1.2L28 40h-8l-2.2-4.4-4.6-1.2-4 2.4L6 33.6l2.4-4L7.2 25 3 23v-5l4.2-1.4 1.2-4.6-2.4-4L9.2 4.8l4 2.4 4.6-1.2L20 2h8z"></path><path d="m34 35 8 8M39 32l6-6"></path></svg>
+                                <svg viewBox="0 0 48 48" role="img"><path d="M20 5h8l1.4 4.2a16 16 0 0 1 3.6 2.1l4.3-1.1 4 6.9-3 3.2a16 16 0 0 1 0 4.2l3 3.2-4 6.9-4.3-1.1a16 16 0 0 1-3.6 2.1L28 40h-8l-1.4-4.2a16 16 0 0 1-3.6-2.1l-4.3 1.1-4-6.9 3-3.2a16 16 0 0 1 0-4.2l-3-3.2 4-6.9 4.3 1.1a16 16 0 0 1 3.6-2.1z"></path><circle cx="24" cy="22" r="6"></circle><path d="m33 34 7 7M38 31l6-6"></path></svg>
                             {% elif departamento.slug == "seguranca_trabalho" %}
                                 <svg viewBox="0 0 48 48" role="img"><path d="M12 24v-5c0-7 5-12 12-12s12 5 12 12v5"></path><path d="M8 22h32v7H8zM15 22v-5h18v5"></path><path d="m35 32 4 2v5c0 3-2.2 5-4 6-1.8-1-4-3-4-6v-5z"></path><path d="m33.5 37 1.5 1.5 2.5-3"></path></svg>
                             {% else %}
