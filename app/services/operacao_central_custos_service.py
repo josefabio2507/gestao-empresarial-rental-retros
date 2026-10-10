@@ -124,6 +124,8 @@ def linhas_abastecimento(veiculo, inicio=None, fim=None):
                 "id": registro.id,
                 "data": registro.data_abastecimento,
                 "descricao": f"{registro.tipo_combustivel} | {registro.qtd_litros} L",
+                "leitura": registro.leitura_atual,
+                "unidade_leitura": "h" if registro.tipo_leitura == "horimetro" else "km",
                 "responsavel": registro.colaborador.nome if registro.colaborador else "-",
                 "valor": valor,
                 "registro": registro,

@@ -916,6 +916,8 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         self.assertIn(b"Multas", resposta.data)
         self.assertIn(b"Impostos e Taxas", resposta.data)
         self.assertIn(b"Gasolina comum", resposta.data)
+        self.assertIn(b"Leitura", resposta.data)
+        self.assertIn(b"30,00 km", resposta.data)
         self.assertIn(b"R$ 2.469,00", resposta.data)
         self.assertIn(b"Ver", resposta.data)
 
