@@ -30,7 +30,9 @@ from app.departamento_pessoal.pedido_refeicoes.services import (
     formatar_telefone,
     formatar_moeda,
     buscar_equipes_ativas,
+    buscar_colaboradores_ativos,
     buscar_colaborador_ativo_por_texto,
+    texto_colaborador_historico,
     buscar_pedidos,
     buscar_pedido_por_id,
     criar_pedido_refeicao,
@@ -1173,6 +1175,11 @@ def historico_colaborador():
     colaborador_texto = request.args.get("colaborador", "").strip()
     data_inicial = request.args.get("data_inicial", "").strip()
     data_final = request.args.get("data_final", "").strip()
+    colaboradores_ativos = buscar_colaboradores_ativos()
+    opcoes_colaboradores = {
+        texto_colaborador_historico(colaborador).strip()
+        for colaborador in colaboradores_ativos
+    }
 
     colaborador = None
     historico = None
@@ -1184,11 +1191,14 @@ def historico_colaborador():
         elif not data_inicial or not data_final:
             flash("Informe data inicial e data final.", "danger")
         else:
-            colaborador = buscar_colaborador_ativo_por_texto(colaborador_texto)
-
-            if not colaborador:
-                flash("Colaborador ativo não encontrado ou pesquisa ambígua.", "danger")
+            if colaborador_texto not in opcoes_colaboradores:
+                flash("Selecione um colaborador ativo da lista.", "danger")
             else:
+                colaborador = buscar_colaborador_ativo_por_texto(colaborador_texto)
+
+            if colaborador_texto in opcoes_colaboradores and not colaborador:
+                flash("Colaborador ativo não encontrado ou pesquisa ambígua.", "danger")
+            elif colaborador:
                 historico = montar_historico_colaborador_refeicoes(
                     colaborador=colaborador,
                     data_inicial=data_inicial,
@@ -1203,6 +1213,8 @@ def historico_colaborador():
             "data_inicial": data_inicial,
             "data_final": data_final,
         },
+        colaboradores_ativos=colaboradores_ativos,
+        texto_colaborador_historico=texto_colaborador_historico,
         formatar_data=formatar_data,
         formatar_moeda=formatar_moeda,
     )

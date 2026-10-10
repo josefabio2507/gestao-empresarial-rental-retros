@@ -23,10 +23,16 @@
                     name="colaborador"
                     id="colaborador"
                     value="{{ filtros.colaborador }}"
+                    list="colaboradores-ativos"
                     autocomplete="off"
                     required
                 >
-                <small>Pesquise por nome, matrícula ou CPF do colaborador ativo.</small>
+                <datalist id="colaboradores-ativos">
+                    {% for colaborador in colaboradores_ativos %}
+                        <option value="{{ texto_colaborador_historico(colaborador) }}">
+                    {% endfor %}
+                </datalist>
+                <small>Selecione um colaborador ativo da lista por nome e matrícula.</small>
             </div>
 
             <div class="form-group">
@@ -95,7 +101,7 @@
             </div>
         </div>
 
-        <div class="table-card table-responsive">
+        <div class="table-card table-responsive listbox-10-linhas">
             <table class="table">
                 <thead>
                     <tr>
