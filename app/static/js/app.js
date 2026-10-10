@@ -14,6 +14,82 @@ document.addEventListener("DOMContentLoaded", () => {
 
     sidebarClose?.addEventListener("click", fecharSidebar);
 
+    document.querySelectorAll("[data-global-search]").forEach((busca) => {
+        const campo = busca.querySelector(".app-global-search-input");
+        const resultados = busca.querySelector(".app-global-search-results");
+        const itens = Array.from(busca.querySelectorAll(".app-global-search-index a")).map((link) => ({
+            label: link.dataset.searchLabel || link.textContent.trim(),
+            texto: link.textContent.trim(),
+            url: link.href,
+        }));
+
+        if (!campo || !resultados) {
+            return;
+        }
+
+        const normalizar = (valor) => (valor || "")
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .toLocaleLowerCase("pt-BR");
+
+        const fecharResultados = () => {
+            resultados.hidden = true;
+            resultados.replaceChildren();
+            campo.setAttribute("aria-expanded", "false");
+        };
+
+        const mostrarResultados = () => {
+            const consulta = normalizar(campo.value.trim());
+            if (!consulta) {
+                fecharResultados();
+                return;
+            }
+
+            const encontrados = itens.filter((item) => normalizar(item.label).includes(consulta)).slice(0, 8);
+            resultados.replaceChildren();
+            if (!encontrados.length) {
+                const vazio = document.createElement("div");
+                vazio.className = "app-global-search-empty";
+                vazio.textContent = "Nenhum módulo ou departamento encontrado.";
+                resultados.appendChild(vazio);
+            } else {
+                encontrados.forEach((item) => {
+                    const link = document.createElement("a");
+                    link.className = "app-global-search-result";
+                    link.href = item.url;
+                    link.setAttribute("role", "option");
+                    link.textContent = item.texto;
+                    resultados.appendChild(link);
+                });
+            }
+            resultados.hidden = false;
+            campo.setAttribute("aria-expanded", "true");
+        };
+
+        campo.addEventListener("input", mostrarResultados);
+        campo.addEventListener("focus", mostrarResultados);
+        campo.addEventListener("keydown", (evento) => {
+            if (evento.key === "Escape") {
+                fecharResultados();
+                campo.blur();
+                return;
+            }
+            if (evento.key === "Enter") {
+                const primeiro = resultados.querySelector(".app-global-search-result");
+                if (primeiro) {
+                    evento.preventDefault();
+                    primeiro.click();
+                }
+            }
+        });
+
+        document.addEventListener("click", (evento) => {
+            if (!busca.contains(evento.target)) {
+                fecharResultados();
+            }
+        });
+    });
+
     const iconesBotoes = [
         [/^pesquisar\b|^buscar\b|^consultar\b|^filtrar\b/i, "⌕"],
         [/^limpar\b|^resetar\b/i, "↻"],

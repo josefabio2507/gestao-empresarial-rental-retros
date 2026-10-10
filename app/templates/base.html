@@ -22,6 +22,7 @@
 
     <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/global_search.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/responsividade.css') }}">
     {% if request.blueprint and request.blueprint.startswith('financeiro') %}
@@ -109,6 +110,35 @@
                 </button>
 
                 <a class="app-topbar-home" href="{{ url_for('main.inicio') }}">Rental Retros</a>
+
+                <div class="app-global-search" data-global-search>
+                    <label class="visually-hidden" for="global-search-input">Buscar no sistema</label>
+                    <span class="app-global-search-icon" aria-hidden="true">⌕</span>
+                    <input
+                        id="global-search-input"
+                        class="app-global-search-input"
+                        type="search"
+                        placeholder="Buscar módulo ou departamento"
+                        autocomplete="off"
+                        aria-controls="global-search-results"
+                        aria-expanded="false"
+                    >
+                    <div class="app-global-search-results" id="global-search-results" role="listbox" hidden></div>
+                    <div class="app-global-search-index" hidden>
+                        <a href="{{ url_for('main.inicio') }}" data-search-label="Início Página inicial">Início</a>
+                        {% for departamento in navegacao_departamentos %}
+                            {% if not (current_user.is_admin and departamento.slug == 'administracao') %}
+                                <a href="{{ url_for('departamentos.detalhe_departamento', slug_departamento=departamento.slug) }}" data-search-label="{{ departamento.nome }} Departamento">{{ departamento.nome }}</a>
+                                {% for modulo in departamento.navegacao_modulos %}
+                                    <a href="{{ modulo.url }}" data-search-label="{{ modulo.nome }} {{ departamento.nome }}">{{ modulo.nome }}</a>
+                                {% endfor %}
+                            {% endif %}
+                        {% endfor %}
+                        {% if current_user.is_admin %}
+                            <a href="{{ url_for('admin.index') }}" data-search-label="Administração Painel administrativo">Administração</a>
+                        {% endif %}
+                    </div>
+                </div>
 
                 <div class="app-user-menu">
                     <span class="app-user-name">{{ current_user.nome }}</span>
