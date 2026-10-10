@@ -102,7 +102,7 @@
                                 <td class="col-nowrap">{{ linha.data.strftime('%d/%m/%Y') if linha.data else '-' }}</td>
                                 <td>{{ linha.descricao }}</td>
                                 {% if chave == 'abastecimento' %}
-                                    <td class="col-nowrap">{{ ('%.2f'|format(linha.leitura)|replace('.', ',') ~ ' ' ~ linha.unidade_leitura) if linha.leitura is not none else '-' }}</td>
+                                    <td class="col-nowrap">{{ ('%.2f'|format(linha.leitura)|replace('.', ',') ~ ' ' ~ linha.unidade_leitura) if linha.leitura is defined and linha.leitura is not none else '-' }}</td>
                                 {% endif %}
                                 <td>{{ linha.documento if linha.documento is defined else linha.responsavel }}</td>
                                 <td class="col-nowrap">{{ formatar_moeda_brl(linha.valor) }}</td>
