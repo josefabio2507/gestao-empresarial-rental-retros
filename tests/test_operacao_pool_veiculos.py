@@ -2,6 +2,7 @@ import unittest
 from datetime import datetime
 from decimal import Decimal
 from io import BytesIO
+from unittest.mock import patch
 
 from PIL import Image
 from werkzeug.datastructures import FileStorage, MultiDict
@@ -920,6 +921,24 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         self.assertIn(b"30,00 km", resposta.data)
         self.assertIn(b"R$ 2.469,00", resposta.data)
         self.assertIn(b"Ver", resposta.data)
+
+        dados_com_ordem_de_compra = {
+            "grupos": {
+                "abastecimento": {
+                    "titulo": "Abastecimento",
+                    "linhas": [{"id": 1, "data": None, "descricao": "Abastecimento | Ordem recebida", "documento": "OC-001", "valor": Decimal("10"), "ordem_compra_id": 1}],
+                    "total": Decimal("10"),
+                    "mensagem_vazio": "Nenhum abastecimento no período.",
+                },
+            },
+            "total_geral": Decimal("10"),
+            "indicadores": {"rotulo_uso": "KM rodados", "uso_periodo": Decimal("0"), "unidade_uso": "km", "rotulo_consumo": "Consumo", "consumo_por_litro": None, "unidade_consumo": "km/l", "rotulo_custo": "Custo", "custo_por_unidade": None},
+        }
+        with patch("app.operacao.routes.relatorio_custos_veiculo", return_value=dados_com_ordem_de_compra):
+            resposta_com_ordem = self.client.get(f"/operacao/central-custos/veiculos/{veiculo.id}")
+
+        self.assertEqual(200, resposta_com_ordem.status_code)
+        self.assertIn(b"OC-001", resposta_com_ordem.data)
 
         detalhe = self.client.get(f"/operacao/abastecimentos/{abastecimento.id}/ver")
         self.assertEqual(200, detalhe.status_code)
