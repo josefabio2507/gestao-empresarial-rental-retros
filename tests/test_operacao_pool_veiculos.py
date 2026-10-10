@@ -924,6 +924,8 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         detalhe = self.client.get(f"/operacao/abastecimentos/{abastecimento.id}/ver")
         self.assertEqual(200, detalhe.status_code)
         self.assertIn(b"Detalhes do abastecimento", detalhe.data)
+        self.assertIn(b'class="header-actions-card"', detalhe.data)
+        self.assertIn(b">Voltar</a>", detalhe.data)
         self.assertIn(b"Ver cupom fiscal", detalhe.data)
         self.assertIn(b"https://drive.google.com/cupom/1", detalhe.data)
 
