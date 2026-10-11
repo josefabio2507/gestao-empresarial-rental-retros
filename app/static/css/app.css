@@ -657,18 +657,14 @@ textarea {
 
 /* Rental Retros visual system */
 .top-bar {
-    --page-header-logo-width: clamp(210px, 22vw, 330px);
-    --page-header-logo-height: clamp(86px, 9vw, 135px);
-    --page-header-line-right: clamp(87px, 10.5vw, 147px);
-    --page-header-line-offset: clamp(26px, 3.45vw, 50px);
-    background: linear-gradient(135deg, var(--rr-navy), var(--rr-blue));
+    background: linear-gradient(90deg, rgba(6, 27, 51, 0.97) 0%, rgba(6, 27, 51, 0.84) 42%, rgba(6, 27, 51, 0.2) 100%), url("../img/home-header-rental-retros.png") center / cover no-repeat;
     color: #ffffff;
     border-radius: 14px;
-    padding: 22px calc(var(--page-header-logo-width) + 72px) 22px 24px;
+    padding: 28px 36px;
     box-shadow: var(--rr-shadow);
     position: relative;
     overflow: hidden;
-    min-height: calc(var(--page-header-logo-height) + 64px);
+    min-height: 188px;
 }
 
 .top-bar:hover {
@@ -681,27 +677,11 @@ textarea {
 }
 
 .top-bar::before {
-    content: "";
-    position: absolute;
-    right: 28px;
-    top: 50%;
-    width: var(--page-header-logo-width);
-    height: var(--page-header-logo-height);
-    background: url("../img/logo-rental-retros.png") center / contain no-repeat;
-    transform: translateY(-62%);
-    z-index: 0;
+    display: none;
 }
 
 .top-bar::after {
-    content: "";
-    position: absolute;
-    right: var(--page-header-line-right);
-    top: calc(50% + var(--page-header-line-offset));
-    width: 92px;
-    height: 6px;
-    border-radius: 999px;
-    background: var(--rr-gold);
-    z-index: 0;
+    display: none;
 }
 
 .top-bar h1 {
