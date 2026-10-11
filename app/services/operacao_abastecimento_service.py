@@ -17,6 +17,7 @@ from app.services.operacao_pool_service import (
     TIPOS_LEITURA,
     decimal_ou_none,
     inteiro_ou_none,
+    mensagem_limite_leitura,
     registrar_leitura,
     texto,
     tipo_leitura_padrao_veiculo,
@@ -293,6 +294,9 @@ def salvar_abastecimento(form_data, files_data, usuario, veiculo=None, abastecim
         return False, "Tipo de leitura do vinculo invalido.", abastecimento
     if leitura_atual is None:
         return False, "Hodometro/horimetro e obrigatorio.", abastecimento
+    mensagem_limite = mensagem_limite_leitura(tipo_leitura, leitura_atual)
+    if mensagem_limite:
+        return False, mensagem_limite, abastecimento
     if tipo_combustivel not in TIPOS_COMBUSTIVEL:
         return False, "Tipo de combustivel invalido.", abastecimento
     if qtd_litros is None or qtd_litros <= 0:

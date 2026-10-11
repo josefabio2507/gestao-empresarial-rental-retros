@@ -380,9 +380,16 @@ document.addEventListener("DOMContentLoaded", () => {
             grupo.hidden = !exibir;
             campo.required = exibir;
             rotulo.textContent = horimetro ? "Horímetro" : "Odômetro";
+            campo.maxLength = horimetro ? 7 : 9;
+            campo.pattern = horimetro
+                ? "[0-9]{1,4}([.,][0-9]{1,2})?"
+                : "[0-9]{1,6}([.,][0-9]{1,2})?";
+            campo.title = horimetro
+                ? "Informe no máximo 4 dígitos antes da vírgula."
+                : "Informe no máximo 6 dígitos antes da vírgula.";
             ajuda.textContent = horimetro
-                ? "Informe a leitura atual do equipamento/máquina (máximo de 6 caracteres)."
-                : "Informe a leitura atual do veículo (máximo de 6 caracteres).";
+                ? "Informe a leitura atual do equipamento/máquina (máximo de 4 dígitos antes da vírgula)."
+                : "Informe a leitura atual do veículo (máximo de 6 dígitos antes da vírgula).";
             if (!exibir) {
                 campo.value = "";
             }

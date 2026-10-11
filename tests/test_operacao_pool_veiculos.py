@@ -838,6 +838,69 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         self.assertEqual("Hodometro/horimetro e obrigatorio.", mensagem)
         self.assertIsNone(abastecimento)
 
+    def test_abastecimento_limita_digitos_inteiros_conforme_tipo_leitura(self):
+        veiculo = self._criar_veiculo("CAR305", "CAMINHAO LIMITE")
+        vincular_responsavel(
+            {"colaborador_id": str(self.motorista.id), "tipo_leitura": "odometro", "leitura_inicial": "10"},
+            usuario=self.admin,
+            veiculo=veiculo,
+        )
+
+        sucesso, mensagem, _ = salvar_abastecimento(
+            {
+                "data_abastecimento": "2026-08-23",
+                "leitura_atual": "1000000",
+                "tipo_combustivel": "Diesel S10",
+                "qtd_litros": "10,00",
+                "preco": "7,00",
+            },
+            {},
+            self.usuario,
+            veiculo=veiculo,
+        )
+
+        self.assertFalse(sucesso)
+        self.assertEqual("Hodometro deve ter no maximo 6 digitos antes da virgula.", mensagem)
+
+        maquina = self._criar_veiculo("MAQ305", "MAQUINA LIMITE", tipo="Maquina")
+        vincular_responsavel(
+            {"colaborador_id": str(self.operador.id), "tipo_leitura": "horimetro", "leitura_inicial": "10"},
+            usuario=self.admin,
+            veiculo=maquina,
+        )
+
+        sucesso, mensagem, _ = salvar_abastecimento(
+            {
+                "data_abastecimento": "2026-08-23",
+                "leitura_atual": "10000",
+                "tipo_combustivel": "Diesel S10",
+                "qtd_litros": "10,00",
+                "preco": "7,00",
+            },
+            {},
+            self.usuario,
+            veiculo=maquina,
+        )
+
+        self.assertFalse(sucesso)
+        self.assertEqual("Horimetro deve ter no maximo 4 digitos antes da virgula.", mensagem)
+
+        sucesso, mensagem, abastecimento = salvar_abastecimento(
+            {
+                "data_abastecimento": "2026-08-23",
+                "leitura_atual": "987,65",
+                "tipo_combustivel": "Diesel S10",
+                "qtd_litros": "10,00",
+                "preco": "7,00",
+            },
+            {},
+            self.usuario,
+            veiculo=maquina,
+        )
+
+        self.assertTrue(sucesso, mensagem)
+        self.assertEqual(Decimal("987.65"), abastecimento.leitura_atual)
+
     def test_bloqueia_combustivel_fora_da_lista(self):
         veiculo = self._criar_veiculo("CAR404", "CAMINHAO COMBUSTIVEL")
         self.usuario.colaborador_id = self.motorista.id
