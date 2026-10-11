@@ -270,6 +270,8 @@ def _ordens_recebidas_veiculo(veiculo, tipos_custo, inicio=None, fim=None, exclu
                 "id": ordem.id,
                 "data": data_recebimento,
                 "descricao": f"{ordem.tipo_custo} | {itens or 'Ordem de compra recebida'}",
+                "leitura": ordem.leitura_abastecimento if ordem.tipo_custo == "Abastecimento" else None,
+                "unidade_leitura": "h" if ordem.tipo_leitura_abastecimento == "horimetro" else "km",
                 "documento": ordem.numero,
                 "valor": valor,
                 "ordem_compra_id": ordem.id,
