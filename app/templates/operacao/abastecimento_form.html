@@ -48,8 +48,8 @@
             </div>
             <div class="form-group">
                 <label for="leitura_atual">{{ 'Horímetro' if tipo_leitura == 'horimetro' else 'Hodômetro' }}</label>
-                <input id="leitura_atual" name="leitura_atual" required inputmode="decimal" placeholder="{{ '0,00 h' if tipo_leitura == 'horimetro' else '0,00 km' }}" value="{{ leitura_atual_form }}">
-                <small>{{ 'Informe o horímetro atual do equipamento.' if tipo_leitura == 'horimetro' else 'Informe o hodômetro atual do veículo.' }}</small>
+                <input id="leitura_atual" name="leitura_atual" required inputmode="decimal" maxlength="{{ 7 if tipo_leitura == 'horimetro' else 9 }}" pattern="[0-9]{1,{{ 4 if tipo_leitura == 'horimetro' else 6 }}}([.,][0-9]{1,2})?" title="Informe no máximo {{ 4 if tipo_leitura == 'horimetro' else 6 }} dígitos antes da vírgula." placeholder="{{ '0,00 h' if tipo_leitura == 'horimetro' else '0,00 km' }}" value="{{ leitura_atual_form }}">
+                <small>{{ 'Informe o horímetro atual (máximo de 4 dígitos antes da vírgula).' if tipo_leitura == 'horimetro' else 'Informe o hodômetro atual (máximo de 6 dígitos antes da vírgula).' }}</small>
             </div>
             <div class="form-group">
                 <label for="tipo_combustivel">Tipo de Combustível</label>
