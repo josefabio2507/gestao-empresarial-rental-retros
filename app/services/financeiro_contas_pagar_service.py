@@ -1433,6 +1433,8 @@ def salvar_titulo(dados, titulo=None, usuario=None, commit=True):
 
         db.session.flush()
         if fatura_atual:
+            titulo.data_vencimento = fatura_atual.data_vencimento
+            titulo.competencia = fatura_atual.competencia
             recalcular_fatura(fatura_atual)
         if fatura_anterior and (not fatura_atual or fatura_anterior.id != fatura_atual.id):
             recalcular_fatura(fatura_anterior)
@@ -1447,18 +1449,23 @@ def salvar_titulo(dados, titulo=None, usuario=None, commit=True):
 
 def salvar_titulos_recorrentes(dados, usuario=None):
     recorrente = (dados.get("eh_recorrente") or "Nao") == "Sim"
-    if not recorrente:
+    pagamento_cartao = (
+        (dados.get("tipo_pagamento") or "") == "Cartao de Credito"
+        or (dados.get("forma_pagamento") or "") == "Cartao de Credito"
+    )
+    parcela_inicial = parse_int(dados.get("parcela_numero"), nome_campo="Numero da parcela")
+    total_parcelas = parse_int(dados.get("total_parcelas"), nome_campo="Total de parcelas")
+    parcelamento_cartao = pagamento_cartao and total_parcelas > 1
+    if not recorrente and not parcelamento_cartao:
         sucesso, mensagem, titulo = salvar_titulo(dados, usuario=usuario)
         return sucesso, mensagem, [titulo] if sucesso else []
 
     try:
-        periodicidade = (dados.get("recorrencia_periodicidade") or "").strip()
-        if periodicidade not in PERIODICIDADES_RECORRENCIA:
+        periodicidade = (dados.get("recorrencia_periodicidade") or "Mensal").strip()
+        if recorrente and periodicidade not in PERIODICIDADES_RECORRENCIA:
             raise ValueError("Periodicidade invalida.")
-        quantidade = parse_int(
-            dados.get("recorrencia_quantidade"),
-            padrao=0,
-            nome_campo="Quantidade de recorrencias",
+        quantidade = total_parcelas - parcela_inicial + 1 if parcelamento_cartao else parse_int(
+            dados.get("recorrencia_quantidade"), padrao=0, nome_campo="Quantidade de recorrencias"
         )
         if quantidade < 1 or quantidade > MAX_RECORRENCIAS:
             raise ValueError(f"Quantidade de recorrencias deve estar entre 1 e {MAX_RECORRENCIAS}.")
@@ -1467,45 +1474,65 @@ def salvar_titulos_recorrentes(dados, usuario=None):
             obrigatorio=True,
             nome_campo="Data inicial da recorrencia",
         )
-        grupo_id = (dados.get("recorrencia_token") or "").strip()
-        if not re.fullmatch(r"[0-9a-fA-F-]{36}", grupo_id):
-            raise ValueError("Identificador da recorrencia invalido. Recarregue o formulario e tente novamente.")
-        existentes = FinanceiroContaPagarTitulo.query.filter_by(
-            recorrencia_grupo_id=grupo_id
-        ).order_by(FinanceiroContaPagarTitulo.recorrencia_sequencia.asc()).all()
-        if existentes:
-            return True, f"{len(existentes)} titulos recorrentes ja haviam sido gerados.", existentes
+        if recorrente:
+            grupo_id = (dados.get("recorrencia_token") or "").strip()
+            if not re.fullmatch(r"[0-9a-fA-F-]{36}", grupo_id):
+                raise ValueError("Identificador da recorrencia invalido. Recarregue o formulario e tente novamente.")
+            existentes = FinanceiroContaPagarTitulo.query.filter_by(
+                recorrencia_grupo_id=grupo_id
+            ).order_by(FinanceiroContaPagarTitulo.recorrencia_sequencia.asc()).all()
+            if existentes:
+                return True, f"{len(existentes)} titulos recorrentes ja haviam sido gerados.", existentes
 
-        descricao_recorrencia = normalizar_texto(
-            dados.get("recorrencia_descricao"), upper=False
-        ) or None
+        descricao_recorrencia = normalizar_texto(dados.get("recorrencia_descricao"), upper=False) or None
         if descricao_recorrencia and len(descricao_recorrencia) > 120:
             raise ValueError("Identificacao da recorrencia deve ter no maximo 120 caracteres.")
 
         titulos = []
+        valores_parcelas = None
+        if parcelamento_cartao:
+            valor_total_compra = parse_decimal(
+                dados.get("valor_original"), obrigatorio=True, nome_campo="Valor original"
+            )
+            valores_parcelas = _calcular_parcelas(valor_total_compra, total_parcelas)[
+                parcela_inicial - 1:
+            ]
+        data_compra_inicial = parse_data(dados.get("data_compra_cartao"), nome_campo="Data da compra no cartao")
+        if pagamento_cartao and not data_compra_inicial:
+            data_compra_inicial = parse_data(dados.get("data_emissao"), nome_campo="Data de emissao") or data_inicial
         for indice in range(quantidade):
-            vencimento = calcular_data_recorrencia(data_inicial, periodicidade, indice)
+            vencimento = calcular_data_recorrencia(data_inicial, periodicidade, indice) if recorrente else data_inicial
             dados_titulo = dict(dados)
             dados_titulo.update(
                 data_vencimento=vencimento.isoformat(),
                 competencia=vencimento.strftime("%Y-%m"),
-                parcela_numero=str(indice + 1),
-                total_parcelas=str(quantidade),
+                parcela_numero=str(parcela_inicial + indice if parcelamento_cartao else indice + 1),
+                total_parcelas=str(total_parcelas if parcelamento_cartao else quantidade),
             )
+            if valores_parcelas:
+                dados_titulo["valor_original"] = f"{valores_parcelas[indice]:.2f}".replace(".", ",")
+            if pagamento_cartao:
+                dados_titulo["data_compra_cartao"] = _somar_meses_data(data_compra_inicial, indice).isoformat()
             sucesso, mensagem, titulo = salvar_titulo(
                 dados_titulo, usuario=usuario, commit=False
             )
             if not sucesso:
                 return False, mensagem, []
-            titulo.recorrencia_grupo_id = grupo_id
-            titulo.recorrencia_periodicidade = periodicidade
-            titulo.recorrencia_sequencia = indice + 1
-            titulo.recorrencia_total = quantidade
-            titulo.recorrencia_descricao = descricao_recorrencia
+            if recorrente:
+                titulo.recorrencia_grupo_id = grupo_id
+                titulo.recorrencia_periodicidade = periodicidade
+                titulo.recorrencia_sequencia = indice + 1
+                titulo.recorrencia_total = quantidade
+                titulo.recorrencia_descricao = descricao_recorrencia
             titulos.append(titulo)
 
         db.session.commit()
-        return True, f"{quantidade} titulos recorrentes gerados com sucesso.", titulos
+        mensagem = (
+            f"{quantidade} parcelas de cartao geradas com sucesso."
+            if parcelamento_cartao and not recorrente
+            else f"{quantidade} titulos recorrentes gerados com sucesso."
+        )
+        return True, mensagem, titulos
     except ValueError as exc:
         db.session.rollback()
         return False, str(exc), []

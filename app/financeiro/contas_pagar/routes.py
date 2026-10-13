@@ -251,12 +251,16 @@ def novo():
             return redirect(url_for("financeiro_contas_pagar.detalhes", titulo_id=titulo.id))
         flash(mensagem, "danger")
 
+    novo_lancamento_cartao = request.args.get("origem_fatura") == "1"
+    cartao_credito_id = request.args.get("cartao_credito_id", type=int) if novo_lancamento_cartao else None
     return render_template(
         "financeiro/contas_pagar/form.html",
         titulo=None,
         modo="novo",
         opcoes=buscar_opcoes_formulario(),
         recorrencia_token=str(uuid4()),
+        novo_lancamento_cartao=novo_lancamento_cartao,
+        cartao_credito_id=cartao_credito_id,
     )
 
 
