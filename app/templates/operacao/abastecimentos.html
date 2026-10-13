@@ -66,7 +66,7 @@
                     <tr>
                         <td>{{ abastecimento.data_abastecimento.strftime('%d/%m/%Y') }}</td>
                         <td>{{ abastecimento.veiculo.identificacao if abastecimento.veiculo else '-' }}</td>
-                        <td>{{ (abastecimento.leitura_atual|string).replace('.', ',') }} {{ 'h' if abastecimento.tipo_leitura == 'horimetro' else 'km' }}</td>
+                        <td>{{ formatar_leitura_horimetro(abastecimento.leitura_atual) if abastecimento.tipo_leitura == 'horimetro' else (abastecimento.leitura_atual|string).replace('.', ',') }} {{ 'h' if abastecimento.tipo_leitura == 'horimetro' else 'km' }}</td>
                         <td>{{ abastecimento.tipo_combustivel }}</td>
                         <td>{{ (abastecimento.qtd_litros|string).replace('.', ',') }}</td>
                         <td>{{ formatar_moeda_brl(abastecimento.preco) }}</td>

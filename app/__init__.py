@@ -1,6 +1,7 @@
 from flask import Flask, url_for
 from config import Config
 from app.extensions import db, migrate, login_manager
+from app.utils.formatadores import formatar_leitura_horimetro
 from decimal import Decimal, InvalidOperation
 from flask_login import current_user
 
@@ -57,6 +58,7 @@ def create_app(config_overrides=None):
     if config_overrides:
         app.config.update(config_overrides)
     app.jinja_env.globals["formatar_moeda_brl"] = _formatar_moeda_brl
+    app.jinja_env.globals["formatar_leitura_horimetro"] = formatar_leitura_horimetro
 
     @app.context_processor
     def injetar_navegacao_global():
