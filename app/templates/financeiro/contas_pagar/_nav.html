@@ -6,7 +6,10 @@
     <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.agendamentos_xml') }}">Agendamentos XML</a>
     <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.cartoes') }}">Cartoes</a>
     <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.faturas') }}">Faturas</a>
-    {% if request.endpoint in [
+    {% if fatura is defined %}
+        <button class="btn btn-secondary" type="submit" form="exportar-fatura-cartao">Gerar Excel</button>
+        <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.faturas') }}">← Voltar</a>
+    {% elif request.endpoint in [
         'financeiro_contas_pagar.novo',
         'financeiro_contas_pagar.agendamentos_oc',
         'financeiro_contas_pagar.agendamentos_xml',
