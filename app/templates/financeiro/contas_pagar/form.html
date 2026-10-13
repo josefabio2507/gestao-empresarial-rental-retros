@@ -196,6 +196,8 @@
             if (dataCompra && dataEmissao && !dataCompra.value) {
                 dataCompra.value = dataEmissao.value;
             }
+        } else if (tipo.value === 'Cartao de Credito') {
+            tipo.value = 'Faturado';
         }
     }); }
 })();
