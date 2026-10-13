@@ -1364,8 +1364,12 @@ def salvar_titulo(dados, titulo=None, usuario=None, commit=True):
 
         tipo = dados.get("tipo_pagamento") or ""
         forma = dados.get("forma_pagamento") or ""
-        if forma == "Cartao de Credito" and not tipo:
+        # A forma de pagamento define o tipo para que uma edicao parcial do
+        # formulario nao desfaça o vinculo do titulo com o cartao e a fatura.
+        if forma == "Cartao de Credito":
             tipo = "Cartao de Credito"
+        elif tipo == "Cartao de Credito":
+            tipo = "Faturado"
         if tipo not in TIPOS_PAGAMENTO:
             raise ValueError("Tipo de pagamento invalido.")
         if forma not in FORMAS_PAGAMENTO:
