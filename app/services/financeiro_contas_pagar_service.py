@@ -1437,8 +1437,6 @@ def salvar_titulo(dados, titulo=None, usuario=None, commit=True):
 
         db.session.flush()
         if fatura_atual:
-            titulo.data_vencimento = fatura_atual.data_vencimento
-            titulo.competencia = fatura_atual.competencia
             recalcular_fatura(fatura_atual)
         if fatura_anterior and (not fatura_atual or fatura_anterior.id != fatura_atual.id):
             recalcular_fatura(fatura_anterior)
