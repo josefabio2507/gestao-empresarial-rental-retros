@@ -1317,7 +1317,15 @@ def vincular_titulo_a_fatura_cartao(titulo, usuario=None):
 
     data_compra = titulo.data_compra_cartao or titulo.data_emissao or titulo.data_vencimento
     titulo.data_compra_cartao = data_compra
-    competencia, data_fechamento, data_vencimento = calcular_ciclo_fatura(cartao, data_compra)
+    competencia = titulo.competencia
+    if competencia:
+        data_fechamento, data_vencimento = calcular_datas_fatura(
+            cartao,
+            competencia.year,
+            competencia.month,
+        )
+    else:
+        competencia, data_fechamento, data_vencimento = calcular_ciclo_fatura(cartao, data_compra)
     fatura, criada = _buscar_ou_criar_fatura(cartao, competencia, data_fechamento, data_vencimento, usuario=usuario)
 
     mudou_fatura = titulo.fatura_cartao_id != fatura.id
