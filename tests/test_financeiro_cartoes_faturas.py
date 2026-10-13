@@ -283,6 +283,20 @@ class FinanceiroCartoesFaturasTestCase(unittest.TestCase):
         self.assertEqual(cartao.id, titulo.cartao_credito_id)
         self.assertEqual(fatura_id, titulo.fatura_cartao_id)
 
+    def test_edicao_de_titulo_cartao_mantem_vencimento_informado(self):
+        cartao = self._criar_cartao()
+        sucesso, mensagem, titulo = salvar_titulo(self._dados_titulo_cartao(cartao), usuario=self.admin)
+        self.assertTrue(sucesso, mensagem)
+
+        sucesso, mensagem, titulo = salvar_titulo(
+            self._dados_titulo_cartao(cartao, data_vencimento="2026-12-20"),
+            titulo=titulo,
+            usuario=self.admin,
+        )
+
+        self.assertTrue(sucesso, mensagem)
+        self.assertEqual("2026-12-20", titulo.data_vencimento.isoformat())
+
     def test_telas_de_cartoes_faturas_e_permissao(self):
         self._liberar(visualizar=True)
         self._autenticar(self.usuario)
