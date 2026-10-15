@@ -389,6 +389,37 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         self.assertIn(veiculo_ativo, veiculos)
         self.assertNotIn(veiculo_inativo, veiculos)
 
+    def test_historico_exibe_vinculos_e_abastecimentos_em_listboxes(self):
+        veiculo = self._criar_veiculo()
+        _, _, vinculo = vincular_responsavel(
+            {"colaborador_id": str(self.motorista.id), "tipo_leitura": "odometro", "leitura_inicial": "10"},
+            usuario=self.admin,
+            veiculo=veiculo,
+        )
+        db.session.add(
+            OperacaoAbastecimento(
+                veiculo=veiculo,
+                vinculo=vinculo,
+                usuario=self.admin,
+                data_abastecimento=datetime.today().date(),
+                tipo_leitura="odometro",
+                leitura_atual=Decimal("20"),
+                tipo_combustivel="Gasolina comum",
+                qtd_litros=Decimal("10"),
+                preco=Decimal("6"),
+            )
+        )
+        db.session.commit()
+
+        self._autenticar(self.admin)
+        resposta = self.client.get(f"/operacao/pool-veiculos/ativos/{veiculo.id}/historico")
+
+        self.assertEqual(200, resposta.status_code)
+        self.assertEqual(2, resposta.data.count(b"listbox-10-linhas"))
+        self.assertIn(b"Vinculos operacionais", resposta.data)
+        self.assertIn(b"Abastecimentos", resposta.data)
+        self.assertIn(b"Gasolina comum", resposta.data)
+
     def test_historico_oculta_corrigir_para_usuario_comum(self):
         veiculo = self._criar_veiculo()
         _, _, vinculo = vincular_responsavel(
