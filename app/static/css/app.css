@@ -87,6 +87,22 @@
     height: calc(var(--listbox-header-height) + (10 * var(--listbox-row-height)) + 48px);
 }
 
+.historico-vinculos-listbox,
+.historico-abastecimentos-listbox {
+    --listbox-header-height: 46px;
+    --listbox-row-height: 54px;
+    height: calc(var(--listbox-header-height) + (10 * var(--listbox-row-height)) + 48px);
+    overflow: auto;
+    scrollbar-gutter: stable both-edges;
+}
+
+.historico-vinculos-listbox > .listbox-10-linhas,
+.historico-abastecimentos-listbox > .listbox-10-linhas {
+    height: auto;
+    max-height: none;
+    overflow: visible;
+}
+
 .listbox-5-linhas .table,
 .listbox-10-linhas .table {
     min-width: 900px;
