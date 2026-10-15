@@ -82,6 +82,11 @@
     max-height: calc(var(--listbox-header-height) + (10 * var(--listbox-row-height)) + 48px);
 }
 
+[aria-label="Histórico de vínculos operacionais"],
+[aria-label="Histórico de abastecimentos"] {
+    height: calc(var(--listbox-header-height) + (10 * var(--listbox-row-height)) + 48px);
+}
+
 .listbox-5-linhas .table,
 .listbox-10-linhas .table {
     min-width: 900px;
