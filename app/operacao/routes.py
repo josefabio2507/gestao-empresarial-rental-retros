@@ -1,5 +1,6 @@
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, send_file, url_for
 from flask_login import current_user, login_required
+from sqlalchemy.orm.attributes import set_committed_value
 
 from app.decorators import module_permission_required
 from app.models import OperacaoAbastecimento, OperacaoAbastecimentoCustoExtra, OperacaoMultaTransito, OperacaoVeiculoEquipamento, OperacaoVeiculoResponsavel
@@ -620,5 +621,13 @@ def historico_veiculo(veiculo_id):
     if not veiculo:
         flash("Veiculo/equipamento nao encontrado.", "warning")
         return redirect(url_for("operacao.pool"))
+
+    abastecimentos = (
+        OperacaoAbastecimento.query
+        .filter_by(veiculo_id=veiculo.id)
+        .order_by(OperacaoAbastecimento.data_abastecimento.desc(), OperacaoAbastecimento.id.desc())
+        .all()
+    )
+    set_committed_value(veiculo, "abastecimentos", abastecimentos)
 
     return render_template("operacao/historico.html", veiculo=veiculo)
