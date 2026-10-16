@@ -103,6 +103,10 @@
     overflow: visible;
 }
 
+.historico-abastecimentos-listbox .table tbody tr {
+    height: var(--listbox-row-height);
+}
+
 .listbox-5-linhas .table,
 .listbox-10-linhas .table {
     min-width: 900px;
