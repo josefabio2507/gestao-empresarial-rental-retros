@@ -26,6 +26,7 @@ from app.services.operacao_abastecimento_service import (
     vinculo_ativo_veiculo,
     vinculo_ativo_usuario_veiculo,
 )
+from app.services.permissoes_service import usuario_eh_administrador
 from app.services.operacao_impostos_taxas_service import (
     PARCELAS_IMPOSTO_TAXA,
     TIPOS_IMPOSTO_TAXA,
@@ -297,7 +298,7 @@ def editar_abastecimento(abastecimento_id):
         return redirect(url_for("operacao.abastecimentos"))
 
     vinculo = vinculo_ativo_usuario_veiculo(current_user, abastecimento.veiculo_id)
-    if not vinculo:
+    if not vinculo and not usuario_eh_administrador(current_user):
         flash("Veiculo/equipamento nao esta mais vinculado ao usuario logado.", "danger")
         return redirect(url_for("operacao.abastecimentos"))
 
