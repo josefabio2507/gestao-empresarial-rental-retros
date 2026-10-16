@@ -180,6 +180,7 @@ class SuprimentosCotacoesTestCase(unittest.TestCase):
                 "equipe_id": str(self.equipe.id),
                 "veiculo_placa": "ABC1D23",
                 "justificativa": "Comprar filtros",
+                "observacoes": "Manutencao preventiva",
             },
             self.admin,
         )
@@ -970,6 +971,8 @@ class SuprimentosCotacoesTestCase(unittest.TestCase):
         self.assertIn("Valor total: R$ 31,00", mensagem_whatsapp)
         self.assertIn("Equipe: Equipe Demo", mensagem_whatsapp)
         self.assertIn("Placa do veiculo: ABC1D23", mensagem_whatsapp)
+        self.assertIn("Justificativa: COMPRAR FILTROS", mensagem_whatsapp)
+        self.assertIn("Observacoes: MANUTENCAO PREVENTIVA", mensagem_whatsapp)
         self.assertIn("FORNECEDOR TESTE LTDA", mensagem_whatsapp)
         self.assertTrue(sucesso_link)
         self.assertEqual("Link do WhatsApp gerado com sucesso.", mensagem_link)
