@@ -97,6 +97,19 @@ def listar_abastecimentos_usuario(usuario):
     )
 
 
+def listar_abastecimentos_veiculo_usuario(usuario, veiculo_id):
+    consulta = OperacaoAbastecimento.query.filter_by(veiculo_id=veiculo_id)
+    if not usuario_eh_administrador(usuario):
+        colaborador = colaborador_do_usuario(usuario)
+        if not colaborador:
+            return []
+        consulta = consulta.filter_by(colaborador_id=colaborador.id)
+    return consulta.order_by(
+        OperacaoAbastecimento.data_abastecimento.desc(),
+        OperacaoAbastecimento.id.desc(),
+    ).all()
+
+
 def buscar_abastecimento_usuario(abastecimento_id, usuario):
     if usuario_eh_administrador(usuario):
         return OperacaoAbastecimento.query.get(abastecimento_id)
