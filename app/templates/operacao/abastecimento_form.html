@@ -159,6 +159,44 @@
             </div>
         </div>
 
+        <h2>Histórico de Abastecimentos do Veículo</h2>
+        <div class="table-card table-responsive listbox-5-linhas" role="region" aria-label="Histórico de abastecimentos do veículo" tabindex="0">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Leitura</th>
+                        <th>Combustível</th>
+                        <th>Litros</th>
+                        <th>Preço por litro</th>
+                        <th>Total</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for historico in historico_abastecimentos %}
+                        <tr>
+                            <td>{{ historico.data_abastecimento.strftime('%d/%m/%Y') if historico.data_abastecimento else '-' }}</td>
+                            <td>{{ formatar_leitura_horimetro(historico.leitura_atual) if historico.tipo_leitura == 'horimetro' else (historico.leitura_atual|string).replace('.', ',') }} {{ 'h' if historico.tipo_leitura == 'horimetro' else 'km' }}</td>
+                            <td>{{ historico.tipo_combustivel }}</td>
+                            <td>{{ (historico.qtd_litros|string).replace('.', ',') }}</td>
+                            <td>{{ formatar_moeda_brl(historico.preco) }}</td>
+                            <td>{{ formatar_moeda_brl(historico.valor_total_geral) }}</td>
+                            <td class="col-acoes">
+                                {% if pode_editar %}
+                                    <a class="btn btn-secondary" href="{{ url_for('operacao.editar_abastecimento', abastecimento_id=historico.id) }}">Editar</a>
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr><td class="empty-state" colspan="7">Nenhum abastecimento registrado para este veículo.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
         <div class="form-actions">
             <button class="btn btn-primary" type="submit">Salvar</button>
             <a class="btn btn-secondary" href="{{ url_for('operacao.abastecimentos') }}">Cancelar</a>

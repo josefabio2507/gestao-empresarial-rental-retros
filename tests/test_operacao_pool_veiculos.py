@@ -842,6 +842,42 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         self.assertIn(b'name="leitura_atual"', resposta.data)
         self.assertIn("Hodômetro".encode(), resposta.data)
 
+    def test_formulario_exibe_historico_do_veiculo_com_atalho_para_edicao(self):
+        veiculo = self._criar_veiculo("HIS101", "CAMINHAO COM HISTORICO")
+        self.usuario.colaborador_id = self.motorista.id
+        db.session.commit()
+        vincular_responsavel(
+            {"colaborador_id": str(self.motorista.id), "tipo_leitura": "odometro", "leitura_inicial": "10"},
+            usuario=self.admin,
+            veiculo=veiculo,
+        )
+        sucesso, mensagem, abastecimento = salvar_abastecimento(
+            {
+                "data_abastecimento": "2026-08-22",
+                "leitura_atual": "20",
+                "tipo_combustivel": "Diesel S10",
+                "qtd_litros": "10,00",
+                "preco": "5,00",
+            },
+            {},
+            self.usuario,
+            veiculo=veiculo,
+        )
+        self.assertTrue(sucesso, mensagem)
+        self._liberar_usuario("abastecimento", criar=True, editar=True)
+        self._autenticar(self.usuario)
+
+        resposta = self.client.get(f"/operacao/abastecimentos/veiculos/{veiculo.id}/novo")
+
+        self.assertEqual(200, resposta.status_code)
+        self.assertIn("Histórico de Abastecimentos do Veículo".encode(), resposta.data)
+        self.assertIn(b'aria-label="Hist\xc3\xb3rico de abastecimentos do ve\xc3\xadculo"', resposta.data)
+        self.assertIn(b"22/08/2026", resposta.data)
+        self.assertIn(
+            f"/operacao/abastecimentos/{abastecimento.id}/editar".encode(),
+            resposta.data,
+        )
+
     def test_abastecimento_exige_hodometro_ou_horimetro(self):
         veiculo = self._criar_veiculo("CAR304", "CAMINHAO SEM LEITURA")
         self.usuario.colaborador_id = self.motorista.id

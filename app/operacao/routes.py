@@ -20,6 +20,7 @@ from app.services.operacao_abastecimento_service import (
     cancelar_custo_extra_abastecimento,
     colaborador_do_usuario,
     data_padrao_form,
+    listar_abastecimentos_veiculo_usuario,
     listar_abastecimentos_usuario,
     listar_veiculos_abastecimento_usuario,
     salvar_abastecimento,
@@ -267,6 +268,8 @@ def novo_abastecimento(veiculo_id):
         categorias_custo_extra=CATEGORIAS_CUSTO_EXTRA,
         data_padrao=data_padrao_form(),
         leitura_atual_form=leitura_atual_form,
+        historico_abastecimentos=listar_abastecimentos_veiculo_usuario(current_user, veiculo.id),
+        pode_editar=usuario_tem_permissao_operacao(current_user, MODULO_ABASTECIMENTO, "editar"),
         modo="novo",
     )
 
@@ -329,6 +332,8 @@ def editar_abastecimento(abastecimento_id):
         categorias_custo_extra=CATEGORIAS_CUSTO_EXTRA,
         data_padrao=abastecimento.data_abastecimento.isoformat(),
         leitura_atual_form=leitura_atual_form,
+        historico_abastecimentos=listar_abastecimentos_veiculo_usuario(current_user, abastecimento.veiculo_id),
+        pode_editar=usuario_tem_permissao_operacao(current_user, MODULO_ABASTECIMENTO, "editar"),
         modo="editar",
     )
 
