@@ -3347,6 +3347,8 @@ def gerar_mensagem_whatsapp_aprovacao_cotacao(cotacao):
         f"Equipe: {nome_subcentro_equipe_requisicao(cotacao.requisicao if cotacao else None)}",
         f"Placa do veiculo: {nome_subcentro_veiculo_requisicao(cotacao.requisicao if cotacao else None)}",
         f"Solicitante: {cotacao.requisicao.solicitante.nome if cotacao.requisicao and cotacao.requisicao.solicitante else '-'}",
+        f"Justificativa: {cotacao.requisicao.justificativa if cotacao.requisicao and cotacao.requisicao.justificativa else '-'}",
+        f"Observacoes: {cotacao.requisicao.observacoes if cotacao.requisicao and cotacao.requisicao.observacoes else '-'}",
         *linhas_pagamento_whatsapp_aprovacao_cotacao(cotacao),
         f"Aprovador: {cotacao.aprovador.nome if cotacao.aprovador else '-'}",
         "",
