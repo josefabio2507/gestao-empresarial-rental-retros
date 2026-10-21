@@ -1128,6 +1128,7 @@ class FinanceiroContratoMedicao(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     contrato_id = db.Column(db.Integer, db.ForeignKey("financeiro_contratos_clientes.id"), nullable=False, index=True)
+    equipe_id = db.Column(db.Integer, db.ForeignKey("equipes.id"), nullable=True, index=True)
     nota_emitida_id = db.Column(db.Integer, db.ForeignKey("financeiro_notas_fiscais_emitidas.id"), nullable=True, index=True)
     numero_medicao = db.Column(db.String(80), nullable=False, index=True)
     competencia = db.Column(db.String(7), nullable=False, index=True)
@@ -1160,6 +1161,7 @@ class FinanceiroContratoMedicao(db.Model):
     atualizado_em = db.Column(db.DateTime, default=agora_brasil, onupdate=agora_brasil, nullable=False)
 
     contrato = db.relationship("FinanceiroContratoCliente", back_populates="medicoes")
+    equipe = db.relationship("Equipe", foreign_keys=[equipe_id])
     nota_emitida = db.relationship("FinanceiroNotaFiscalEmitida", foreign_keys=[nota_emitida_id])
     titulos = db.relationship("FinanceiroContaReceberTitulo", back_populates="medicao", order_by="FinanceiroContaReceberTitulo.parcela_numero.asc(), FinanceiroContaReceberTitulo.id.asc()")
     notas_emitidas = db.relationship("FinanceiroNotaFiscalEmitida", back_populates="medicao", foreign_keys="FinanceiroNotaFiscalEmitida.medicao_id", order_by="FinanceiroNotaFiscalEmitida.data_emissao.desc(), FinanceiroNotaFiscalEmitida.id.desc()")
