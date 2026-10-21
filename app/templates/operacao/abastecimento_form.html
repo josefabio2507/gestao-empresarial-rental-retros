@@ -48,8 +48,8 @@
             </div>
             <div class="form-group">
                 <label for="leitura_atual">{{ 'Horímetro' if tipo_leitura == 'horimetro' else 'Hodômetro' }}</label>
-                <input id="leitura_atual" name="leitura_atual" required inputmode="decimal" placeholder="{{ '0,00 h' if tipo_leitura == 'horimetro' else '0,00 km' }}" value="{{ leitura_atual_form }}">
-                <small>{{ 'Informe o horímetro atual do equipamento.' if tipo_leitura == 'horimetro' else 'Informe o hodômetro atual do veículo.' }}</small>
+                <input id="leitura_atual" name="leitura_atual" required inputmode="decimal" maxlength="{{ 7 if tipo_leitura == 'horimetro' else 9 }}" pattern="[0-9]{1,{{ 4 if tipo_leitura == 'horimetro' else 6 }}}([.,][0-9]{1,2})?" title="Informe no máximo {{ 4 if tipo_leitura == 'horimetro' else 6 }} dígitos antes da vírgula." placeholder="{{ '0,00 h' if tipo_leitura == 'horimetro' else '0,00 km' }}" value="{{ leitura_atual_form }}">
+                <small>{{ 'Informe o horímetro atual (máximo de 4 dígitos antes da vírgula).' if tipo_leitura == 'horimetro' else 'Informe o hodômetro atual (máximo de 6 dígitos antes da vírgula).' }}</small>
             </div>
             <div class="form-group">
                 <label for="tipo_combustivel">Tipo de Combustível</label>
@@ -157,6 +157,44 @@
                 <label for="observacoes_conferencia">Observações de conferência</label>
                 <textarea id="observacoes_conferencia" name="observacoes_conferencia">{{ abastecimento.observacoes_conferencia if abastecimento and abastecimento.observacoes_conferencia else '' }}</textarea>
             </div>
+        </div>
+
+        <h2>Histórico de Abastecimentos do Veículo</h2>
+        <div class="table-card table-responsive listbox-5-linhas" role="region" aria-label="Histórico de abastecimentos do veículo" tabindex="0">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Leitura</th>
+                        <th>Combustível</th>
+                        <th>Litros</th>
+                        <th>Preço por litro</th>
+                        <th>Total</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for historico in historico_abastecimentos %}
+                        <tr>
+                            <td>{{ historico.data_abastecimento.strftime('%d/%m/%Y') if historico.data_abastecimento else '-' }}</td>
+                            <td>{{ formatar_leitura_horimetro(historico.leitura_atual) if historico.tipo_leitura == 'horimetro' else (historico.leitura_atual|string).replace('.', ',') }} {{ 'h' if historico.tipo_leitura == 'horimetro' else 'km' }}</td>
+                            <td>{{ historico.tipo_combustivel }}</td>
+                            <td>{{ (historico.qtd_litros|string).replace('.', ',') }}</td>
+                            <td>{{ formatar_moeda_brl(historico.preco) }}</td>
+                            <td>{{ formatar_moeda_brl(historico.valor_total_geral) }}</td>
+                            <td class="col-acoes">
+                                {% if pode_editar %}
+                                    <a class="btn btn-secondary" href="{{ url_for('operacao.editar_abastecimento', abastecimento_id=historico.id) }}">Editar</a>
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr><td class="empty-state" colspan="7">Nenhum abastecimento registrado para este veículo.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
 
         <div class="form-actions">

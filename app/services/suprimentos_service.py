@@ -57,6 +57,7 @@ from app.services.google_drive_service import (
     mensagem_erro_upload_google_drive,
     upload_arquivo_google_drive,
 )
+from app.services.operacao_pool_service import mensagem_limite_leitura
 
 
 TIPOS_PESSOA = {"juridica", "fisica"}
@@ -1241,14 +1242,18 @@ def salvar_requisicao_compra(form_data, usuario, requisicao=None):
     if tipo_custo == "Abastecimento":
         if not leitura_abastecimento_texto:
             return False, "Odometro ou horimetro e obrigatorio para abastecimento.", requisicao
-        if len(leitura_abastecimento_texto) > 6:
-            return False, "Odometro ou horimetro deve ter no maximo 6 caracteres.", requisicao
         if leitura_abastecimento is None or leitura_abastecimento < 0:
             return False, "Informe um odometro ou horimetro valido.", requisicao
         tipo_ativo = texto_maiusculo(veiculo_custo.tipo) if veiculo_custo else ""
         tipo_leitura_abastecimento = (
             "horimetro" if tipo_ativo in {"MAQUINA", "EQUIPAMENTO"} else "odometro"
         )
+        mensagem_limite = mensagem_limite_leitura(
+            tipo_leitura_abastecimento,
+            leitura_abastecimento,
+        )
+        if mensagem_limite:
+            return False, mensagem_limite, requisicao
     else:
         leitura_abastecimento = None
 
@@ -3342,6 +3347,8 @@ def gerar_mensagem_whatsapp_aprovacao_cotacao(cotacao):
         f"Equipe: {nome_subcentro_equipe_requisicao(cotacao.requisicao if cotacao else None)}",
         f"Placa do veiculo: {nome_subcentro_veiculo_requisicao(cotacao.requisicao if cotacao else None)}",
         f"Solicitante: {cotacao.requisicao.solicitante.nome if cotacao.requisicao and cotacao.requisicao.solicitante else '-'}",
+        f"Justificativa: {cotacao.requisicao.justificativa if cotacao.requisicao and cotacao.requisicao.justificativa else '-'}",
+        f"Observacoes: {cotacao.requisicao.observacoes if cotacao.requisicao and cotacao.requisicao.observacoes else '-'}",
         *linhas_pagamento_whatsapp_aprovacao_cotacao(cotacao),
         f"Aprovador: {cotacao.aprovador.nome if cotacao.aprovador else '-'}",
         "",

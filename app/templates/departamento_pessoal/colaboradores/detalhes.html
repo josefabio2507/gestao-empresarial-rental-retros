@@ -10,6 +10,15 @@
         </div>
     </div>
 
+    <div class="header-actions-card">
+        <div class="actions">
+            {% if pode_editar %}
+                <a class="btn btn-primary" href="{{ url_for('colaboradores.editar_colaborador', colaborador_id=colaborador.id) }}">Editar</a>
+            {% endif %}
+            <a class="btn btn-secondary" href="{{ url_for('colaboradores.listar_colaboradores') }}">Voltar</a>
+        </div>
+    </div>
+
     <div class="details-card">
         <p>
             Dados pessoais protegidos. O acesso e uso destas informações devem respeitar as políticas internas da empresa e a legislação aplicável.
@@ -52,11 +61,5 @@
         </p>
     </div>
 
-    <div class="page-actions">
-        {% if pode_editar %}
-            <a class="btn btn-primary" href="{{ url_for('colaboradores.editar_colaborador', colaborador_id=colaborador.id) }}">Editar</a>
-        {% endif %}
-        <a class="btn btn-secondary" href="{{ url_for('colaboradores.listar_colaboradores') }}">Voltar</a>
-    </div>
 </section>
 {% endblock %}

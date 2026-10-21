@@ -8,7 +8,9 @@
             <h1>Fornecedores</h1>
             <p>Cadastro comercial de fornecedores sem contrato formal.</p>
         </div>
-        <a class="btn btn-primary" href="{{ url_for('suprimentos_fornecedores.novo') }}">+ Novo Fornecedor</a>
+        <div class="actions">
+            <a class="btn btn-primary" href="{{ url_for('suprimentos_fornecedores.novo') }}">+ Novo Fornecedor</a>
+        </div>
     </div>
 
     <form class="filter-card" method="GET">
@@ -69,8 +71,5 @@
         </table>
     </div>
 
-    <div class="page-actions">
-        <a class="btn btn-secondary" href="{{ url_for('suprimentos.index') }}">Voltar</a>
-    </div>
 </section>
 {% endblock %}

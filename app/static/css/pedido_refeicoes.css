@@ -1,0 +1,123 @@
+/* Missão 18.7: detalhes visuais do fluxo de Pedido de Refeição. */
+
+.pedido-refeicoes-ui .top-bar {
+    background: linear-gradient(120deg, var(--rr-navy), var(--rr-blue));
+    border-color: var(--rr-navy);
+}
+
+.pedido-refeicoes-ui .top-bar h1,
+.pedido-refeicoes-ui .top-bar p,
+.pedido-refeicoes-ui .top-bar .page-kicker {
+    color: #ffffff;
+}
+
+.pedido-refeicoes-ui .top-bar .page-kicker {
+    opacity: 0.82;
+}
+
+.pedido-refeicoes-ui .top-bar .btn-secondary {
+    background: #ffffff;
+    border-color: #ffffff;
+    color: var(--rr-navy);
+}
+
+.pedido-refeicoes-ui .details-card .stat-grid {
+    margin: 0 0 18px;
+}
+
+.pedido-refeicoes-ui .details-card .stat-card {
+    background: #f8fbff;
+    border: 1px solid var(--rr-border);
+    box-shadow: none;
+    min-height: 106px;
+}
+
+.pedido-refeicoes-ui .section-header {
+    align-items: center;
+    border-bottom: 1px solid var(--rr-border);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    padding-bottom: 14px;
+}
+
+.pedido-refeicoes-ui .section-header h2,
+.pedido-refeicoes-ui .summary-group h3 {
+    color: var(--rr-navy);
+    margin: 0;
+}
+
+.pedido-refeicoes-ui .section-header p {
+    color: var(--rr-muted);
+    margin: 4px 0 0;
+}
+
+.pedido-refeicoes-ui .table-card-inner {
+    background: #fbfdff;
+    box-shadow: none;
+}
+
+.pedido-refeicoes-ui .summary-group {
+    border: 1px solid var(--rr-border);
+    border-radius: 10px;
+    margin: 14px 0;
+    overflow: hidden;
+    padding: 14px;
+}
+
+.pedido-refeicoes-ui .summary-group h3 {
+    font-size: 15px;
+    margin-bottom: 10px;
+}
+
+.pedido-refeicoes-ui .total-box {
+    align-items: center;
+    background: var(--rr-navy);
+    border-radius: 10px;
+    color: #ffffff;
+    display: flex;
+    font-size: 17px;
+    justify-content: space-between;
+    margin-top: 18px;
+    padding: 16px;
+}
+
+.pedido-refeicoes-ui .alert-warning-box {
+    background: #fff8df;
+    border: 1px solid #f1d78a;
+    border-left: 4px solid var(--rr-gold);
+    border-radius: 10px;
+    color: #7c5606;
+    margin: 18px 0;
+    padding: 14px 16px;
+}
+
+.pedido-refeicoes-ui .btn-whatsapp {
+    background: #168e4f;
+    border-color: #168e4f;
+    color: #ffffff;
+}
+
+.pedido-refeicoes-ui .btn-whatsapp:hover {
+    background: #0d713c;
+    color: #ffffff;
+}
+
+.pedido-refeicoes-ui dialog.details-card {
+    border: 0;
+    max-width: min(720px, calc(100% - 32px));
+}
+
+.pedido-refeicoes-ui dialog::backdrop {
+    background: rgba(7, 23, 43, 0.5);
+}
+
+@media (max-width: 640px) {
+    .pedido-refeicoes-ui .section-header,
+    .pedido-refeicoes-ui .total-box {
+        align-items: stretch;
+        flex-direction: column;
+    }
+}

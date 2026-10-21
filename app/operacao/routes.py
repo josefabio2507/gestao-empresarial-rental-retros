@@ -1,5 +1,6 @@
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, send_file, url_for
 from flask_login import current_user, login_required
+from sqlalchemy.orm.attributes import set_committed_value
 
 from app.decorators import module_permission_required
 from app.models import OperacaoAbastecimento, OperacaoAbastecimentoCustoExtra, OperacaoMultaTransito, OperacaoVeiculoEquipamento, OperacaoVeiculoResponsavel
@@ -19,12 +20,14 @@ from app.services.operacao_abastecimento_service import (
     cancelar_custo_extra_abastecimento,
     colaborador_do_usuario,
     data_padrao_form,
+    listar_abastecimentos_veiculo_usuario,
     listar_abastecimentos_usuario,
     listar_veiculos_abastecimento_usuario,
     salvar_abastecimento,
     vinculo_ativo_veiculo,
     vinculo_ativo_usuario_veiculo,
 )
+from app.services.permissoes_service import usuario_eh_administrador
 from app.services.operacao_impostos_taxas_service import (
     PARCELAS_IMPOSTO_TAXA,
     TIPOS_IMPOSTO_TAXA,
@@ -265,6 +268,8 @@ def novo_abastecimento(veiculo_id):
         categorias_custo_extra=CATEGORIAS_CUSTO_EXTRA,
         data_padrao=data_padrao_form(),
         leitura_atual_form=leitura_atual_form,
+        historico_abastecimentos=listar_abastecimentos_veiculo_usuario(current_user, veiculo.id),
+        pode_editar=usuario_tem_permissao_operacao(current_user, MODULO_ABASTECIMENTO, "editar"),
         modo="novo",
     )
 
@@ -295,10 +300,7 @@ def editar_abastecimento(abastecimento_id):
         flash("Abastecimento nao encontrado para o usuario logado.", "warning")
         return redirect(url_for("operacao.abastecimentos"))
 
-    vinculo = vinculo_ativo_usuario_veiculo(current_user, abastecimento.veiculo_id)
-    if not vinculo:
-        flash("Veiculo/equipamento nao esta mais vinculado ao usuario logado.", "danger")
-        return redirect(url_for("operacao.abastecimentos"))
+    vinculo = abastecimento.vinculo
 
     leitura_atual_form = format(abastecimento.leitura_atual, "f").replace(".", ",") if abastecimento.leitura_atual is not None else ""
     if request.method == "POST":
@@ -327,6 +329,8 @@ def editar_abastecimento(abastecimento_id):
         categorias_custo_extra=CATEGORIAS_CUSTO_EXTRA,
         data_padrao=abastecimento.data_abastecimento.isoformat(),
         leitura_atual_form=leitura_atual_form,
+        historico_abastecimentos=listar_abastecimentos_veiculo_usuario(current_user, abastecimento.veiculo_id),
+        pode_editar=usuario_tem_permissao_operacao(current_user, MODULO_ABASTECIMENTO, "editar"),
         modo="editar",
     )
 
@@ -620,5 +624,13 @@ def historico_veiculo(veiculo_id):
     if not veiculo:
         flash("Veiculo/equipamento nao encontrado.", "warning")
         return redirect(url_for("operacao.pool"))
+
+    abastecimentos = (
+        OperacaoAbastecimento.query
+        .filter_by(veiculo_id=veiculo.id)
+        .order_by(OperacaoAbastecimento.data_abastecimento.desc(), OperacaoAbastecimento.id.desc())
+        .all()
+    )
+    set_committed_value(veiculo, "abastecimentos", abastecimentos)
 
     return render_template("operacao/historico.html", veiculo=veiculo)

@@ -124,6 +124,8 @@ def linhas_abastecimento(veiculo, inicio=None, fim=None):
                 "id": registro.id,
                 "data": registro.data_abastecimento,
                 "descricao": f"{registro.tipo_combustivel} | {registro.qtd_litros} L",
+                "leitura": registro.leitura_atual,
+                "unidade_leitura": "h" if registro.tipo_leitura == "horimetro" else "km",
                 "responsavel": registro.colaborador.nome if registro.colaborador else "-",
                 "valor": valor,
                 "registro": registro,
@@ -263,11 +265,18 @@ def _ordens_recebidas_veiculo(veiculo, tipos_custo, inicio=None, fim=None, exclu
         valor = decimal_zero(ordem.valor_total)
         total += valor
         itens = ", ".join(item.item_descricao_snapshot for item in ordem.itens)
+        descricao = f"{ordem.tipo_custo} | {itens or 'Ordem de compra recebida'}"
+        if ordem.tipo_custo == "Abastecimento":
+            litros = sum((decimal_zero(item.quantidade) for item in ordem.itens), start=Decimal("0"))
+            if litros > 0:
+                descricao = f"{descricao} | {litros} L"
         linhas.append(
             {
                 "id": ordem.id,
                 "data": data_recebimento,
-                "descricao": f"{ordem.tipo_custo} | {itens or 'Ordem de compra recebida'}",
+                "descricao": descricao,
+                "leitura": ordem.leitura_abastecimento if ordem.tipo_custo == "Abastecimento" else None,
+                "unidade_leitura": "h" if ordem.tipo_leitura_abastecimento == "horimetro" else "km",
                 "documento": ordem.numero,
                 "valor": valor,
                 "ordem_compra_id": ordem.id,
