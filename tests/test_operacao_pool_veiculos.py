@@ -707,6 +707,58 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         self.assertEqual("12.50", str(abastecimento.valor_total_custos_extras))
         self.assertEqual("Divergente", abastecimento.status_conferencia_nota_fiscal)
 
+    def test_edita_abastecimento_com_vinculo_encerrado(self):
+        veiculo = self._criar_veiculo("RET999", "RETRO HISTORICA")
+        self.usuario.colaborador_id = self.motorista.id
+        db.session.commit()
+        _, _, vinculo = vincular_responsavel(
+            {"colaborador_id": str(self.motorista.id), "tipo_leitura": "horimetro", "leitura_inicial": "100"},
+            usuario=self.admin,
+            veiculo=veiculo,
+        )
+        sucesso, mensagem, abastecimento = salvar_abastecimento(
+            {
+                "data_abastecimento": "2026-08-23",
+                "leitura_atual": "150",
+                "tipo_combustivel": "Diesel S10",
+                "qtd_litros": "12,50",
+                "preco": "7,19",
+            },
+            {},
+            self.usuario,
+            veiculo=veiculo,
+        )
+        self.assertTrue(sucesso, mensagem)
+        sucesso, mensagem = encerrar_vinculo(
+            vinculo,
+            {"leitura_final": "150"},
+            usuario=self.admin,
+        )
+        self.assertTrue(sucesso, mensagem)
+        self._liberar_usuario("abastecimento", editar=True)
+        self._autenticar(self.usuario)
+        resposta = self.client.get(f"/operacao/abastecimentos/{abastecimento.id}/editar")
+        self.assertEqual(200, resposta.status_code)
+        self.assertIn(b"Editar abastecimento", resposta.data)
+
+        sucesso, mensagem, atualizado = salvar_abastecimento(
+            {
+                "data_abastecimento": "2026-08-23",
+                "leitura_atual": "160",
+                "tipo_combustivel": "Diesel S10",
+                "qtd_litros": "12,50",
+                "preco": "7,19",
+            },
+            {},
+            self.usuario,
+            abastecimento=abastecimento,
+        )
+
+        self.assertTrue(sucesso, mensagem)
+        self.assertEqual(vinculo.id, atualizado.vinculo_id)
+        self.assertEqual("horimetro", atualizado.tipo_leitura)
+        self.assertEqual("160.00", str(atualizado.leitura_atual))
+
     def test_operador_lista_veiculos_nao_vinculados_e_registra_abastecimento_sem_foto(self):
         veiculo_vinculado = self._criar_veiculo("CAR101", "CAMINHAO DO USUARIO")
         veiculo_outro = self._criar_veiculo("CAR202", "CAMINHAO DE OUTRO MOTORISTA")

@@ -272,8 +272,8 @@ def cancelar_custo_extra_abastecimento(custo_extra_id, usuario, motivo):
 
 def salvar_abastecimento(form_data, files_data, usuario, veiculo=None, abastecimento=None, drive_service=None):
     veiculo_id = veiculo.id if veiculo else getattr(abastecimento, "veiculo_id", None)
-    vinculo = vinculo_ativo_veiculo(veiculo_id)
-    veiculo = veiculo or (vinculo.veiculo if vinculo else None)
+    vinculo = getattr(abastecimento, "vinculo", None) if abastecimento else vinculo_ativo_veiculo(veiculo_id)
+    veiculo = veiculo or getattr(abastecimento, "veiculo", None) or (vinculo.veiculo if vinculo else None)
     if not veiculo:
         return False, "Veiculo/equipamento nao encontrado.", abastecimento
 
@@ -351,8 +351,10 @@ def salvar_abastecimento(form_data, files_data, usuario, veiculo=None, abastecim
     abastecimento.valor_total_nota_fiscal = _moeda(valor_total_nota_fiscal) if valor_total_nota_fiscal is not None else None
     abastecimento.observacoes_conferencia = texto(form_data.get("observacoes_conferencia")) or None
     abastecimento.observacoes = texto(form_data.get("observacoes")) or None
-    abastecimento.vinculo_id = vinculo.id if vinculo else None
-    abastecimento.equipe_id = equipe.id if equipe else None
+    if not abastecimento.vinculo_id and vinculo:
+        abastecimento.vinculo_id = vinculo.id
+    if not abastecimento.equipe_id and equipe:
+        abastecimento.equipe_id = equipe.id
 
     if upload:
         abastecimento.cupom_drive_file_id = upload["id"]

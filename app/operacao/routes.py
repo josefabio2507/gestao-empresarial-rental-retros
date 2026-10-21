@@ -300,10 +300,7 @@ def editar_abastecimento(abastecimento_id):
         flash("Abastecimento nao encontrado para o usuario logado.", "warning")
         return redirect(url_for("operacao.abastecimentos"))
 
-    vinculo = vinculo_ativo_usuario_veiculo(current_user, abastecimento.veiculo_id)
-    if not vinculo and not usuario_eh_administrador(current_user):
-        flash("Veiculo/equipamento nao esta mais vinculado ao usuario logado.", "danger")
-        return redirect(url_for("operacao.abastecimentos"))
+    vinculo = abastecimento.vinculo
 
     leitura_atual_form = format(abastecimento.leitura_atual, "f").replace(".", ",") if abastecimento.leitura_atual is not None else ""
     if request.method == "POST":
