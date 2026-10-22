@@ -1,0 +1,174 @@
+/* Missão 18.5: acabamento visual do módulo Financeiro.
+ * Atua somente quando o blueprint financeiro está ativo. */
+
+.financeiro-ui .filter-card,
+.financeiro-ui .table-card,
+.financeiro-ui .form-card,
+.financeiro-ui .details-card {
+    background: var(--rr-surface);
+    border: 1px solid var(--rr-border);
+    border-radius: 14px;
+    box-shadow: var(--rr-shadow);
+}
+
+.financeiro-ui .top-bar {
+    align-items: flex-start;
+    background: linear-gradient(135deg, var(--rr-navy), var(--rr-blue));
+    border: 1px solid transparent;
+    gap: 20px;
+    margin-bottom: 18px;
+    padding: 24px calc(var(--page-header-logo-width) + 72px) 24px 24px;
+}
+
+.financeiro-ui .top-bar h1,
+.financeiro-ui .table-card h2 {
+    color: var(--rr-navy);
+}
+
+.financeiro-ui .top-bar h1 {
+    color: #ffffff;
+}
+
+.financeiro-ui .top-bar p {
+    color: #dbe7f3;
+    margin-bottom: 0;
+}
+
+.financeiro-ui .action-bar,
+.financeiro-ui .submodule-tabs,
+.financeiro-ui .fluxo-caixa-subnav {
+    background: var(--rr-surface);
+    border: 1px solid var(--rr-border);
+    border-radius: 12px;
+    box-shadow: var(--rr-shadow);
+    margin: 0 0 18px;
+    padding: 8px;
+}
+
+.financeiro-ui .action-bar,
+.financeiro-ui .submodule-tabs {
+    gap: 8px;
+}
+
+.financeiro-ui .fluxo-caixa-subnav {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    overflow-x: auto;
+}
+
+.financeiro-ui .action-bar .btn,
+.financeiro-ui .submodule-tab,
+.financeiro-ui .fluxo-caixa-subnav a {
+    align-items: center;
+    background: #ffffff;
+    border: 1px solid var(--rr-border);
+    border-radius: 8px;
+    color: var(--rr-navy);
+    display: inline-flex;
+    font-weight: 700;
+    justify-content: center;
+    min-height: 38px;
+    padding: 8px 14px;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.financeiro-ui .fluxo-caixa-subnav a:hover {
+    border-color: var(--rr-blue);
+    color: var(--rr-blue);
+}
+
+.financeiro-ui .fluxo-caixa-subnav a.active {
+    background: var(--rr-blue);
+    border-color: var(--rr-blue);
+    color: #ffffff;
+}
+
+.financeiro-ui .filter-card,
+.financeiro-ui .form-card,
+.financeiro-ui .details-card {
+    margin-bottom: 18px;
+    padding: 20px;
+}
+
+.financeiro-ui .form-actions {
+    gap: 10px;
+}
+
+.financeiro-ui .form-actions .btn,
+.financeiro-ui .page-actions .btn,
+.financeiro-ui .actions .btn {
+    border-radius: 9px;
+    font-weight: 700;
+}
+
+.financeiro-ui .stat-grid,
+.financeiro-ui .financeiro-dashboard-grid {
+    gap: 16px;
+    margin-bottom: 18px;
+}
+
+.financeiro-ui .stat-card {
+    background: linear-gradient(145deg, #ffffff, #f7faff);
+    border: 1px solid var(--rr-border);
+    border-radius: 14px;
+    box-shadow: var(--rr-shadow);
+    min-height: 124px;
+}
+
+.financeiro-ui .stat-card span {
+    color: var(--rr-muted);
+    font-weight: 700;
+}
+
+.financeiro-ui .stat-card strong {
+    color: var(--rr-navy);
+}
+
+.financeiro-ui .dashboard-grid {
+    gap: 18px;
+}
+
+.financeiro-ui .table-card {
+    padding: 18px;
+}
+
+.financeiro-ui .table-card h2 {
+    font-size: 18px;
+    margin: 0 0 14px;
+}
+
+.financeiro-ui .table thead th {
+    background: #f5f8fc;
+    color: var(--rr-navy);
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.financeiro-ui .table tbody tr:hover {
+    background: #f8fbff;
+}
+
+.financeiro-ui .listbox-10-linhas,
+.financeiro-ui .table-responsive {
+    border-color: var(--rr-border);
+    border-radius: 10px;
+}
+
+@media (max-width: 640px) {
+    .financeiro-ui .top-bar,
+    .financeiro-ui .filter-card,
+    .financeiro-ui .form-card,
+    .financeiro-ui .details-card,
+    .financeiro-ui .table-card {
+        padding: 16px;
+    }
+
+    .financeiro-ui .top-bar .actions,
+    .financeiro-ui .top-bar .actions .btn,
+    .financeiro-ui .page-actions .btn {
+        width: 100%;
+    }
+}

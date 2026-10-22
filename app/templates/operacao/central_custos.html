@@ -8,10 +8,18 @@
             <h1>Central de Custos</h1>
             <p>Selecione um veículo/equipamento para consultar custos operacionais.</p>
         </div>
-        <a class="btn btn-secondary" href="{{ url_for('veiculos_equipamentos.index') }}">Voltar</a>
     </div>
 
-    <form class="filter-bar" method="GET">
+    <div class="header-actions-card">
+        <div class="actions">
+            <button class="btn btn-primary" type="submit" form="central-custos-filtros">Filtrar</button>
+            <a class="btn btn-primary" href="{{ url_for('operacao.central_custos') }}">Limpar</a>
+            <button class="btn btn-primary" type="submit" form="central-custos-relatorio">Gerar relatório geral dos ativos</button>
+            <a class="btn btn-secondary rr-back-button" href="{{ url_for('veiculos_equipamentos.index') }}">Voltar</a>
+        </div>
+    </div>
+
+    <form id="central-custos-filtros" class="filter-bar" method="GET">
         <div class="form-group">
             <label for="termo">Buscar</label>
             <input id="termo" name="termo" value="{{ filtros.get('termo', '') }}" placeholder="Identificação, placa, descrição ou centro de custo">
@@ -24,13 +32,9 @@
                 <option value="todos" {% if status_filtro == 'todos' %}selected{% endif %}>Todos</option>
             </select>
         </div>
-        <div class="form-actions">
-            <button class="btn btn-primary" type="submit">Filtrar</button>
-            <a class="btn btn-secondary" href="{{ url_for('operacao.central_custos') }}">Limpar</a>
-        </div>
     </form>
 
-    <form class="filter-bar" method="GET" action="{{ url_for('operacao.relatorio_custos_geral_pdf') }}">
+    <form id="central-custos-relatorio" class="filter-bar" method="GET" action="{{ url_for('operacao.relatorio_custos_geral_pdf') }}">
         <div class="form-group">
             <label for="relatorio_data_inicio">Data inicial do relatório geral</label>
             <input id="relatorio_data_inicio" name="data_inicio" type="date">
@@ -38,9 +42,6 @@
         <div class="form-group">
             <label for="relatorio_data_fim">Data final do relatório geral</label>
             <input id="relatorio_data_fim" name="data_fim" type="date">
-        </div>
-        <div class="form-actions">
-            <button class="btn btn-primary" type="submit">Gerar relatório geral dos ativos</button>
         </div>
     </form>
 

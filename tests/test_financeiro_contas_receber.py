@@ -15,6 +15,7 @@ from app.models import (
     FinanceiroContratoCliente,
     FinanceiroContratoMedicao,
     FinanceiroNotaFiscalEmitida,
+    Equipe,
     LogAcesso,
     Modulo,
     NivelAcesso,
@@ -85,6 +86,8 @@ class FinanceiroContasReceberTestCase(unittest.TestCase):
         self.admin.definir_senha("teste")
         self.usuario.definir_senha("teste")
         db.session.add_all([self.admin, self.usuario])
+        self.equipe = Equipe(nome="Equipe de Medição", slug="equipe-de-medicao", ativo=True)
+        db.session.add(self.equipe)
 
         self.departamento = Departamento(
             nome="Financeiro",
@@ -241,6 +244,7 @@ class FinanceiroContasReceberTestCase(unittest.TestCase):
     def _dados_medicao(self, contrato, **extras):
         dados = {
             "contrato_id": str(contrato.id),
+            "equipe_id": str(self.equipe.id),
             "numero_medicao": "MED-100",
             "competencia": "2026-08",
             "data_medicao": "2026-08-31",

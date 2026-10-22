@@ -1,4 +1,238 @@
 document.addEventListener("DOMContentLoaded", () => {
+    const sidebarToggle = document.querySelector("[data-sidebar-toggle]");
+    const sidebarClose = document.querySelector("[data-sidebar-close]");
+
+    const fecharSidebar = () => {
+        document.body.classList.remove("sidebar-open");
+        sidebarToggle?.setAttribute("aria-expanded", "false");
+    };
+
+    sidebarToggle?.addEventListener("click", () => {
+        const sidebarAberta = document.body.classList.toggle("sidebar-open");
+        sidebarToggle.setAttribute("aria-expanded", String(sidebarAberta));
+    });
+
+    sidebarClose?.addEventListener("click", fecharSidebar);
+
+    document.querySelectorAll("[data-global-search]").forEach((busca) => {
+        const campo = busca.querySelector(".app-global-search-input");
+        const resultados = busca.querySelector(".app-global-search-results");
+        const itens = Array.from(busca.querySelectorAll(".app-global-search-index a")).map((link) => ({
+            label: link.dataset.searchLabel || link.textContent.trim(),
+            texto: link.textContent.trim(),
+            url: link.href,
+        }));
+
+        if (!campo || !resultados) {
+            return;
+        }
+
+        const normalizar = (valor) => (valor || "")
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .toLocaleLowerCase("pt-BR");
+
+        const fecharResultados = () => {
+            resultados.hidden = true;
+            resultados.replaceChildren();
+            campo.setAttribute("aria-expanded", "false");
+        };
+
+        const mostrarResultados = () => {
+            const consulta = normalizar(campo.value.trim());
+            if (!consulta) {
+                fecharResultados();
+                return;
+            }
+
+            const encontrados = itens.filter((item) => normalizar(item.label).includes(consulta)).slice(0, 8);
+            resultados.replaceChildren();
+            if (!encontrados.length) {
+                const vazio = document.createElement("div");
+                vazio.className = "app-global-search-empty";
+                vazio.textContent = "Nenhum módulo ou departamento encontrado.";
+                resultados.appendChild(vazio);
+            } else {
+                encontrados.forEach((item) => {
+                    const link = document.createElement("a");
+                    link.className = "app-global-search-result";
+                    link.href = item.url;
+                    link.setAttribute("role", "option");
+                    link.textContent = item.texto;
+                    resultados.appendChild(link);
+                });
+            }
+            resultados.hidden = false;
+            campo.setAttribute("aria-expanded", "true");
+        };
+
+        campo.addEventListener("input", mostrarResultados);
+        campo.addEventListener("focus", mostrarResultados);
+        campo.addEventListener("keydown", (evento) => {
+            if (evento.key === "Escape") {
+                fecharResultados();
+                campo.blur();
+                return;
+            }
+            if (evento.key === "Enter") {
+                const primeiro = resultados.querySelector(".app-global-search-result");
+                if (primeiro) {
+                    evento.preventDefault();
+                    primeiro.click();
+                }
+            }
+        });
+
+        document.addEventListener("click", (evento) => {
+            if (!busca.contains(evento.target)) {
+                fecharResultados();
+            }
+        });
+    });
+
+    const iconesBotoes = [
+        [/^pesquisar\b|^buscar\b|^consultar\b|^filtrar\b/i, "⌕"],
+        [/^limpar\b|^resetar\b/i, "↻"],
+        [/^voltar\b|^retornar\b/i, "←"],
+        [/^\+?\s*(novo|nova|adicionar|incluir)\b/i, "＋"],
+        [/^salvar\b|^guardar\b/i, "▣"],
+        [/^editar\b|^corrigir\b/i, "✎"],
+        [/^excluir\b|^remover\b|^apagar\b/i, "×"],
+        [/^cancelar\b|^inativar\b/i, "⊘"],
+        [/^ativar\b|^reativar\b|^aprovar\b|^validar\b/i, "✓"],
+        [/^exportar\b|^baixar\b|^download\b|^gerar arquivo\b/i, "⇩"],
+        [/^importar\b|^anexar\b/i, "⇧"],
+        [/^ver\b|^visualizar\b|^detalhe\b|^abrir\b/i, "◉"],
+        [/^gerar\b|^processar\b|^sincronizar\b/i, "⚙"],
+        [/^dashboard\b/i, "⌂"],
+        [/^t[ií]tulos?\b|^faturas?\b|^notas?\b/i, "▤"],
+    ];
+
+    const aplicarIconesBotoes = () => {
+        document.querySelectorAll("a.btn, button.btn, .submodule-tab, .fluxo-caixa-subnav a").forEach((botao) => {
+            if (botao.dataset.uiIconReady === "true") {
+                return;
+            }
+            const texto = botao.textContent.trim();
+            const entrada = iconesBotoes.find(([padrao]) => padrao.test(texto));
+            if (!entrada) {
+                return;
+            }
+            const icone = document.createElement("span");
+            icone.className = "ui-button-icon";
+            icone.setAttribute("aria-hidden", "true");
+            icone.textContent = entrada[1];
+            botao.prepend(icone);
+            botao.dataset.uiIconReady = "true";
+        });
+    };
+
+    aplicarIconesBotoes();
+
+    document.querySelectorAll("[data-nav-toggle]").forEach((toggle) => {
+        toggle.addEventListener("click", () => {
+            const subnav = document.getElementById(toggle.getAttribute("aria-controls"));
+            if (!subnav) {
+                return;
+            }
+            const aberto = toggle.getAttribute("aria-expanded") === "true";
+            toggle.setAttribute("aria-expanded", String(!aberto));
+            subnav.hidden = aberto;
+            toggle.closest(".app-nav-group")?.classList.toggle("is-open", !aberto);
+        });
+    });
+
+    const caminhoAtual = window.location.pathname.replace(/\/+$/, "") || "/";
+    document.querySelectorAll(".app-nav-group").forEach((grupo) => {
+        const linksDoGrupo = grupo.querySelectorAll(".app-nav-link, .app-subnav a");
+        const grupoAtivo = Array.from(linksDoGrupo).some((link) => {
+            try {
+                const caminho = new URL(link.href, window.location.origin).pathname.replace(/\/+$/, "") || "/";
+                return caminho === caminhoAtual;
+            } catch (erro) {
+                return false;
+            }
+        });
+        if (!grupoAtivo) {
+            return;
+        }
+        const toggle = grupo.querySelector("[data-nav-toggle]");
+        const subnav = toggle ? document.getElementById(toggle.getAttribute("aria-controls")) : null;
+        grupo.classList.add("is-open");
+        toggle?.setAttribute("aria-expanded", "true");
+        if (subnav) {
+            subnav.hidden = false;
+        }
+    });
+
+    document.querySelectorAll(".top-bar").forEach((cabecalho) => {
+        let acoes = cabecalho.querySelector(":scope > .actions, :scope > .action-bar, :scope > .page-actions, :scope > .form-actions");
+        if (!acoes) {
+            const botoesDiretos = Array.from(cabecalho.children).filter((filho) => filho.matches("a.btn, button.btn"));
+            if (botoesDiretos.length) {
+                acoes = document.createElement("div");
+                acoes.className = "actions";
+                botoesDiretos.forEach((botao) => acoes.appendChild(botao));
+                cabecalho.appendChild(acoes);
+            }
+        }
+        if (!acoes || cabecalho.nextElementSibling?.classList.contains("header-actions-card")) {
+            return;
+        }
+
+        const card = document.createElement("div");
+        card.className = "header-actions-card";
+        cabecalho.insertAdjacentElement("afterend", card);
+        card.appendChild(acoes);
+    });
+
+    const marcarBotoesVoltar = (raiz = document) => {
+        raiz.querySelectorAll("a.btn, button.btn").forEach((botao) => {
+            const texto = botao.textContent.trim().replace(/^[^A-Za-zÀ-ÿ0-9]+/, "");
+            if (/^voltar\b/i.test(texto)) {
+                botao.classList.add("rr-back-button");
+            }
+        });
+    };
+
+    marcarBotoesVoltar();
+
+    document.querySelectorAll(".header-actions-card, .submodule-tabs, .subnav").forEach((bloco) => {
+        const acoes = bloco.classList.contains("header-actions-card")
+            ? bloco.querySelector(":scope > .actions, :scope > .action-bar, :scope > .page-actions, :scope > .form-actions")
+            : bloco;
+        const alvo = acoes || (bloco.classList.contains("header-actions-card") && bloco.querySelector(":scope > a.btn, :scope > button.btn") ? bloco : null);
+        if (!alvo || alvo.dataset.backButtonReady === "true") {
+            return;
+        }
+        alvo.dataset.backButtonReady = "true";
+
+        const botoesVoltar = Array.from(alvo.querySelectorAll("a, button")).filter((botao) => {
+            const texto = botao.textContent.trim().replace(/^[^A-Za-zÀ-ÿ0-9]+/, "");
+            return /^voltar\b/i.test(texto);
+        });
+        if (botoesVoltar.length) {
+            botoesVoltar.forEach((botao) => {
+                botao.classList.add("rr-back-button");
+                alvo.appendChild(botao);
+            });
+            return;
+        }
+
+        const voltar = document.createElement("button");
+        voltar.className = "btn btn-secondary rr-back-button";
+        voltar.type = "button";
+        voltar.dataset.historyBack = "true";
+        voltar.textContent = "Voltar";
+        alvo.appendChild(voltar);
+    });
+
+    document.querySelectorAll("[data-history-back]").forEach((voltar) => {
+        voltar.addEventListener("click", () => window.history.back());
+    });
+
+    aplicarIconesBotoes();
+
     const apenasDigitos = (valor) => (valor || "").replace(/\D/g, "");
 
     const aplicarMascaraDocumento = (valor) => {
@@ -146,9 +380,16 @@ document.addEventListener("DOMContentLoaded", () => {
             grupo.hidden = !exibir;
             campo.required = exibir;
             rotulo.textContent = horimetro ? "Horímetro" : "Odômetro";
+            campo.maxLength = horimetro ? 7 : 9;
+            campo.pattern = horimetro
+                ? "[0-9]{1,4}([.,][0-9]{1,2})?"
+                : "[0-9]{1,6}([.,][0-9]{1,2})?";
+            campo.title = horimetro
+                ? "Informe no máximo 4 dígitos antes da vírgula."
+                : "Informe no máximo 6 dígitos antes da vírgula.";
             ajuda.textContent = horimetro
-                ? "Informe a leitura atual do equipamento/máquina (máximo de 6 caracteres)."
-                : "Informe a leitura atual do veículo (máximo de 6 caracteres).";
+                ? "Informe a leitura atual do equipamento/máquina (máximo de 4 dígitos antes da vírgula)."
+                : "Informe a leitura atual do veículo (máximo de 6 dígitos antes da vírgula).";
             if (!exibir) {
                 campo.value = "";
             }

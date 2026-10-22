@@ -10,6 +10,12 @@
         </div>
     </div>
 
+    <div class="header-actions-card">
+        <div class="actions">
+            <a class="btn btn-secondary" href="{{ url_for('vale_transporte.index') }}">Voltar</a>
+        </div>
+    </div>
+
     <form class="filter-card" method="GET">
         <div class="filter-grid">
             <div class="form-group">
@@ -240,8 +246,5 @@
         </div>
     {% endif %}
 
-    <div class="page-actions">
-        <a class="btn btn-secondary" href="{{ url_for('vale_transporte.index') }}">Voltar</a>
-    </div>
 </section>
 {% endblock %}

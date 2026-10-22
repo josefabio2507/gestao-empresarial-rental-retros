@@ -27,6 +27,7 @@ STATUS_VINCULO_RETIFICADO = "Retificado"
 TIPOS_VEICULO = ["Veiculo leve", "Caminhao", "Maquina", "Equipamento", "EGP", "Outro"]
 SITUACOES_AQUISICAO = ["Quitado", "Financiado"]
 TIPOS_LEITURA = ["odometro", "horimetro"]
+LIMITES_DIGITOS_INTEIROS_LEITURA = {"odometro": 6, "horimetro": 4}
 MOTIVOS_INDISPONIBILIDADE = {
     "manutencao": "Manutencao",
     "manutenção": "Manutencao",
@@ -80,7 +81,20 @@ def centro_custo_calculado(identificacao, descricao):
 
 
 def tipo_leitura_padrao_veiculo(veiculo):
-    return "horimetro" if veiculo and texto_maiusculo(veiculo.tipo) == "MAQUINA" else "odometro"
+    return (
+        "horimetro"
+        if veiculo and texto_maiusculo(veiculo.tipo) in {"MAQUINA", "EQUIPAMENTO"}
+        else "odometro"
+    )
+
+
+def mensagem_limite_leitura(tipo, leitura):
+    limite = LIMITES_DIGITOS_INTEIROS_LEITURA.get(texto(tipo))
+    leitura = decimal_ou_none(leitura)
+    if limite is None or leitura is None or leitura < Decimal(10) ** limite:
+        return None
+    rotulo = "Horimetro" if tipo == "horimetro" else "Hodometro"
+    return f"{rotulo} deve ter no maximo {limite} digitos antes da virgula."
 
 
 def buscar_por_id(modelo, registro_id):
@@ -246,6 +260,9 @@ def registrar_leitura(
         return False, "Tipo de leitura invalido.", None
     if leitura is None or leitura < 0:
         return False, "Leitura invalida.", None
+    mensagem_limite = mensagem_limite_leitura(tipo, leitura)
+    if mensagem_limite:
+        return False, mensagem_limite, None
 
     ultima = ultima_leitura_valida(veiculo.id, tipo)
     if ultima and leitura < ultima.leitura and not (permitir_regressao and motivo_correcao):
