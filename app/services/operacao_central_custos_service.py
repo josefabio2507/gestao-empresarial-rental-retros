@@ -17,6 +17,7 @@ from app.models import (
 
 STATUS_CENTRAL_CUSTOS = ["ativos", "inativos", "todos"]
 TIPOS_CUSTO_CENTRAL = ["Abastecimento", "Manutenção", "Multas", "Impostos e Taxas"]
+STATUS_ORDENS_COM_CUSTO = ("Gerada", "Parcialmente Recebida", "Recebida")
 
 
 def texto(valor):
@@ -227,7 +228,9 @@ def linhas_manutencao(veiculo, inicio=None, fim=None):
 
 def _data_recebimento_ordem(ordem):
     datas = [recebimento.recebido_em for recebimento in ordem.recebimentos if recebimento.recebido_em]
-    return max(datas).date() if datas else (ordem.atualizado_em.date() if ordem.atualizado_em else None)
+    if datas:
+        return max(datas).date()
+    return ordem.gerada_em.date() if ordem.gerada_em else None
 
 
 def _ordens_recebidas_veiculo(veiculo, tipos_custo, inicio=None, fim=None, excluir_ids=None):
@@ -243,7 +246,7 @@ def _ordens_recebidas_veiculo(veiculo, tipos_custo, inicio=None, fim=None, exclu
             SuprimentosOrdemCompra.requisicao_id == SuprimentosRequisicaoCompra.id,
         )
         .filter(
-            SuprimentosOrdemCompra.status == "Recebida",
+            SuprimentosOrdemCompra.status.in_(STATUS_ORDENS_COM_CUSTO),
             SuprimentosRequisicaoCompra.sub_centro_custo_veiculo_id.in_(centros_custo_ids),
             SuprimentosOrdemCompra.tipo_custo.in_(tipos_custo),
         )
