@@ -256,6 +256,16 @@ def cancelar_custo_extra_abastecimento(custo_extra_id, usuario, motivo):
     return True, "Custo extra cancelado com sucesso.", custo
 
 
+def excluir_abastecimento(abastecimento):
+    """Exclui o abastecimento e seus custos extras vinculados."""
+    OperacaoAbastecimentoCustoExtra.query.filter_by(abastecimento_id=abastecimento.id).delete(
+        synchronize_session=False
+    )
+    db.session.delete(abastecimento)
+    db.session.commit()
+    return True, "Abastecimento excluido com sucesso."
+
+
 def salvar_abastecimento(form_data, files_data, usuario, veiculo=None, abastecimento=None, drive_service=None):
     veiculo_id = veiculo.id if veiculo else getattr(abastecimento, "veiculo_id", None)
     vinculo = vinculo_ativo_veiculo(veiculo_id)
