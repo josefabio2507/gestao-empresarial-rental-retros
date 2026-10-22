@@ -4117,6 +4117,24 @@ def gerar_ordens_compra_cotacao(cotacao, usuario, form_data=None):
     return True, "Ordem de compra gerada com sucesso.", ordens
 
 
+def editar_ordem_compra(form_data, ordem_compra):
+    if ordem_compra.status != STATUS_ORDEM_COMPRA_GERADA:
+        return False, "Somente ordens geradas podem ser editadas."
+
+    tipo_custo = texto(form_data.get("tipo_custo")) or None
+    tipos_permitidos = {"Abastecimento", "Diversos", "Manutenção"}
+    if tipo_custo and tipo_custo not in tipos_permitidos:
+        return False, "Tipo de custo invalido."
+
+    if ordem_compra.requisicao and ordem_compra.requisicao.sub_centro_custo_veiculo_id and not tipo_custo:
+        return False, "Informe o tipo de custo para a ordem vinculada a um veiculo."
+
+    ordem_compra.tipo_custo = tipo_custo
+    ordem_compra.observacoes = texto_maiusculo(form_data.get("observacoes")) or None
+    db.session.commit()
+    return True, "Ordem de compra atualizada com sucesso."
+
+
 def atualizar_status_recebimento_ordem(ordem_compra):
     if ordem_compra.status == STATUS_ORDEM_COMPRA_CANCELADA:
         return
