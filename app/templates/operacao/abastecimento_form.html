@@ -185,7 +185,13 @@
                             <td class="col-acoes">
                                 {% if pode_editar %}
                                     <a class="btn btn-secondary" href="{{ url_for('operacao.editar_abastecimento', abastecimento_id=historico.id) }}">Editar</a>
-                                {% else %}
+                                {% endif %}
+                                {% if pode_excluir %}
+                                    <form method="POST" action="{{ url_for('operacao.excluir_abastecimento_route', abastecimento_id=historico.id) }}" class="inline-form" onsubmit="return confirm('Deseja excluir este abastecimento?');">
+                                        <button class="btn btn-danger" type="submit">Excluir</button>
+                                    </form>
+                                {% endif %}
+                                {% if not pode_editar and not pode_excluir %}
                                     -
                                 {% endif %}
                             </td>

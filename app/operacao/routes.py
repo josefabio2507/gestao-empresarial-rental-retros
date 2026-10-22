@@ -20,6 +20,7 @@ from app.services.operacao_abastecimento_service import (
     cancelar_custo_extra_abastecimento,
     colaborador_do_usuario,
     data_padrao_form,
+    excluir_abastecimento,
     listar_abastecimentos_veiculo_usuario,
     listar_abastecimentos_usuario,
     listar_veiculos_abastecimento_usuario,
@@ -226,6 +227,7 @@ def abastecimentos():
         abastecimentos=listar_abastecimentos_usuario(current_user),
         pode_criar=usuario_tem_permissao_operacao(current_user, MODULO_ABASTECIMENTO, "criar"),
         pode_editar=usuario_tem_permissao_operacao(current_user, MODULO_ABASTECIMENTO, "editar"),
+        pode_excluir=usuario_tem_permissao_operacao(current_user, MODULO_ABASTECIMENTO, "excluir"),
         formatar_moeda_brl=formatar_moeda_brl,
     )
 
@@ -270,6 +272,7 @@ def novo_abastecimento(veiculo_id):
         leitura_atual_form=leitura_atual_form,
         historico_abastecimentos=listar_abastecimentos_veiculo_usuario(current_user, veiculo.id),
         pode_editar=usuario_tem_permissao_operacao(current_user, MODULO_ABASTECIMENTO, "editar"),
+        pode_excluir=usuario_tem_permissao_operacao(current_user, MODULO_ABASTECIMENTO, "excluir"),
         modo="novo",
     )
 
@@ -331,8 +334,24 @@ def editar_abastecimento(abastecimento_id):
         leitura_atual_form=leitura_atual_form,
         historico_abastecimentos=listar_abastecimentos_veiculo_usuario(current_user, abastecimento.veiculo_id),
         pode_editar=usuario_tem_permissao_operacao(current_user, MODULO_ABASTECIMENTO, "editar"),
+        pode_excluir=usuario_tem_permissao_operacao(current_user, MODULO_ABASTECIMENTO, "excluir"),
         modo="editar",
     )
+
+
+@operacao_bp.route("/abastecimentos/<int:abastecimento_id>/excluir", methods=["POST"])
+@login_required
+@module_permission_required("operacao", MODULO_ABASTECIMENTO, "excluir")
+def excluir_abastecimento_route(abastecimento_id):
+    abastecimento = buscar_abastecimento_usuario(abastecimento_id, current_user)
+    if not abastecimento:
+        flash("Abastecimento nao encontrado para o usuario logado.", "warning")
+        return redirect(url_for("operacao.abastecimentos"))
+
+    excluir_abastecimento(abastecimento)
+    registrar_log("operacao_abastecimento_excluido", f"Abastecimento excluido. ID: {abastecimento_id}.")
+    flash("Abastecimento excluido com sucesso.", "success")
+    return redirect(url_for("operacao.abastecimentos"))
 
 
 @operacao_bp.route("/abastecimentos/custos-extras/<int:custo_extra_id>/cancelar", methods=["POST"])

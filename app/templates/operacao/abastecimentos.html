@@ -85,6 +85,11 @@
                             {% if pode_editar %}
                                 <a class="btn btn-secondary" href="{{ url_for('operacao.editar_abastecimento', abastecimento_id=abastecimento.id) }}">Editar</a>
                             {% endif %}
+                            {% if pode_excluir %}
+                                <form method="POST" action="{{ url_for('operacao.excluir_abastecimento_route', abastecimento_id=abastecimento.id) }}" class="inline-form" onsubmit="return confirm('Deseja excluir este abastecimento?');">
+                                    <button class="btn btn-danger" type="submit">Excluir</button>
+                                </form>
+                            {% endif %}
                         </td>
                     </tr>
                 {% else %}
