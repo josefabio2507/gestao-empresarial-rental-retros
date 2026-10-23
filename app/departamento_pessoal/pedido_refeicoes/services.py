@@ -246,6 +246,11 @@ def validar_item_cardapio(restaurante_id, tipo, nome, preco, dia_semana=None):
     if not restaurante_id:
         return False, "Restaurante é obrigatório."
 
+    try:
+        restaurante_id = int(restaurante_id)
+    except (TypeError, ValueError):
+        return False, "Restaurante é obrigatório."
+
     restaurante = Restaurante.query.filter_by(id=restaurante_id).first()
 
     if not restaurante:
@@ -287,6 +292,8 @@ def criar_item_cardapio(restaurante_id, tipo, nome, preco, ativo=True, dia_seman
     if not valido:
         return False, mensagem
 
+    restaurante_id = int(restaurante_id)
+
     item = ItemCardapio(
         restaurante_id=restaurante_id,
         tipo=tipo,
@@ -317,6 +324,8 @@ def atualizar_item_cardapio(item, restaurante_id, tipo, nome, preco, ativo=True,
 
     if not valido:
         return False, mensagem
+
+    restaurante_id = int(restaurante_id)
 
     item.restaurante_id = restaurante_id
     item.tipo = tipo
