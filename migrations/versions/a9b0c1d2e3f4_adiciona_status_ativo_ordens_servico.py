@@ -5,7 +5,7 @@ import sqlalchemy as sa
 
 
 revision = "a9b0c1d2e3f4"
-down_revision = "z6p7q8r9s0t1"
+down_revision = "a7b8c9d0e1f2"
 branch_labels = None
 depends_on = None
 
@@ -21,7 +21,8 @@ def upgrade():
         ["ativo"],
         unique=False,
     )
-    op.alter_column("operacao_ordens_servico", "ativo", server_default=None)
+    if op.get_bind().dialect.name != "sqlite":
+        op.alter_column("operacao_ordens_servico", "ativo", server_default=None)
 
 
 def downgrade():
