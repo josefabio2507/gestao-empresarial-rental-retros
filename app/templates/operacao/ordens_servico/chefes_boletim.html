@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page">
+  <div class="top-bar"><div><span class="page-kicker">Operação</span><h1>Chefes de Boletim</h1><p>Cadastre os nomes disponíveis no Diário de Localização.</p></div><div class="form-actions"><button class="btn btn-primary" type="submit" form="chefes-boletim-form">Cadastrar</button><a class="btn btn-secondary" href="{{ url_for('ordens_servico.index') }}">Voltar</a></div></div>
+  <form id="chefes-boletim-form" class="details-card" method="post"><div class="form-grid"><div class="form-group"><label>Matrícula *</label><input name="matricula" maxlength="40" style="max-width: 220px" required></div><div class="form-group"><label>Nome do colaborador *</label><input name="nome" class="texto-maiusculo" required></div></div></form>
+  <div class="details-card"><h2>Cadastros ativos</h2><table class="data-table"><thead><tr><th>Matrícula</th><th>Nome</th></tr></thead><tbody>{% for chefe in chefes if chefe.ativo %}<tr><td>{{ chefe.matricula }}</td><td>{{ chefe.nome }}</td></tr>{% else %}<tr><td colspan="2">Nenhum cadastro.</td></tr>{% endfor %}</tbody></table></div>
+</section>
+<script>document.querySelectorAll('.texto-maiusculo').forEach((c) => c.addEventListener('input', () => c.value = c.value.toUpperCase()));</script>
+{% endblock %}

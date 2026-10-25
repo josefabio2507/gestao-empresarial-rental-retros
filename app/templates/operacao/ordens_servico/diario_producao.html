@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block content %}
+{% set titulo = 'Serviço' if diario == 'servico' else 'Material' %}
+{% set campo = 'servico' if diario == 'servico' else 'material_aplicado' %}
+<section class="page">
+    <div class="top-bar"><div><span class="page-kicker">Ordem de Serviço</span><h1>Diário de Produção — {{ titulo }}</h1><p>{{ ordem.codigo_os_rental }} · {{ ordem.local }}</p></div></div>
+    <div class="top-bar-actions"><a class="btn btn-secondary" href="{{ url_for('ordens_servico.ficha', id_os_interno=ordem.id_os_interno) }}">Voltar à ficha</a></div>
+    {% if erro_consulta %}<div class="alert alert-warning">{{ erro_consulta }}</div>{% endif %}
+    {% if pode_criar or apontamento_edicao %}
+    <form class="details-card" method="post" {% if apontamento_edicao %}action="{{ url_for('ordens_servico.editar_diario_producao', id_os_interno=ordem.id_os_interno, diario=diario, id_apontamento_diario=apontamento_edicao.id_apontamento_diario) }}"{% endif %}>
+        <h2>{% if apontamento_edicao %}Editar apontamento{% else %}Novo apontamento{% endif %}</h2>
+        {% if apontamento_edicao %}<input type="hidden" name="versao" value="{{ apontamento_edicao.versao }}">{% else %}<input type="hidden" name="chave_idempotencia" value="{{ chave_idempotencia }}">{% endif %}
+        <div class="form-grid">
+            <div class="form-group"><label>Data do evento *</label><input type="date" name="data_evento" required value="{{ dados_diario.get('data_evento', '') }}"></div>
+            <div class="form-group"><label>Número da OS *</label><input value="{{ ordem.numero_os_cliente or ordem.codigo_os_rental }}" readonly></div>
+            <div class="form-group"><label>Equipe *</label><select name="equipe" required><option value="">Selecione</option>{% for opcao in opcoes_equipe %}<option value="{{ opcao }}" {% if dados_diario.get('equipe') == opcao %}selected{% endif %}>{{ opcao }}</option>{% endfor %}</select></div>
+            {% if diario == 'material' %}<div class="form-group"><label>Tipo de material *</label><select name="tipo_material" required><option value="">Selecione</option>{% for opcao in ('NOVO', 'RECUPERADO') %}<option value="{{ opcao }}" {% if dados_diario.get('tipo_material') == opcao %}selected{% endif %}>{{ opcao }}</option>{% endfor %}</select></div>{% endif %}
+            <div class="form-group"><label>{{ titulo }} *</label>{% if diario == 'servico' %}<input class="texto-maiusculo" name="{{ campo }}" list="servicos-catalogo-lista" autocomplete="off" required value="{{ dados_diario.get(campo, '') }}"><datalist id="servicos-catalogo-lista">{% for servico_item in servicos_catalogo %}<option value="{{ servico_item.nome }}">{% endfor %}</datalist>{% else %}<input class="texto-maiusculo" name="{{ campo }}" list="materiais-catalogo-lista" autocomplete="off" required value="{{ dados_diario.get(campo, '') }}"><datalist id="materiais-catalogo-lista">{% for material_item in materiais_catalogo %}<option value="{{ material_item.nome }}">{% endfor %}</datalist>{% endif %}</div>
+            <div class="form-group"><label>Quantidade *</label><input name="quantidade" inputmode="decimal" pattern="[0-9]+([,][0-9]{1,2})?" oninput="this.value=this.value.replace(/[^0-9,]/g,'')" placeholder="0,00" required value="{{ dados_diario.get('quantidade', '') }}"></div>
+        </div>
+        <div class="form-actions"><button class="btn btn-primary" type="submit">{% if apontamento_edicao %}Salvar correção{% else %}Registrar apontamento{% endif %}</button>{% if apontamento_edicao %}<a class="btn btn-secondary" href="{{ url_for('ordens_servico.servicos' if diario == 'servico' else 'ordens_servico.materiais', id_os_interno=ordem.id_os_interno) }}">Cancelar</a>{% endif %}</div>
+    </form>
+    {% endif %}
+<section class="details-card"><h2>Apontamentos da OS</h2>{% if apontamentos %}<div class="table-responsive"><table><thead><tr><th>Data</th><th>Equipe</th><th>{{ titulo }}</th>{% if diario == 'material' %}<th>Tipo</th>{% endif %}<th>Quantidade</th><th></th></tr></thead><tbody>{% for apontamento in apontamentos %}{% set registro = apontamento.diario_servico if diario == 'servico' else apontamento.diario_material %}<tr><td>{{ apontamento.data_evento.strftime('%d/%m/%Y') }}</td><td>{{ apontamento.equipe }}</td><td>{{ registro.servico if diario == 'servico' else registro.material_aplicado }}</td>{% if diario == 'material' %}<td>{{ registro.tipo_material }}</td>{% endif %}<td>{{ ('%.2f'|format(registro.quantidade|float)).replace('.', ',') }}</td><td>{% if pode_editar %}<a class="btn btn-secondary" href="{{ url_for('ordens_servico.editar_diario_producao', id_os_interno=ordem.id_os_interno, diario=diario, id_apontamento_diario=apontamento.id_apontamento_diario) }}">Editar</a>{% endif %}</td></tr>{% endfor %}</tbody></table></div>{% elif not erro_consulta %}<p>Nenhum apontamento confirmado para esta OS.</p>{% endif %}</section>
+</section>
+<script>document.querySelectorAll('.texto-maiusculo').forEach((c)=>c.addEventListener('input',()=>c.value=c.value.toUpperCase()));</script>
+{% endblock %}

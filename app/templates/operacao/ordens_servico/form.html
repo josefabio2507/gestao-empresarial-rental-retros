@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div><span class="page-kicker">Operação</span><h1>{% if em_edicao %}Editar Ordem de Serviço{% else %}Nova Ordem de Serviço{% endif %}</h1><p>{% if em_edicao %}Atualize os dados necessários da Ordem de Serviço.{% else %}Os identificadores Rental Retros são gerados após a confirmação da gravação.{% endif %}</p></div>
+    </div>
+    <form method="post" class="details-card" id="ordem-servico-form">
+        {% if not em_edicao %}<input type="hidden" name="chave_idempotencia" value="{{ chave_idempotencia }}">{% endif %}
+        <div class="form-grid">
+            <div class="form-group"><label for="numero_os_cliente">Número da OS do cliente *</label><input id="numero_os_cliente" name="numero_os_cliente" inputmode="numeric" pattern="[0-9]+" required value="{{ dados.get('numero_os_cliente', '') }}"></div>
+            <div class="form-group"><label for="local">Local *</label><input class="texto-maiusculo" id="local" name="local" required value="{{ dados.get('local', '') }}"></div>
+            <div class="form-group"><label for="equipe">Equipe *</label><select id="equipe" name="equipe" required><option value="">Selecione</option>{% for equipe in equipes %}<option value="{{ equipe.nome }}" {% if dados.get('equipe') == equipe.nome %}selected{% endif %}>{{ equipe.nome }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="data_programada_inicial">Data programada inicial *</label><input id="data_programada_inicial" type="date" name="data_programada_inicial" required value="{{ dados.get('data_programada_inicial', '') }}"></div>
+            <div class="form-group"><label for="data_programada_final">Data programada final *</label><input id="data_programada_final" type="date" name="data_programada_final" required value="{{ dados.get('data_programada_final', '') }}"></div>
+            <div class="form-group"><label for="data_inicial">Data inicial realizada</label><input id="data_inicial" type="date" name="data_inicial" value="{{ dados.get('data_inicial', '') }}"></div>
+            <div class="form-group"><label for="data_final">Data final realizada</label><input id="data_final" type="date" name="data_final" value="{{ dados.get('data_final', '') }}"></div>
+            <div class="form-group"><label for="trabalho_previsto">Trabalho previsto</label><textarea class="texto-maiusculo" id="trabalho_previsto" name="trabalho_previsto">{{ dados.get('trabalho_previsto', '') }}</textarea></div>
+            <div class="form-group"><label for="supervisor">Supervisor</label><select id="supervisor" name="supervisor"><option value="">Selecione</option>{% for pessoa in supervisores %}<option value="{{ pessoa.nome }}" {% if dados.get('supervisor') == pessoa.nome %}selected{% endif %}>{{ pessoa.nome }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="encarregado">Encarregado</label><select id="encarregado" name="encarregado"><option value="">Selecione</option>{% for pessoa in encarregados %}<option value="{{ pessoa.nome }}" {% if dados.get('encarregado') == pessoa.nome %}selected{% endif %}>{{ pessoa.nome }}</option>{% endfor %}</select></div>
+        </div>
+        <div class="form-actions"><a class="btn btn-secondary" href="{{ url_for('ordens_servico.index') }}">Cancelar</a><button class="btn btn-primary" type="submit">{% if em_edicao %}Salvar alterações{% else %}Criar Ordem de Serviço{% endif %}</button></div>
+    </form>
+</section>
+<script>
+document.querySelectorAll('.texto-maiusculo').forEach((campo) => campo.addEventListener('input', () => { campo.value = campo.value.toUpperCase(); }));
+const verificarPreChecagem = () => {
+    const dataFinal = document.getElementById('data_final').value;
+    if (!dataFinal) return true;
+    const pendencias = [];
+    if (!document.getElementById('data_inicial').value) pendencias.push('Data inicial realizada deve estar preenchida antes da Data final realizada.');
+    if (!document.getElementById('equipe').value) pendencias.push('Equipe responsável deve estar definida.');
+    if (!document.getElementById('encarregado').value) pendencias.push('Encarregado responsável deve estar definido.');
+    if (pendencias.length) {
+        window.alert('Pré-checagem para conclusão da OS:\n\n' + pendencias.map((item) => '• ' + item).join('\n') + '\n\nVerifique e regularize as condições antes de informar a Data final realizada.');
+        return false;
+    }
+    return true;
+};
+document.getElementById('data_final').addEventListener('change', verificarPreChecagem);
+document.getElementById('ordem-servico-form').addEventListener('submit', (evento) => {
+    if (!verificarPreChecagem()) evento.preventDefault();
+});
+</script>
+{% endblock %}

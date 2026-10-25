@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page">
+    <style>.jornada-table th,.jornada-table td{padding:10px 18px;white-space:nowrap}.jornada-table th:nth-child(2),.jornada-table td:nth-child(2),.jornada-table th:nth-child(3),.jornada-table td:nth-child(3){width:78px;padding-left:10px;padding-right:10px}.jornada-table th:nth-child(2),.jornada-table td:nth-child(2){padding-right:18px}.jornada-table th:nth-child(3),.jornada-table td:nth-child(3){padding-left:18px}</style>
+    <div class="top-bar"><div><span class="page-kicker">Ordem de Serviço</span><h1>Diário de Produção — Localização</h1><p>{{ ordem.codigo_os_rental }} · {{ ordem.local }}</p></div></div>
+    <div class="top-bar-actions"><a class="btn btn-secondary" href="{{ url_for('ordens_servico.ficha', id_os_interno=ordem.id_os_interno) }}">Voltar à ficha</a></div>
+    {% if erro_consulta %}<div class="alert alert-warning">{{ erro_consulta }}</div>{% endif %}
+    {% if pode_criar or apontamento_edicao %}
+    <form class="details-card" method="post" {% if apontamento_edicao %}action="{{ url_for('ordens_servico.editar_localizacao', id_os_interno=ordem.id_os_interno, id_apontamento_diario=apontamento_edicao.id_apontamento_diario) }}"{% endif %}>
+        <h2>{% if apontamento_edicao %}Editar cadastro de localização{% else %}Cadastro de localização{% endif %}</h2>
+        <p>O registro será vinculado à OS selecionada e à sua conta.</p>
+        {% if apontamento_edicao %}<input type="hidden" name="versao" value="{{ apontamento_edicao.versao }}">{% else %}<input type="hidden" name="chave_idempotencia" value="{{ chave_idempotencia }}">{% endif %}
+        <div class="form-grid">
+            <div class="form-group"><label>Data do evento *</label><input type="date" name="data_evento" required value="{{ dados_localizacao.get('data_evento', '') }}"></div>
+            <div class="form-group"><label>Hora Inicial *</label><input type="time" name="hora_inicial" required value="{{ dados_localizacao.get('hora_inicial', '') }}"></div>
+            <div class="form-group"><label>Intervalo</label><input type="time" name="intervalo_jornada" value="{{ dados_localizacao.get('intervalo_jornada', '01:00') }}"></div>
+            <div class="form-group"><label>Hora Final</label><input type="time" name="hora_final" value="{{ dados_localizacao.get('hora_final', '') }}"></div>
+            <div class="form-group"><label>Total Jornada</label><input type="text" value="{{ apontamento_edicao.diario_localizacao.total_jornada if apontamento_edicao else 'A calcular' }}" readonly></div>
+            {% for campo, rotulo in [('equipe', 'Equipe'), ('encarregado', 'Encarregado'), ('chefe_boletim', 'Chefe de boletim')] %}
+            <div class="form-group"><label for="{{ campo }}">{{ rotulo }} *</label><select id="{{ campo }}" name="{{ campo }}" required><option value="">Selecione</option>{% if dados_localizacao.get(campo) and dados_localizacao.get(campo) not in opcoes_localizacao[campo] %}<option value="" disabled selected>{{ dados_localizacao.get(campo) }} — selecione uma opção atual</option>{% endif %}{% for opcao in opcoes_localizacao[campo] %}<option value="{{ opcao }}" {% if dados_localizacao.get(campo) == opcao %}selected{% endif %}>{{ opcao }}</option>{% endfor %}</select></div>
+            {% endfor %}
+            <div class="form-group"><label>Número da OS</label><input value="{{ ordem.numero_os_cliente or 'Não informado' }}" readonly></div>
+            <div class="form-group"><label>Local *</label><input name="local" value="{{ dados_localizacao.get('local', '') }}" required></div>
+            <div class="form-group"><label>Nº do AMV</label><input name="amv" value="{{ dados_localizacao.get('amv', '') }}"></div>
+            <div class="form-group"><label>SUB</label><input name="sub" value="{{ dados_localizacao.get('sub', '') }}"></div>
+            <div class="form-group"><label>KM início</label><input name="km_inicio" value="{{ dados_localizacao.get('km_inicio', '') }}"></div>
+            <div class="form-group"><label>KM fim</label><input name="km_fim" value="{{ dados_localizacao.get('km_fim', '') }}"></div>
+            <div class="form-group"><label>Intervalo programado início</label><input type="time" name="intervalo_inicio" value="{{ dados_localizacao.get('intervalo_inicio', '') }}"></div>
+            <div class="form-group"><label>Intervalo programado fim</label><input type="time" name="intervalo_fim" value="{{ dados_localizacao.get('intervalo_fim', '') }}"></div>
+            <div class="form-group" style="grid-column: 1 / -1"><label>Cadastros de controle de liberação</label><select size="3" style="width:100%" aria-label="Cadastros de controle de liberação">{% for controle in controles_liberacao %}<option>{{ controle.data_evento.strftime('%d/%m/%Y') }} | CCP: {{ controle.pedido_liberacao_ccp or '--:--' }} | Embandeiramento: {{ controle.liberacao_embandeiramento or '--:--' }} | Término: {{ controle.termino_embandeiramento or '--:--' }} | Tempo: {{ controle.duracao_horas }}</option>{% else %}<option>Nenhum cadastro de controle para esta OS</option>{% endfor %}</select><a class="btn btn-secondary" href="{{ url_for('ordens_servico.controles_liberacao', id_os_interno=ordem.id_os_interno) }}">Gerenciar / editar cadastros</a></div>
+            <div class="form-group"><label>Observação</label><textarea class="texto-maiusculo" name="observacao">{{ dados_localizacao.get('observacao', '') }}</textarea></div>
+        </div>
+        <p class="module-status">O formulário original atualmente disponível não solicita fotografia.</p>
+        <div class="form-actions"><button class="btn btn-primary" type="submit">{% if apontamento_edicao %}Salvar correção{% else %}Registrar apontamento{% endif %}</button>{% if apontamento_edicao %}<a class="btn btn-secondary" href="{{ url_for('ordens_servico.localizacao', id_os_interno=ordem.id_os_interno) }}">Cancelar</a>{% endif %}</div>
+    </form>
+    {% endif %}
+    <section class="details-card"><h2>Apontamentos da OS</h2>
+        {% if apontamentos %}<div class="table-responsive"><table class="jornada-table"><thead><tr><th>Data</th><th>Equipe</th><th>Hora Inicial</th><th>Hora Final</th><th>Local</th><th>Encarregado</th><th>Observação</th><th></th></tr></thead><tbody>
+            {% for apontamento in apontamentos %}<tr><td>{{ apontamento.data_evento.strftime('%d/%m/%Y') }}</td><td>{{ apontamento.equipe }}</td><td>{{ apontamento.diario_localizacao.hora_inicial.strftime('%H:%M') if apontamento.diario_localizacao.hora_inicial else '-' }}</td><td>{{ apontamento.diario_localizacao.hora_final.strftime('%H:%M') if apontamento.diario_localizacao.hora_final else '-' }}</td><td>{{ apontamento.diario_localizacao.local }}</td><td>{{ apontamento.diario_localizacao.encarregado }}</td><td>{{ apontamento.diario_localizacao.observacao or '-' }}</td><td>{% if not apontamento.diario_localizacao.hora_final %}<span style="color:#b42318;font-weight:700">Jornada em aberto</span>{% endif %}{% if pode_editar %}<a class="btn btn-secondary" href="{{ url_for('ordens_servico.editar_localizacao', id_os_interno=ordem.id_os_interno, id_apontamento_diario=apontamento.id_apontamento_diario) }}">Editar</a>{% endif %}</td></tr>{% endfor %}
+        </tbody></table></div>{% elif not erro_consulta %}<p>Nenhum apontamento confirmado para esta OS.</p>{% endif %}
+    </section>
+</section>
+<script>document.querySelectorAll('.texto-maiusculo').forEach((c) => c.addEventListener('input', () => c.value = c.value.toUpperCase()));</script><script>const campoDataEvento=document.querySelector('input[name="data_evento"]');const linkPedido=document.querySelector('a[href*="controles-liberacao"]');if(campoDataEvento&&linkPedido){const atualizarLink=()=>{const u=new URL(linkPedido.href);if(campoDataEvento.value)u.searchParams.set('data_evento',campoDataEvento.value);linkPedido.href=u.toString();};campoDataEvento.addEventListener('change',atualizarLink);atualizarLink();}</script>
+{% endblock %}
