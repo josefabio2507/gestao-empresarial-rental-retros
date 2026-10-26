@@ -1,6 +1,6 @@
 """Adiciona horários de jornada ao diário de localização.
 
-Revision ID: a7b8c9d0e1f2
+Revision ID: aa7b8c9d0e1f
 Revises: z6p7q8r9s0t1
 """
 
@@ -8,7 +8,7 @@ from alembic import op
 import sqlalchemy as sa
 
 
-revision = "a7b8c9d0e1f2"
+revision = "aa7b8c9d0e1f"
 down_revision = "f5a2b7c4d8e1"
 branch_labels = None
 depends_on = None
