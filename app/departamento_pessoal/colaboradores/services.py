@@ -16,6 +16,12 @@ from app.utils.mascaras_lgpd import (
 
 logger = logging.getLogger(__name__)
 
+FUNCOES_COLABORADOR = (
+    "CHEFE DE BOLETIM",
+    "ENCARREGADO",
+    "SUPERVISOR",
+)
+
 
 def limpar_numeros(valor):
     if not valor:
@@ -205,6 +211,7 @@ def criar_colaborador(
     email,
     telefone,
     cargo,
+    funcao,
     equipe_id,
     vale_transporte_optante=False,
     ativo=True
@@ -224,6 +231,9 @@ def criar_colaborador(
         return False, mensagem
 
     cargo_selecionado = cargo_ativo_por_nome(cargo)
+    funcao_normalizada = (funcao or "").strip().upper()
+    if funcao_normalizada and funcao_normalizada not in FUNCOES_COLABORADOR:
+        return False, "Função inválida."
 
     if cargo and not cargo_selecionado:
         return False, "Cargo inválido ou inativo."
@@ -235,6 +245,7 @@ def criar_colaborador(
         email=normalizar_email(email),
         telefone=normalizar_telefone_brasil(telefone),
         cargo=cargo_selecionado.nome if cargo_selecionado else "",
+        funcao=funcao_normalizada or None,
         equipe_id=equipe_id,
         vale_transporte_optante=bool(vale_transporte_optante),
         ativo=ativo,
@@ -263,6 +274,7 @@ def atualizar_colaborador(
     email,
     telefone,
     cargo,
+    funcao,
     equipe_id,
     vale_transporte_optante=False,
     ativo=True
@@ -283,6 +295,9 @@ def atualizar_colaborador(
         return False, mensagem
 
     cargo_normalizado = cargo.strip() if cargo else ""
+    funcao_normalizada = (funcao or "").strip().upper()
+    if funcao_normalizada and funcao_normalizada not in FUNCOES_COLABORADOR:
+        return False, "Função inválida."
     cargo_selecionado = cargo_ativo_por_nome(cargo_normalizado)
     cargo_historico_mantido = (
         cargo_normalizado
@@ -301,6 +316,7 @@ def atualizar_colaborador(
     colaborador.cargo = (
         cargo_selecionado.nome if cargo_selecionado else cargo_normalizado
     )
+    colaborador.funcao = funcao_normalizada or None
     colaborador.equipe_id = equipe_id
     colaborador.vale_transporte_optante = bool(vale_transporte_optante)
     colaborador_ativo_anterior = colaborador.ativo

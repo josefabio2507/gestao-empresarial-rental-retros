@@ -12,6 +12,7 @@ from app.utils.mascaras_lgpd import (
     pode_ver_dados_sensiveis,
 )
 from app.departamento_pessoal.colaboradores.services import (
+    FUNCOES_COLABORADOR,
     buscar_colaboradores,
     buscar_colaborador_por_id,
     buscar_cargos_ativos,
@@ -148,6 +149,7 @@ def novo_colaborador():
             email=request.form.get("email", ""),
             telefone=request.form.get("telefone", ""),
             cargo=request.form.get("cargo", ""),
+            funcao=request.form.get("funcao", ""),
             equipe_id=request.form.get("equipe_id"),
             vale_transporte_optante=(
                 request.form.get("vale_transporte_optante") == "optante"
@@ -169,6 +171,7 @@ def novo_colaborador():
         "departamento_pessoal/colaboradores/form.html",
         colaborador=None,
         cargos=cargos,
+        funcoes=FUNCOES_COLABORADOR,
         equipes=equipes,
         modo="novo",
     )
@@ -225,6 +228,7 @@ def editar_colaborador(colaborador_id):
             email=request.form.get("email", ""),
             telefone=request.form.get("telefone", ""),
             cargo=request.form.get("cargo", ""),
+            funcao=request.form.get("funcao", ""),
             equipe_id=request.form.get("equipe_id"),
             vale_transporte_optante=(
                 request.form.get("vale_transporte_optante") == "optante"
@@ -246,6 +250,7 @@ def editar_colaborador(colaborador_id):
         "departamento_pessoal/colaboradores/form.html",
         colaborador=colaborador,
         cargos=cargos,
+        funcoes=FUNCOES_COLABORADOR,
         equipes=equipes,
         modo="editar",
     )
