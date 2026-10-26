@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page">
+<div class="top-bar"><div><span class="page-kicker">Operação</span><h1>Cadastro de Materiais</h1><p>Materiais utilizados nos diários de produção.</p></div></div>
+<div class="top-bar-actions"><a class="btn btn-secondary" href="{{ url_for('departamentos.detalhe_departamento', slug_departamento='operacao') }}">Voltar</a></div>
+<form class="details-card" method="post"><div class="form-group"><label>Nome do material *</label><input name="nome" required class="texto-maiusculo"></div><div class="form-actions"><button class="btn btn-primary" type="submit">Cadastrar</button></div></form>
+<div class="details-card"><h2>Materiais cadastrados</h2><div style="max-height:340px;overflow-y:auto">{% for material in materiais if material.ativo %}<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px solid #e5e7eb"><span style="flex:1">{{ material.nome }}</span><span style="display:flex;gap:6px"><a class="btn btn-secondary" href="?editar_id={{ material.id }}">Editar</a><form method="post" action="{{ url_for('ordens_servico.excluir_material_catalogo', material_id=material.id) }}"><button class="btn btn-secondary">Excluir</button></form></span></div>{% else %}<p>Nenhum material cadastrado.</p>{% endfor %}</div></div>
+</section><script>document.querySelectorAll('.texto-maiusculo').forEach((c)=>c.addEventListener('input',()=>c.value=c.value.toUpperCase()));</script>
+{% endblock %}

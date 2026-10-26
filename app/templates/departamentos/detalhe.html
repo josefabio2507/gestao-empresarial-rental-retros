@@ -21,6 +21,15 @@
                     <span class="badge badge-success">Liberado</span>
                     <span class="module-status">Acessar gestão de veículos</span>
                 </a>
+                <a class="module-card module-card-link" href="{{ url_for('ordens_servico.chefes_boletim') }}">
+                    <span class="module-card-icon">C</span>
+                    <h2>Chefes de Boletim</h2>
+                    <p>Cadastro de matrícula e nome para uso no Diário de Localização.</p>
+                    <span class="badge badge-success">Liberado</span>
+                    <span class="module-status">Acessar cadastro</span>
+                </a>
+                <a class="module-card module-card-link" href="{{ url_for('ordens_servico.servicos_catalogo') }}"><span class="module-card-icon">S</span><h2>Cadastro de Serviços</h2><p>Serviços utilizados nos diários de produção.</p><span class="badge badge-success">Liberado</span><span class="module-status">Acessar cadastro</span></a>
+                <a class="module-card module-card-link" href="{{ url_for('ordens_servico.materiais_catalogo') }}"><span class="module-card-icon">M</span><h2>Cadastro de Materiais</h2><p>Materiais utilizados nos diários de produção.</p><span class="badge badge-success">Liberado</span><span class="module-status">Acessar cadastro</span></a>
             {% endif %}
             {% set navegacao = namespace(refeicoes_exibido=false) %}
             {% for modulo in modulos_liberados %}
@@ -54,8 +63,17 @@
                     ]
                 ) %}
 
-                {% if departamento.slug == "operacao" %}
-                    {# Os módulos de Operação são exibidos dentro de Gestão de Veículos e EGPs. #}
+                {% if departamento.slug == "operacao" and modulo_slug == "ordens_de_servico" %}
+                    <a class="module-card module-card-link" href="{{ url_for('ordens_servico.index') }}">
+                        <span class="module-card-icon">O</span>
+                        <h2>Ordens de Serviço</h2>
+                        <p>Central de criação, planejamento, acompanhamento e controle das Ordens de Serviço da Rental Retros.</p>
+                        <span class="badge badge-success">Liberado</span>
+                        <span class="module-status">Acessar módulo</span>
+                    </a>
+
+                {% elif departamento.slug == "operacao" %}
+                    {# Os módulos de Gestão de Veículos e EGPs permanecem agrupados em seu próprio acesso. #}
                 {% elif modulo_refeicoes %}
                     {% if not navegacao.refeicoes_exibido %}
                         <a class="module-card module-card-link" href="{{ url_for('pedido_refeicoes.index') }}">

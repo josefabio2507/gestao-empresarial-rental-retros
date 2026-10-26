@@ -1,4 +1,6 @@
 from decimal import Decimal
+import uuid
+
 from app.utils.datas import agora_brasil
 
 from flask_login import UserMixin
@@ -1412,6 +1414,60 @@ class Equipe(db.Model):
 
     def __repr__(self):
         return f"<Equipe {self.slug}>"
+
+
+class OperacaoChefeBoletim(db.Model):
+    __tablename__ = "operacao_chefes_boletim"
+
+    id = db.Column(db.Integer, primary_key=True)
+    matricula = db.Column(db.String(40), unique=True, nullable=False, index=True)
+    nome = db.Column(db.String(150), nullable=False)
+    ativo = db.Column(db.Boolean, default=True, nullable=False, index=True)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
+    atualizado_em = db.Column(db.DateTime, default=agora_brasil, onupdate=agora_brasil, nullable=False)
+
+    def __repr__(self):
+        return f"<OperacaoChefeBoletim {self.matricula}>"
+
+
+class OperacaoControleLiberacao(db.Model):
+    __tablename__ = "operacao_controles_liberacao"
+    id = db.Column(db.Integer, primary_key=True)
+    id_os_interno = db.Column(db.String(36), db.ForeignKey("operacao_ordens_servico.id_os_interno"), nullable=False, index=True)
+    data_evento = db.Column(db.Date, nullable=False, index=True)
+    pedido_liberacao_ccp = db.Column(db.Time, nullable=True)
+    liberacao_embandeiramento = db.Column(db.Time, nullable=True)
+    termino_embandeiramento = db.Column(db.Time, nullable=True)
+    criado_por_usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=False)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
+    ordem_servico = db.relationship("OperacaoOrdemServico")
+    criado_por = db.relationship("Usuario")
+
+    @property
+    def duracao_horas(self):
+        if not (self.pedido_liberacao_ccp and self.termino_embandeiramento):
+            return "-"
+        segundos = (self.termino_embandeiramento.hour * 3600 + self.termino_embandeiramento.minute * 60) - (self.pedido_liberacao_ccp.hour * 3600 + self.pedido_liberacao_ccp.minute * 60)
+        if segundos < 0: segundos += 86400
+        return f"{segundos // 3600:02d}:{(segundos % 3600) // 60:02d}"
+
+
+class OperacaoServicoCatalogo(db.Model):
+    __tablename__ = "operacao_servicos_catalogo"
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String(220), unique=True, nullable=False, index=True)
+    ativo = db.Column(db.Boolean, default=True, nullable=False, index=True)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
+    atualizado_em = db.Column(db.DateTime, default=agora_brasil, onupdate=agora_brasil, nullable=False)
+
+
+class OperacaoMaterialCatalogo(db.Model):
+    __tablename__ = "operacao_materiais_catalogo"
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String(220), unique=True, nullable=False, index=True)
+    ativo = db.Column(db.Boolean, default=True, nullable=False, index=True)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
+    atualizado_em = db.Column(db.DateTime, default=agora_brasil, onupdate=agora_brasil, nullable=False)
 
 
 class Cargo(db.Model):
@@ -4068,3 +4124,202 @@ class SegurancaTrabalhoEntregaEpi(db.Model):
 
     def __repr__(self):
         return f"<SegurancaTrabalhoEntregaEpi colaborador={self.colaborador_id} item={self.item_id}>"
+
+
+def _gerar_codigo_os_rental():
+    ano = agora_brasil().year
+    prefixo = f"RR-OS-{ano}-"
+    codigos = (
+        db.session.query(OperacaoOrdemServico.codigo_os_rental)
+        .filter(OperacaoOrdemServico.codigo_os_rental.like(f"{prefixo}%"))
+        .all()
+    )
+    sequencias = [
+        int(codigo[len(prefixo):])
+        for (codigo,) in codigos
+        if codigo and codigo[len(prefixo):].isdigit()
+    ]
+    return f"{prefixo}{max(sequencias, default=0) + 1:06d}"
+
+
+class OperacaoOrdemServico(db.Model):
+    __tablename__ = "operacao_ordens_servico"
+
+    id_os_interno = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    codigo_os_rental = db.Column(db.String(60), unique=True, nullable=False, index=True, default=_gerar_codigo_os_rental)
+    ativo = db.Column(db.Boolean, default=True, nullable=False, index=True)
+    chave_idempotencia = db.Column(db.String(36), unique=True, nullable=False, index=True)
+    numero_os_cliente = db.Column(db.String(80), nullable=True, index=True)
+    local = db.Column(db.String(255), nullable=False)
+    equipe = db.Column(db.String(120), nullable=False)
+    data_programada_inicial = db.Column(db.Date, nullable=False, index=True)
+    data_programada_final = db.Column(db.Date, nullable=False, index=True)
+    data_inicial = db.Column(db.Date, nullable=True)
+    data_final = db.Column(db.Date, nullable=True)
+    trabalho_previsto = db.Column(db.Text, nullable=True)
+    supervisor = db.Column(db.String(150), nullable=True)
+    encarregado = db.Column(db.String(150), nullable=True)
+    status_identificacao = db.Column(db.String(20), default="Pendente", nullable=False, index=True)
+    status_operacional = db.Column(db.String(40), default="Programada", nullable=False, index=True)
+    criado_por_usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=False, index=True)
+    atualizado_por_usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=True, index=True)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
+    atualizado_em = db.Column(db.DateTime, default=agora_brasil, onupdate=agora_brasil, nullable=False)
+
+    criado_por = db.relationship("Usuario", foreign_keys=[criado_por_usuario_id])
+    atualizado_por = db.relationship("Usuario", foreign_keys=[atualizado_por_usuario_id])
+    apontamentos_diarios = db.relationship("OperacaoApontamentoDiario", back_populates="ordem_servico")
+
+    __table_args__ = (
+        db.CheckConstraint(
+            "status_identificacao in ('Pendente', 'Informado')",
+            name="ck_operacao_os_status_identificacao",
+        ),
+        db.CheckConstraint(
+            "data_programada_final >= data_programada_inicial",
+            name="ck_operacao_os_periodo_programado",
+        ),
+    )
+
+    def __repr__(self):
+        return f"<OperacaoOrdemServico {self.codigo_os_rental}>"
+
+
+class OperacaoApontamentoDiario(db.Model):
+    __tablename__ = "operacao_apontamentos_diarios"
+
+    id_apontamento_diario = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    id_os_interno = db.Column(db.String(36), db.ForeignKey("operacao_ordens_servico.id_os_interno"), nullable=False, index=True)
+    chave_idempotencia = db.Column(db.String(36), unique=True, nullable=False, index=True)
+    data_evento = db.Column(db.Date, nullable=False, index=True)
+    equipe = db.Column(db.String(120), nullable=False)
+    criado_por_usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=False, index=True)
+    atualizado_por_usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=True, index=True)
+    versao = db.Column(db.Integer, default=1, nullable=False)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
+    atualizado_em = db.Column(db.DateTime, default=agora_brasil, onupdate=agora_brasil, nullable=False)
+
+    ordem_servico = db.relationship("OperacaoOrdemServico", back_populates="apontamentos_diarios")
+    criado_por = db.relationship("Usuario", foreign_keys=[criado_por_usuario_id])
+    atualizado_por = db.relationship("Usuario", foreign_keys=[atualizado_por_usuario_id])
+    diario_localizacao = db.relationship("OperacaoDiarioLocalizacao", back_populates="apontamento", uselist=False)
+    diario_servico = db.relationship("OperacaoDiarioServico", back_populates="apontamento", uselist=False)
+    diario_material = db.relationship("OperacaoDiarioMaterial", back_populates="apontamento", uselist=False)
+    circulacao_trem = db.relationship("OperacaoCirculacaoTrem", back_populates="apontamento", uselist=False)
+    intervencao_adversa = db.relationship("OperacaoIntervencaoAdversa", back_populates="apontamento", uselist=False)
+
+    def __repr__(self):
+        return f"<OperacaoApontamentoDiario {self.id_apontamento_diario}>"
+
+
+class OperacaoDiarioLocalizacao(db.Model):
+    __tablename__ = "operacao_diarios_localizacao"
+
+    id_apontamento_diario = db.Column(db.String(36), db.ForeignKey("operacao_apontamentos_diarios.id_apontamento_diario"), primary_key=True)
+    encarregado = db.Column(db.String(150), nullable=False)
+    chefe_boletim = db.Column(db.String(180), nullable=False)
+    local = db.Column(db.String(255), nullable=False)
+    numero_amv = db.Column(db.String(80), nullable=True)
+    sub = db.Column(db.String(80), nullable=True)
+    km_inicio = db.Column(db.String(40), nullable=True)
+    km_fim = db.Column(db.String(40), nullable=True)
+    hora_inicial = db.Column(db.Time, nullable=True)
+    intervalo_jornada = db.Column(db.Time, nullable=True)
+    hora_final = db.Column(db.Time, nullable=True)
+    intervalo_inicio = db.Column(db.Time, nullable=True)
+    intervalo_fim = db.Column(db.Time, nullable=True)
+    pedido_liberacao_ccp = db.Column(db.Time, nullable=True)
+    liberacao_embandeiramento = db.Column(db.Time, nullable=True)
+    termino_embandeiramento = db.Column(db.Time, nullable=True)
+    observacao = db.Column(db.Text, nullable=True)
+
+    apontamento = db.relationship("OperacaoApontamentoDiario", back_populates="diario_localizacao")
+
+    @property
+    def total_jornada(self):
+        if not (self.hora_inicial and self.hora_final):
+            return "Em aberto"
+        inicio = self.hora_inicial.hour * 3600 + self.hora_inicial.minute * 60 + self.hora_inicial.second
+        fim = self.hora_final.hour * 3600 + self.hora_final.minute * 60 + self.hora_final.second
+        if fim < inicio:
+            fim += 86400
+        intervalo = self.intervalo_jornada.hour * 3600 + self.intervalo_jornada.minute * 60 + self.intervalo_jornada.second if self.intervalo_jornada else 3600
+        total = max(fim - inicio - intervalo, 0)
+        return f"{total // 3600:02d}:{(total % 3600) // 60:02d}:{total % 60:02d}"
+
+
+class OperacaoDiarioServico(db.Model):
+    __tablename__ = "operacao_diarios_servico"
+
+    id_apontamento_diario = db.Column(db.String(36), db.ForeignKey("operacao_apontamentos_diarios.id_apontamento_diario"), primary_key=True)
+    servico = db.Column(db.Text, nullable=False)
+    quantidade = db.Column(db.Numeric(12, 3), nullable=False)
+
+    apontamento = db.relationship("OperacaoApontamentoDiario", back_populates="diario_servico")
+
+    __table_args__ = (
+        db.CheckConstraint("quantidade > 0", name="ck_operacao_diario_servico_quantidade"),
+    )
+
+
+class OperacaoDiarioMaterial(db.Model):
+    __tablename__ = "operacao_diarios_material"
+
+    id_apontamento_diario = db.Column(db.String(36), db.ForeignKey("operacao_apontamentos_diarios.id_apontamento_diario"), primary_key=True)
+    tipo_material = db.Column(db.String(20), nullable=False)
+    material_aplicado = db.Column(db.String(255), nullable=False)
+    quantidade = db.Column(db.Numeric(12, 3), nullable=False)
+
+    apontamento = db.relationship("OperacaoApontamentoDiario", back_populates="diario_material")
+
+    __table_args__ = (
+        db.CheckConstraint("tipo_material in ('NOVO', 'RECUPERADO')", name="ck_operacao_diario_material_tipo"),
+        db.CheckConstraint("quantidade > 0", name="ck_operacao_diario_material_quantidade"),
+    )
+
+
+class OperacaoCirculacaoTrem(db.Model):
+    __tablename__ = "operacao_circulacao_trens"
+
+    id_apontamento_diario = db.Column(db.String(36), db.ForeignKey("operacao_apontamentos_diarios.id_apontamento_diario"), primary_key=True)
+    prefixo = db.Column(db.String(80), nullable=True)
+    motivo_paralisacao = db.Column(db.String(40), nullable=True)
+    hora_inicio = db.Column(db.Time, nullable=True)
+    hora_fim = db.Column(db.Time, nullable=True)
+    via_linha = db.Column(db.String(160), nullable=True)
+    tempo_interrompido = db.Column(db.String(40), nullable=True)
+    pedido_corte_composicao = db.Column(db.String(30), nullable=False)
+    corte_composicao = db.Column(db.String(30), nullable=False)
+
+    apontamento = db.relationship("OperacaoApontamentoDiario", back_populates="circulacao_trem")
+
+    @property
+    def duracao(self):
+        if not (self.hora_inicio and self.hora_fim):
+            return "-"
+        segundos = (self.hora_fim.hour * 3600 + self.hora_fim.minute * 60 + self.hora_fim.second) - (self.hora_inicio.hour * 3600 + self.hora_inicio.minute * 60 + self.hora_inicio.second)
+        if segundos < 0:
+            return "-"
+        return f"{segundos // 3600:02d}:{(segundos % 3600) // 60:02d}:{segundos % 60:02d}"
+
+
+class OperacaoIntervencaoAdversa(db.Model):
+    __tablename__ = "operacao_intervencoes_adversas"
+
+    id_apontamento_diario = db.Column(db.String(36), db.ForeignKey("operacao_apontamentos_diarios.id_apontamento_diario"), primary_key=True)
+    hora_inicio = db.Column(db.Time, nullable=True)
+    hora_fim = db.Column(db.Time, nullable=True)
+    tempo_total = db.Column(db.String(40), nullable=True)
+    intervencao = db.Column(db.Text, nullable=True)
+    categoria = db.Column(db.String(160), nullable=True)
+
+    apontamento = db.relationship("OperacaoApontamentoDiario", back_populates="intervencao_adversa")
+
+    @property
+    def duracao(self):
+        if not (self.hora_inicio and self.hora_fim):
+            return "-"
+        segundos = (self.hora_fim.hour * 3600 + self.hora_fim.minute * 60 + self.hora_fim.second) - (self.hora_inicio.hour * 3600 + self.hora_inicio.minute * 60 + self.hora_inicio.second)
+        if segundos < 0:
+            return "-"
+        return f"{segundos // 3600:02d}:{(segundos % 3600) // 60:02d}:{segundos % 60:02d}"

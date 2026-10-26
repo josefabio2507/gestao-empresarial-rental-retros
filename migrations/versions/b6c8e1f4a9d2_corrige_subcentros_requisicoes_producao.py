@@ -79,6 +79,15 @@ def upgrade():
     limpar_veiculo_legado = "veiculo_placa" in colunas
 
     for numero, codigo_equipe, codigo_veiculo in AJUSTES_REQUISICOES:
+        requisicao_existe = conn.execute(
+            sa.text(
+                "SELECT 1 FROM suprimentos_requisicoes_compra WHERE numero = :numero LIMIT 1"
+            ),
+            {"numero": numero},
+        ).scalar()
+        if requisicao_existe is None:
+            continue
+
         equipe_id = _buscar_centro_id(conn, codigo_equipe)
         veiculo_id = _buscar_centro_id(conn, codigo_veiculo)
 

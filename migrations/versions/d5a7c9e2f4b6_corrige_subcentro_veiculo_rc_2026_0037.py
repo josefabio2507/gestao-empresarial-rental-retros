@@ -65,6 +65,15 @@ def upgrade():
     if not {"numero", "sub_centro_custo_veiculo_id"}.issubset(colunas):
         return
 
+    requisicao_existe = conn.execute(
+        sa.text(
+            "SELECT 1 FROM suprimentos_requisicoes_compra WHERE numero = :numero LIMIT 1"
+        ),
+        {"numero": REQUISICAO_NUMERO},
+    ).scalar()
+    if requisicao_existe is None:
+        return
+
     veiculo_id = _buscar_centro_veiculo_id(conn)
 
     conn.execute(
