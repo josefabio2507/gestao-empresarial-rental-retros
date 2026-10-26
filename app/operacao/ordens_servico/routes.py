@@ -556,7 +556,7 @@ def excluir_controle_liberacao(id_os_interno, controle_id):
 
 @ordens_servico_bp.route("/chefes-boletim", methods=["GET", "POST"])
 @login_required
-@module_permission_required(DEPARTAMENTO, MODULO, "editar")
+@module_permission_required(DEPARTAMENTO, "chefes_boletim", "editar")
 def chefes_boletim():
     if request.method == "POST":
         matricula = (request.form.get("matricula") or "").strip().upper()
@@ -578,7 +578,7 @@ def chefes_boletim():
 
 @ordens_servico_bp.route("/servicos-catalogo", methods=["GET", "POST"])
 @login_required
-@module_permission_required(DEPARTAMENTO, MODULO, "editar")
+@module_permission_required(DEPARTAMENTO, "servicos_catalogo", "editar")
 def servicos_catalogo():
     if request.method == "POST":
         nome = (request.form.get("nome") or "").strip().upper()
@@ -591,7 +591,7 @@ def servicos_catalogo():
 
 @ordens_servico_bp.route("/servicos-catalogo/<int:servico_id>/excluir", methods=["POST"])
 @login_required
-@module_permission_required(DEPARTAMENTO, MODULO, "editar")
+@module_permission_required(DEPARTAMENTO, "servicos_catalogo", "editar")
 def excluir_servico_catalogo(servico_id):
     item=db.session.get(OperacaoServicoCatalogo, servico_id)
     if item: item.ativo=False; db.session.commit()
@@ -600,7 +600,7 @@ def excluir_servico_catalogo(servico_id):
 
 @ordens_servico_bp.route("/materiais-catalogo", methods=["GET", "POST"])
 @login_required
-@module_permission_required(DEPARTAMENTO, MODULO, "editar")
+@module_permission_required(DEPARTAMENTO, "materiais_catalogo", "editar")
 def materiais_catalogo():
     if request.method == "POST":
         nome = (request.form.get("nome") or "").strip().upper()
@@ -613,7 +613,7 @@ def materiais_catalogo():
 
 @ordens_servico_bp.route("/materiais-catalogo/<int:material_id>/excluir", methods=["POST"])
 @login_required
-@module_permission_required(DEPARTAMENTO, MODULO, "editar")
+@module_permission_required(DEPARTAMENTO, "materiais_catalogo", "editar")
 def excluir_material_catalogo(material_id):
     item = db.session.get(OperacaoMaterialCatalogo, material_id)
     if item:
