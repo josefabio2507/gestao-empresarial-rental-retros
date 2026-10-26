@@ -827,8 +827,8 @@ def nova():
         dados=dados,
         chave_idempotencia=chave_idempotencia,
         equipes=Equipe.query.filter_by(ativo=True).order_by(Equipe.nome.asc()).all(),
-        supervisores=Colaborador.query.filter(Colaborador.ativo.is_(True), Colaborador.cargo.ilike("%Supervisor%")).order_by(Colaborador.nome.asc()).all(),
-        encarregados=Colaborador.query.filter(Colaborador.ativo.is_(True), Colaborador.cargo.ilike("%Encarregado%")).order_by(Colaborador.nome.asc()).all(),
+        supervisores=Colaborador.query.filter(Colaborador.ativo.is_(True), Colaborador.funcao == "SUPERVISOR").order_by(Colaborador.nome.asc()).all(),
+        encarregados=Colaborador.query.filter(Colaborador.ativo.is_(True), Colaborador.funcao == "ENCARREGADO").order_by(Colaborador.nome.asc()).all(),
     )
 
 
@@ -863,8 +863,8 @@ def editar(id_os_interno):
     return render_template(
         "operacao/ordens_servico/form.html", dados=dados, ordem=ordem, em_edicao=True,
         equipes=Equipe.query.filter_by(ativo=True).order_by(Equipe.nome.asc()).all(),
-        supervisores=Colaborador.query.filter(Colaborador.ativo.is_(True), Colaborador.cargo.ilike("%Supervisor%")).order_by(Colaborador.nome.asc()).all(),
-        encarregados=Colaborador.query.filter(Colaborador.ativo.is_(True), Colaborador.cargo.ilike("%Encarregado%")).order_by(Colaborador.nome.asc()).all(),
+        supervisores=Colaborador.query.filter(Colaborador.ativo.is_(True), Colaborador.funcao == "SUPERVISOR").order_by(Colaborador.nome.asc()).all(),
+        encarregados=Colaborador.query.filter(Colaborador.ativo.is_(True), Colaborador.funcao == "ENCARREGADO").order_by(Colaborador.nome.asc()).all(),
     )
 
 

@@ -118,6 +118,16 @@
             </div>
 
             <div class="form-group">
+                <label for="funcao">Função</label>
+                <select name="funcao" id="funcao">
+                    <option value="">Selecione...</option>
+                    {% for funcao in funcoes %}
+                        <option value="{{ funcao }}" {% if colaborador and colaborador.funcao == funcao %}selected{% endif %}>{{ funcao }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
                 <label for="vale_transporte_optante">Optante Vale Transporte</label>
                 <select name="vale_transporte_optante" id="vale_transporte_optante">
                     <option

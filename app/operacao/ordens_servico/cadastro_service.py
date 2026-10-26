@@ -52,8 +52,8 @@ def _validar_dados(dados):
         raise OrdemServicoCadastroErro("O número da OS do cliente deve conter apenas números inteiros.")
     if not Equipe.query.filter_by(nome=normalizados["equipe"], ativo=True).first():
         raise OrdemServicoCadastroErro("Selecione uma equipe ativa válida.")
-    for campo, trecho in (("supervisor", "Supervisor"), ("encarregado", "Encarregado")):
-        if normalizados[campo] and not Colaborador.query.filter(Colaborador.nome == normalizados[campo], Colaborador.ativo.is_(True), Colaborador.cargo.ilike(f"%{trecho}%")).first():
+    for campo, funcao in (("supervisor", "SUPERVISOR"), ("encarregado", "ENCARREGADO")):
+        if normalizados[campo] and not Colaborador.query.filter(Colaborador.nome == normalizados[campo], Colaborador.ativo.is_(True), Colaborador.funcao == funcao).first():
             raise OrdemServicoCadastroErro(f"Selecione um {campo} válido da lista.")
     obrigatorios = {
         "local": normalizados["local"],
