@@ -43,7 +43,7 @@ class MonitoramentoOrdemServicoTestCase(unittest.TestCase):
             sessao["_user_id"] = str(self.usuario.id); sessao["_fresh"] = True
         resposta = client.get(f"/operacao/ordens-de-servico/{self.ordem.id_os_interno}")
         self.assertEqual(200, resposta.status_code)
-        self.assertIn("Monitoramento e aderência", resposta.get_data(as_text=True))
+        self.assertIn("3. Monitoramento", resposta.get_data(as_text=True))
         self.assertIn("Intervenções adversas:</strong> 1", resposta.get_data(as_text=True))
 
     def test_os_sem_apontamentos(self):
