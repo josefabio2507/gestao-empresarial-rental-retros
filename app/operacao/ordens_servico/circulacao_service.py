@@ -14,7 +14,7 @@ class CirculacaoErro(Exception):
 
 
 OPCOES_CORTE = ("SIM", "NÃO", "NÃO FOI NECESSÁRIO")
-OPCOES_MOTIVO_PARALISACAO = ("TREM PARADO", "INTERVALO ENTRE TRENS")
+OPCOES_MOTIVO_PARALISACAO = ("TREM PARADO", "INTERVALO ENTRE TRENS", "CIRCULAÇÃO DE TREM")
 
 
 def _texto(valor):
@@ -37,6 +37,7 @@ def _validar_dados(dados):
         "prefixo": _texto(dados.get("prefixo")).upper() or None,
         "motivo_paralisacao": _texto(dados.get("motivo_paralisacao")),
         "via_linha": _texto(dados.get("via_linha")).upper(),
+        "operador_ccp_maquinista": _texto(dados.get("operador_ccp_maquinista")),
         "pedido_corte_composicao": _texto(dados.get("pedido_corte_composicao")),
         "corte_composicao": _texto(dados.get("corte_composicao")),
     }
@@ -80,7 +81,7 @@ def criar_circulacao(dados, id_os_interno, chave_idempotencia, usuario):
         return existente, True
     dados = _validar_dados(dados)
     apontamento = OperacaoApontamentoDiario(id_os_interno=ordem.id_os_interno, chave_idempotencia=chave_idempotencia, data_evento=dados["data_evento"], equipe=dados["equipe"], criado_por_usuario_id=usuario.id)
-    circulacao = OperacaoCirculacaoTrem(apontamento=apontamento, **{campo: dados[campo] for campo in ("prefixo", "motivo_paralisacao", "hora_inicio", "hora_fim", "via_linha", "pedido_corte_composicao", "corte_composicao")})
+    circulacao = OperacaoCirculacaoTrem(apontamento=apontamento, **{campo: dados[campo] for campo in ("prefixo", "motivo_paralisacao", "hora_inicio", "hora_fim", "via_linha", "operador_ccp_maquinista", "pedido_corte_composicao", "corte_composicao")})
     db.session.add_all([apontamento, circulacao])
     try:
         db.session.commit()
@@ -126,7 +127,7 @@ def editar_circulacao(dados, id_os_interno, id_apontamento_diario, versao, usuar
         if atualizados != 1:
             db.session.rollback()
             raise CirculacaoErro("Este apontamento foi alterado por outro usuário. Atualize a página antes de salvar.")
-        OperacaoCirculacaoTrem.query.filter_by(id_apontamento_diario=id_apontamento_diario).update({campo: dados[campo] for campo in ("prefixo", "motivo_paralisacao", "hora_inicio", "hora_fim", "via_linha", "pedido_corte_composicao", "corte_composicao")}, synchronize_session=False)
+        OperacaoCirculacaoTrem.query.filter_by(id_apontamento_diario=id_apontamento_diario).update({campo: dados[campo] for campo in ("prefixo", "motivo_paralisacao", "hora_inicio", "hora_fim", "via_linha", "operador_ccp_maquinista", "pedido_corte_composicao", "corte_composicao")}, synchronize_session=False)
         db.session.commit()
     except CirculacaoErro:
         raise

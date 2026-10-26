@@ -4287,6 +4287,7 @@ class OperacaoCirculacaoTrem(db.Model):
     hora_inicio = db.Column(db.Time, nullable=True)
     hora_fim = db.Column(db.Time, nullable=True)
     via_linha = db.Column(db.String(160), nullable=True)
+    operador_ccp_maquinista = db.Column(db.String(160), nullable=True)
     tempo_interrompido = db.Column(db.String(40), nullable=True)
     pedido_corte_composicao = db.Column(db.String(30), nullable=False)
     corte_composicao = db.Column(db.String(30), nullable=False)
