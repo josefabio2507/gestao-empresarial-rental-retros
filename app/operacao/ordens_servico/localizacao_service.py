@@ -8,6 +8,7 @@ from app.models import (
     OperacaoDiarioLocalizacao,
     OperacaoOrdemServico,
     OperacaoChefeBoletim,
+    Colaborador,
 )
 from app.services.logs_service import registrar_log
 from app.services.permissoes_service import usuario_tem_permissao
@@ -82,7 +83,7 @@ def _validar_dados(dados):
     if faltantes:
         raise LocalizacaoErro("Preencha os campos obrigatórios: " + ", ".join(faltantes) + ".")
     opcoes_validacao = dict(OPCOES)
-    opcoes_validacao["chefe_boletim"] = tuple(c.nome for c in OperacaoChefeBoletim.query.filter_by(ativo=True).order_by(OperacaoChefeBoletim.nome).all())
+    opcoes_validacao["chefe_boletim"] = tuple(c.nome for c in Colaborador.query.filter(Colaborador.ativo.is_(True), Colaborador.funcao == "CHEFE DE BOLETIM").order_by(Colaborador.nome).all())
     for campo, opcoes in opcoes_validacao.items():
         if registro[campo] not in opcoes:
             raise LocalizacaoErro("Selecione uma opção válida para " + campo + ".")
