@@ -723,6 +723,7 @@ def _dados_formulario_circulacao(ordem, apontamento=None):
     return {
         "data_evento": apontamento.data_evento.isoformat(), "equipe": apontamento.equipe,
         "prefixo": registro.prefixo or "", "via_linha": registro.via_linha or "",
+        "operador_ccp_maquinista": registro.operador_ccp_maquinista or "",
         "motivo_paralisacao": registro.motivo_paralisacao or "",
         "hora_inicio": registro.hora_inicio.strftime("%H:%M") if registro.hora_inicio else "",
         "hora_fim": registro.hora_fim.strftime("%H:%M") if registro.hora_fim else "",
