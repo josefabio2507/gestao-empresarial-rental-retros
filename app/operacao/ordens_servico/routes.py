@@ -374,21 +374,17 @@ def relatorio_pdf(id_os_interno):
         return total + 86400 if total < 0 else total
     def duracao_formatada(segundos):
         return f"{segundos // 3600:02d}:{(segundos % 3600) // 60:02d}:{segundos % 60:02d}"
-    auditoria = [["Ordem de Serviço", fmt_dt(ordem.criado_em), nome_usuario(ordem.criado_por)]]
-    auditoria += [["Apontamento diário", fmt_dt(registro.criado_em), nome_usuario(registro.criado_por)] for registro in registros]
-    auditoria += [["Controle de liberação", fmt_dt(controle.criado_em), nome_usuario(controle.criado_por)] for controle in controles]
-    tabela_detalhes("7. Auditoria dos registros", ["Registro", "Data e hora do cadastro", "Usuário responsável"], auditoria, [58*mm, 55*mm, 77*mm])
     localizacoes = [registro.diario_localizacao for registro in registros if registro.diario_localizacao]
-    tabela_detalhes("8. Registros de apontamentos de localização", ["Data", "Local", "Equipe", "Encarregado", "Jornada"], [[fmt(registro.apontamento.data_evento), registro.local, registro.apontamento.equipe, registro.encarregado, registro.total_jornada] for registro in localizacoes], [26*mm, 43*mm, 38*mm, 53*mm, 30*mm])
+    tabela_detalhes("7. Registros de apontamentos de localização", ["Data", "Local", "Equipe", "Encarregado", "Jornada"], [[fmt(registro.apontamento.data_evento), registro.local, registro.apontamento.equipe, registro.encarregado, registro.total_jornada] for registro in localizacoes], [26*mm, 43*mm, 38*mm, 53*mm, 30*mm])
     total_controles = sum(segundos_horario(controle.pedido_liberacao_ccp, controle.termino_embandeiramento) for controle in controles)
-    tabela_detalhes("9. Registros de controles de liberação", ["Data", "Pedido CCP", "Embandeiramento", "Término", "Duração"], [[fmt(controle.data_evento), str(controle.pedido_liberacao_ccp or "-"), str(controle.liberacao_embandeiramento or "-"), str(controle.termino_embandeiramento or "-"), duracao_formatada(segundos_horario(controle.pedido_liberacao_ccp, controle.termino_embandeiramento))] for controle in controles] + [["TOTAL", "", "", "", duracao_formatada(total_controles)]], [27*mm, 30*mm, 42*mm, 30*mm, 61*mm])
+    tabela_detalhes("8. Registros de controles de liberação", ["Data", "Pedido CCP", "Embandeiramento", "Término", "Duração"], [[fmt(controle.data_evento), str(controle.pedido_liberacao_ccp or "-"), str(controle.liberacao_embandeiramento or "-"), str(controle.termino_embandeiramento or "-"), duracao_formatada(segundos_horario(controle.pedido_liberacao_ccp, controle.termino_embandeiramento))] for controle in controles] + [["TOTAL", "", "", "", duracao_formatada(total_controles)]], [27*mm, 30*mm, 42*mm, 30*mm, 61*mm])
     circulacoes = [registro.circulacao_trem for registro in registros if registro.circulacao_trem]
     total_circulacoes = sum(segundos_horario(registro.hora_inicio, registro.hora_fim) for registro in circulacoes)
-    tabela_detalhes("10. Registros de circulação de trens", ["Data", "Prefixo", "Início", "Fim", "Via/Linha", "Duração"], [[fmt(registro.apontamento.data_evento), registro.prefixo or "-", str(registro.hora_inicio or "-"), str(registro.hora_fim or "-"), registro.via_linha or "-", duracao_formatada(segundos_horario(registro.hora_inicio, registro.hora_fim))] for registro in circulacoes] + [["TOTAL", "", "", "", "", duracao_formatada(total_circulacoes)]], [25*mm, 28*mm, 24*mm, 24*mm, 55*mm, 34*mm])
+    tabela_detalhes("9. Registros de circulação de trens", ["Data", "Prefixo", "Início", "Fim", "Via/Linha", "Duração"], [[fmt(registro.apontamento.data_evento), registro.prefixo or "-", str(registro.hora_inicio or "-"), str(registro.hora_fim or "-"), registro.via_linha or "-", duracao_formatada(segundos_horario(registro.hora_inicio, registro.hora_fim))] for registro in circulacoes] + [["TOTAL", "", "", "", "", duracao_formatada(total_circulacoes)]], [25*mm, 28*mm, 24*mm, 24*mm, 55*mm, 34*mm])
     intervencoes = [registro.intervencao_adversa for registro in registros if registro.intervencao_adversa]
     total_intervencoes = sum(segundos_horario(registro.hora_inicio, registro.hora_fim) for registro in intervencoes)
-    tabela_detalhes("10. Registros de intervenções adversas", ["Data", "Categoria", "Intervenção", "Início", "Fim", "Duração"], [[fmt(registro.apontamento.data_evento), registro.categoria or "-", registro.intervencao or "-", str(registro.hora_inicio or "-"), str(registro.hora_fim or "-"), duracao_formatada(segundos_horario(registro.hora_inicio, registro.hora_fim))] for registro in intervencoes] + [["TOTAL", "", "", "", "", duracao_formatada(total_intervencoes)]], [24*mm, 39*mm, 62*mm, 20*mm, 20*mm, 25*mm])
-    story.append(Paragraph("11. Pré-checagem para fechamento", styles["Section"]))
+    tabela_detalhes("9. Registros de intervenções adversas", ["Data", "Categoria", "Intervenção", "Início", "Fim", "Duração"], [[fmt(registro.apontamento.data_evento), registro.categoria or "-", registro.intervencao or "-", str(registro.hora_inicio or "-"), str(registro.hora_fim or "-"), duracao_formatada(segundos_horario(registro.hora_inicio, registro.hora_fim))] for registro in intervencoes] + [["TOTAL", "", "", "", "", duracao_formatada(total_intervencoes)]], [24*mm, 39*mm, 62*mm, 20*mm, 20*mm, 25*mm])
+    story.append(Paragraph("10. Pré-checagem para fechamento", styles["Section"]))
     for item in ["Identificação da OS do cliente informada.", "Equipe e encarregado responsáveis definidos.", "Jornada de trabalho completa, sem registro em aberto.", "Controles de liberação com campos obrigatórios preenchidos.", "Circulações de trens com hora de início e fim.", "Intervenções adversas com horários completos quando informados.", "Data final realizada somente após a data inicial."]:
         story.append(Paragraph("• " + item, styles["Small"]))
     def footer(canvas, doc):
@@ -887,5 +883,6 @@ def alternar_status(id_os_interno):
     registrar_log("operacao_ordem_servico_status_alterado", f"OS {ordem.codigo_os_rental} {acao}.", usuario=current_user)
     flash(f"Ordem de Serviço {ordem.codigo_os_rental} {acao} com sucesso.", "success")
     return redirect(url_for("ordens_servico.index"))
+
 
 
