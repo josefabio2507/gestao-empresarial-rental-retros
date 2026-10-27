@@ -123,3 +123,76 @@
         min-width: 560px;
     }
 }
+
+    /* Ficha da OS: cards de apontamentos e monitoramento ajustados para telas estreitas. */
+    .operacao-ui .os-apontamentos-actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+    }
+
+    .operacao-ui .os-apontamentos-actions .btn {
+        align-items: center;
+        display: flex;
+        justify-content: center;
+        min-height: 48px;
+        padding: 10px 8px;
+        text-align: center;
+        white-space: normal;
+        width: 100%;
+    }
+
+    .operacao-ui .os-apontamentos-actions .btn:last-child {
+        grid-column: 1 / -1;
+    }
+
+    .operacao-ui .monitoring-kpis {
+        gap: 8px;
+        background: transparent;
+        padding: 0;
+    }
+
+    .operacao-ui .monitoring-kpis > div {
+        background: #f0f4f7;
+        border: 1px solid #dce5ec;
+        border-radius: 10px;
+        box-sizing: border-box;
+        column-gap: 6px;
+        grid-template-columns: 24px minmax(0, 1fr);
+        grid-template-rows: minmax(2.2em, auto) auto;
+        min-height: 90px;
+        min-width: 0;
+        padding: 10px 8px;
+    }
+
+    .operacao-ui .monitoring-kpis small {
+        align-self: end;
+        font-size: .9rem;
+        line-height: 1.15;
+        min-width: 0;
+        overflow-wrap: anywhere;
+    }
+
+    .operacao-ui .monitoring-kpis strong {
+        align-self: start;
+        font-size: clamp(1.2rem, 5vw, 1.55rem);
+        line-height: 1.1;
+        min-width: 0;
+        overflow-wrap: anywhere;
+    }
+
+    .operacao-ui .monitoring-kpis > div:nth-child(4) strong {
+        font-size: clamp(1rem, 4.2vw, 1.35rem);
+        white-space: nowrap;
+    }
+
+    .operacao-ui .monitor-icon {
+        font-size: 1.25rem;
+        grid-row: 1 / span 2;
+    }
+
+    .operacao-ui .monitor-icon.bars {
+        font-size: .85rem;
+        letter-spacing: -.12em;
+    }
+}
