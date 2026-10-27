@@ -110,4 +110,16 @@
     .operacao-ui .page-actions .btn {
         width: 100%;
     }
+
+    /* Cronograma da OS: mantém as colunas legíveis e permite rolagem lateral no celular. */
+    .operacao-ui .programacao-tabela {
+        max-width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior-inline: contain;
+    }
+
+    .operacao-ui .programacao-tabela table {
+        min-width: 560px;
+    }
 }
