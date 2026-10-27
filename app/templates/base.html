@@ -7,7 +7,7 @@
     {% set ui_departamento_pessoal = request.blueprint in ['departamento_pessoal', 'colaboradores', 'documentos', 'pedido_refeicoes', 'vale_transporte'] %}
     {% set ui_pedido_refeicoes = request.blueprint == 'pedido_refeicoes' %}
     {% set ui_suprimentos_fiscal = (request.blueprint and request.blueprint.startswith('suprimentos')) or request.blueprint == 'fiscal' %}
-    {% set ui_operacao = request.blueprint in ['operacao', 'veiculos_equipamentos'] %}
+    {% set ui_operacao = request.blueprint in ['operacao', 'veiculos_equipamentos', 'ordens_servico'] %}
     {% set ui_administracao = request.blueprint in ['admin', 'usuarios', 'permissoes', 'cargos', 'equipes'] %}
     {% set departamento_rota = request.view_args.get('slug_departamento') if request.view_args else '' %}
     {% set departamento_tema = departamento_rota or (
