@@ -347,6 +347,7 @@ def salvar_abastecimento(form_data, files_data, usuario, veiculo=None, abastecim
         )
         db.session.add(abastecimento)
 
+    abastecimento_existente = abastecimento.id is not None
     leitura_original = getattr(abastecimento, "leitura_atual", None)
     tipo_leitura_original = getattr(abastecimento, "tipo_leitura", None)
 
@@ -382,7 +383,7 @@ def salvar_abastecimento(form_data, files_data, usuario, veiculo=None, abastecim
         leitura_original != abastecimento.leitura_atual
         or tipo_leitura_original != abastecimento.tipo_leitura
     )
-    if leitura_alterada:
+    if leitura_alterada and not abastecimento_existente:
         sucesso_leitura, mensagem_leitura, _ = registrar_leitura(
             veiculo,
             tipo_leitura,
