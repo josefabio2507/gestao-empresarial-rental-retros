@@ -124,6 +124,7 @@
     }
 }
 
+    @media (max-width: 640px) {
     /* Ficha da OS: cards de apontamentos e monitoramento ajustados para telas estreitas. */
     .operacao-ui .os-apontamentos-actions {
         display: grid;
