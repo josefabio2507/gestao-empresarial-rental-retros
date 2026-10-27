@@ -759,6 +759,46 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         self.assertEqual("horimetro", atualizado.tipo_leitura)
         self.assertEqual("160.00", str(atualizado.leitura_atual))
 
+    def test_edita_abastecimento_historico_sem_bloquear_por_leitura_posterior(self):
+        veiculo = self._criar_veiculo("RTM9D90", "FIAT STRADA")
+        _, _, vinculo = vincular_responsavel(
+            {"colaborador_id": str(self.motorista.id), "tipo_leitura": "odometro", "leitura_inicial": "86000"},
+            usuario=self.admin,
+            veiculo=veiculo,
+        )
+        sucesso, mensagem, abastecimento = salvar_abastecimento(
+            {
+                "data_abastecimento": "2026-10-19",
+                "leitura_atual": "86637",
+                "tipo_combustivel": "Etanol",
+                "qtd_litros": "52,510",
+                "preco": "4,59",
+            },
+            {},
+            self.usuario,
+            veiculo=veiculo,
+        )
+        self.assertTrue(sucesso, mensagem)
+        self.assertTrue(registrar_leitura(veiculo, "odometro", "87000", usuario=self.admin)[0])
+        quantidade_leituras = OperacaoLeituraAtivo.query.filter_by(veiculo_id=veiculo.id).count()
+
+        sucesso, mensagem, atualizado = salvar_abastecimento(
+            {
+                "data_abastecimento": "2026-10-19",
+                "leitura_atual": "86600",
+                "tipo_combustivel": "Etanol",
+                "qtd_litros": "52,510",
+                "preco": "4,59",
+            },
+            {},
+            self.usuario,
+            abastecimento=abastecimento,
+        )
+
+        self.assertTrue(sucesso, mensagem)
+        self.assertEqual("86600.00", str(atualizado.leitura_atual))
+        self.assertEqual(quantidade_leituras, OperacaoLeituraAtivo.query.filter_by(veiculo_id=veiculo.id).count())
+
     def test_operador_lista_veiculos_nao_vinculados_e_registra_abastecimento_sem_foto(self):
         veiculo_vinculado = self._criar_veiculo("CAR101", "CAMINHAO DO USUARIO")
         veiculo_outro = self._criar_veiculo("CAR202", "CAMINHAO DE OUTRO MOTORISTA")
