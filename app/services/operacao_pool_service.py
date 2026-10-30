@@ -251,6 +251,7 @@ def registrar_leitura(
     vinculo=None,
     permitir_regressao=False,
     motivo_correcao=None,
+    validar_ultima=True,
 ):
     tipo = texto(tipo)
     leitura = decimal_ou_none(leitura)
@@ -264,9 +265,10 @@ def registrar_leitura(
     if mensagem_limite:
         return False, mensagem_limite, None
 
-    ultima = ultima_leitura_valida(veiculo.id, tipo)
-    if ultima and leitura < ultima.leitura and not (permitir_regressao and motivo_correcao):
-        return False, "Leitura menor que a ultima valida do ativo.", None
+    if validar_ultima:
+        ultima = ultima_leitura_valida(veiculo.id, tipo)
+        if ultima and leitura < ultima.leitura and not (permitir_regressao and motivo_correcao):
+            return False, "Leitura menor que a ultima valida do ativo.", None
 
     registro = OperacaoLeituraAtivo(
         veiculo_id=veiculo.id,

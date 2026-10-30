@@ -280,6 +280,19 @@ def excluir_abastecimento(abastecimento):
     return True, "Abastecimento excluido com sucesso."
 
 
+def _ultimo_abastecimento_com_leitura(veiculo_id, tipo_leitura, abastecimento_id=None):
+    query = OperacaoAbastecimento.query.filter_by(
+        veiculo_id=veiculo_id,
+        tipo_leitura=tipo_leitura,
+    )
+    if abastecimento_id:
+        query = query.filter(OperacaoAbastecimento.id != abastecimento_id)
+    return query.order_by(
+        OperacaoAbastecimento.data_abastecimento.desc(),
+        OperacaoAbastecimento.id.desc(),
+    ).first()
+
+
 def salvar_abastecimento(form_data, files_data, usuario, veiculo=None, abastecimento=None, drive_service=None):
     veiculo_id = veiculo.id if veiculo else getattr(abastecimento, "veiculo_id", None)
     vinculo = getattr(abastecimento, "vinculo", None) if abastecimento else vinculo_ativo_veiculo(veiculo_id)
@@ -330,6 +343,14 @@ def salvar_abastecimento(form_data, files_data, usuario, veiculo=None, abastecim
         return False, "Valor total da nota fiscal deve ser maior ou igual a zero.", abastecimento
     if chave_acesso_nfe and len(chave_acesso_nfe) != 44:
         return False, "Chave de acesso da NF-e deve conter 44 digitos.", abastecimento
+
+    ultimo_abastecimento = _ultimo_abastecimento_com_leitura(
+        veiculo.id,
+        tipo_leitura,
+        getattr(abastecimento, "id", None),
+    )
+    if ultimo_abastecimento and leitura_atual <= ultimo_abastecimento.leitura_atual:
+        return False, "Leitura deve ser maior que a ultima leitura de abastecimento do veiculo.", abastecimento
 
     upload = None
     if arquivo_cupom and texto(arquivo_cupom.filename):
@@ -391,6 +412,7 @@ def salvar_abastecimento(form_data, files_data, usuario, veiculo=None, abastecim
             origem="abastecimento",
             usuario=usuario,
             vinculo=vinculo,
+            validar_ultima=False,
         )
         if not sucesso_leitura:
             db.session.rollback()

@@ -645,6 +645,68 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         self.assertTrue(abastecimento.cupom_nome_arquivo.startswith("ABAST-RET001-20260823-"))
         self.assertEqual(1, OperacaoAbastecimento.query.count())
 
+    def test_abastecimento_compara_leitura_apenas_com_outro_abastecimento_do_veiculo(self):
+        veiculo = self._criar_veiculo("RTM9D90", "FIAT STRADA")
+        _, _, vinculo = vincular_responsavel(
+            {"colaborador_id": str(self.motorista.id), "tipo_leitura": "odometro", "leitura_inicial": "80000"},
+            usuario=self.admin,
+            veiculo=veiculo,
+        )
+        db.session.add(
+            OperacaoLeituraAtivo(
+                veiculo_id=veiculo.id,
+                tipo="odometro",
+                leitura="99999",
+                origem="manutencao",
+                registrado_por_usuario_id=self.admin.id,
+                valida=True,
+            )
+        )
+        db.session.commit()
+
+        primeiro_sucesso, primeira_mensagem, _ = salvar_abastecimento(
+            {
+                "data_abastecimento": "2026-10-27",
+                "leitura_atual": "87353",
+                "tipo_combustivel": "Gasolina comum",
+                "qtd_litros": "20",
+                "preco": "5",
+            },
+            {},
+            self.usuario,
+            veiculo=veiculo,
+        )
+        self.assertTrue(primeiro_sucesso, primeira_mensagem)
+
+        sucesso, mensagem, _ = salvar_abastecimento(
+            {
+                "data_abastecimento": "2026-10-30",
+                "leitura_atual": "87354",
+                "tipo_combustivel": "Gasolina comum",
+                "qtd_litros": "20",
+                "preco": "5",
+            },
+            {},
+            self.usuario,
+            veiculo=veiculo,
+        )
+        self.assertTrue(sucesso, mensagem)
+
+        sucesso, mensagem, _ = salvar_abastecimento(
+            {
+                "data_abastecimento": "2026-10-30",
+                "leitura_atual": "87353",
+                "tipo_combustivel": "Gasolina comum",
+                "qtd_litros": "20",
+                "preco": "5",
+            },
+            {},
+            self.usuario,
+            veiculo=veiculo,
+        )
+        self.assertFalse(sucesso)
+        self.assertEqual("Leitura deve ser maior que a ultima leitura de abastecimento do veiculo.", mensagem)
+
     def test_salva_abastecimento_com_custos_extras_e_conferencia_nf(self):
         veiculo = self._criar_veiculo("RET777", "RETRO COM EXTRAS")
         self.usuario.colaborador_id = self.motorista.id
