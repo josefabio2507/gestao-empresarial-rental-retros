@@ -5,7 +5,16 @@ from unittest.mock import patch
 
 from app import create_app
 from app.extensions import db
-from app.models import Departamento, Modulo, NivelAcesso, OperacaoOrdemServico, PermissaoUsuarioModulo, Usuario
+from app.models import (
+    Departamento,
+    Modulo,
+    NivelAcesso,
+    OperacaoApontamentoDiario,
+    OperacaoDiarioLocalizacao,
+    OperacaoOrdemServico,
+    PermissaoUsuarioModulo,
+    Usuario,
+)
 
 
 class OperacaoOrdensServicoTestCase(unittest.TestCase):
@@ -152,6 +161,33 @@ class OperacaoOrdensServicoTestCase(unittest.TestCase):
         self.assertEqual(200, resposta.status_code)
         self.assertEqual("application/pdf", resposta.mimetype)
         self.assertTrue(resposta.data.startswith(b"%PDF"))
+
+    def test_ficha_considera_apontamento_da_propria_os_com_equipe_legada(self):
+        self._liberar_visualizacao()
+        self._autenticar(self.usuario)
+        ordem = self._criar_ordem("RR-OS-2026-EQUIPE", "Pátio XI", "TMC - SANTOS")
+        apontamento = OperacaoApontamentoDiario(
+            id_os_interno=ordem.id_os_interno,
+            chave_idempotencia=str(uuid.uuid4()),
+            data_evento=date(2026, 10, 18),
+            equipe="TMC SANTOS",
+            criado_por_usuario_id=self.usuario.id,
+        )
+        db.session.add_all([
+            apontamento,
+            OperacaoDiarioLocalizacao(
+                apontamento=apontamento,
+                encarregado="Maria",
+                chefe_boletim="João",
+                local="Pátio XI",
+            ),
+        ])
+        db.session.commit()
+
+        resposta = self.client.get(f"/operacao/ordens-de-servico/{ordem.id_os_interno}")
+
+        self.assertEqual(200, resposta.status_code)
+        self.assertIn("Trabalhou nesta OS".encode("utf-8"), resposta.data)
 
     def test_localizacao_reutiliza_dados_da_os_e_exige_permissao_de_criacao(self):
         self._liberar_visualizacao()

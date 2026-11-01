@@ -63,10 +63,10 @@ def _horario(valor):
         raise LocalizacaoErro("Informe horários válidos.") from exc
 
 
-def _validar_dados(dados):
+def _validar_dados(dados, equipe_os=None):
     registro = {
         "data_evento": _data(dados.get("data_evento")),
-        "equipe": _texto(dados.get("equipe")),
+        "equipe": _texto(equipe_os) or _texto(dados.get("equipe")),
         "encarregado": _texto(dados.get("encarregado")),
         "chefe_boletim": _texto(dados.get("chefe_boletim")),
         "local": _texto(dados.get("local")),
@@ -85,6 +85,8 @@ def _validar_dados(dados):
     opcoes_validacao = dict(OPCOES)
     opcoes_validacao["chefe_boletim"] = tuple(c.nome for c in Colaborador.query.filter(Colaborador.ativo.is_(True), Colaborador.funcao == "CHEFE DE BOLETIM").order_by(Colaborador.nome).all())
     for campo, opcoes in opcoes_validacao.items():
+        if campo == "equipe" and equipe_os:
+            continue
         if registro[campo] not in opcoes:
             raise LocalizacaoErro("Selecione uma opção válida para " + campo + ".")
     for campo in _CAMPOS_HORARIO:
@@ -125,7 +127,7 @@ def criar_apontamento(dados, id_os_interno, chave_idempotencia, usuario):
             "Verifique e feche a jornada antes de cadastrar uma nova Localização."
         )
 
-    dados = _validar_dados(dados)
+    dados = _validar_dados(dados, equipe_os=ordem.equipe)
     apontamento = OperacaoApontamentoDiario(
         id_os_interno=ordem.id_os_interno,
         chave_idempotencia=chave_idempotencia,
@@ -201,7 +203,8 @@ def editar_apontamento(dados, id_os_interno, id_apontamento_diario, versao, usua
         raise LocalizacaoErro("Não foi possível identificar a versão do apontamento.") from exc
     if versao < 1:
         raise LocalizacaoErro("Não foi possível identificar a versão do apontamento.")
-    dados = _validar_dados(dados)
+    ordem = _ordem(id_os_interno)
+    dados = _validar_dados(dados, equipe_os=ordem.equipe)
     try:
         atualizados = OperacaoApontamentoDiario.query.filter_by(
             id_apontamento_diario=id_apontamento_diario,
