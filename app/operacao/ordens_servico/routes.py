@@ -3,6 +3,7 @@ import uuid
 from flask import flash, redirect, render_template, request, url_for, send_file
 from io import BytesIO
 from flask_login import current_user, login_required
+from sqlalchemy import or_
 
 from app.decorators import module_permission_required
 from app.operacao.ordens_servico import ordens_servico_bp
@@ -187,7 +188,10 @@ def ficha(id_os_interno):
             .join(OperacaoDiarioLocalizacao)
             .join(OperacaoOrdemServico, OperacaoApontamentoDiario.id_os_interno == OperacaoOrdemServico.id_os_interno)
             .filter(
-                OperacaoApontamentoDiario.equipe == ordem.equipe,
+                or_(
+                    OperacaoApontamentoDiario.id_os_interno == ordem.id_os_interno,
+                    OperacaoApontamentoDiario.equipe == ordem.equipe,
+                ),
                 OperacaoApontamentoDiario.data_evento.between(ordem.data_programada_inicial, ordem.data_programada_final),
                 OperacaoOrdemServico.ativo.is_(True),
             )
@@ -259,7 +263,10 @@ def relatorio_pdf(id_os_interno):
             .join(OperacaoDiarioLocalizacao)
             .join(OperacaoOrdemServico, OperacaoApontamentoDiario.id_os_interno == OperacaoOrdemServico.id_os_interno)
             .filter(
-                OperacaoApontamentoDiario.equipe == ordem.equipe,
+                or_(
+                    OperacaoApontamentoDiario.id_os_interno == ordem.id_os_interno,
+                    OperacaoApontamentoDiario.equipe == ordem.equipe,
+                ),
                 OperacaoApontamentoDiario.data_evento.between(ordem.data_programada_inicial, ordem.data_programada_final),
                 OperacaoOrdemServico.ativo.is_(True),
             )
