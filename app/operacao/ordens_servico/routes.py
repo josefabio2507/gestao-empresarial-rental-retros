@@ -156,6 +156,28 @@ def ficha(id_os_interno):
     desvios_programacao = []
     programacao_dias = []
     if ordem.equipe and ordem.data_programada_inicial and ordem.data_programada_final:
+        primeiro_trabalho_antecipado = (
+            db.session.query(OperacaoApontamentoDiario.data_evento)
+            .join(OperacaoDiarioLocalizacao)
+            .filter(
+                OperacaoApontamentoDiario.id_os_interno == ordem.id_os_interno,
+                OperacaoApontamentoDiario.data_evento < ordem.data_programada_inicial,
+            )
+            .order_by(OperacaoApontamentoDiario.data_evento.asc())
+            .first()
+        )
+        inicio_cronograma = primeiro_trabalho_antecipado[0] if primeiro_trabalho_antecipado else ordem.data_programada_inicial
+        ultimo_trabalho_posterior = (
+            db.session.query(OperacaoApontamentoDiario.data_evento)
+            .join(OperacaoDiarioLocalizacao)
+            .filter(
+                OperacaoApontamentoDiario.id_os_interno == ordem.id_os_interno,
+                OperacaoApontamentoDiario.data_evento > ordem.data_programada_final,
+            )
+            .order_by(OperacaoApontamentoDiario.data_evento.desc())
+            .first()
+        )
+        fim_cronograma = ultimo_trabalho_posterior[0] if ultimo_trabalho_posterior else ordem.data_programada_final
         desvios_programacao = (
             db.session.query(
                 OperacaoApontamentoDiario.data_evento,
@@ -192,7 +214,7 @@ def ficha(id_os_interno):
                     OperacaoApontamentoDiario.id_os_interno == ordem.id_os_interno,
                     OperacaoApontamentoDiario.equipe == ordem.equipe,
                 ),
-                OperacaoApontamentoDiario.data_evento.between(ordem.data_programada_inicial, ordem.data_programada_final),
+                OperacaoApontamentoDiario.data_evento.between(inicio_cronograma, fim_cronograma),
                 OperacaoOrdemServico.ativo.is_(True),
             )
             .all()
@@ -203,13 +225,25 @@ def ficha(id_os_interno):
         nomes_dias = ("Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado", "Domingo")
         total_dias = (ordem.data_programada_final - ordem.data_programada_inicial).days + 1
         dias_trabalhados = 0
+        dias_antecipados = 0
+        dias_posteriores = 0
         dias_desvio = 0
-        cursor = ordem.data_programada_inicial
-        while cursor <= ordem.data_programada_final:
+        cursor = inicio_cronograma
+        while cursor <= fim_cronograma:
             registros_dia = por_data.get(cursor, [])
             proprio = next((item for item in registros_dia if item.id_os_interno == ordem.id_os_interno), None)
             outro = next((item for item in registros_dia if item.id_os_interno != ordem.id_os_interno), None)
-            if proprio:
+            if cursor < ordem.data_programada_inicial and proprio:
+                situacao, classe, observacao = "Trabalho antecipado nesta OS", "antecipado", "Executado antes do período programado"
+                dias_antecipados += 1
+            elif cursor < ordem.data_programada_inicial:
+                situacao, classe, observacao = "Sem registro antecipado", "sem-registro", "-"
+            elif cursor > ordem.data_programada_final and proprio:
+                situacao, classe, observacao = "Trabalho posterior nesta OS", "posterior", "Executado após o período programado"
+                dias_posteriores += 1
+            elif cursor > ordem.data_programada_final:
+                situacao, classe, observacao = "Sem registro posterior", "sem-registro", "-"
+            elif proprio:
                 situacao, classe, observacao = "Trabalhou nesta OS", "trabalhou", "-"
                 dias_trabalhados += 1
             elif outro:
@@ -223,9 +257,9 @@ def ficha(id_os_interno):
                 situacao, classe, observacao = "Sem registro", "sem-registro", "-"
             programacao_dias.append({"data": cursor, "dia_semana": nomes_dias[cursor.weekday()], "situacao": situacao, "classe": classe, "observacao": observacao})
             cursor += timedelta(days=1)
-        programacao_resumo = {"total_dias": total_dias, "dias_trabalhados": dias_trabalhados, "dias_desvio": dias_desvio, "dias_sem_registro": total_dias - dias_trabalhados - dias_desvio, "percentual": round((dias_trabalhados / total_dias) * 100) if total_dias else 0}
+        programacao_resumo = {"total_dias": total_dias, "dias_trabalhados": dias_trabalhados, "dias_antecipados": dias_antecipados, "dias_posteriores": dias_posteriores, "dias_desvio": dias_desvio, "dias_sem_registro": total_dias - dias_trabalhados - dias_desvio, "percentual": round((dias_trabalhados / total_dias) * 100) if total_dias else 0}
     else:
-        programacao_resumo = {"total_dias": 0, "dias_trabalhados": 0, "dias_desvio": 0, "dias_sem_registro": 0, "percentual": 0}
+        programacao_resumo = {"total_dias": 0, "dias_trabalhados": 0, "dias_antecipados": 0, "dias_posteriores": 0, "dias_desvio": 0, "dias_sem_registro": 0, "percentual": 0}
     return render_template(
         "operacao/ordens_servico/ficha.html",
         ordem=ordem,
@@ -250,8 +284,30 @@ def relatorio_pdf(id_os_interno):
     registros = OperacaoApontamentoDiario.query.filter_by(id_os_interno=ordem.id_os_interno).all()
     controles = OperacaoControleLiberacao.query.filter_by(id_os_interno=ordem.id_os_interno).order_by(OperacaoControleLiberacao.data_evento).all()
     programacao_dias = []
-    programacao_resumo = {"total_dias": 0, "dias_trabalhados": 0, "dias_desvio": 0, "dias_sem_registro": 0, "percentual": 0}
+    programacao_resumo = {"total_dias": 0, "dias_trabalhados": 0, "dias_antecipados": 0, "dias_posteriores": 0, "dias_desvio": 0, "dias_sem_registro": 0, "percentual": 0}
     if ordem.equipe and ordem.data_programada_inicial and ordem.data_programada_final:
+        primeiro_trabalho_antecipado = (
+            db.session.query(OperacaoApontamentoDiario.data_evento)
+            .join(OperacaoDiarioLocalizacao)
+            .filter(
+                OperacaoApontamentoDiario.id_os_interno == ordem.id_os_interno,
+                OperacaoApontamentoDiario.data_evento < ordem.data_programada_inicial,
+            )
+            .order_by(OperacaoApontamentoDiario.data_evento.asc())
+            .first()
+        )
+        inicio_cronograma = primeiro_trabalho_antecipado[0] if primeiro_trabalho_antecipado else ordem.data_programada_inicial
+        ultimo_trabalho_posterior = (
+            db.session.query(OperacaoApontamentoDiario.data_evento)
+            .join(OperacaoDiarioLocalizacao)
+            .filter(
+                OperacaoApontamentoDiario.id_os_interno == ordem.id_os_interno,
+                OperacaoApontamentoDiario.data_evento > ordem.data_programada_final,
+            )
+            .order_by(OperacaoApontamentoDiario.data_evento.desc())
+            .first()
+        )
+        fim_cronograma = ultimo_trabalho_posterior[0] if ultimo_trabalho_posterior else ordem.data_programada_final
         registros_periodo = (
             db.session.query(
                 OperacaoApontamentoDiario.data_evento,
@@ -267,7 +323,7 @@ def relatorio_pdf(id_os_interno):
                     OperacaoApontamentoDiario.id_os_interno == ordem.id_os_interno,
                     OperacaoApontamentoDiario.equipe == ordem.equipe,
                 ),
-                OperacaoApontamentoDiario.data_evento.between(ordem.data_programada_inicial, ordem.data_programada_final),
+                OperacaoApontamentoDiario.data_evento.between(inicio_cronograma, fim_cronograma),
                 OperacaoOrdemServico.ativo.is_(True),
             )
             .all()
@@ -277,13 +333,23 @@ def relatorio_pdf(id_os_interno):
             por_data.setdefault(registro.data_evento, []).append(registro)
         nomes_dias = ("Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado", "Domingo")
         total_dias = (ordem.data_programada_final - ordem.data_programada_inicial).days + 1
-        dias_trabalhados = dias_desvio = 0
-        cursor = ordem.data_programada_inicial
-        while cursor <= ordem.data_programada_final:
+        dias_trabalhados = dias_antecipados = dias_posteriores = dias_desvio = 0
+        cursor = inicio_cronograma
+        while cursor <= fim_cronograma:
             registros_dia = por_data.get(cursor, [])
             proprio = next((item for item in registros_dia if item.id_os_interno == ordem.id_os_interno), None)
             outro = next((item for item in registros_dia if item.id_os_interno != ordem.id_os_interno), None)
-            if proprio:
+            if cursor < ordem.data_programada_inicial and proprio:
+                situacao, observacao = "Trabalho antecipado nesta OS", "Executado antes do período programado"
+                dias_antecipados += 1
+            elif cursor < ordem.data_programada_inicial:
+                situacao, observacao = "Sem registro antecipado", "-"
+            elif cursor > ordem.data_programada_final and proprio:
+                situacao, observacao = "Trabalho posterior nesta OS", "Executado após o período programado"
+                dias_posteriores += 1
+            elif cursor > ordem.data_programada_final:
+                situacao, observacao = "Sem registro posterior", "-"
+            elif proprio:
                 situacao, observacao = "Trabalhou nesta OS", "-"
                 dias_trabalhados += 1
             elif outro:
@@ -297,6 +363,8 @@ def relatorio_pdf(id_os_interno):
         programacao_resumo = {
             "total_dias": total_dias,
             "dias_trabalhados": dias_trabalhados,
+            "dias_antecipados": dias_antecipados,
+            "dias_posteriores": dias_posteriores,
             "dias_desvio": dias_desvio,
             "dias_sem_registro": total_dias - dias_trabalhados - dias_desvio,
             "percentual": round((dias_trabalhados / total_dias) * 100) if total_dias else 0,
@@ -350,6 +418,8 @@ def relatorio_pdf(id_os_interno):
         resumo_cronograma = [
             [Paragraph("<b>Progresso de execução</b>", styles["Small"]), Paragraph(f"{programacao_resumo['dias_trabalhados']} de {programacao_resumo['total_dias']} dias ({programacao_resumo['percentual']}%)", styles["Small"])],
             [Paragraph("Dias em outra OS", styles["Small"]), Paragraph(str(programacao_resumo["dias_desvio"]), styles["Small"])],
+            [Paragraph("Dias trabalhados antecipadamente", styles["Small"]), Paragraph(str(programacao_resumo["dias_antecipados"]), styles["Small"])],
+            [Paragraph("Dias trabalhados após o prazo", styles["Small"]), Paragraph(str(programacao_resumo["dias_posteriores"]), styles["Small"])],
             [Paragraph("Dias sem registro", styles["Small"]), Paragraph(str(programacao_resumo["dias_sem_registro"]), styles["Small"])],
         ]
         story.append(Table(resumo_cronograma, colWidths=[52*mm, 138*mm], style=TableStyle([["GRID", (0,0), (-1,-1), 0.25, colors.HexColor("#B7C7D6")], ["BACKGROUND", (0,0), (0,-1), colors.HexColor("#EAF2F8")], ["VALIGN", (0,0), (-1,-1), "MIDDLE"], ["LEFTPADDING", (0,0), (-1,-1), 5], ["RIGHTPADDING", (0,0), (-1,-1), 5], ["TOPPADDING", (0,0), (-1,-1), 4], ["BOTTOMPADDING", (0,0), (-1,-1), 4]])))

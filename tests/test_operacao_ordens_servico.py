@@ -189,6 +189,71 @@ class OperacaoOrdensServicoTestCase(unittest.TestCase):
         self.assertEqual(200, resposta.status_code)
         self.assertIn("Trabalhou nesta OS".encode("utf-8"), resposta.data)
 
+    def test_ficha_destaca_trabalhos_anteriores_ao_periodo_programado(self):
+        self._liberar_visualizacao()
+        self._autenticar(self.usuario)
+        ordem = self._criar_ordem("RR-OS-2026-ANTECIPADA", "Pátio XI", "TMC AMV")
+        ordem.data_programada_inicial = date(2026, 11, 1)
+        ordem.data_programada_final = date(2026, 11, 6)
+        db.session.commit()
+        for data_evento in (date(2026, 10, 30), date(2026, 10, 31)):
+            apontamento = OperacaoApontamentoDiario(
+                id_os_interno=ordem.id_os_interno,
+                chave_idempotencia=str(uuid.uuid4()),
+                data_evento=data_evento,
+                equipe=ordem.equipe,
+                criado_por_usuario_id=self.usuario.id,
+            )
+            db.session.add_all([
+                apontamento,
+                OperacaoDiarioLocalizacao(
+                    apontamento=apontamento,
+                    encarregado="Maria",
+                    chefe_boletim="João",
+                    local="Pátio XI",
+                ),
+            ])
+        db.session.commit()
+
+        resposta = self.client.get(f"/operacao/ordens-de-servico/{ordem.id_os_interno}")
+
+        self.assertEqual(200, resposta.status_code)
+        self.assertIn(b"30/10/2026", resposta.data)
+        self.assertIn(b"31/10/2026", resposta.data)
+        self.assertEqual(2, resposta.data.count("Trabalho antecipado nesta OS".encode("utf-8")))
+        self.assertIn(b"programacao-linha-antecipado", resposta.data)
+
+    def test_ficha_destaca_trabalhos_posteriores_ao_periodo_programado(self):
+        self._liberar_visualizacao()
+        self._autenticar(self.usuario)
+        ordem = self._criar_ordem("RR-OS-2026-POSTERIOR", "Pátio XI", "TMC AMV")
+        ordem.data_programada_inicial = date(2026, 11, 1)
+        ordem.data_programada_final = date(2026, 11, 6)
+        apontamento = OperacaoApontamentoDiario(
+            id_os_interno=ordem.id_os_interno,
+            chave_idempotencia=str(uuid.uuid4()),
+            data_evento=date(2026, 11, 8),
+            equipe=ordem.equipe,
+            criado_por_usuario_id=self.usuario.id,
+        )
+        db.session.add_all([
+            apontamento,
+            OperacaoDiarioLocalizacao(
+                apontamento=apontamento,
+                encarregado="Maria",
+                chefe_boletim="João",
+                local="Pátio XI",
+            ),
+        ])
+        db.session.commit()
+
+        resposta = self.client.get(f"/operacao/ordens-de-servico/{ordem.id_os_interno}")
+
+        self.assertEqual(200, resposta.status_code)
+        self.assertIn(b"08/11/2026", resposta.data)
+        self.assertIn("Trabalho posterior nesta OS".encode("utf-8"), resposta.data)
+        self.assertIn(b"programacao-linha-posterior", resposta.data)
+
     def test_localizacao_reutiliza_dados_da_os_e_exige_permissao_de_criacao(self):
         self._liberar_visualizacao()
         permissao = PermissaoUsuarioModulo.query.filter_by(
