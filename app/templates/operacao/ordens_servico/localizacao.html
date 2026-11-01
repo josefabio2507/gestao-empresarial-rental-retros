@@ -16,7 +16,8 @@
             <div class="form-group"><label>Intervalo</label><input type="time" name="intervalo_jornada" value="{{ dados_localizacao.get('intervalo_jornada', '01:00') }}"></div>
             <div class="form-group"><label>Hora Final</label><input type="time" name="hora_final" value="{{ dados_localizacao.get('hora_final', '') }}"></div>
             <div class="form-group"><label>Total Jornada</label><input type="text" value="{{ apontamento_edicao.diario_localizacao.total_jornada if apontamento_edicao else 'A calcular' }}" readonly></div>
-            {% for campo, rotulo in [('equipe', 'Equipe'), ('encarregado', 'Encarregado'), ('chefe_boletim', 'Chefe de boletim')] %}
+            <div class="form-group"><label for="equipe">Equipe</label><input id="equipe" value="{{ ordem.equipe }}" readonly></div>
+            {% for campo, rotulo in [('encarregado', 'Encarregado'), ('chefe_boletim', 'Chefe de boletim')] %}
             <div class="form-group"><label for="{{ campo }}">{{ rotulo }} *</label><select id="{{ campo }}" name="{{ campo }}" required><option value="">Selecione</option>{% if dados_localizacao.get(campo) and dados_localizacao.get(campo) not in opcoes_localizacao[campo] %}<option value="" disabled selected>{{ dados_localizacao.get(campo) }} — selecione uma opção atual</option>{% endif %}{% for opcao in opcoes_localizacao[campo] %}<option value="{{ opcao }}" {% if dados_localizacao.get(campo) == opcao %}selected{% endif %}>{{ opcao }}</option>{% endfor %}</select></div>
             {% endfor %}
             <div class="form-group"><label>Número da OS</label><input value="{{ ordem.numero_os_cliente or 'Não informado' }}" readonly></div>
