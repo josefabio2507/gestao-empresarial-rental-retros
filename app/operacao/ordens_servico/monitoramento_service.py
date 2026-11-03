@@ -85,10 +85,13 @@ def _autorizar(usuario):
         raise MonitoramentoErro("Você não possui permissão para consultar o monitoramento da Ordem de Serviço.")
 
 
-def obter_monitoramento(id_os_interno, usuario):
+def obter_monitoramento(id_os_interno, usuario, data_inicio=None, data_fim=None):
     """Consolida apenas contagens e a última data; não carrega os apontamentos."""
     _autorizar(usuario)
     try:
+        filtro_periodo = []
+        if data_inicio and data_fim:
+            filtro_periodo.append(OperacaoApontamentoDiario.data_evento.between(data_inicio, data_fim))
         resultado = (
             db.session.query(
                 func.count(OperacaoDiarioLocalizacao.id_apontamento_diario).label("localizacoes"),
@@ -106,10 +109,13 @@ def obter_monitoramento(id_os_interno, usuario):
             .outerjoin(OperacaoDiarioMaterial)
             .outerjoin(OperacaoCirculacaoTrem)
             .outerjoin(OperacaoIntervencaoAdversa)
-            .filter(OperacaoApontamentoDiario.id_os_interno == id_os_interno)
+            .filter(OperacaoApontamentoDiario.id_os_interno == id_os_interno, *filtro_periodo)
             .one()
         )
-        jornadas = db.session.query(OperacaoDiarioLocalizacao).join(OperacaoApontamentoDiario).filter(OperacaoApontamentoDiario.id_os_interno == id_os_interno).all()
+        jornadas_query = db.session.query(OperacaoDiarioLocalizacao).join(OperacaoApontamentoDiario).filter(OperacaoApontamentoDiario.id_os_interno == id_os_interno)
+        if data_inicio and data_fim:
+            jornadas_query = jornadas_query.filter(OperacaoApontamentoDiario.data_evento.between(data_inicio, data_fim))
+        jornadas = jornadas_query.all()
         segundos_jornada = 0
         segundos_intervalos = 0
         for jornada in jornadas:
@@ -121,7 +127,10 @@ def obter_monitoramento(id_os_interno, usuario):
                 intervalo = jornada.intervalo_jornada.hour * 3600 + jornada.intervalo_jornada.minute * 60 + jornada.intervalo_jornada.second if jornada.intervalo_jornada else 3600
                 segundos_intervalos += intervalo
                 segundos_jornada += max(fim - inicio - intervalo, 0)
-        controles = OperacaoControleLiberacao.query.filter_by(id_os_interno=id_os_interno).all()
+        controles_query = OperacaoControleLiberacao.query.filter_by(id_os_interno=id_os_interno)
+        if data_inicio and data_fim:
+            controles_query = controles_query.filter(OperacaoControleLiberacao.data_evento.between(data_inicio, data_fim))
+        controles = controles_query.all()
         segundos_controle = 0
         for controle in controles:
             if controle.pedido_liberacao_ccp and controle.termino_embandeiramento:
@@ -130,7 +139,10 @@ def obter_monitoramento(id_os_interno, usuario):
                 if fim < inicio:
                     fim += 86400
                 segundos_controle += fim - inicio
-        circulacoes = OperacaoCirculacaoTrem.query.join(OperacaoApontamentoDiario).filter(OperacaoApontamentoDiario.id_os_interno == id_os_interno).all()
+        circulacoes_query = OperacaoCirculacaoTrem.query.join(OperacaoApontamentoDiario).filter(OperacaoApontamentoDiario.id_os_interno == id_os_interno)
+        if data_inicio and data_fim:
+            circulacoes_query = circulacoes_query.filter(OperacaoApontamentoDiario.data_evento.between(data_inicio, data_fim))
+        circulacoes = circulacoes_query.all()
         segundos_circulacao = 0
         for circulacao in circulacoes:
             if circulacao.hora_inicio and circulacao.hora_fim:
@@ -139,7 +151,10 @@ def obter_monitoramento(id_os_interno, usuario):
                 if fim < inicio:
                     fim += 86400
                 segundos_circulacao += fim - inicio
-        intervencoes = OperacaoIntervencaoAdversa.query.join(OperacaoApontamentoDiario).filter(OperacaoApontamentoDiario.id_os_interno == id_os_interno).all()
+        intervencoes_query = OperacaoIntervencaoAdversa.query.join(OperacaoApontamentoDiario).filter(OperacaoApontamentoDiario.id_os_interno == id_os_interno)
+        if data_inicio and data_fim:
+            intervencoes_query = intervencoes_query.filter(OperacaoApontamentoDiario.data_evento.between(data_inicio, data_fim))
+        intervencoes = intervencoes_query.all()
         segundos_intervencao = 0
         for intervencao in intervencoes:
             if intervencao.hora_inicio and intervencao.hora_fim:
