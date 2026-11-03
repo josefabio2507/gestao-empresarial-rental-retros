@@ -112,6 +112,21 @@ class OperacaoOrdensServicoCadastroTestCase(unittest.TestCase):
         self.assertIsNone(ordem.numero_os_cliente)
         self.assertEqual("Pendente", ordem.status_identificacao)
 
+    def test_nao_permite_numero_os_cliente_duplicado(self):
+        criar_ordem_servico(self._dados(numero_os_cliente="123456"), str(uuid.uuid4()), self.usuario)
+
+        with self.assertRaisesRegex(
+            OrdemServicoCadastroErro,
+            "Já existe uma Ordem de Serviço cadastrada com este número",
+        ):
+            criar_ordem_servico(
+                self._dados(numero_os_cliente="123456"),
+                str(uuid.uuid4()),
+                self.usuario,
+            )
+
+        self.assertEqual(1, OperacaoOrdemServico.query.count())
+
     def test_reenvio_com_mesma_chave_reutiliza_a_mesma_os(self):
         chave = str(uuid.uuid4())
         primeira, reutilizada = criar_ordem_servico(self._dados(), chave, self.usuario)

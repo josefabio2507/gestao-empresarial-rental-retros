@@ -4172,6 +4172,10 @@ class OperacaoOrdemServico(db.Model):
     apontamentos_diarios = db.relationship("OperacaoApontamentoDiario", back_populates="ordem_servico")
 
     __table_args__ = (
+        db.UniqueConstraint(
+            "numero_os_cliente",
+            name="uq_operacao_ordens_servico_numero_os_cliente",
+        ),
         db.CheckConstraint(
             "status_identificacao in ('Pendente', 'Informado')",
             name="ck_operacao_os_status_identificacao",
