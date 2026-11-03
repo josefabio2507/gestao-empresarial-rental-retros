@@ -10,6 +10,7 @@ from app.models import (
     Modulo,
     NivelAcesso,
     OperacaoApontamentoDiario,
+    OperacaoControleLiberacao,
     OperacaoDiarioLocalizacao,
     OperacaoOrdemServico,
     PermissaoUsuarioModulo,
@@ -253,6 +254,81 @@ class OperacaoOrdensServicoTestCase(unittest.TestCase):
         self.assertIn(b"08/11/2026", resposta.data)
         self.assertIn("Trabalho posterior nesta OS".encode("utf-8"), resposta.data)
         self.assertIn(b"programacao-linha-posterior", resposta.data)
+
+    def test_exclui_apontamento_da_os_com_permissao_de_edicao(self):
+        self._liberar_visualizacao()
+        permissao = PermissaoUsuarioModulo.query.filter_by(
+            usuario_id=self.usuario.id, modulo_id=self.modulo.id
+        ).one()
+        permissao.pode_editar = True
+        ordem = self._criar_ordem("RR-OS-2026-EXCLUIR", "Pátio XI", "TMC AMV")
+        apontamento = OperacaoApontamentoDiario(
+            id_os_interno=ordem.id_os_interno,
+            chave_idempotencia=str(uuid.uuid4()),
+            data_evento=date(2026, 10, 18),
+            equipe=ordem.equipe,
+            criado_por_usuario_id=self.usuario.id,
+        )
+        db.session.add_all([
+            apontamento,
+            OperacaoDiarioLocalizacao(
+                apontamento=apontamento,
+                encarregado="Maria",
+                chefe_boletim="João",
+                local="Pátio XI",
+            ),
+        ])
+        db.session.commit()
+        self._autenticar(self.usuario)
+
+        resposta = self.client.post(
+            f"/operacao/ordens-de-servico/{ordem.id_os_interno}/apontamentos/"
+            f"localizacao/{apontamento.id_apontamento_diario}/excluir"
+        )
+
+        self.assertEqual(302, resposta.status_code)
+        self.assertIsNone(db.session.get(OperacaoApontamentoDiario, apontamento.id_apontamento_diario))
+
+    def test_nao_exclui_localizacao_com_controle_na_mesma_data(self):
+        self._liberar_visualizacao()
+        permissao = PermissaoUsuarioModulo.query.filter_by(
+            usuario_id=self.usuario.id, modulo_id=self.modulo.id
+        ).one()
+        permissao.pode_editar = True
+        ordem = self._criar_ordem("RR-OS-2026-LOCAL-CONTROLE", "Pátio XI", "TMC AMV")
+        apontamento = OperacaoApontamentoDiario(
+            id_os_interno=ordem.id_os_interno,
+            chave_idempotencia=str(uuid.uuid4()),
+            data_evento=date(2026, 10, 18),
+            equipe=ordem.equipe,
+            criado_por_usuario_id=self.usuario.id,
+        )
+        db.session.add_all([
+            apontamento,
+            OperacaoDiarioLocalizacao(
+                apontamento=apontamento,
+                encarregado="Maria",
+                chefe_boletim="João",
+                local="Pátio XI",
+            ),
+            OperacaoControleLiberacao(
+                id_os_interno=ordem.id_os_interno,
+                data_evento=date(2026, 10, 18),
+                criado_por_usuario_id=self.usuario.id,
+            ),
+        ])
+        db.session.commit()
+        self._autenticar(self.usuario)
+
+        resposta = self.client.post(
+            f"/operacao/ordens-de-servico/{ordem.id_os_interno}/apontamentos/"
+            f"localizacao/{apontamento.id_apontamento_diario}/excluir",
+            follow_redirects=True,
+        )
+
+        self.assertEqual(200, resposta.status_code)
+        self.assertIsNotNone(db.session.get(OperacaoApontamentoDiario, apontamento.id_apontamento_diario))
+        self.assertIn("Não é possível excluir a Localização".encode("utf-8"), resposta.data)
 
     def test_localizacao_reutiliza_dados_da_os_e_exige_permissao_de_criacao(self):
         self._liberar_visualizacao()
