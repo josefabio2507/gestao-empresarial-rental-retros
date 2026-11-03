@@ -292,7 +292,7 @@ def relatorio_pdf(id_os_interno):
     if (periodo_inicio and not periodo_fim) or (periodo_fim and not periodo_inicio) or (periodo_inicio and periodo_fim and periodo_inicio > periodo_fim):
         flash("Informe a data inicial e a data final, com a data inicial anterior ou igual à final.", "warning")
         return redirect(url_for("ordens_servico.ficha", id_os_interno=id_os_interno))
-    monitoramento = obter_monitoramento(ordem.id_os_interno, current_user)
+    monitoramento = obter_monitoramento(ordem.id_os_interno, current_user, periodo_inicio, periodo_fim)
     registros_query = OperacaoApontamentoDiario.query.filter_by(id_os_interno=ordem.id_os_interno)
     controles_query = OperacaoControleLiberacao.query.filter_by(id_os_interno=ordem.id_os_interno)
     if periodo_inicio and periodo_fim:
