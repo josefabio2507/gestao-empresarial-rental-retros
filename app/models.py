@@ -1500,6 +1500,7 @@ class Colaborador(db.Model):
     email = db.Column(db.String(150), nullable=True)
     telefone = db.Column(db.String(20), nullable=True)
     cargo = db.Column(db.String(120), nullable=True)
+    funcao = db.Column(db.String(60), nullable=True)
     vale_transporte_optante = db.Column(
         db.Boolean,
         default=False,

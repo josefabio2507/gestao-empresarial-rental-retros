@@ -1560,7 +1560,9 @@ def salvar_medicao_contrato(dados, medicao=None, arquivos=None, usuario=None):
     medicao = medicao or FinanceiroContratoMedicao()
     novo = medicao.id is None
     contrato = FinanceiroContratoCliente.query.get(inteiro_ou_none(dados.get("contrato_id")))
+    equipe = Equipe.query.filter_by(id=inteiro_ou_none(dados.get("equipe_id")), ativo=True).first()
     medicao.contrato = contrato
+    medicao.equipe = equipe
     medicao.nota_emitida_id = inteiro_ou_none(dados.get("nota_emitida_id"))
     medicao.numero_medicao = texto_maiusculo(dados.get("numero_medicao"))
     medicao.competencia = texto(dados.get("competencia"))
@@ -1589,6 +1591,8 @@ def salvar_medicao_contrato(dados, medicao=None, arquivos=None, usuario=None):
         return False, "Informe o contrato.", medicao
     if contrato.status == "Cancelado":
         return False, "Contrato cancelado não pode receber medição.", medicao
+    if not equipe:
+        return False, "Selecione uma equipe ativa.", medicao
     if not medicao.numero_medicao:
         return False, "Informe o número da medição.", medicao
     if not medicao.competencia:
@@ -1629,10 +1633,13 @@ def salvar_medicao_contrato(dados, medicao=None, arquivos=None, usuario=None):
 
 def listar_medicoes_contratos(filtros=None):
     filtros = filtros or {}
-    query = FinanceiroContratoMedicao.query.options(joinedload(FinanceiroContratoMedicao.contrato), joinedload(FinanceiroContratoMedicao.nota_emitida), joinedload(FinanceiroContratoMedicao.titulos))
+    query = FinanceiroContratoMedicao.query.options(joinedload(FinanceiroContratoMedicao.contrato), joinedload(FinanceiroContratoMedicao.equipe), joinedload(FinanceiroContratoMedicao.nota_emitida), joinedload(FinanceiroContratoMedicao.titulos))
     contrato_id = inteiro_ou_none(filtros.get("contrato_id"))
     if contrato_id:
         query = query.filter(FinanceiroContratoMedicao.contrato_id == contrato_id)
+    equipe_id = inteiro_ou_none(filtros.get("equipe_id"))
+    if equipe_id:
+        query = query.filter(FinanceiroContratoMedicao.equipe_id == equipe_id)
     cliente_id = inteiro_ou_none(filtros.get("cliente_id"))
     cliente_cadastrado = db.session.get(FinanceiroCliente, cliente_id) if cliente_id else None
     contrato_ja_unido = False
@@ -1687,6 +1694,7 @@ def listar_medicoes_contratos(filtros=None):
 def buscar_medicao_contrato_por_id(medicao_id):
     return FinanceiroContratoMedicao.query.options(
         joinedload(FinanceiroContratoMedicao.contrato).joinedload(FinanceiroContratoCliente.centro_custo),
+        joinedload(FinanceiroContratoMedicao.equipe),
         joinedload(FinanceiroContratoMedicao.nota_emitida),
         joinedload(FinanceiroContratoMedicao.titulos).joinedload(FinanceiroContaReceberTitulo.nota_emitida),
         joinedload(FinanceiroContratoMedicao.notas_emitidas),

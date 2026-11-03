@@ -35,6 +35,7 @@ from app.services.financeiro_contas_pagar_service import (
     listar_faturas,
     listar_titulos,
     opcoes_conferencia_xml,
+    parse_data,
     reativar_xml_financeiro,
     registrar_baixa_em_massa,
     registrar_baixa_titulo,
@@ -56,8 +57,12 @@ from app.services.financeiro_relatorios_service import (
     valor_coluna,
 )
 from app.services.financeiro_relatorios_excel_service import (
+    gerar_excel_fatura_cartao,
     gerar_excel_titulos,
+    gerar_excel_titulos_por_data,
     nome_arquivo_titulos_excel,
+    nome_arquivo_titulos_por_data_excel,
+    nome_arquivo_fatura_cartao_excel,
 )
 from app.services.suprimentos_service import (
     buscar_agendamentos_oc_contas_pagar,
@@ -207,6 +212,29 @@ def exportar_titulos_excel():
     )
 
 
+@financeiro_contas_pagar_bp.route("/titulos/exportar-excel-por-data")
+@login_required
+@module_permission_required("financeiro", "contas_a_pagar", "visualizar")
+def exportar_titulos_por_data_excel():
+    titulos = [
+        titulo
+        for titulo in listar_titulos(request.args)
+        if titulo.status not in ("Pago", "Cancelado", "Estornado")
+        and calcular_saldo_titulo(titulo) > 0
+    ]
+    excel_buffer = gerar_excel_titulos_por_data(titulos, request.args)
+    registrar_log(
+        "financeiro_contas_pagar_titulos_por_data_excel_exportado",
+        "Relatorio de titulos a pagar por data exportado em Excel.",
+    )
+    return send_file(
+        excel_buffer,
+        as_attachment=True,
+        download_name=nome_arquivo_titulos_por_data_excel(),
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+
+
 @financeiro_contas_pagar_bp.route("/novo", methods=["GET", "POST"])
 @login_required
 @module_permission_required("financeiro", "contas_a_pagar", "criar")
@@ -223,12 +251,16 @@ def novo():
             return redirect(url_for("financeiro_contas_pagar.detalhes", titulo_id=titulo.id))
         flash(mensagem, "danger")
 
+    novo_lancamento_cartao = request.args.get("origem_fatura") == "1"
+    cartao_credito_id = request.args.get("cartao_credito_id", type=int) if novo_lancamento_cartao else None
     return render_template(
         "financeiro/contas_pagar/form.html",
         titulo=None,
         modo="novo",
         opcoes=buscar_opcoes_formulario(),
         recorrencia_token=str(uuid4()),
+        novo_lancamento_cartao=novo_lancamento_cartao,
+        cartao_credito_id=cartao_credito_id,
     )
 
 
@@ -419,6 +451,38 @@ def detalhes_fatura(fatura_id):
         flash("Fatura nao encontrada.", "warning")
         return redirect(url_for("financeiro_contas_pagar.faturas"))
     return render_template("financeiro/contas_pagar/fatura_detalhes.html", fatura=fatura, calcular_saldo_titulo=calcular_saldo_titulo)
+
+
+@financeiro_contas_pagar_bp.route("/faturas/<int:fatura_id>/exportar-excel")
+@login_required
+@module_permission_required("financeiro", "contas_a_pagar", "visualizar")
+def exportar_fatura_cartao_excel(fatura_id):
+    fatura = buscar_fatura_por_id(fatura_id)
+    if not fatura:
+        flash("Fatura nao encontrada.", "warning")
+        return redirect(url_for("financeiro_contas_pagar.faturas"))
+    try:
+        data_inicio = parse_data(request.args.get("data_compra_inicio"), nome_campo="Compra inicial")
+        data_fim = parse_data(request.args.get("data_compra_fim"), nome_campo="Compra final")
+    except ValueError as exc:
+        flash(str(exc), "warning")
+        return redirect(url_for("financeiro_contas_pagar.detalhes_fatura", fatura_id=fatura_id))
+    if data_inicio and data_fim and data_inicio > data_fim:
+        flash("A data inicial da compra nao pode ser maior que a data final.", "warning")
+        return redirect(url_for("financeiro_contas_pagar.detalhes_fatura", fatura_id=fatura_id))
+    titulos = []
+    for titulo in fatura.titulos:
+        if titulo.status in ("Cancelado", "Estornado"):
+            continue
+        data_compra = titulo.data_compra_cartao or titulo.data_emissao or titulo.data_vencimento
+        if data_inicio and (not data_compra or data_compra < data_inicio):
+            continue
+        if data_fim and (not data_compra or data_compra > data_fim):
+            continue
+        titulos.append(titulo)
+    excel_buffer = gerar_excel_fatura_cartao(fatura, titulos, data_inicio, data_fim)
+    registrar_log("financeiro_contas_pagar_fatura_excel_exportada", f"Relatorio da fatura exportado em Excel. Fatura: {fatura.id}.")
+    return send_file(excel_buffer, as_attachment=True, download_name=nome_arquivo_fatura_cartao_excel(fatura), mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
 
 @financeiro_contas_pagar_bp.route("/faturas/<int:fatura_id>/fechar", methods=["POST"])

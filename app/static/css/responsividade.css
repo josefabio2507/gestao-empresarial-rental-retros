@@ -1,0 +1,97 @@
+/* Missão 18.11: ajustes compartilhados para mobile e tablet. */
+
+@media (max-width: 960px) {
+    .page,
+    .page-wide {
+        width: 100%;
+    }
+
+    .table-responsive,
+    .listbox-10-linhas {
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior-inline: contain;
+    }
+
+    .filter-grid,
+    .form-grid {
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    }
+
+    .modules-grid,
+    .dashboard-grid,
+    .dashboard-tables-grid {
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    }
+}
+
+@media (max-width: 760px) {
+    .app-topbar {
+        gap: 10px;
+    }
+
+    .app-user-menu {
+        gap: 8px;
+    }
+
+    .top-bar {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .top-bar > .actions,
+    .top-bar > .action-bar,
+    .page-actions,
+    .form-actions,
+    .filter-actions {
+        align-items: stretch;
+        width: 100%;
+    }
+
+    .top-bar > .actions .btn,
+    .top-bar > .action-bar .btn,
+    .page-actions .btn,
+    .form-actions .btn,
+    .filter-actions .btn {
+        min-height: 44px;
+    }
+
+    .table th,
+    .table td {
+        padding: 10px;
+    }
+}
+
+@media (max-width: 480px) {
+    .app-main {
+        padding: 14px;
+    }
+
+    .app-topbar-home,
+    .app-user-name {
+        font-size: 13px;
+    }
+
+    .app-user-menu a {
+        font-size: 12px;
+    }
+
+    .filter-grid,
+    .form-grid,
+    .modules-grid,
+    .dashboard-grid,
+    .dashboard-tables-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .top-bar h1 {
+        font-size: clamp(24px, 8vw, 30px);
+    }
+
+    .stat-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .table-responsive {
+        margin-inline: -2px;
+    }
+}

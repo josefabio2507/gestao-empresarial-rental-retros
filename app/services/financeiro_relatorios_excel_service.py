@@ -1,5 +1,6 @@
 import os
 from datetime import datetime
+from itertools import groupby
 from io import BytesIO
 
 from openpyxl import Workbook
@@ -37,6 +38,12 @@ def _periodo(filtros):
     if inicio or fim:
         return f"{_data_formatada(inicio) if inicio else '-'} a {_data_formatada(fim) if fim else '-'}"
     return "Todos os vencimentos"
+
+
+def _periodo_compras(data_inicio=None, data_fim=None):
+    if data_inicio or data_fim:
+        return f"{_data_formatada(data_inicio) if data_inicio else '-'} a {_data_formatada(data_fim) if data_fim else '-'}"
+    return "Todas as compras da fatura"
 
 
 def _aplicar_borda(intervalo, cor=COR_BORDA):
@@ -215,5 +222,277 @@ def gerar_excel_titulos(titulos, filtros):
     return buffer
 
 
+def gerar_excel_titulos_por_data(titulos, filtros):
+    """Gera o relatório de saldos a pagar agrupados pela data de vencimento."""
+    titulos_a_pagar = [
+        titulo
+        for titulo in titulos
+        if titulo.status not in ("Pago", "Cancelado", "Estornado")
+        and calcular_saldo_titulo(titulo) > 0
+    ]
+    titulos_ordenados = sorted(
+        titulos_a_pagar,
+        key=lambda titulo: (titulo.data_vencimento, titulo.id or 0),
+    )
+    gerado_em = agora_brasil()
+
+    workbook = Workbook()
+    planilha = workbook.active
+    planilha.title = "Títulos por Data"
+    planilha.sheet_view.showGridLines = False
+    planilha.freeze_panes = "A11"
+    planilha.sheet_properties.pageSetUpPr.fitToPage = True
+    planilha.page_setup.orientation = "landscape"
+    planilha.page_setup.fitToWidth = 1
+    planilha.page_setup.fitToHeight = 0
+    planilha.print_title_rows = "10:10"
+    planilha.sheet_properties.tabColor = COR_AZUL
+
+    larguras = {"A": 16, "B": 31, "C": 10, "D": 36, "E": 19, "F": 24, "G": 18}
+    for coluna, largura in larguras.items():
+        planilha.column_dimensions[coluna].width = largura
+
+    planilha.merge_cells("A1:E1")
+    planilha.merge_cells("A2:E2")
+    planilha.merge_cells("A3:E3")
+    planilha.merge_cells("F1:G4")
+    for linha in range(1, 5):
+        for coluna in range(1, 8):
+            planilha.cell(linha, coluna).fill = PatternFill("solid", fgColor=COR_AZUL)
+    planilha.row_dimensions[1].height = 18
+    planilha.row_dimensions[2].height = 28
+    planilha.row_dimensions[3].height = 19
+    planilha.row_dimensions[4].height = 12
+
+    planilha["A1"] = "FINANCEIRO | CONTAS A PAGAR"
+    planilha["A1"].font = Font(name="Arial", size=9, color="D8E6F3")
+    planilha["A2"] = "Relatório de Títulos a Pagar por Data"
+    planilha["A2"].font = Font(name="Arial", size=18, bold=True, color="FFFFFF")
+    planilha["A3"] = "Pagamentos programados agrupados por vencimento"
+    planilha["A3"].font = Font(name="Arial", size=9, color="D8E6F3")
+    for referencia in ("A1", "A2", "A3"):
+        planilha[referencia].alignment = Alignment(vertical="center")
+
+    caminho_logo = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)), "static", "img", "logo-rental-retros.png"
+    )
+    if os.path.exists(caminho_logo):
+        logo = Image(caminho_logo)
+        logo.width = 116
+        logo.height = 78
+        planilha.add_image(logo, "F1")
+
+    planilha.merge_cells("A6:C6")
+    planilha.merge_cells("A7:C7")
+    planilha.merge_cells("D6:E6")
+    planilha.merge_cells("D7:E7")
+    planilha.merge_cells("F6:G6")
+    planilha.merge_cells("F7:G7")
+    planilha["A6"] = "Período selecionado"
+    planilha["A7"] = _periodo(filtros)
+    planilha["D6"] = "Gerado em"
+    planilha["D7"] = gerado_em
+    planilha["D7"].number_format = "dd/mm/yyyy hh:mm"
+    planilha["F6"] = "Títulos a pagar"
+    planilha["F7"] = len(titulos_ordenados)
+    for linha in range(6, 8):
+        for coluna in range(1, 8):
+            celula = planilha.cell(linha, coluna)
+            celula.fill = PatternFill("solid", fgColor=COR_CINZA)
+            celula.font = Font(name="Arial", size=9, bold=linha == 6, color=COR_TEXTO)
+            celula.alignment = Alignment(vertical="center", horizontal="right" if coluna >= 6 else "left")
+    _aplicar_borda(planilha["A6:G7"])
+    planilha.row_dimensions[6].height = 20
+    planilha.row_dimensions[7].height = 22
+
+    planilha.merge_cells("A9:G9")
+    planilha["A9"] = "Títulos previstos para pagamento por data"
+    planilha["A9"].font = Font(name="Arial", size=11, bold=True, color=COR_AZUL)
+
+    colunas = ["Data prevista", "Fornecedor", "ID", "Descrição", "Documento", "Forma de pagamento", "Valor a pagar"]
+    for indice, titulo_coluna in enumerate(colunas, start=1):
+        celula = planilha.cell(10, indice, titulo_coluna)
+        celula.fill = PatternFill("solid", fgColor=COR_AZUL)
+        celula.font = Font(name="Arial", size=9, bold=True, color="FFFFFF")
+        celula.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    planilha.row_dimensions[10].height = 29
+
+    linha_atual = 11
+    total_relatorio = 0
+    if not titulos_ordenados:
+        planilha.cell(linha_atual, 1, "Nenhum título a pagar encontrado para os filtros informados.")
+        planilha.merge_cells(start_row=linha_atual, start_column=1, end_row=linha_atual, end_column=7)
+        planilha.cell(linha_atual, 1).alignment = Alignment(horizontal="center", vertical="center")
+        planilha.cell(linha_atual, 1).font = Font(name="Arial", size=9, color=COR_TEXTO)
+        planilha.row_dimensions[linha_atual].height = 30
+        linha_atual += 1
+    else:
+        for data_vencimento, grupo in groupby(titulos_ordenados, key=lambda titulo: titulo.data_vencimento):
+            titulos_data = list(grupo)
+            total_data = sum((calcular_saldo_titulo(titulo) for titulo in titulos_data), 0)
+            total_relatorio += total_data
+
+            planilha.merge_cells(start_row=linha_atual, start_column=1, end_row=linha_atual, end_column=7)
+            planilha.cell(linha_atual, 1, f"Data de pagamento: {_data_formatada(data_vencimento)}")
+            planilha.cell(linha_atual, 1).fill = PatternFill("solid", fgColor=COR_AZUL_CLARO)
+            planilha.cell(linha_atual, 1).font = Font(name="Arial", size=10, bold=True, color=COR_AZUL)
+            planilha.cell(linha_atual, 1).alignment = Alignment(vertical="center")
+            _aplicar_borda(
+                planilha.iter_rows(
+                    min_row=linha_atual,
+                    max_row=linha_atual,
+                    min_col=1,
+                    max_col=7,
+                )
+            )
+            planilha.row_dimensions[linha_atual].height = 23
+            linha_atual += 1
+
+            for indice_item, titulo_item in enumerate(titulos_data):
+                saldo = calcular_saldo_titulo(titulo_item)
+                valores = [
+                    titulo_item.data_vencimento,
+                    titulo_item.fornecedor_nome_snapshot or "-",
+                    titulo_item.id,
+                    titulo_item.descricao or "-",
+                    titulo_item.numero_documento or "-",
+                    titulo_item.forma_pagamento or "-",
+                    float(saldo),
+                ]
+                for indice_coluna, valor in enumerate(valores, start=1):
+                    celula = planilha.cell(linha_atual, indice_coluna, valor)
+                    celula.font = Font(name="Arial", size=9, color=COR_TEXTO)
+                    celula.alignment = Alignment(
+                        horizontal="right" if indice_coluna in (3, 7) else "left",
+                        vertical="top",
+                        wrap_text=indice_coluna in (2, 4, 6),
+                    )
+                    if indice_item % 2:
+                        celula.fill = PatternFill("solid", fgColor=COR_CINZA)
+                    celula.border = Border(bottom=Side(style="thin", color=COR_BORDA))
+                planilha.cell(linha_atual, 1).number_format = "dd/mm/yyyy"
+                planilha.cell(linha_atual, 7).number_format = 'R$ #,##0.00;[Red]-R$ #,##0.00'
+                planilha.row_dimensions[linha_atual].height = 30
+                linha_atual += 1
+
+            planilha.merge_cells(start_row=linha_atual, start_column=1, end_row=linha_atual, end_column=6)
+            planilha.cell(linha_atual, 1, f"Total de {_data_formatada(data_vencimento)}")
+            planilha.cell(linha_atual, 7, float(total_data))
+            for coluna in range(1, 8):
+                celula = planilha.cell(linha_atual, coluna)
+                celula.fill = PatternFill("solid", fgColor=COR_AZUL_CLARO)
+                celula.font = Font(name="Arial", size=9, bold=True, color=COR_TEXTO)
+                celula.border = Border(top=Side(style="thin", color=COR_AZUL), bottom=Side(style="thin", color=COR_BORDA))
+            planilha.cell(linha_atual, 1).alignment = Alignment(horizontal="right")
+            planilha.cell(linha_atual, 7).alignment = Alignment(horizontal="right")
+            planilha.cell(linha_atual, 7).number_format = 'R$ #,##0.00;[Red]-R$ #,##0.00'
+            planilha.row_dimensions[linha_atual].height = 22
+            linha_atual += 1
+
+    linha_total_geral = linha_atual + 1
+    planilha.merge_cells(start_row=linha_total_geral, start_column=4, end_row=linha_total_geral, end_column=6)
+    planilha.cell(linha_total_geral, 4, "Total geral do relatório")
+    planilha.cell(linha_total_geral, 7, float(total_relatorio))
+    for coluna in range(4, 8):
+        celula = planilha.cell(linha_total_geral, coluna)
+        celula.font = Font(name="Arial", size=10, bold=True, color=COR_TEXTO)
+        celula.border = Border(top=Side(style="medium", color=COR_AMARELO), bottom=Side(style="thin", color=COR_BORDA))
+    planilha.cell(linha_total_geral, 4).alignment = Alignment(horizontal="right")
+    planilha.cell(linha_total_geral, 7).alignment = Alignment(horizontal="right")
+    planilha.cell(linha_total_geral, 7).number_format = 'R$ #,##0.00;[Red]-R$ #,##0.00'
+
+    linha_nota = linha_total_geral + 2
+    planilha.merge_cells(start_row=linha_nota, start_column=1, end_row=linha_nota, end_column=7)
+    planilha.cell(linha_nota, 1, f"Relatório gerado em {gerado_em.strftime('%d/%m/%Y %H:%M')}. Valores apresentados em reais.")
+    planilha.cell(linha_nota, 1).font = Font(name="Arial", size=8, italic=True, color=COR_TEXTO_SECUNDARIO)
+    planilha.oddFooter.center.text = "Rental Retros | Financeiro | Uso interno"
+    planilha.oddFooter.right.text = "Página &P de &N"
+
+    buffer = BytesIO()
+    workbook.save(buffer)
+    buffer.seek(0)
+    return buffer
+
+
+def gerar_excel_fatura_cartao(fatura, titulos, data_inicio=None, data_fim=None):
+    """Gera relatório Excel das compras vinculadas a uma fatura de cartão."""
+    titulos_ordenados = sorted(
+        titulos,
+        key=lambda titulo: (titulo.data_compra_cartao or titulo.data_emissao or titulo.data_vencimento, titulo.id or 0),
+    )
+    gerado_em = agora_brasil()
+    workbook = Workbook()
+    planilha = workbook.active
+    planilha.title = "Compras da Fatura"
+    planilha.sheet_view.showGridLines = False
+    planilha.freeze_panes = "A11"
+    planilha.sheet_properties.pageSetUpPr.fitToPage = True
+    planilha.page_setup.orientation = "landscape"
+    planilha.page_setup.fitToWidth = 1
+    planilha.page_setup.fitToHeight = 0
+    planilha.print_title_rows = "10:10"
+    planilha.sheet_properties.tabColor = COR_AZUL
+    larguras = {"A": 15, "B": 28, "C": 34, "D": 18, "E": 12, "F": 15, "G": 15, "H": 15, "I": 20, "J": 18, "K": 15, "L": 16}
+    for coluna, largura in larguras.items():
+        planilha.column_dimensions[coluna].width = largura
+    for faixa in ("A1:H1", "A2:H2", "A3:H3", "I1:L4"):
+        planilha.merge_cells(faixa)
+    for linha in range(1, 5):
+        for coluna in range(1, 13):
+            planilha.cell(linha, coluna).fill = PatternFill("solid", fgColor=COR_AZUL)
+    planilha["A1"] = "FINANCEIRO | CONTAS A PAGAR"
+    planilha["A1"].font = Font(name="Arial", size=9, color="D8E6F3")
+    planilha["A2"] = "Relatório de Compras da Fatura"
+    planilha["A2"].font = Font(name="Arial", size=18, bold=True, color="FFFFFF")
+    planilha["A3"] = f"Fatura {fatura.competencia_formatada} | {fatura.cartao_credito.identificacao_segura}"
+    planilha["A3"].font = Font(name="Arial", size=9, color="D8E6F3")
+    caminho_logo = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static", "img", "logo-rental-retros.png")
+    if os.path.exists(caminho_logo):
+        logo = Image(caminho_logo); logo.width = 116; logo.height = 78; planilha.add_image(logo, "I1")
+    for faixa in ("A6:D6", "A7:D7", "E6:H6", "E7:H7", "I6:J6", "I7:J7", "K6:L6", "K7:L7"):
+        planilha.merge_cells(faixa)
+    planilha["A6"] = "Período de compra selecionado"; planilha["A7"] = _periodo_compras(data_inicio, data_fim)
+    planilha["E6"] = "Gerado em"; planilha["E7"] = gerado_em; planilha["E7"].number_format = "dd/mm/yyyy hh:mm"
+    planilha["I6"] = "Compras"; planilha["I7"] = len(titulos_ordenados)
+    planilha["K6"] = "Total selecionado"; planilha["K7"] = float(sum((t.valor_original or 0 for t in titulos_ordenados), 0)); planilha["K7"].number_format = 'R$ #,##0.00;[Red]-R$ #,##0.00'
+    for linha in range(6, 8):
+        for coluna in range(1, 13):
+            celula = planilha.cell(linha, coluna); celula.fill = PatternFill("solid", fgColor=COR_CINZA); celula.font = Font(name="Arial", size=9, bold=linha == 6, color=COR_TEXTO); celula.alignment = Alignment(vertical="center", horizontal="right" if coluna >= 9 else "left")
+    _aplicar_borda(planilha["A6:L7"])
+    planilha.merge_cells("A9:L9"); planilha["A9"] = "Compras vinculadas à fatura"; planilha["A9"].font = Font(name="Arial", size=11, bold=True, color=COR_AZUL)
+    colunas = ["Compra", "Fornecedor", "Descrição", "Documento", "Parcela", "Valor", "Pago", "Saldo", "Status", "O.C.", "XML Fiscal", "ID"]
+    for indice, titulo_coluna in enumerate(colunas, 1):
+        celula = planilha.cell(10, indice, titulo_coluna); celula.fill = PatternFill("solid", fgColor=COR_AZUL); celula.font = Font(name="Arial", size=9, bold=True, color="FFFFFF"); celula.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    primeira_linha = 11
+    for linha, titulo in enumerate(titulos_ordenados, primeira_linha):
+        data_compra = titulo.data_compra_cartao or titulo.data_emissao or titulo.data_vencimento
+        valores = [data_compra, titulo.fornecedor_nome_snapshot or "-", titulo.descricao or "-", titulo.numero_documento or "-", f"{titulo.parcela_numero}/{titulo.total_parcelas}", float(titulo.valor_original or 0), float(titulo.valor_pago or 0), float(calcular_saldo_titulo(titulo)), titulo.status_exibicao(), titulo.ordem_compra.numero if titulo.ordem_compra else "-", titulo.fiscal_documento_id or "-", titulo.id]
+        for coluna, valor in enumerate(valores, 1):
+            celula = planilha.cell(linha, coluna, valor); celula.font = Font(name="Arial", size=9, color=COR_TEXTO); celula.alignment = Alignment(horizontal="right" if coluna in (6, 7, 8, 12) else "left", vertical="top", wrap_text=coluna in (2, 3, 9)); celula.border = Border(bottom=Side(style="thin", color=COR_BORDA))
+            if (linha - primeira_linha) % 2: celula.fill = PatternFill("solid", fgColor=COR_CINZA)
+        planilha.cell(linha, 1).number_format = "dd/mm/yyyy"
+        for coluna in (6, 7, 8): planilha.cell(linha, coluna).number_format = 'R$ #,##0.00;[Red]-R$ #,##0.00'
+    ultima_linha = primeira_linha + len(titulos_ordenados) - 1
+    if not titulos_ordenados:
+        planilha.cell(primeira_linha, 1, "Nenhuma compra encontrada para o período informado."); planilha.merge_cells(start_row=primeira_linha, start_column=1, end_row=primeira_linha, end_column=12); planilha.cell(primeira_linha, 1).alignment = Alignment(horizontal="center")
+    tabela = Table(displayName="ComprasFaturaCartao", ref=f"A10:L{max(10, ultima_linha)}"); tabela.tableStyleInfo = TableStyleInfo(name="TableStyleMedium2", showFirstColumn=False, showLastColumn=False, showRowStripes=True, showColumnStripes=False); planilha.add_table(tabela)
+    linha_totais = max(primeira_linha, ultima_linha) + 3
+    totais = (("Subtotal das compras", sum((t.valor_original or 0 for t in titulos_ordenados), 0)), ("Total pago", sum((t.valor_pago or 0 for t in titulos_ordenados), 0)), ("Saldo em aberto", sum((calcular_saldo_titulo(t) for t in titulos_ordenados), 0)))
+    for deslocamento, (rotulo, valor) in enumerate(totais):
+        linha = linha_totais + deslocamento; planilha.merge_cells(start_row=linha, start_column=9, end_row=linha, end_column=11); planilha.cell(linha, 9, rotulo); planilha.cell(linha, 12, float(valor)); planilha.cell(linha, 9).font = Font(name="Arial", size=9, bold=True, color=COR_TEXTO); planilha.cell(linha, 12).number_format = 'R$ #,##0.00;[Red]-R$ #,##0.00'
+    linha_nota = linha_totais + 4; planilha.merge_cells(start_row=linha_nota, start_column=1, end_row=linha_nota, end_column=12); planilha.cell(linha_nota, 1, f"Relatório gerado em {gerado_em.strftime('%d/%m/%Y %H:%M')}. Valores apresentados em reais."); planilha.cell(linha_nota, 1).font = Font(name="Arial", size=8, italic=True, color=COR_TEXTO_SECUNDARIO)
+    planilha.oddFooter.center.text = "Rental Retros | Financeiro | Uso interno"; planilha.oddFooter.right.text = "Página &P de &N"
+    buffer = BytesIO(); workbook.save(buffer); buffer.seek(0); return buffer
+
+
 def nome_arquivo_titulos_excel():
     return f"relatorio_titulos_a_pagar_{agora_brasil().strftime('%Y%m%d_%H%M%S')}.xlsx"
+
+
+def nome_arquivo_titulos_por_data_excel():
+    return f"relatorio_titulos_a_pagar_por_data_{agora_brasil().strftime('%Y%m%d_%H%M%S')}.xlsx"
+
+
+def nome_arquivo_fatura_cartao_excel(fatura):
+    competencia = fatura.competencia.strftime("%Y%m") if fatura.competencia else "sem_competencia"
+    return f"relatorio_compras_fatura_cartao_{competencia}_{agora_brasil().strftime('%Y%m%d_%H%M%S')}.xlsx"

@@ -21,6 +21,9 @@
                     + Novo Colaborador
                 </a>
             {% endif %}
+            <a class="btn btn-secondary" href="{{ url_for('departamentos.detalhe_departamento', slug_departamento='departamento_pessoal') }}">
+                Voltar ao Departamento Pessoal
+            </a>
         </div>
     </div>
 
@@ -135,10 +138,5 @@
         </table>
     </div>
 
-    <div class="page-actions">
-        <a class="btn btn-secondary" href="{{ url_for('departamentos.detalhe_departamento', slug_departamento='departamento_pessoal') }}">
-            Voltar ao Departamento Pessoal
-        </a>
-    </div>
 </section>
 {% endblock %}

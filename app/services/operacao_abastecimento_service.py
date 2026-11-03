@@ -17,6 +17,7 @@ from app.services.operacao_pool_service import (
     TIPOS_LEITURA,
     decimal_ou_none,
     inteiro_ou_none,
+    mensagem_limite_leitura,
     registrar_leitura,
     texto,
     tipo_leitura_padrao_veiculo,
@@ -94,6 +95,19 @@ def listar_abastecimentos_usuario(usuario):
         .order_by(OperacaoAbastecimento.data_abastecimento.desc(), OperacaoAbastecimento.id.desc())
         .all()
     )
+
+
+def listar_abastecimentos_veiculo_usuario(usuario, veiculo_id):
+    consulta = OperacaoAbastecimento.query.filter_by(veiculo_id=veiculo_id)
+    if not usuario_eh_administrador(usuario):
+        colaborador = colaborador_do_usuario(usuario)
+        if not colaborador:
+            return []
+        consulta = consulta.filter_by(colaborador_id=colaborador.id)
+    return consulta.order_by(
+        OperacaoAbastecimento.data_abastecimento.desc(),
+        OperacaoAbastecimento.id.desc(),
+    ).all()
 
 
 def buscar_abastecimento_usuario(abastecimento_id, usuario):
@@ -266,10 +280,23 @@ def excluir_abastecimento(abastecimento):
     return True, "Abastecimento excluido com sucesso."
 
 
+def _ultimo_abastecimento_com_leitura(veiculo_id, tipo_leitura, abastecimento_id=None):
+    query = OperacaoAbastecimento.query.filter_by(
+        veiculo_id=veiculo_id,
+        tipo_leitura=tipo_leitura,
+    )
+    if abastecimento_id:
+        query = query.filter(OperacaoAbastecimento.id != abastecimento_id)
+    return query.order_by(
+        OperacaoAbastecimento.data_abastecimento.desc(),
+        OperacaoAbastecimento.id.desc(),
+    ).first()
+
+
 def salvar_abastecimento(form_data, files_data, usuario, veiculo=None, abastecimento=None, drive_service=None):
     veiculo_id = veiculo.id if veiculo else getattr(abastecimento, "veiculo_id", None)
-    vinculo = vinculo_ativo_veiculo(veiculo_id)
-    veiculo = veiculo or (vinculo.veiculo if vinculo else None)
+    vinculo = getattr(abastecimento, "vinculo", None) if abastecimento else vinculo_ativo_veiculo(veiculo_id)
+    veiculo = veiculo or getattr(abastecimento, "veiculo", None) or (vinculo.veiculo if vinculo else None)
     if not veiculo:
         return False, "Veiculo/equipamento nao encontrado.", abastecimento
 
@@ -303,6 +330,9 @@ def salvar_abastecimento(form_data, files_data, usuario, veiculo=None, abastecim
         return False, "Tipo de leitura do vinculo invalido.", abastecimento
     if leitura_atual is None:
         return False, "Hodometro/horimetro e obrigatorio.", abastecimento
+    mensagem_limite = mensagem_limite_leitura(tipo_leitura, leitura_atual)
+    if mensagem_limite:
+        return False, mensagem_limite, abastecimento
     if tipo_combustivel not in TIPOS_COMBUSTIVEL:
         return False, "Tipo de combustivel invalido.", abastecimento
     if qtd_litros is None or qtd_litros <= 0:
@@ -313,6 +343,14 @@ def salvar_abastecimento(form_data, files_data, usuario, veiculo=None, abastecim
         return False, "Valor total da nota fiscal deve ser maior ou igual a zero.", abastecimento
     if chave_acesso_nfe and len(chave_acesso_nfe) != 44:
         return False, "Chave de acesso da NF-e deve conter 44 digitos.", abastecimento
+
+    ultimo_abastecimento = _ultimo_abastecimento_com_leitura(
+        veiculo.id,
+        tipo_leitura,
+        getattr(abastecimento, "id", None),
+    )
+    if ultimo_abastecimento and leitura_atual <= ultimo_abastecimento.leitura_atual:
+        return False, "Leitura deve ser maior que a ultima leitura de abastecimento do veiculo.", abastecimento
 
     upload = None
     if arquivo_cupom and texto(arquivo_cupom.filename):
@@ -330,6 +368,7 @@ def salvar_abastecimento(form_data, files_data, usuario, veiculo=None, abastecim
         )
         db.session.add(abastecimento)
 
+    abastecimento_existente = abastecimento.id is not None
     leitura_original = getattr(abastecimento, "leitura_atual", None)
     tipo_leitura_original = getattr(abastecimento, "tipo_leitura", None)
 
@@ -344,8 +383,10 @@ def salvar_abastecimento(form_data, files_data, usuario, veiculo=None, abastecim
     abastecimento.valor_total_nota_fiscal = _moeda(valor_total_nota_fiscal) if valor_total_nota_fiscal is not None else None
     abastecimento.observacoes_conferencia = texto(form_data.get("observacoes_conferencia")) or None
     abastecimento.observacoes = texto(form_data.get("observacoes")) or None
-    abastecimento.vinculo_id = vinculo.id if vinculo else None
-    abastecimento.equipe_id = equipe.id if equipe else None
+    if not abastecimento.vinculo_id and vinculo:
+        abastecimento.vinculo_id = vinculo.id
+    if not abastecimento.equipe_id and equipe:
+        abastecimento.equipe_id = equipe.id
 
     if upload:
         abastecimento.cupom_drive_file_id = upload["id"]
@@ -363,7 +404,7 @@ def salvar_abastecimento(form_data, files_data, usuario, veiculo=None, abastecim
         leitura_original != abastecimento.leitura_atual
         or tipo_leitura_original != abastecimento.tipo_leitura
     )
-    if leitura_alterada:
+    if leitura_alterada and not abastecimento_existente:
         sucesso_leitura, mensagem_leitura, _ = registrar_leitura(
             veiculo,
             tipo_leitura,
@@ -371,6 +412,7 @@ def salvar_abastecimento(form_data, files_data, usuario, veiculo=None, abastecim
             origem="abastecimento",
             usuario=usuario,
             vinculo=vinculo,
+            validar_ultima=False,
         )
         if not sucesso_leitura:
             db.session.rollback()

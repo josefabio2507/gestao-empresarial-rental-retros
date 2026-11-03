@@ -9,6 +9,7 @@ from app.models import (
     Equipe,
     Modulo,
     NivelAcesso,
+    OperacaoVeiculoEquipamento,
     PermissaoUsuarioModulo,
     SuprimentosCategoriaItem,
     SuprimentosComprador,
@@ -263,7 +264,7 @@ class SuprimentosRequisicoesCompraTestCase(unittest.TestCase):
         self.assertTrue(sucesso)
         self.assertIsNone(requisicao.tipo_custo)
 
-    def test_abastecimento_exige_leitura_com_no_maximo_seis_caracteres(self):
+    def test_abastecimento_limita_leitura_por_tipo_sem_preencher_zeros(self):
         subcentro_veiculo = CentroCusto(
             codigo="VEI-ABAST",
             nome="ABC1D23",
@@ -285,13 +286,46 @@ class SuprimentosRequisicoesCompraTestCase(unittest.TestCase):
         dados["leitura_abastecimento"] = "1234567"
         sucesso, mensagem, _ = salvar_requisicao_compra(dados, self.admin)
         self.assertFalse(sucesso)
-        self.assertEqual("Odometro ou horimetro deve ter no maximo 6 caracteres.", mensagem)
+        self.assertEqual("Hodometro deve ter no maximo 6 digitos antes da virgula.", mensagem)
 
-        dados["leitura_abastecimento"] = "123456"
+        dados["leitura_abastecimento"] = "12345,67"
         sucesso, mensagem, requisicao = salvar_requisicao_compra(dados, self.admin)
         self.assertTrue(sucesso, mensagem)
         self.assertEqual("odometro", requisicao.tipo_leitura_abastecimento)
-        self.assertEqual(Decimal("123456"), requisicao.leitura_abastecimento)
+        self.assertEqual(Decimal("12345.67"), requisicao.leitura_abastecimento)
+
+        subcentro_maquina = CentroCusto(
+            codigo="MAQ-ABAST",
+            nome="MAQ1A23",
+            classe="CENTRO DE EGP VEÍCULOS",
+            ativo=True,
+        )
+        db.session.add(subcentro_maquina)
+        db.session.flush()
+        db.session.add(
+            OperacaoVeiculoEquipamento(
+                identificacao="MAQ1A23",
+                placa="MAQ1A23",
+                descricao="MAQUINA TESTE",
+                centro_custo="MAQ1A23-MAQUINA TESTE",
+                centro_custo_id=subcentro_maquina.id,
+                situacao_aquisicao="Quitado",
+                tipo="Maquina",
+            )
+        )
+        db.session.commit()
+
+        dados["sub_centro_custo_veiculo_id"] = str(subcentro_maquina.id)
+        dados["leitura_abastecimento"] = "10000"
+        sucesso, mensagem, _ = salvar_requisicao_compra(dados, self.admin)
+        self.assertFalse(sucesso)
+        self.assertEqual("Horimetro deve ter no maximo 4 digitos antes da virgula.", mensagem)
+
+        dados["leitura_abastecimento"] = "987,65"
+        sucesso, mensagem, requisicao = salvar_requisicao_compra(dados, self.admin)
+        self.assertTrue(sucesso, mensagem)
+        self.assertEqual("horimetro", requisicao.tipo_leitura_abastecimento)
+        self.assertEqual(Decimal("987.65"), requisicao.leitura_abastecimento)
 
     def test_nao_aceita_texto_livre_nos_centros_de_custo_pesquisaveis(self):
         cenarios = [

@@ -1,5 +1,6 @@
 from io import BytesIO
 from datetime import date
+from decimal import Decimal
 from unittest.mock import patch
 import unittest
 
@@ -9,6 +10,7 @@ from app import create_app
 from app.extensions import db
 from app.models import (
     Departamento,
+    FinanceiroCartaoCredito,
     FinanceiroContaPagarTitulo,
     Modulo,
     NivelAcesso,
@@ -226,6 +228,70 @@ class FinanceiroContasPagarTestCase(unittest.TestCase):
         self.assertIn(ativo.id, ids)
         self.assertNotIn(cancelado.id, ids)
 
+    def test_exporta_excel_por_data_com_saldos_subtotais_e_total_geral(self):
+        self._autenticar(self.admin)
+        for vencimento, valor, documento in (
+            ("2026-08-30", "100,00", "DIA-30-A"),
+            ("2026-08-30", "250,00", "DIA-30-B"),
+            ("2026-09-05", "400,00", "DIA-05"),
+        ):
+            sucesso, mensagem, _ = salvar_titulo(
+                self._dados_titulo(
+                    data_vencimento=vencimento,
+                    valor_original=valor,
+                    numero_documento=documento,
+                ),
+                usuario=self.admin,
+            )
+            self.assertTrue(sucesso, mensagem)
+
+        titulo_parcial = FinanceiroContaPagarTitulo.query.filter_by(numero_documento="DIA-30-B").one()
+        titulo_parcial.valor_pago = 50
+        titulo_parcial.status = "Pago parcialmente"
+        db.session.commit()
+
+        resposta = self.client.get(
+            "/financeiro/contas-a-pagar/titulos/exportar-excel-por-data"
+            "?vencimento_inicio=2026-08-01&vencimento_fim=2026-09-30"
+        )
+
+        self.assertEqual(200, resposta.status_code)
+        self.assertTrue(resposta.data.startswith(b"PK"))
+        self.assertIn("relatorio_titulos_a_pagar_por_data_", resposta.headers["Content-Disposition"])
+        workbook = load_workbook(BytesIO(resposta.data))
+        planilha = workbook["Títulos por Data"]
+        valores_coluna_a = [planilha.cell(linha, 1).value for linha in range(1, planilha.max_row + 1)]
+        valores_coluna_d = [planilha.cell(linha, 4).value for linha in range(1, planilha.max_row + 1)]
+
+        self.assertIn("Data de pagamento: 30/08/2026", valores_coluna_a)
+        self.assertIn("Data de pagamento: 05/09/2026", valores_coluna_a)
+        linha_total_30 = valores_coluna_a.index("Total de 30/08/2026") + 1
+        linha_total_05 = valores_coluna_a.index("Total de 05/09/2026") + 1
+        linha_total_geral = valores_coluna_d.index("Total geral do relatório") + 1
+        self.assertEqual(300, planilha.cell(linha_total_30, 7).value)
+        self.assertEqual(400, planilha.cell(linha_total_05, 7).value)
+        self.assertEqual(700, planilha.cell(linha_total_geral, 7).value)
+
+    def test_excel_por_data_exclui_titulo_pago(self):
+        self._autenticar(self.admin)
+        sucesso, mensagem, titulo = salvar_titulo(
+            self._dados_titulo(valor_original="100,00", numero_documento="PAGO"),
+            usuario=self.admin,
+        )
+        self.assertTrue(sucesso, mensagem)
+        titulo.valor_pago = 100
+        titulo.status = "Pago"
+        db.session.commit()
+
+        resposta = self.client.get("/financeiro/contas-a-pagar/titulos/exportar-excel-por-data")
+
+        workbook = load_workbook(BytesIO(resposta.data))
+        planilha = workbook["Títulos por Data"]
+        valores = [celula.value for linha in planilha.iter_rows() for celula in linha]
+        self.assertEqual(200, resposta.status_code)
+        self.assertNotIn("PAGO", valores)
+        self.assertIn("Nenhum título a pagar encontrado para os filtros informados.", valores)
+
     def test_cria_edita_filtra_e_cancela_titulo_manual(self):
         self._autenticar(self.admin)
 
@@ -304,6 +370,27 @@ class FinanceiroContasPagarTestCase(unittest.TestCase):
         self.assertIn(b'name="recorrencia_token"', resposta.data)
         self.assertIn(b'max="60"', resposta.data)
 
+    def test_novo_lancamento_da_fatura_preseleciona_cartao(self):
+        cartao = FinanceiroCartaoCredito(
+            nome="Cartao da fatura",
+            banco="Banco de teste",
+            dia_fechamento=5,
+            dia_vencimento=10,
+            ativo=True,
+        )
+        db.session.add(cartao)
+        db.session.commit()
+        self._autenticar(self.admin)
+
+        resposta = self.client.get(
+            f"/financeiro/contas-a-pagar/novo?origem_fatura=1&cartao_credito_id={cartao.id}"
+        )
+
+        self.assertEqual(200, resposta.status_code)
+        self.assertIn(b'<option value="Cartao de Credito" selected>', resposta.data)
+        self.assertIn(f'<option value="{cartao.id}" selected>'.encode(), resposta.data)
+        self.assertIn(b"espelharParcelas", resposta.data)
+
     def test_cria_doze_titulos_mensais_ancorados_no_ultimo_dia(self):
         dados = self._dados_titulo(
             data_vencimento="2026-01-31",
@@ -329,6 +416,38 @@ class FinanceiroContasPagarTestCase(unittest.TestCase):
         self.assertEqual(list(range(1, 13)), [titulo.parcela_numero for titulo in titulos])
         self.assertTrue(all(titulo.total_parcelas == 12 for titulo in titulos))
         self.assertTrue(all(titulo.recorrencia_periodicidade == "Mensal" for titulo in titulos))
+
+    def test_parcelas_manuais_no_cartao_seguem_vencimentos_das_faturas_subsequentes(self):
+        cartao = FinanceiroCartaoCredito(
+            nome="Cartao de teste",
+            banco="Banco de teste",
+            dia_fechamento=5,
+            dia_vencimento=10,
+            ativo=True,
+        )
+        db.session.add(cartao)
+        db.session.commit()
+        dados = self._dados_titulo(
+            tipo_pagamento="Cartao de Credito",
+            forma_pagamento="Cartao de Credito",
+            cartao_credito_id=str(cartao.id),
+            data_compra_cartao="2026-01-04",
+            data_vencimento="2026-01-10",
+            competencia="2026-01",
+            parcela_numero="1",
+            total_parcelas="3",
+            valor_original="100,00",
+        )
+
+        sucesso, mensagem, titulos = salvar_titulos_recorrentes(dados, usuario=self.admin)
+
+        self.assertTrue(sucesso, mensagem)
+        self.assertEqual(3, len(titulos))
+        self.assertEqual([date(2026, 1, 4), date(2026, 2, 4), date(2026, 3, 4)], [titulo.data_compra_cartao for titulo in titulos])
+        self.assertEqual([date(2026, 1, 10), date(2026, 2, 10), date(2026, 3, 10)], [titulo.data_vencimento for titulo in titulos])
+        self.assertEqual([1, 2, 3], [titulo.parcela_numero for titulo in titulos])
+        self.assertEqual([Decimal("33.33"), Decimal("33.33"), Decimal("33.34")], [titulo.valor_original for titulo in titulos])
+        self.assertEqual(3, len({titulo.fatura_cartao_id for titulo in titulos}))
 
     def test_recorrencias_semanais_quinzenais_e_anuais_calculam_datas(self):
         casos = [

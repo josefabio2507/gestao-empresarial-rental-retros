@@ -10,6 +10,14 @@
         </div>
     </div>
 
+    <div class="header-actions-card">
+        <div class="actions">
+            <a class="btn btn-secondary" href="{{ url_for('departamentos.detalhe_departamento', slug_departamento='departamento_pessoal') }}">
+                Voltar ao Departamento Pessoal
+            </a>
+        </div>
+    </div>
+
     <div class="modules-grid">
         <a class="module-card module-card-link" href="{{ url_for('vale_transporte.listar_linhas') }}">
             <span class="module-card-icon">L</span>
@@ -44,10 +52,5 @@
         </a>
     </div>
 
-    <div class="page-actions">
-        <a class="btn btn-secondary" href="{{ url_for('departamentos.detalhe_departamento', slug_departamento='departamento_pessoal') }}">
-            Voltar ao Departamento Pessoal
-        </a>
-    </div>
 </section>
 {% endblock %}

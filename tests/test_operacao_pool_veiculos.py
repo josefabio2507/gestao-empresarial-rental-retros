@@ -2,6 +2,7 @@ import unittest
 from datetime import datetime
 from decimal import Decimal
 from io import BytesIO
+from unittest.mock import patch
 
 from PIL import Image
 from werkzeug.datastructures import FileStorage, MultiDict
@@ -388,6 +389,37 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         self.assertIn(veiculo_ativo, veiculos)
         self.assertNotIn(veiculo_inativo, veiculos)
 
+    def test_historico_exibe_vinculos_e_abastecimentos_em_listboxes(self):
+        veiculo = self._criar_veiculo()
+        _, _, vinculo = vincular_responsavel(
+            {"colaborador_id": str(self.motorista.id), "tipo_leitura": "odometro", "leitura_inicial": "10"},
+            usuario=self.admin,
+            veiculo=veiculo,
+        )
+        db.session.add(
+            OperacaoAbastecimento(
+                veiculo=veiculo,
+                vinculo=vinculo,
+                usuario=self.admin,
+                data_abastecimento=datetime.today().date(),
+                tipo_leitura="odometro",
+                leitura_atual=Decimal("20"),
+                tipo_combustivel="Gasolina comum",
+                qtd_litros=Decimal("10"),
+                preco=Decimal("6"),
+            )
+        )
+        db.session.commit()
+
+        self._autenticar(self.admin)
+        resposta = self.client.get(f"/operacao/pool-veiculos/ativos/{veiculo.id}/historico")
+
+        self.assertEqual(200, resposta.status_code)
+        self.assertEqual(2, resposta.data.count(b"listbox-10-linhas"))
+        self.assertIn(b"Vinculos operacionais", resposta.data)
+        self.assertIn(b"Abastecimentos", resposta.data)
+        self.assertIn(b"Gasolina comum", resposta.data)
+
     def test_historico_oculta_corrigir_para_usuario_comum(self):
         veiculo = self._criar_veiculo()
         _, _, vinculo = vincular_responsavel(
@@ -613,6 +645,68 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         self.assertTrue(abastecimento.cupom_nome_arquivo.startswith("ABAST-RET001-20260823-"))
         self.assertEqual(1, OperacaoAbastecimento.query.count())
 
+    def test_abastecimento_compara_leitura_apenas_com_outro_abastecimento_do_veiculo(self):
+        veiculo = self._criar_veiculo("RTM9D90", "FIAT STRADA")
+        _, _, vinculo = vincular_responsavel(
+            {"colaborador_id": str(self.motorista.id), "tipo_leitura": "odometro", "leitura_inicial": "80000"},
+            usuario=self.admin,
+            veiculo=veiculo,
+        )
+        db.session.add(
+            OperacaoLeituraAtivo(
+                veiculo_id=veiculo.id,
+                tipo="odometro",
+                leitura="99999",
+                origem="manutencao",
+                registrado_por_usuario_id=self.admin.id,
+                valida=True,
+            )
+        )
+        db.session.commit()
+
+        primeiro_sucesso, primeira_mensagem, _ = salvar_abastecimento(
+            {
+                "data_abastecimento": "2026-10-27",
+                "leitura_atual": "87353",
+                "tipo_combustivel": "Gasolina comum",
+                "qtd_litros": "20",
+                "preco": "5",
+            },
+            {},
+            self.usuario,
+            veiculo=veiculo,
+        )
+        self.assertTrue(primeiro_sucesso, primeira_mensagem)
+
+        sucesso, mensagem, _ = salvar_abastecimento(
+            {
+                "data_abastecimento": "2026-10-30",
+                "leitura_atual": "87354",
+                "tipo_combustivel": "Gasolina comum",
+                "qtd_litros": "20",
+                "preco": "5",
+            },
+            {},
+            self.usuario,
+            veiculo=veiculo,
+        )
+        self.assertTrue(sucesso, mensagem)
+
+        sucesso, mensagem, _ = salvar_abastecimento(
+            {
+                "data_abastecimento": "2026-10-30",
+                "leitura_atual": "87353",
+                "tipo_combustivel": "Gasolina comum",
+                "qtd_litros": "20",
+                "preco": "5",
+            },
+            {},
+            self.usuario,
+            veiculo=veiculo,
+        )
+        self.assertFalse(sucesso)
+        self.assertEqual("Leitura deve ser maior que a ultima leitura de abastecimento do veiculo.", mensagem)
+
     def test_salva_abastecimento_com_custos_extras_e_conferencia_nf(self):
         veiculo = self._criar_veiculo("RET777", "RETRO COM EXTRAS")
         self.usuario.colaborador_id = self.motorista.id
@@ -674,6 +768,98 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         self.assertEqual("Cancelado", custo_arla.status)
         self.assertEqual("12.50", str(abastecimento.valor_total_custos_extras))
         self.assertEqual("Divergente", abastecimento.status_conferencia_nota_fiscal)
+
+    def test_edita_abastecimento_com_vinculo_encerrado(self):
+        veiculo = self._criar_veiculo("RET999", "RETRO HISTORICA")
+        self.usuario.colaborador_id = self.motorista.id
+        db.session.commit()
+        _, _, vinculo = vincular_responsavel(
+            {"colaborador_id": str(self.motorista.id), "tipo_leitura": "horimetro", "leitura_inicial": "100"},
+            usuario=self.admin,
+            veiculo=veiculo,
+        )
+        sucesso, mensagem, abastecimento = salvar_abastecimento(
+            {
+                "data_abastecimento": "2026-08-23",
+                "leitura_atual": "150",
+                "tipo_combustivel": "Diesel S10",
+                "qtd_litros": "12,50",
+                "preco": "7,19",
+            },
+            {},
+            self.usuario,
+            veiculo=veiculo,
+        )
+        self.assertTrue(sucesso, mensagem)
+        sucesso, mensagem = encerrar_vinculo(
+            vinculo,
+            {"leitura_final": "150"},
+            usuario=self.admin,
+        )
+        self.assertTrue(sucesso, mensagem)
+        self._liberar_usuario("abastecimento", editar=True)
+        self._autenticar(self.usuario)
+        resposta = self.client.get(f"/operacao/abastecimentos/{abastecimento.id}/editar")
+        self.assertEqual(200, resposta.status_code)
+        self.assertIn(b"Editar abastecimento", resposta.data)
+
+        sucesso, mensagem, atualizado = salvar_abastecimento(
+            {
+                "data_abastecimento": "2026-08-23",
+                "leitura_atual": "160",
+                "tipo_combustivel": "Diesel S10",
+                "qtd_litros": "12,50",
+                "preco": "7,19",
+            },
+            {},
+            self.usuario,
+            abastecimento=abastecimento,
+        )
+
+        self.assertTrue(sucesso, mensagem)
+        self.assertEqual(vinculo.id, atualizado.vinculo_id)
+        self.assertEqual("horimetro", atualizado.tipo_leitura)
+        self.assertEqual("160.00", str(atualizado.leitura_atual))
+
+    def test_edita_abastecimento_historico_sem_bloquear_por_leitura_posterior(self):
+        veiculo = self._criar_veiculo("RTM9D90", "FIAT STRADA")
+        _, _, vinculo = vincular_responsavel(
+            {"colaborador_id": str(self.motorista.id), "tipo_leitura": "odometro", "leitura_inicial": "86000"},
+            usuario=self.admin,
+            veiculo=veiculo,
+        )
+        sucesso, mensagem, abastecimento = salvar_abastecimento(
+            {
+                "data_abastecimento": "2026-10-19",
+                "leitura_atual": "86637",
+                "tipo_combustivel": "Etanol",
+                "qtd_litros": "52,510",
+                "preco": "4,59",
+            },
+            {},
+            self.usuario,
+            veiculo=veiculo,
+        )
+        self.assertTrue(sucesso, mensagem)
+        self.assertTrue(registrar_leitura(veiculo, "odometro", "87000", usuario=self.admin)[0])
+        quantidade_leituras = OperacaoLeituraAtivo.query.filter_by(veiculo_id=veiculo.id).count()
+
+        sucesso, mensagem, atualizado = salvar_abastecimento(
+            {
+                "data_abastecimento": "2026-10-19",
+                "leitura_atual": "86600",
+                "tipo_combustivel": "Etanol",
+                "qtd_litros": "52,510",
+                "preco": "4,59",
+            },
+            {},
+            self.usuario,
+            abastecimento=abastecimento,
+        )
+
+        self.assertTrue(sucesso, mensagem)
+        self.assertEqual("86600.00", str(atualizado.leitura_atual))
+        self.assertEqual(quantidade_leituras, OperacaoLeituraAtivo.query.filter_by(veiculo_id=veiculo.id).count())
 
     def test_operador_lista_veiculos_nao_vinculados_e_registra_abastecimento_sem_foto(self):
         veiculo_vinculado = self._criar_veiculo("CAR101", "CAMINHAO DO USUARIO")
@@ -810,6 +996,42 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         self.assertIn(b'name="leitura_atual"', resposta.data)
         self.assertIn("Hodômetro".encode(), resposta.data)
 
+    def test_formulario_exibe_historico_do_veiculo_com_atalho_para_edicao(self):
+        veiculo = self._criar_veiculo("HIS101", "CAMINHAO COM HISTORICO")
+        self.usuario.colaborador_id = self.motorista.id
+        db.session.commit()
+        vincular_responsavel(
+            {"colaborador_id": str(self.motorista.id), "tipo_leitura": "odometro", "leitura_inicial": "10"},
+            usuario=self.admin,
+            veiculo=veiculo,
+        )
+        sucesso, mensagem, abastecimento = salvar_abastecimento(
+            {
+                "data_abastecimento": "2026-08-22",
+                "leitura_atual": "20",
+                "tipo_combustivel": "Diesel S10",
+                "qtd_litros": "10,00",
+                "preco": "5,00",
+            },
+            {},
+            self.usuario,
+            veiculo=veiculo,
+        )
+        self.assertTrue(sucesso, mensagem)
+        self._liberar_usuario("abastecimento", criar=True, editar=True)
+        self._autenticar(self.usuario)
+
+        resposta = self.client.get(f"/operacao/abastecimentos/veiculos/{veiculo.id}/novo")
+
+        self.assertEqual(200, resposta.status_code)
+        self.assertIn("Histórico de Abastecimentos do Veículo".encode(), resposta.data)
+        self.assertIn(b'aria-label="Hist\xc3\xb3rico de abastecimentos do ve\xc3\xadculo"', resposta.data)
+        self.assertIn(b"22/08/2026", resposta.data)
+        self.assertIn(
+            f"/operacao/abastecimentos/{abastecimento.id}/editar".encode(),
+            resposta.data,
+        )
+
     def test_abastecimento_exige_hodometro_ou_horimetro(self):
         veiculo = self._criar_veiculo("CAR304", "CAMINHAO SEM LEITURA")
         self.usuario.colaborador_id = self.motorista.id
@@ -836,6 +1058,69 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         self.assertFalse(sucesso)
         self.assertEqual("Hodometro/horimetro e obrigatorio.", mensagem)
         self.assertIsNone(abastecimento)
+
+    def test_abastecimento_limita_digitos_inteiros_conforme_tipo_leitura(self):
+        veiculo = self._criar_veiculo("CAR305", "CAMINHAO LIMITE")
+        vincular_responsavel(
+            {"colaborador_id": str(self.motorista.id), "tipo_leitura": "odometro", "leitura_inicial": "10"},
+            usuario=self.admin,
+            veiculo=veiculo,
+        )
+
+        sucesso, mensagem, _ = salvar_abastecimento(
+            {
+                "data_abastecimento": "2026-08-23",
+                "leitura_atual": "1000000",
+                "tipo_combustivel": "Diesel S10",
+                "qtd_litros": "10,00",
+                "preco": "7,00",
+            },
+            {},
+            self.usuario,
+            veiculo=veiculo,
+        )
+
+        self.assertFalse(sucesso)
+        self.assertEqual("Hodometro deve ter no maximo 6 digitos antes da virgula.", mensagem)
+
+        maquina = self._criar_veiculo("MAQ305", "MAQUINA LIMITE", tipo="Maquina")
+        vincular_responsavel(
+            {"colaborador_id": str(self.operador.id), "tipo_leitura": "horimetro", "leitura_inicial": "10"},
+            usuario=self.admin,
+            veiculo=maquina,
+        )
+
+        sucesso, mensagem, _ = salvar_abastecimento(
+            {
+                "data_abastecimento": "2026-08-23",
+                "leitura_atual": "10000",
+                "tipo_combustivel": "Diesel S10",
+                "qtd_litros": "10,00",
+                "preco": "7,00",
+            },
+            {},
+            self.usuario,
+            veiculo=maquina,
+        )
+
+        self.assertFalse(sucesso)
+        self.assertEqual("Horimetro deve ter no maximo 4 digitos antes da virgula.", mensagem)
+
+        sucesso, mensagem, abastecimento = salvar_abastecimento(
+            {
+                "data_abastecimento": "2026-08-23",
+                "leitura_atual": "987,65",
+                "tipo_combustivel": "Diesel S10",
+                "qtd_litros": "10,00",
+                "preco": "7,00",
+            },
+            {},
+            self.usuario,
+            veiculo=maquina,
+        )
+
+        self.assertTrue(sucesso, mensagem)
+        self.assertEqual(Decimal("987.65"), abastecimento.leitura_atual)
 
     def test_bloqueia_combustivel_fora_da_lista(self):
         veiculo = self._criar_veiculo("CAR404", "CAMINHAO COMBUSTIVEL")
@@ -916,12 +1201,34 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         self.assertIn(b"Multas", resposta.data)
         self.assertIn(b"Impostos e Taxas", resposta.data)
         self.assertIn(b"Gasolina comum", resposta.data)
+        self.assertIn(b"Leitura", resposta.data)
+        self.assertIn(b"30,00 km", resposta.data)
         self.assertIn(b"R$ 2.469,00", resposta.data)
         self.assertIn(b"Ver", resposta.data)
+
+        dados_com_ordem_de_compra = {
+            "grupos": {
+                "abastecimento": {
+                    "titulo": "Abastecimento",
+                    "linhas": [{"id": 1, "data": None, "descricao": "Abastecimento | Ordem recebida", "documento": "OC-001", "valor": Decimal("10"), "ordem_compra_id": 1}],
+                    "total": Decimal("10"),
+                    "mensagem_vazio": "Nenhum abastecimento no período.",
+                },
+            },
+            "total_geral": Decimal("10"),
+            "indicadores": {"rotulo_uso": "KM rodados", "uso_periodo": Decimal("0"), "unidade_uso": "km", "rotulo_consumo": "Consumo", "consumo_por_litro": None, "unidade_consumo": "km/l", "rotulo_custo": "Custo", "custo_por_unidade": None},
+        }
+        with patch("app.operacao.routes.relatorio_custos_veiculo", return_value=dados_com_ordem_de_compra):
+            resposta_com_ordem = self.client.get(f"/operacao/central-custos/veiculos/{veiculo.id}")
+
+        self.assertEqual(200, resposta_com_ordem.status_code)
+        self.assertIn(b"OC-001", resposta_com_ordem.data)
 
         detalhe = self.client.get(f"/operacao/abastecimentos/{abastecimento.id}/ver")
         self.assertEqual(200, detalhe.status_code)
         self.assertIn(b"Detalhes do abastecimento", detalhe.data)
+        self.assertIn(b'class="header-actions-card"', detalhe.data)
+        self.assertIn(b">Voltar</a>", detalhe.data)
         self.assertIn(b"Ver cupom fiscal", detalhe.data)
         self.assertIn(b"https://drive.google.com/cupom/1", detalhe.data)
 

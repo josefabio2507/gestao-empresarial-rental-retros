@@ -8,7 +8,10 @@
             <h1>Detalhes do abastecimento</h1>
             <p>{{ abastecimento.veiculo.identificacao if abastecimento.veiculo else '-' }} - {{ abastecimento.veiculo.descricao if abastecimento.veiculo else '-' }}</p>
         </div>
-        <div class="acoes-botoes">
+    </div>
+
+    <div class="header-actions-card">
+        <div class="actions">
             {% if pode_editar_extra %}
                 <a class="btn btn-secondary" href="{{ url_for('operacao.editar_abastecimento', abastecimento_id=abastecimento.id) }}">Editar</a>
             {% endif %}

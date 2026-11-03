@@ -37,7 +37,7 @@ def _validar_dados(dados):
         "prefixo": _texto(dados.get("prefixo")).upper() or None,
         "motivo_paralisacao": _texto(dados.get("motivo_paralisacao")),
         "via_linha": _texto(dados.get("via_linha")).upper(),
-        "operador_ccp_maquinista": _texto(dados.get("operador_ccp_maquinista")),
+        "operador_ccp_maquinista": _texto(dados.get("operador_ccp_maquinista")).upper(),
         "pedido_corte_composicao": _texto(dados.get("pedido_corte_composicao")),
         "corte_composicao": _texto(dados.get("corte_composicao")),
     }

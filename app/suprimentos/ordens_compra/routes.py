@@ -43,6 +43,7 @@ from app.services.suprimentos_service import (
     buscar_ordens_compra,
     buscar_por_id,
     cancelar_ordem_compra,
+    editar_ordem_compra,
     editar_recebimento_ordem_compra,
     enviar_email_ordem_compra_fornecedor,
     formatar_decimal_brasil,
@@ -194,6 +195,29 @@ def detalhes(ordem_id):
             "visualizar",
         ),
     )
+
+
+@suprimentos_ordens_compra_bp.route("/<int:ordem_id>/editar", methods=["GET", "POST"])
+@login_required
+@module_permission_required("suprimentos", "ordens_compra", "editar")
+def editar(ordem_id):
+    ordem = buscar_por_id(SuprimentosOrdemCompra, ordem_id)
+
+    if not ordem:
+        flash("Ordem de compra nao encontrada.", "warning")
+        return redirect(url_for("suprimentos_ordens_compra.listar"))
+
+    if ordem.status != STATUS_ORDEM_COMPRA_GERADA:
+        flash("Somente ordens geradas podem ser editadas.", "warning")
+        return redirect(url_for("suprimentos_ordens_compra.detalhes", ordem_id=ordem.id))
+
+    if request.method == "POST":
+        sucesso, mensagem = editar_ordem_compra(request.form, ordem)
+        flash(mensagem, "success" if sucesso else "warning")
+        if sucesso:
+            return redirect(url_for("suprimentos_ordens_compra.detalhes", ordem_id=ordem.id))
+
+    return render_template("suprimentos/ordens_compra/editar.html", ordem=ordem)
 
 
 @suprimentos_ordens_compra_bp.route("/<int:ordem_id>/documentos-fiscais")

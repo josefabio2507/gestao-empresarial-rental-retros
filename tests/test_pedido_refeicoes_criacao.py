@@ -1,7 +1,10 @@
 import unittest
 
 from app import create_app
-from app.departamento_pessoal.pedido_refeicoes.services import criar_pedido_refeicao
+from app.departamento_pessoal.pedido_refeicoes.services import (
+    criar_item_cardapio,
+    criar_pedido_refeicao,
+)
 from app.extensions import db
 from app.models import Equipe, Restaurante
 
@@ -39,6 +42,16 @@ class PedidoRefeicoesCriacaoTestCase(unittest.TestCase):
         self.assertTrue(sucesso, mensagem)
         self.assertEqual(self.equipe.id, pedido.equipe_id)
         self.assertEqual(self.restaurante.id, pedido.restaurante_id)
+
+    def test_cria_item_cardapio_normalizando_id_textual_do_formulario(self):
+        sucesso, mensagem = criar_item_cardapio(
+            restaurante_id=f" {self.restaurante.id} ",
+            tipo="Refeição",
+            nome="Prato Executivo",
+            preco="25,50",
+        )
+
+        self.assertTrue(sucesso, mensagem)
 
 
 if __name__ == "__main__":

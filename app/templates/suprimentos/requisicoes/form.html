@@ -46,8 +46,8 @@
         </div>
         <div class="form-group" data-abastecimento-reading hidden>
             <label for="leitura_abastecimento" data-reading-label>Odômetro</label>
-            <input id="leitura_abastecimento" name="leitura_abastecimento" maxlength="6" inputmode="decimal" value="{{ requisicao.leitura_abastecimento if requisicao and requisicao.leitura_abastecimento is not none else '' }}">
-            <small data-reading-help>Informe a leitura atual do veículo (máximo de 6 caracteres).</small>
+            <input id="leitura_abastecimento" name="leitura_abastecimento" maxlength="9" pattern="[0-9]{1,6}([.,][0-9]{1,2})?" inputmode="decimal" value="{{ requisicao.leitura_abastecimento if requisicao and requisicao.leitura_abastecimento is not none else '' }}">
+            <small data-reading-help>Informe a leitura atual do veículo (máximo de 6 dígitos antes da vírgula).</small>
         </div>
         <div class="form-group" data-conditional-field data-controller="sub_centro_custo_veiculo_busca" hidden>
             <label for="tipo_custo">Tipo de Custo</label>

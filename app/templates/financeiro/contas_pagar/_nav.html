@@ -1,12 +1,15 @@
 <nav class="action-bar" aria-label="Navegacao interna de Contas a Pagar">
     <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.dashboard') }}">Dashboard</a>
     <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.titulos') }}">Titulos</a>
-    <a class="btn btn-primary" href="{{ url_for('financeiro_contas_pagar.novo') }}">+ Novo Lancamento</a>
+    <a class="btn btn-primary" href="{{ url_for('financeiro_contas_pagar.novo', origem_fatura=1, cartao_credito_id=fatura.cartao_credito_id) if fatura is defined else url_for('financeiro_contas_pagar.novo') }}">+ Novo Lancamento</a>
     <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.agendamentos_oc') }}">Agendamentos O.C.</a>
     <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.agendamentos_xml') }}">Agendamentos XML</a>
     <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.cartoes') }}">Cartoes</a>
     <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.faturas') }}">Faturas</a>
-    {% if request.endpoint in [
+    {% if fatura is defined %}
+        <button class="btn btn-secondary" type="submit" form="exportar-fatura-cartao">Gerar Excel</button>
+        <a class="btn btn-secondary" href="{{ url_for('financeiro_contas_pagar.faturas') }}">← Voltar</a>
+    {% elif request.endpoint in [
         'financeiro_contas_pagar.novo',
         'financeiro_contas_pagar.agendamentos_oc',
         'financeiro_contas_pagar.agendamentos_xml',

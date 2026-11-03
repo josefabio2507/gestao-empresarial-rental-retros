@@ -32,6 +32,13 @@
         <p><strong>Titulos em aberto:</strong> {{ abertos|length }}</p>
     </div>
 
+    <form id="exportar-fatura-cartao" class="filter-card" method="GET" action="{{ url_for('financeiro_contas_pagar.exportar_fatura_cartao_excel', fatura_id=fatura.id) }}">
+        <div class="filter-grid">
+            <div class="form-group"><label for="data_compra_inicio">Compra inicial</label><input id="data_compra_inicio" name="data_compra_inicio" type="date"></div>
+            <div class="form-group"><label for="data_compra_fim">Compra final</label><input id="data_compra_fim" name="data_compra_fim" type="date"></div>
+        </div>
+    </form>
+
     <div class="table-card table-responsive listbox-5-linhas">
         <table class="table financeiro-contas-pagar-table">
             <thead>

@@ -4,6 +4,7 @@ from flask import flash, redirect, render_template, request, url_for, send_file
 from io import BytesIO
 from flask_login import current_user, login_required
 from sqlalchemy import or_
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.decorators import module_permission_required
 from app.operacao.ordens_servico import ordens_servico_bp
@@ -156,6 +157,28 @@ def ficha(id_os_interno):
     desvios_programacao = []
     programacao_dias = []
     if ordem.equipe and ordem.data_programada_inicial and ordem.data_programada_final:
+        primeiro_trabalho_antecipado = (
+            db.session.query(OperacaoApontamentoDiario.data_evento)
+            .join(OperacaoDiarioLocalizacao)
+            .filter(
+                OperacaoApontamentoDiario.id_os_interno == ordem.id_os_interno,
+                OperacaoApontamentoDiario.data_evento < ordem.data_programada_inicial,
+            )
+            .order_by(OperacaoApontamentoDiario.data_evento.asc())
+            .first()
+        )
+        inicio_cronograma = primeiro_trabalho_antecipado[0] if primeiro_trabalho_antecipado else ordem.data_programada_inicial
+        ultimo_trabalho_posterior = (
+            db.session.query(OperacaoApontamentoDiario.data_evento)
+            .join(OperacaoDiarioLocalizacao)
+            .filter(
+                OperacaoApontamentoDiario.id_os_interno == ordem.id_os_interno,
+                OperacaoApontamentoDiario.data_evento > ordem.data_programada_final,
+            )
+            .order_by(OperacaoApontamentoDiario.data_evento.desc())
+            .first()
+        )
+        fim_cronograma = ultimo_trabalho_posterior[0] if ultimo_trabalho_posterior else ordem.data_programada_final
         desvios_programacao = (
             db.session.query(
                 OperacaoApontamentoDiario.data_evento,
@@ -192,7 +215,7 @@ def ficha(id_os_interno):
                     OperacaoApontamentoDiario.id_os_interno == ordem.id_os_interno,
                     OperacaoApontamentoDiario.equipe == ordem.equipe,
                 ),
-                OperacaoApontamentoDiario.data_evento.between(ordem.data_programada_inicial, ordem.data_programada_final),
+                OperacaoApontamentoDiario.data_evento.between(inicio_cronograma, fim_cronograma),
                 OperacaoOrdemServico.ativo.is_(True),
             )
             .all()
@@ -203,13 +226,25 @@ def ficha(id_os_interno):
         nomes_dias = ("Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado", "Domingo")
         total_dias = (ordem.data_programada_final - ordem.data_programada_inicial).days + 1
         dias_trabalhados = 0
+        dias_antecipados = 0
+        dias_posteriores = 0
         dias_desvio = 0
-        cursor = ordem.data_programada_inicial
-        while cursor <= ordem.data_programada_final:
+        cursor = inicio_cronograma
+        while cursor <= fim_cronograma:
             registros_dia = por_data.get(cursor, [])
             proprio = next((item for item in registros_dia if item.id_os_interno == ordem.id_os_interno), None)
             outro = next((item for item in registros_dia if item.id_os_interno != ordem.id_os_interno), None)
-            if proprio:
+            if cursor < ordem.data_programada_inicial and proprio:
+                situacao, classe, observacao = "Trabalho antecipado nesta OS", "antecipado", "Executado antes do período programado"
+                dias_antecipados += 1
+            elif cursor < ordem.data_programada_inicial:
+                situacao, classe, observacao = "Sem registro antecipado", "sem-registro", "-"
+            elif cursor > ordem.data_programada_final and proprio:
+                situacao, classe, observacao = "Trabalho posterior nesta OS", "posterior", "Executado após o período programado"
+                dias_posteriores += 1
+            elif cursor > ordem.data_programada_final:
+                situacao, classe, observacao = "Sem registro posterior", "sem-registro", "-"
+            elif proprio:
                 situacao, classe, observacao = "Trabalhou nesta OS", "trabalhou", "-"
                 dias_trabalhados += 1
             elif outro:
@@ -223,9 +258,9 @@ def ficha(id_os_interno):
                 situacao, classe, observacao = "Sem registro", "sem-registro", "-"
             programacao_dias.append({"data": cursor, "dia_semana": nomes_dias[cursor.weekday()], "situacao": situacao, "classe": classe, "observacao": observacao})
             cursor += timedelta(days=1)
-        programacao_resumo = {"total_dias": total_dias, "dias_trabalhados": dias_trabalhados, "dias_desvio": dias_desvio, "dias_sem_registro": total_dias - dias_trabalhados - dias_desvio, "percentual": round((dias_trabalhados / total_dias) * 100) if total_dias else 0}
+        programacao_resumo = {"total_dias": total_dias, "dias_trabalhados": dias_trabalhados, "dias_antecipados": dias_antecipados, "dias_posteriores": dias_posteriores, "dias_desvio": dias_desvio, "dias_sem_registro": total_dias - dias_trabalhados - dias_desvio, "percentual": round((dias_trabalhados / total_dias) * 100) if total_dias else 0}
     else:
-        programacao_resumo = {"total_dias": 0, "dias_trabalhados": 0, "dias_desvio": 0, "dias_sem_registro": 0, "percentual": 0}
+        programacao_resumo = {"total_dias": 0, "dias_trabalhados": 0, "dias_antecipados": 0, "dias_posteriores": 0, "dias_desvio": 0, "dias_sem_registro": 0, "percentual": 0}
     return render_template(
         "operacao/ordens_servico/ficha.html",
         ordem=ordem,
@@ -250,8 +285,30 @@ def relatorio_pdf(id_os_interno):
     registros = OperacaoApontamentoDiario.query.filter_by(id_os_interno=ordem.id_os_interno).all()
     controles = OperacaoControleLiberacao.query.filter_by(id_os_interno=ordem.id_os_interno).order_by(OperacaoControleLiberacao.data_evento).all()
     programacao_dias = []
-    programacao_resumo = {"total_dias": 0, "dias_trabalhados": 0, "dias_desvio": 0, "dias_sem_registro": 0, "percentual": 0}
+    programacao_resumo = {"total_dias": 0, "dias_trabalhados": 0, "dias_antecipados": 0, "dias_posteriores": 0, "dias_desvio": 0, "dias_sem_registro": 0, "percentual": 0}
     if ordem.equipe and ordem.data_programada_inicial and ordem.data_programada_final:
+        primeiro_trabalho_antecipado = (
+            db.session.query(OperacaoApontamentoDiario.data_evento)
+            .join(OperacaoDiarioLocalizacao)
+            .filter(
+                OperacaoApontamentoDiario.id_os_interno == ordem.id_os_interno,
+                OperacaoApontamentoDiario.data_evento < ordem.data_programada_inicial,
+            )
+            .order_by(OperacaoApontamentoDiario.data_evento.asc())
+            .first()
+        )
+        inicio_cronograma = primeiro_trabalho_antecipado[0] if primeiro_trabalho_antecipado else ordem.data_programada_inicial
+        ultimo_trabalho_posterior = (
+            db.session.query(OperacaoApontamentoDiario.data_evento)
+            .join(OperacaoDiarioLocalizacao)
+            .filter(
+                OperacaoApontamentoDiario.id_os_interno == ordem.id_os_interno,
+                OperacaoApontamentoDiario.data_evento > ordem.data_programada_final,
+            )
+            .order_by(OperacaoApontamentoDiario.data_evento.desc())
+            .first()
+        )
+        fim_cronograma = ultimo_trabalho_posterior[0] if ultimo_trabalho_posterior else ordem.data_programada_final
         registros_periodo = (
             db.session.query(
                 OperacaoApontamentoDiario.data_evento,
@@ -267,7 +324,7 @@ def relatorio_pdf(id_os_interno):
                     OperacaoApontamentoDiario.id_os_interno == ordem.id_os_interno,
                     OperacaoApontamentoDiario.equipe == ordem.equipe,
                 ),
-                OperacaoApontamentoDiario.data_evento.between(ordem.data_programada_inicial, ordem.data_programada_final),
+                OperacaoApontamentoDiario.data_evento.between(inicio_cronograma, fim_cronograma),
                 OperacaoOrdemServico.ativo.is_(True),
             )
             .all()
@@ -277,13 +334,23 @@ def relatorio_pdf(id_os_interno):
             por_data.setdefault(registro.data_evento, []).append(registro)
         nomes_dias = ("Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado", "Domingo")
         total_dias = (ordem.data_programada_final - ordem.data_programada_inicial).days + 1
-        dias_trabalhados = dias_desvio = 0
-        cursor = ordem.data_programada_inicial
-        while cursor <= ordem.data_programada_final:
+        dias_trabalhados = dias_antecipados = dias_posteriores = dias_desvio = 0
+        cursor = inicio_cronograma
+        while cursor <= fim_cronograma:
             registros_dia = por_data.get(cursor, [])
             proprio = next((item for item in registros_dia if item.id_os_interno == ordem.id_os_interno), None)
             outro = next((item for item in registros_dia if item.id_os_interno != ordem.id_os_interno), None)
-            if proprio:
+            if cursor < ordem.data_programada_inicial and proprio:
+                situacao, observacao = "Trabalho antecipado nesta OS", "Executado antes do período programado"
+                dias_antecipados += 1
+            elif cursor < ordem.data_programada_inicial:
+                situacao, observacao = "Sem registro antecipado", "-"
+            elif cursor > ordem.data_programada_final and proprio:
+                situacao, observacao = "Trabalho posterior nesta OS", "Executado após o período programado"
+                dias_posteriores += 1
+            elif cursor > ordem.data_programada_final:
+                situacao, observacao = "Sem registro posterior", "-"
+            elif proprio:
                 situacao, observacao = "Trabalhou nesta OS", "-"
                 dias_trabalhados += 1
             elif outro:
@@ -297,6 +364,8 @@ def relatorio_pdf(id_os_interno):
         programacao_resumo = {
             "total_dias": total_dias,
             "dias_trabalhados": dias_trabalhados,
+            "dias_antecipados": dias_antecipados,
+            "dias_posteriores": dias_posteriores,
             "dias_desvio": dias_desvio,
             "dias_sem_registro": total_dias - dias_trabalhados - dias_desvio,
             "percentual": round((dias_trabalhados / total_dias) * 100) if total_dias else 0,
@@ -350,6 +419,8 @@ def relatorio_pdf(id_os_interno):
         resumo_cronograma = [
             [Paragraph("<b>Progresso de execução</b>", styles["Small"]), Paragraph(f"{programacao_resumo['dias_trabalhados']} de {programacao_resumo['total_dias']} dias ({programacao_resumo['percentual']}%)", styles["Small"])],
             [Paragraph("Dias em outra OS", styles["Small"]), Paragraph(str(programacao_resumo["dias_desvio"]), styles["Small"])],
+            [Paragraph("Dias trabalhados antecipadamente", styles["Small"]), Paragraph(str(programacao_resumo["dias_antecipados"]), styles["Small"])],
+            [Paragraph("Dias trabalhados após o prazo", styles["Small"]), Paragraph(str(programacao_resumo["dias_posteriores"]), styles["Small"])],
             [Paragraph("Dias sem registro", styles["Small"]), Paragraph(str(programacao_resumo["dias_sem_registro"]), styles["Small"])],
         ]
         story.append(Table(resumo_cronograma, colWidths=[52*mm, 138*mm], style=TableStyle([["GRID", (0,0), (-1,-1), 0.25, colors.HexColor("#B7C7D6")], ["BACKGROUND", (0,0), (0,-1), colors.HexColor("#EAF2F8")], ["VALIGN", (0,0), (-1,-1), "MIDDLE"], ["LEFTPADDING", (0,0), (-1,-1), 5], ["RIGHTPADDING", (0,0), (-1,-1), 5], ["TOPPADDING", (0,0), (-1,-1), 4], ["BOTTOMPADDING", (0,0), (-1,-1), 4]])))
@@ -381,21 +452,17 @@ def relatorio_pdf(id_os_interno):
         return total + 86400 if total < 0 else total
     def duracao_formatada(segundos):
         return f"{segundos // 3600:02d}:{(segundos % 3600) // 60:02d}:{segundos % 60:02d}"
-    auditoria = [["Ordem de Serviço", fmt_dt(ordem.criado_em), nome_usuario(ordem.criado_por)]]
-    auditoria += [["Apontamento diário", fmt_dt(registro.criado_em), nome_usuario(registro.criado_por)] for registro in registros]
-    auditoria += [["Controle de liberação", fmt_dt(controle.criado_em), nome_usuario(controle.criado_por)] for controle in controles]
-    tabela_detalhes("7. Auditoria dos registros", ["Registro", "Data e hora do cadastro", "Usuário responsável"], auditoria, [58*mm, 55*mm, 77*mm])
     localizacoes = [registro.diario_localizacao for registro in registros if registro.diario_localizacao]
-    tabela_detalhes("8. Registros de apontamentos de localização", ["Data", "Local", "Equipe", "Encarregado", "Jornada"], [[fmt(registro.apontamento.data_evento), registro.local, registro.apontamento.equipe, registro.encarregado, registro.total_jornada] for registro in localizacoes], [26*mm, 43*mm, 38*mm, 53*mm, 30*mm])
+    tabela_detalhes("7. Registros de apontamentos de localização", ["Data", "Local", "Equipe", "Encarregado", "Jornada"], [[fmt(registro.apontamento.data_evento), registro.local, registro.apontamento.equipe, registro.encarregado, registro.total_jornada] for registro in localizacoes], [26*mm, 43*mm, 38*mm, 53*mm, 30*mm])
     total_controles = sum(segundos_horario(controle.pedido_liberacao_ccp, controle.termino_embandeiramento) for controle in controles)
-    tabela_detalhes("9. Registros de controles de liberação", ["Data", "Pedido CCP", "Embandeiramento", "Término", "Duração"], [[fmt(controle.data_evento), str(controle.pedido_liberacao_ccp or "-"), str(controle.liberacao_embandeiramento or "-"), str(controle.termino_embandeiramento or "-"), duracao_formatada(segundos_horario(controle.pedido_liberacao_ccp, controle.termino_embandeiramento))] for controle in controles] + [["TOTAL", "", "", "", duracao_formatada(total_controles)]], [27*mm, 30*mm, 42*mm, 30*mm, 61*mm])
+    tabela_detalhes("8. Registros de controles de liberação", ["Data", "Pedido CCP", "Embandeiramento", "Término", "Duração"], [[fmt(controle.data_evento), str(controle.pedido_liberacao_ccp or "-"), str(controle.liberacao_embandeiramento or "-"), str(controle.termino_embandeiramento or "-"), duracao_formatada(segundos_horario(controle.pedido_liberacao_ccp, controle.termino_embandeiramento))] for controle in controles] + [["TOTAL", "", "", "", duracao_formatada(total_controles)]], [27*mm, 30*mm, 42*mm, 30*mm, 61*mm])
     circulacoes = [registro.circulacao_trem for registro in registros if registro.circulacao_trem]
     total_circulacoes = sum(segundos_horario(registro.hora_inicio, registro.hora_fim) for registro in circulacoes)
-    tabela_detalhes("10. Registros de circulação de trens", ["Data", "Prefixo", "Início", "Fim", "Via/Linha", "Duração"], [[fmt(registro.apontamento.data_evento), registro.prefixo or "-", str(registro.hora_inicio or "-"), str(registro.hora_fim or "-"), registro.via_linha or "-", duracao_formatada(segundos_horario(registro.hora_inicio, registro.hora_fim))] for registro in circulacoes] + [["TOTAL", "", "", "", "", duracao_formatada(total_circulacoes)]], [25*mm, 28*mm, 24*mm, 24*mm, 55*mm, 34*mm])
+    tabela_detalhes("9. Registros de circulação de trens", ["Data", "Prefixo", "Início", "Fim", "Via/Linha", "Duração"], [[fmt(registro.apontamento.data_evento), registro.prefixo or "-", str(registro.hora_inicio or "-"), str(registro.hora_fim or "-"), registro.via_linha or "-", duracao_formatada(segundos_horario(registro.hora_inicio, registro.hora_fim))] for registro in circulacoes] + [["TOTAL", "", "", "", "", duracao_formatada(total_circulacoes)]], [25*mm, 28*mm, 24*mm, 24*mm, 55*mm, 34*mm])
     intervencoes = [registro.intervencao_adversa for registro in registros if registro.intervencao_adversa]
     total_intervencoes = sum(segundos_horario(registro.hora_inicio, registro.hora_fim) for registro in intervencoes)
-    tabela_detalhes("10. Registros de intervenções adversas", ["Data", "Categoria", "Intervenção", "Início", "Fim", "Duração"], [[fmt(registro.apontamento.data_evento), registro.categoria or "-", registro.intervencao or "-", str(registro.hora_inicio or "-"), str(registro.hora_fim or "-"), duracao_formatada(segundos_horario(registro.hora_inicio, registro.hora_fim))] for registro in intervencoes] + [["TOTAL", "", "", "", "", duracao_formatada(total_intervencoes)]], [24*mm, 39*mm, 62*mm, 20*mm, 20*mm, 25*mm])
-    story.append(Paragraph("11. Pré-checagem para fechamento", styles["Section"]))
+    tabela_detalhes("9. Registros de intervenções adversas", ["Data", "Categoria", "Intervenção", "Início", "Fim", "Duração"], [[fmt(registro.apontamento.data_evento), registro.categoria or "-", registro.intervencao or "-", str(registro.hora_inicio or "-"), str(registro.hora_fim or "-"), duracao_formatada(segundos_horario(registro.hora_inicio, registro.hora_fim))] for registro in intervencoes] + [["TOTAL", "", "", "", "", duracao_formatada(total_intervencoes)]], [24*mm, 39*mm, 62*mm, 20*mm, 20*mm, 25*mm])
+    story.append(Paragraph("10. Pré-checagem para fechamento", styles["Section"]))
     for item in ["Identificação da OS do cliente informada.", "Equipe e encarregado responsáveis definidos.", "Jornada de trabalho completa, sem registro em aberto.", "Controles de liberação com campos obrigatórios preenchidos.", "Circulações de trens com hora de início e fim.", "Intervenções adversas com horários completos quando informados.", "Data final realizada somente após a data inicial."]:
         story.append(Paragraph("• " + item, styles["Small"]))
     def footer(canvas, doc):
@@ -477,7 +544,7 @@ def localizacao(id_os_interno):
         "operacao/ordens_servico/localizacao.html",
         ordem=ordem,
         apontamentos=apontamentos,
-        opcoes_localizacao={**OPCOES, "chefe_boletim": tuple(c.nome for c in OperacaoChefeBoletim.query.filter_by(ativo=True).order_by(OperacaoChefeBoletim.nome).all())},
+        opcoes_localizacao={**OPCOES, "chefe_boletim": tuple(c.nome for c in Colaborador.query.filter(Colaborador.ativo.is_(True), Colaborador.funcao == "CHEFE DE BOLETIM").order_by(Colaborador.nome).all())},
         dados_localizacao=request.form.to_dict() if request.method == "POST" else _dados_formulario_localizacao(ordem),
         apontamento_edicao=None,
         controles_liberacao=OperacaoControleLiberacao.query.filter_by(id_os_interno=ordem.id_os_interno).order_by(OperacaoControleLiberacao.data_evento.desc(), OperacaoControleLiberacao.id.desc()).limit(3).all(),
@@ -520,7 +587,7 @@ def editar_localizacao(id_os_interno, id_apontamento_diario):
         "operacao/ordens_servico/localizacao.html",
         ordem=ordem,
         apontamentos=apontamentos,
-        opcoes_localizacao={**OPCOES, "chefe_boletim": tuple(c.nome for c in OperacaoChefeBoletim.query.filter_by(ativo=True).order_by(OperacaoChefeBoletim.nome).all())},
+        opcoes_localizacao={**OPCOES, "chefe_boletim": tuple(c.nome for c in Colaborador.query.filter(Colaborador.ativo.is_(True), Colaborador.funcao == "CHEFE DE BOLETIM").order_by(Colaborador.nome).all())},
         dados_localizacao=request.form.to_dict() if request.method == "POST" else _dados_formulario_localizacao(ordem, apontamento),
         apontamento_edicao=apontamento,
         controles_liberacao=OperacaoControleLiberacao.query.filter_by(id_os_interno=ordem.id_os_interno).order_by(OperacaoControleLiberacao.data_evento.desc(), OperacaoControleLiberacao.id.desc()).limit(3).all(),
@@ -723,6 +790,58 @@ def editar_diario_producao(id_os_interno, diario, id_apontamento_diario):
     return _render_diario(id_os_interno, diario, apontamento)
 
 
+_APONTAMENTOS_EXCLUIVEIS = {
+    "localizacao": ("diario_localizacao", "Localização", "ordens_servico.localizacao"),
+    "servico": ("diario_servico", "Serviço", "ordens_servico.servicos"),
+    "material": ("diario_material", "Material", "ordens_servico.materiais"),
+    "circulacao": ("circulacao_trem", "Circulação de Trens", "ordens_servico.circulacao"),
+    "intervencao": ("intervencao_adversa", "Intervenção Adversa", "ordens_servico.intervencoes"),
+}
+
+
+@ordens_servico_bp.route("/<string:id_os_interno>/apontamentos/<string:tipo>/<string:id_apontamento_diario>/excluir", methods=["POST"])
+@login_required
+@module_permission_required(DEPARTAMENTO, MODULO, "editar")
+def excluir_apontamento_diario(id_os_interno, tipo, id_apontamento_diario):
+    configuracao = _APONTAMENTOS_EXCLUIVEIS.get(tipo)
+    if not configuracao:
+        return redirect(url_for("ordens_servico.ficha", id_os_interno=id_os_interno))
+    relacionamento, nome, endpoint = configuracao
+    apontamento = OperacaoApontamentoDiario.query.filter_by(
+        id_apontamento_diario=id_apontamento_diario,
+        id_os_interno=id_os_interno,
+    ).first()
+    registro = getattr(apontamento, relacionamento, None) if apontamento else None
+    if not registro:
+        flash(f"Apontamento de {nome} não encontrado para esta Ordem de Serviço.", "warning")
+        return redirect(url_for(endpoint, id_os_interno=id_os_interno))
+    if tipo == "localizacao" and OperacaoControleLiberacao.query.filter_by(
+        id_os_interno=id_os_interno,
+        data_evento=apontamento.data_evento,
+    ).first():
+        flash(
+            "Não é possível excluir a Localização enquanto houver Controle de Liberação "
+            "registrado para esta OS na mesma data.",
+            "warning",
+        )
+        return redirect(url_for(endpoint, id_os_interno=id_os_interno))
+    try:
+        db.session.delete(registro)
+        db.session.delete(apontamento)
+        db.session.commit()
+    except SQLAlchemyError:
+        db.session.rollback()
+        flash(f"Não foi possível excluir o apontamento de {nome}.", "danger")
+    else:
+        registrar_log(
+            f"operacao_{tipo}_excluido",
+            f"Apontamento de {nome} {id_apontamento_diario} excluído da OS {id_os_interno}.",
+            usuario=current_user,
+        )
+        flash(f"Apontamento de {nome} excluído com sucesso.", "success")
+    return redirect(url_for(endpoint, id_os_interno=id_os_interno))
+
+
 def _dados_formulario_circulacao(ordem, apontamento=None):
     if not apontamento:
         return {"equipe": ordem.equipe or ""}
@@ -838,8 +957,8 @@ def nova():
         dados=dados,
         chave_idempotencia=chave_idempotencia,
         equipes=Equipe.query.filter_by(ativo=True).order_by(Equipe.nome.asc()).all(),
-        supervisores=Colaborador.query.filter(Colaborador.ativo.is_(True), Colaborador.cargo.ilike("%Supervisor%")).order_by(Colaborador.nome.asc()).all(),
-        encarregados=Colaborador.query.filter(Colaborador.ativo.is_(True), Colaborador.cargo.ilike("%Encarregado%")).order_by(Colaborador.nome.asc()).all(),
+        supervisores=Colaborador.query.filter(Colaborador.ativo.is_(True), Colaborador.funcao == "SUPERVISOR").order_by(Colaborador.nome.asc()).all(),
+        encarregados=Colaborador.query.filter(Colaborador.ativo.is_(True), Colaborador.funcao == "ENCARREGADO").order_by(Colaborador.nome.asc()).all(),
     )
 
 
@@ -874,8 +993,8 @@ def editar(id_os_interno):
     return render_template(
         "operacao/ordens_servico/form.html", dados=dados, ordem=ordem, em_edicao=True,
         equipes=Equipe.query.filter_by(ativo=True).order_by(Equipe.nome.asc()).all(),
-        supervisores=Colaborador.query.filter(Colaborador.ativo.is_(True), Colaborador.cargo.ilike("%Supervisor%")).order_by(Colaborador.nome.asc()).all(),
-        encarregados=Colaborador.query.filter(Colaborador.ativo.is_(True), Colaborador.cargo.ilike("%Encarregado%")).order_by(Colaborador.nome.asc()).all(),
+        supervisores=Colaborador.query.filter(Colaborador.ativo.is_(True), Colaborador.funcao == "SUPERVISOR").order_by(Colaborador.nome.asc()).all(),
+        encarregados=Colaborador.query.filter(Colaborador.ativo.is_(True), Colaborador.funcao == "ENCARREGADO").order_by(Colaborador.nome.asc()).all(),
     )
 
 
@@ -894,5 +1013,6 @@ def alternar_status(id_os_interno):
     registrar_log("operacao_ordem_servico_status_alterado", f"OS {ordem.codigo_os_rental} {acao}.", usuario=current_user)
     flash(f"Ordem de Serviço {ordem.codigo_os_rental} {acao} com sucesso.", "success")
     return redirect(url_for("ordens_servico.index"))
+
 
 
