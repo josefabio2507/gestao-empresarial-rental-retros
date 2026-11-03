@@ -281,9 +281,25 @@ def relatorio_pdf(id_os_interno):
     if not ordem:
         flash("Ordem de Serviço não encontrada.", "warning")
         return redirect(url_for("ordens_servico.index"))
+    data_inicio = request.args.get("data_inicio", "").strip()
+    data_fim = request.args.get("data_fim", "").strip()
+    try:
+        periodo_inicio = date.fromisoformat(data_inicio) if data_inicio else None
+        periodo_fim = date.fromisoformat(data_fim) if data_fim else None
+    except ValueError:
+        flash("Informe datas válidas para o período do relatório.", "warning")
+        return redirect(url_for("ordens_servico.ficha", id_os_interno=id_os_interno))
+    if (periodo_inicio and not periodo_fim) or (periodo_fim and not periodo_inicio) or (periodo_inicio and periodo_fim and periodo_inicio > periodo_fim):
+        flash("Informe a data inicial e a data final, com a data inicial anterior ou igual à final.", "warning")
+        return redirect(url_for("ordens_servico.ficha", id_os_interno=id_os_interno))
     monitoramento = obter_monitoramento(ordem.id_os_interno, current_user)
-    registros = OperacaoApontamentoDiario.query.filter_by(id_os_interno=ordem.id_os_interno).all()
-    controles = OperacaoControleLiberacao.query.filter_by(id_os_interno=ordem.id_os_interno).order_by(OperacaoControleLiberacao.data_evento).all()
+    registros_query = OperacaoApontamentoDiario.query.filter_by(id_os_interno=ordem.id_os_interno)
+    controles_query = OperacaoControleLiberacao.query.filter_by(id_os_interno=ordem.id_os_interno)
+    if periodo_inicio and periodo_fim:
+        registros_query = registros_query.filter(OperacaoApontamentoDiario.data_evento.between(periodo_inicio, periodo_fim))
+        controles_query = controles_query.filter(OperacaoControleLiberacao.data_evento.between(periodo_inicio, periodo_fim))
+    registros = registros_query.all()
+    controles = controles_query.order_by(OperacaoControleLiberacao.data_evento).all()
     programacao_dias = []
     programacao_resumo = {"total_dias": 0, "dias_trabalhados": 0, "dias_antecipados": 0, "dias_posteriores": 0, "dias_desvio": 0, "dias_sem_registro": 0, "percentual": 0}
     if ordem.equipe and ordem.data_programada_inicial and ordem.data_programada_final:
@@ -309,6 +325,10 @@ def relatorio_pdf(id_os_interno):
             .first()
         )
         fim_cronograma = ultimo_trabalho_posterior[0] if ultimo_trabalho_posterior else ordem.data_programada_final
+        if periodo_inicio:
+            inicio_cronograma = max(inicio_cronograma, periodo_inicio)
+        if periodo_fim:
+            fim_cronograma = min(fim_cronograma, periodo_fim)
         registros_periodo = (
             db.session.query(
                 OperacaoApontamentoDiario.data_evento,
@@ -406,6 +426,8 @@ def relatorio_pdf(id_os_interno):
     logo = Image("app/static/img/logo-rental-retros.png", width=28*mm, height=19*mm)
     story.append(Table([[logo, Paragraph("FICHA DA ORDEM DE SERVIÇO", styles["BrandTitle"])]] , colWidths=[36*mm, 154*mm], rowHeights=[22*mm], style=TableStyle([["BACKGROUND", (0,0), (-1,-1), colors.HexColor("#082B4C")], ["VALIGN", (0,0), (-1,-1), "MIDDLE"], ["ALIGN", (0,0), (0,0), "CENTER"]])))
     story.append(Paragraph("Relatório detalhado para impressão", styles["Section"]))
+    if periodo_inicio and periodo_fim:
+        story.append(Paragraph(f"Período do relatório: {periodo_inicio.strftime('%d/%m/%Y')} a {periodo_fim.strftime('%d/%m/%Y')}", styles["Small"]))
     def section(title, rows):
         tabela = Table([[Paragraph(f"<b>{label}</b>", styles["Small"]), Paragraph(str(value or "-"), styles["Small"])] for label, value in rows], colWidths=[52*mm, 138*mm], style=TableStyle([["GRID", (0,0), (-1,-1), 0.25, colors.HexColor("#B7C7D6")], ["BACKGROUND", (0,0), (0,-1), colors.HexColor("#EAF2F8")], ["VALIGN", (0,0), (-1,-1), "TOP"], ["LEFTPADDING", (0,0), (-1,-1), 5], ["RIGHTPADDING", (0,0), (-1,-1), 5], ["TOPPADDING", (0,0), (-1,-1), 4], ["BOTTOMPADDING", (0,0), (-1,-1), 4]]))
         story.append(KeepTogether([Paragraph(title, styles["Section"]), tabela]))
