@@ -97,6 +97,13 @@ def criar_ordem_servico(dados, chave_idempotencia, usuario):
         return existente, True
 
     dados = _validar_dados(dados)
+    if dados["numero_os_cliente"] and OperacaoOrdemServico.query.filter_by(
+        numero_os_cliente=dados["numero_os_cliente"]
+    ).first():
+        raise OrdemServicoCadastroErro(
+            "Já existe uma Ordem de Serviço cadastrada com este número."
+        )
+
     ordem = OperacaoOrdemServico(
         chave_idempotencia=chave_idempotencia,
         numero_os_cliente=dados["numero_os_cliente"] or None,
