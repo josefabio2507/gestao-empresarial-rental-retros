@@ -4,6 +4,7 @@ from flask import flash, redirect, render_template, request, url_for, send_file
 from io import BytesIO
 from flask_login import current_user, login_required
 from sqlalchemy import or_
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.decorators import module_permission_required
 from app.operacao.ordens_servico import ordens_servico_bp
@@ -787,6 +788,58 @@ def editar_diario_producao(id_os_interno, diario, id_apontamento_diario):
         flash(str(exc), "danger")
         return redirect(url_for(_endpoint_diario(diario), id_os_interno=id_os_interno))
     return _render_diario(id_os_interno, diario, apontamento)
+
+
+_APONTAMENTOS_EXCLUIVEIS = {
+    "localizacao": ("diario_localizacao", "Localização", "ordens_servico.localizacao"),
+    "servico": ("diario_servico", "Serviço", "ordens_servico.servicos"),
+    "material": ("diario_material", "Material", "ordens_servico.materiais"),
+    "circulacao": ("circulacao_trem", "Circulação de Trens", "ordens_servico.circulacao"),
+    "intervencao": ("intervencao_adversa", "Intervenção Adversa", "ordens_servico.intervencoes"),
+}
+
+
+@ordens_servico_bp.route("/<string:id_os_interno>/apontamentos/<string:tipo>/<string:id_apontamento_diario>/excluir", methods=["POST"])
+@login_required
+@module_permission_required(DEPARTAMENTO, MODULO, "editar")
+def excluir_apontamento_diario(id_os_interno, tipo, id_apontamento_diario):
+    configuracao = _APONTAMENTOS_EXCLUIVEIS.get(tipo)
+    if not configuracao:
+        return redirect(url_for("ordens_servico.ficha", id_os_interno=id_os_interno))
+    relacionamento, nome, endpoint = configuracao
+    apontamento = OperacaoApontamentoDiario.query.filter_by(
+        id_apontamento_diario=id_apontamento_diario,
+        id_os_interno=id_os_interno,
+    ).first()
+    registro = getattr(apontamento, relacionamento, None) if apontamento else None
+    if not registro:
+        flash(f"Apontamento de {nome} não encontrado para esta Ordem de Serviço.", "warning")
+        return redirect(url_for(endpoint, id_os_interno=id_os_interno))
+    if tipo == "localizacao" and OperacaoControleLiberacao.query.filter_by(
+        id_os_interno=id_os_interno,
+        data_evento=apontamento.data_evento,
+    ).first():
+        flash(
+            "Não é possível excluir a Localização enquanto houver Controle de Liberação "
+            "registrado para esta OS na mesma data.",
+            "warning",
+        )
+        return redirect(url_for(endpoint, id_os_interno=id_os_interno))
+    try:
+        db.session.delete(registro)
+        db.session.delete(apontamento)
+        db.session.commit()
+    except SQLAlchemyError:
+        db.session.rollback()
+        flash(f"Não foi possível excluir o apontamento de {nome}.", "danger")
+    else:
+        registrar_log(
+            f"operacao_{tipo}_excluido",
+            f"Apontamento de {nome} {id_apontamento_diario} excluído da OS {id_os_interno}.",
+            usuario=current_user,
+        )
+        flash(f"Apontamento de {nome} excluído com sucesso.", "success")
+    return redirect(url_for(endpoint, id_os_interno=id_os_interno))
 
 
 def _dados_formulario_circulacao(ordem, apontamento=None):
