@@ -344,13 +344,13 @@ def salvar_abastecimento(form_data, files_data, usuario, veiculo=None, abastecim
     if chave_acesso_nfe and len(chave_acesso_nfe) != 44:
         return False, "Chave de acesso da NF-e deve conter 44 digitos.", abastecimento
 
-    ultimo_abastecimento = _ultimo_abastecimento_com_leitura(
-        veiculo.id,
-        tipo_leitura,
-        getattr(abastecimento, "id", None),
-    )
-    if ultimo_abastecimento and leitura_atual <= ultimo_abastecimento.leitura_atual:
-        return False, "Leitura deve ser maior que a ultima leitura de abastecimento do veiculo.", abastecimento
+    if not abastecimento:
+        ultimo_abastecimento = _ultimo_abastecimento_com_leitura(
+            veiculo.id,
+            tipo_leitura,
+        )
+        if ultimo_abastecimento and leitura_atual <= ultimo_abastecimento.leitura_atual:
+            return False, "Leitura deve ser maior que a ultima leitura de abastecimento do veiculo.", abastecimento
 
     upload = None
     if arquivo_cupom and texto(arquivo_cupom.filename):
