@@ -22,7 +22,7 @@ from app.services.operacao_pool_service import (
     texto,
     tipo_leitura_padrao_veiculo,
 )
-from app.services.permissoes_service import usuario_eh_administrador
+from app.services.permissoes_service import usuario_eh_administrador, usuario_eh_gestor
 from app.services.suprimentos_service import _normalizar_imagem_para_jpg
 from app.utils.datas import agora_brasil
 
@@ -81,7 +81,7 @@ def listar_veiculos_abastecimento_usuario(usuario):
 
 
 def listar_abastecimentos_usuario(usuario):
-    if usuario_eh_administrador(usuario):
+    if usuario_eh_administrador(usuario) or usuario_eh_gestor(usuario):
         return (
             OperacaoAbastecimento.query
             .order_by(OperacaoAbastecimento.data_abastecimento.desc(), OperacaoAbastecimento.id.desc())
@@ -111,7 +111,7 @@ def listar_abastecimentos_veiculo_usuario(usuario, veiculo_id):
 
 
 def buscar_abastecimento_usuario(abastecimento_id, usuario):
-    if usuario_eh_administrador(usuario):
+    if usuario_eh_administrador(usuario) or usuario_eh_gestor(usuario):
         return OperacaoAbastecimento.query.get(abastecimento_id)
     colaborador = colaborador_do_usuario(usuario)
     if not colaborador:

@@ -911,6 +911,45 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         self.assertEqual(302, resposta.status_code)
         self.assertIn("/acesso-negado", resposta.location)
 
+    def test_gestor_visualiza_e_gerencia_historico_de_todos_os_abastecimentos(self):
+        gestor_nivel = NivelAcesso(nome="Gestor", slug="gestor", ativo=True)
+        gestor = Usuario(
+            nome="Gestor",
+            email="gestor@teste.com",
+            nivel_acesso=gestor_nivel,
+            ativo=True,
+            precisa_trocar_senha=False,
+        )
+        gestor.definir_senha("teste")
+        veiculo = self._criar_veiculo("GST1A23", "VEICULO DO OPERADOR")
+        abastecimento = OperacaoAbastecimento(
+            veiculo_id=veiculo.id,
+            colaborador_id=self.motorista.id,
+            usuario_id=self.admin.id,
+            data_abastecimento=datetime(2026, 10, 20).date(),
+            tipo_leitura="odometro",
+            leitura_atual=Decimal("3068"),
+            tipo_combustivel="Diesel S10",
+            qtd_litros=Decimal("80"),
+            preco=Decimal("7.49"),
+        )
+        db.session.add_all([gestor_nivel, gestor, abastecimento])
+        db.session.commit()
+        self._autenticar(gestor)
+
+        resposta = self.client.get("/operacao/abastecimentos")
+
+        self.assertEqual(200, resposta.status_code)
+        self.assertIn(veiculo.identificacao.encode(), resposta.data)
+        self.assertIn(b">Editar</a>", resposta.data)
+        self.assertIn(b">Excluir</button>", resposta.data)
+        self.assertEqual(200, self.client.get(f"/operacao/abastecimentos/{abastecimento.id}/editar").status_code)
+
+        resposta = self.client.post(f"/operacao/abastecimentos/{abastecimento.id}/excluir")
+
+        self.assertEqual(302, resposta.status_code)
+        self.assertIsNone(db.session.get(OperacaoAbastecimento, abastecimento.id))
+
     def test_operador_registra_abastecimento_em_veiculo_sem_vinculo(self):
         veiculo = self._criar_veiculo("SEM001", "VEICULO SEM RESPONSAVEL")
         self._liberar_usuario("abastecimento", visualizar=True, criar=True)
