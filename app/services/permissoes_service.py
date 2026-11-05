@@ -249,6 +249,15 @@ def usuario_eh_administrador(usuario):
     return False
 
 
+def usuario_eh_gestor(usuario):
+    """Retorna se o usuário ativo possui o perfil de Gestor."""
+    if not usuario or not getattr(usuario, "is_authenticated", False) or not getattr(usuario, "ativo", False):
+        return False
+
+    nivel_acesso = getattr(usuario, "nivel_acesso", None)
+    return bool(nivel_acesso and (nivel_acesso.slug or "").lower() == "gestor")
+
+
 def usuario_tem_permissao(usuario, departamento_slug, modulo_slug, acao="visualizar"):
     """
     Verifica se o usuário possui permissão para acessar uma ação em um módulo.
@@ -262,6 +271,16 @@ def usuario_tem_permissao(usuario, departamento_slug, modulo_slug, acao="visuali
         return False
 
     if usuario_eh_administrador(usuario):
+        return True
+
+    # Gestores podem consultar e gerir o histórico de abastecimento de toda a
+    # frota, sem receber permissões automáticas para outros módulos.
+    if (
+        departamento_slug == "operacao"
+        and modulo_slug == "abastecimento"
+        and acao in {"visualizar", "editar", "excluir"}
+        and usuario_eh_gestor(usuario)
+    ):
         return True
 
     acoes_validas = {
