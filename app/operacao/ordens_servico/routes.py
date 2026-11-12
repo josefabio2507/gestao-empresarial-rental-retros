@@ -4,7 +4,6 @@ from flask import flash, redirect, render_template, request, url_for, send_file
 from io import BytesIO
 from flask_login import current_user, login_required
 from sqlalchemy import or_
-from sqlalchemy.exc import SQLAlchemyError
 
 from app.decorators import module_permission_required
 from app.operacao.ordens_servico import ordens_servico_bp
@@ -42,7 +41,7 @@ from app.operacao.ordens_servico.circulacao_service import (
     criar_circulacao,
     editar_circulacao,
 )
-from app.operacao.ordens_servico.intervencoes_service import CATEGORIAS, IntervencaoErro, buscar_intervencao, consultar_intervencoes, criar_intervencao, editar_intervencao
+from app.operacao.ordens_servico.intervencoes_service import CATEGORIAS, INTERVENCOES_POR_CATEGORIA, IntervencaoErro, buscar_intervencao, consultar_intervencoes, criar_intervencao, editar_intervencao
 from app.operacao.ordens_servico.monitoramento_service import MonitoramentoErro, obter_monitoramento
 from app.services.logs_service import registrar_log
 from app.services.permissoes_service import usuario_tem_permissao
@@ -78,7 +77,7 @@ def index():
         for ordem in ordens:
             if not ordem.ativo:
                 progresso_por_os[ordem.id_os_interno] = 0
-            elif ordem.status_operacional == "Concluída" or ordem.data_final:
+            elif ordem.status_operacional == "Conclu�da" or ordem.data_final:
                 progresso_por_os[ordem.id_os_interno] = 100
             else:
                 total_dias = (ordem.data_programada_final - ordem.data_programada_inicial).days + 1
@@ -108,7 +107,7 @@ def index():
         pode_criar=usuario_tem_permissao(current_user, DEPARTAMENTO, MODULO, "criar"),
         pode_editar=usuario_tem_permissao(current_user, DEPARTAMENTO, MODULO, "editar"),
         equipes=Equipe.query.filter_by(ativo=True).order_by(Equipe.nome.asc()).all(),
-        status_operacionais=("Programada", "Em Andamento", "Concluída", "Cancelada"),
+        status_operacionais=("Programada", "Em Andamento", "Conclu�da", "Cancelada"),
     )
 
 
@@ -119,22 +118,22 @@ def ficha(id_os_interno):
     try:
         ordem = buscar_ordem_por_id(id_os_interno, current_user)
     except OrdemServicoConsultaErro as exc:
-        flash("Não foi possível consultar a Ordem de Serviço no momento.", "danger")
+        flash("N�o foi poss�vel consultar a Ordem de Servi�o no momento.", "danger")
         registrar_log("operacao_ordem_servico_consulta_falhou", str(exc))
         return redirect(url_for("ordens_servico.index"))
     if not ordem:
-        flash("Ordem de Serviço não encontrada ou sem identificação segura.", "warning")
+        flash("Ordem de Servi�o n�o encontrada ou sem identifica��o segura.", "warning")
         return redirect(url_for("ordens_servico.index"))
     try:
         monitoramento = obter_monitoramento(ordem.id_os_interno, current_user)
     except MonitoramentoErro as exc:
-        flash("Não foi possível consolidar o monitoramento da Ordem de Serviço no momento.", "warning")
+        flash("N�o foi poss�vel consolidar o monitoramento da Ordem de Servi�o no momento.", "warning")
         registrar_log("operacao_ordem_servico_monitoramento_falhou", str(exc))
         monitoramento = None
     if monitoramento:
         novo_status = ordem.status_operacional
         if ordem.data_final:
-            novo_status = "Concluída"
+            novo_status = "Conclu�da"
         elif ordem.data_inicial and monitoramento.total_apontamentos > 0:
             novo_status = "Em Andamento"
         if novo_status != ordem.status_operacional:
@@ -157,28 +156,6 @@ def ficha(id_os_interno):
     desvios_programacao = []
     programacao_dias = []
     if ordem.equipe and ordem.data_programada_inicial and ordem.data_programada_final:
-        primeiro_trabalho_antecipado = (
-            db.session.query(OperacaoApontamentoDiario.data_evento)
-            .join(OperacaoDiarioLocalizacao)
-            .filter(
-                OperacaoApontamentoDiario.id_os_interno == ordem.id_os_interno,
-                OperacaoApontamentoDiario.data_evento < ordem.data_programada_inicial,
-            )
-            .order_by(OperacaoApontamentoDiario.data_evento.asc())
-            .first()
-        )
-        inicio_cronograma = primeiro_trabalho_antecipado[0] if primeiro_trabalho_antecipado else ordem.data_programada_inicial
-        ultimo_trabalho_posterior = (
-            db.session.query(OperacaoApontamentoDiario.data_evento)
-            .join(OperacaoDiarioLocalizacao)
-            .filter(
-                OperacaoApontamentoDiario.id_os_interno == ordem.id_os_interno,
-                OperacaoApontamentoDiario.data_evento > ordem.data_programada_final,
-            )
-            .order_by(OperacaoApontamentoDiario.data_evento.desc())
-            .first()
-        )
-        fim_cronograma = ultimo_trabalho_posterior[0] if ultimo_trabalho_posterior else ordem.data_programada_final
         desvios_programacao = (
             db.session.query(
                 OperacaoApontamentoDiario.data_evento,
@@ -215,7 +192,7 @@ def ficha(id_os_interno):
                     OperacaoApontamentoDiario.id_os_interno == ordem.id_os_interno,
                     OperacaoApontamentoDiario.equipe == ordem.equipe,
                 ),
-                OperacaoApontamentoDiario.data_evento.between(inicio_cronograma, fim_cronograma),
+                OperacaoApontamentoDiario.data_evento.between(ordem.data_programada_inicial, ordem.data_programada_final),
                 OperacaoOrdemServico.ativo.is_(True),
             )
             .all()
@@ -223,28 +200,16 @@ def ficha(id_os_interno):
         por_data = {}
         for registro in registros_periodo:
             por_data.setdefault(registro.data_evento, []).append(registro)
-        nomes_dias = ("Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado", "Domingo")
+        nomes_dias = ("Segunda-feira", "Ter�a-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "S�bado", "Domingo")
         total_dias = (ordem.data_programada_final - ordem.data_programada_inicial).days + 1
         dias_trabalhados = 0
-        dias_antecipados = 0
-        dias_posteriores = 0
         dias_desvio = 0
-        cursor = inicio_cronograma
-        while cursor <= fim_cronograma:
+        cursor = ordem.data_programada_inicial
+        while cursor <= ordem.data_programada_final:
             registros_dia = por_data.get(cursor, [])
             proprio = next((item for item in registros_dia if item.id_os_interno == ordem.id_os_interno), None)
             outro = next((item for item in registros_dia if item.id_os_interno != ordem.id_os_interno), None)
-            if cursor < ordem.data_programada_inicial and proprio:
-                situacao, classe, observacao = "Trabalho antecipado nesta OS", "antecipado", "Executado antes do período programado"
-                dias_antecipados += 1
-            elif cursor < ordem.data_programada_inicial:
-                situacao, classe, observacao = "Sem registro antecipado", "sem-registro", "-"
-            elif cursor > ordem.data_programada_final and proprio:
-                situacao, classe, observacao = "Trabalho posterior nesta OS", "posterior", "Executado após o período programado"
-                dias_posteriores += 1
-            elif cursor > ordem.data_programada_final:
-                situacao, classe, observacao = "Sem registro posterior", "sem-registro", "-"
-            elif proprio:
+            if proprio:
                 situacao, classe, observacao = "Trabalhou nesta OS", "trabalhou", "-"
                 dias_trabalhados += 1
             elif outro:
@@ -258,9 +223,9 @@ def ficha(id_os_interno):
                 situacao, classe, observacao = "Sem registro", "sem-registro", "-"
             programacao_dias.append({"data": cursor, "dia_semana": nomes_dias[cursor.weekday()], "situacao": situacao, "classe": classe, "observacao": observacao})
             cursor += timedelta(days=1)
-        programacao_resumo = {"total_dias": total_dias, "dias_trabalhados": dias_trabalhados, "dias_antecipados": dias_antecipados, "dias_posteriores": dias_posteriores, "dias_desvio": dias_desvio, "dias_sem_registro": total_dias - dias_trabalhados - dias_desvio, "percentual": round((dias_trabalhados / total_dias) * 100) if total_dias else 0}
+        programacao_resumo = {"total_dias": total_dias, "dias_trabalhados": dias_trabalhados, "dias_desvio": dias_desvio, "dias_sem_registro": total_dias - dias_trabalhados - dias_desvio, "percentual": round((dias_trabalhados / total_dias) * 100) if total_dias else 0}
     else:
-        programacao_resumo = {"total_dias": 0, "dias_trabalhados": 0, "dias_antecipados": 0, "dias_posteriores": 0, "dias_desvio": 0, "dias_sem_registro": 0, "percentual": 0}
+        programacao_resumo = {"total_dias": 0, "dias_trabalhados": 0, "dias_desvio": 0, "dias_sem_registro": 0, "percentual": 0}
     return render_template(
         "operacao/ordens_servico/ficha.html",
         ordem=ordem,
@@ -279,36 +244,14 @@ def ficha(id_os_interno):
 def relatorio_pdf(id_os_interno):
     ordem = buscar_ordem_por_id(id_os_interno, current_user)
     if not ordem:
-        flash("Ordem de Serviço não encontrada.", "warning")
+        flash("Ordem de Servi�o n�o encontrada.", "warning")
         return redirect(url_for("ordens_servico.index"))
     monitoramento = obter_monitoramento(ordem.id_os_interno, current_user)
     registros = OperacaoApontamentoDiario.query.filter_by(id_os_interno=ordem.id_os_interno).all()
     controles = OperacaoControleLiberacao.query.filter_by(id_os_interno=ordem.id_os_interno).order_by(OperacaoControleLiberacao.data_evento).all()
     programacao_dias = []
-    programacao_resumo = {"total_dias": 0, "dias_trabalhados": 0, "dias_antecipados": 0, "dias_posteriores": 0, "dias_desvio": 0, "dias_sem_registro": 0, "percentual": 0}
+    programacao_resumo = {"total_dias": 0, "dias_trabalhados": 0, "dias_desvio": 0, "dias_sem_registro": 0, "percentual": 0}
     if ordem.equipe and ordem.data_programada_inicial and ordem.data_programada_final:
-        primeiro_trabalho_antecipado = (
-            db.session.query(OperacaoApontamentoDiario.data_evento)
-            .join(OperacaoDiarioLocalizacao)
-            .filter(
-                OperacaoApontamentoDiario.id_os_interno == ordem.id_os_interno,
-                OperacaoApontamentoDiario.data_evento < ordem.data_programada_inicial,
-            )
-            .order_by(OperacaoApontamentoDiario.data_evento.asc())
-            .first()
-        )
-        inicio_cronograma = primeiro_trabalho_antecipado[0] if primeiro_trabalho_antecipado else ordem.data_programada_inicial
-        ultimo_trabalho_posterior = (
-            db.session.query(OperacaoApontamentoDiario.data_evento)
-            .join(OperacaoDiarioLocalizacao)
-            .filter(
-                OperacaoApontamentoDiario.id_os_interno == ordem.id_os_interno,
-                OperacaoApontamentoDiario.data_evento > ordem.data_programada_final,
-            )
-            .order_by(OperacaoApontamentoDiario.data_evento.desc())
-            .first()
-        )
-        fim_cronograma = ultimo_trabalho_posterior[0] if ultimo_trabalho_posterior else ordem.data_programada_final
         registros_periodo = (
             db.session.query(
                 OperacaoApontamentoDiario.data_evento,
@@ -324,7 +267,7 @@ def relatorio_pdf(id_os_interno):
                     OperacaoApontamentoDiario.id_os_interno == ordem.id_os_interno,
                     OperacaoApontamentoDiario.equipe == ordem.equipe,
                 ),
-                OperacaoApontamentoDiario.data_evento.between(inicio_cronograma, fim_cronograma),
+                OperacaoApontamentoDiario.data_evento.between(ordem.data_programada_inicial, ordem.data_programada_final),
                 OperacaoOrdemServico.ativo.is_(True),
             )
             .all()
@@ -332,25 +275,15 @@ def relatorio_pdf(id_os_interno):
         por_data = {}
         for registro in registros_periodo:
             por_data.setdefault(registro.data_evento, []).append(registro)
-        nomes_dias = ("Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado", "Domingo")
+        nomes_dias = ("Segunda-feira", "Ter�a-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "S�bado", "Domingo")
         total_dias = (ordem.data_programada_final - ordem.data_programada_inicial).days + 1
-        dias_trabalhados = dias_antecipados = dias_posteriores = dias_desvio = 0
-        cursor = inicio_cronograma
-        while cursor <= fim_cronograma:
+        dias_trabalhados = dias_desvio = 0
+        cursor = ordem.data_programada_inicial
+        while cursor <= ordem.data_programada_final:
             registros_dia = por_data.get(cursor, [])
             proprio = next((item for item in registros_dia if item.id_os_interno == ordem.id_os_interno), None)
             outro = next((item for item in registros_dia if item.id_os_interno != ordem.id_os_interno), None)
-            if cursor < ordem.data_programada_inicial and proprio:
-                situacao, observacao = "Trabalho antecipado nesta OS", "Executado antes do período programado"
-                dias_antecipados += 1
-            elif cursor < ordem.data_programada_inicial:
-                situacao, observacao = "Sem registro antecipado", "-"
-            elif cursor > ordem.data_programada_final and proprio:
-                situacao, observacao = "Trabalho posterior nesta OS", "Executado após o período programado"
-                dias_posteriores += 1
-            elif cursor > ordem.data_programada_final:
-                situacao, observacao = "Sem registro posterior", "-"
-            elif proprio:
+            if proprio:
                 situacao, observacao = "Trabalhou nesta OS", "-"
                 dias_trabalhados += 1
             elif outro:
@@ -364,8 +297,6 @@ def relatorio_pdf(id_os_interno):
         programacao_resumo = {
             "total_dias": total_dias,
             "dias_trabalhados": dias_trabalhados,
-            "dias_antecipados": dias_antecipados,
-            "dias_posteriores": dias_posteriores,
             "dias_desvio": dias_desvio,
             "dias_sem_registro": total_dias - dias_trabalhados - dias_desvio,
             "percentual": round((dias_trabalhados / total_dias) * 100) if total_dias else 0,
@@ -404,40 +335,38 @@ def relatorio_pdf(id_os_interno):
     styles.add(ParagraphStyle(name="SummaryTableHeader", parent=styles["BodyText"], fontSize=7.5, leading=9, textColor=colors.white))
     story = []
     logo = Image("app/static/img/logo-rental-retros.png", width=28*mm, height=19*mm)
-    story.append(Table([[logo, Paragraph("FICHA DA ORDEM DE SERVIÇO", styles["BrandTitle"])]] , colWidths=[36*mm, 154*mm], rowHeights=[22*mm], style=TableStyle([["BACKGROUND", (0,0), (-1,-1), colors.HexColor("#082B4C")], ["VALIGN", (0,0), (-1,-1), "MIDDLE"], ["ALIGN", (0,0), (0,0), "CENTER"]])))
-    story.append(Paragraph("Relatório detalhado para impressão", styles["Section"]))
+    story.append(Table([[logo, Paragraph("FICHA DA ORDEM DE SERVI�O", styles["BrandTitle"])]] , colWidths=[36*mm, 154*mm], rowHeights=[22*mm], style=TableStyle([["BACKGROUND", (0,0), (-1,-1), colors.HexColor("#082B4C")], ["VALIGN", (0,0), (-1,-1), "MIDDLE"], ["ALIGN", (0,0), (0,0), "CENTER"]])))
+    story.append(Paragraph("Relat�rio detalhado para impress�o", styles["Section"]))
     def section(title, rows):
         tabela = Table([[Paragraph(f"<b>{label}</b>", styles["Small"]), Paragraph(str(value or "-"), styles["Small"])] for label, value in rows], colWidths=[52*mm, 138*mm], style=TableStyle([["GRID", (0,0), (-1,-1), 0.25, colors.HexColor("#B7C7D6")], ["BACKGROUND", (0,0), (0,-1), colors.HexColor("#EAF2F8")], ["VALIGN", (0,0), (-1,-1), "TOP"], ["LEFTPADDING", (0,0), (-1,-1), 5], ["RIGHTPADDING", (0,0), (-1,-1), 5], ["TOPPADDING", (0,0), (-1,-1), 4], ["BOTTOMPADDING", (0,0), (-1,-1), 4]]))
         story.append(KeepTogether([Paragraph(title, styles["Section"]), tabela]))
     fmt = lambda value: value.strftime("%d/%m/%Y") if value else "-"
     fmt_dt = lambda value: value.strftime("%d/%m/%Y %H:%M:%S") if value else "-"
     nome_usuario = lambda usuario: getattr(usuario, "nome", None) or getattr(usuario, "email", None) or "-"
-    section("1. Identificação", [("Código Rental", ordem.codigo_os_rental), ("OS do cliente", ordem.numero_os_cliente), ("Situação", ordem.status_identificacao), ("ID interno", ordem.id_os_interno), ("Cadastrada em", fmt_dt(ordem.criado_em)), ("Cadastrada por", nome_usuario(ordem.criado_por))])
-    section("2. Programação e execução", [("Local", ordem.local), ("Equipe", ordem.equipe), ("Trabalho previsto", ordem.trabalho_previsto), ("Programação", f"{fmt(ordem.data_programada_inicial)} a {fmt(ordem.data_programada_final)}"), ("Datas realizadas", f"{fmt(ordem.data_inicial)} a {fmt(ordem.data_final)}"), ("Status", ordem.status_operacional), ("Supervisor", ordem.supervisor), ("Encarregado", ordem.encarregado)])
+    section("1. Identifica��o", [("C�digo Rental", ordem.codigo_os_rental), ("OS do cliente", ordem.numero_os_cliente), ("Situa��o", ordem.status_identificacao), ("ID interno", ordem.id_os_interno), ("Cadastrada em", fmt_dt(ordem.criado_em)), ("Cadastrada por", nome_usuario(ordem.criado_por))])
+    section("2. Programa��o e execu��o", [("Local", ordem.local), ("Equipe", ordem.equipe), ("Trabalho previsto", ordem.trabalho_previsto), ("Programa��o", f"{fmt(ordem.data_programada_inicial)} a {fmt(ordem.data_programada_final)}"), ("Datas realizadas", f"{fmt(ordem.data_inicial)} a {fmt(ordem.data_final)}"), ("Status", ordem.status_operacional), ("Supervisor", ordem.supervisor), ("Encarregado", ordem.encarregado)])
     if programacao_dias:
-        story.append(Paragraph("3. Cronograma da Ordem de Serviço", styles["Section"]))
+        story.append(Paragraph("3. Cronograma da Ordem de Servi�o", styles["Section"]))
         resumo_cronograma = [
-            [Paragraph("<b>Progresso de execução</b>", styles["Small"]), Paragraph(f"{programacao_resumo['dias_trabalhados']} de {programacao_resumo['total_dias']} dias ({programacao_resumo['percentual']}%)", styles["Small"])],
+            [Paragraph("<b>Progresso de execu��o</b>", styles["Small"]), Paragraph(f"{programacao_resumo['dias_trabalhados']} de {programacao_resumo['total_dias']} dias ({programacao_resumo['percentual']}%)", styles["Small"])],
             [Paragraph("Dias em outra OS", styles["Small"]), Paragraph(str(programacao_resumo["dias_desvio"]), styles["Small"])],
-            [Paragraph("Dias trabalhados antecipadamente", styles["Small"]), Paragraph(str(programacao_resumo["dias_antecipados"]), styles["Small"])],
-            [Paragraph("Dias trabalhados após o prazo", styles["Small"]), Paragraph(str(programacao_resumo["dias_posteriores"]), styles["Small"])],
             [Paragraph("Dias sem registro", styles["Small"]), Paragraph(str(programacao_resumo["dias_sem_registro"]), styles["Small"])],
         ]
         story.append(Table(resumo_cronograma, colWidths=[52*mm, 138*mm], style=TableStyle([["GRID", (0,0), (-1,-1), 0.25, colors.HexColor("#B7C7D6")], ["BACKGROUND", (0,0), (0,-1), colors.HexColor("#EAF2F8")], ["VALIGN", (0,0), (-1,-1), "MIDDLE"], ["LEFTPADDING", (0,0), (-1,-1), 5], ["RIGHTPADDING", (0,0), (-1,-1), 5], ["TOPPADDING", (0,0), (-1,-1), 4], ["BOTTOMPADDING", (0,0), (-1,-1), 4]])))
         preenchido = 190 * programacao_resumo["percentual"] / 100
         story.append(Spacer(1, 3*mm))
         story.append(Table([["", ""]], colWidths=[preenchido, 190 - preenchido], rowHeights=[4*mm], style=TableStyle([["BACKGROUND", (0,0), (0,0), colors.HexColor("#16836D")], ["BACKGROUND", (1,0), (1,0), colors.HexColor("#DCE5EC")], ["BOX", (0,0), (-1,-1), 0.25, colors.HexColor("#B7C7D6")]])))
-        cronograma = [["Data", "Dia da semana", "Situação", "Observação"]] + [[fmt(data), dia, situacao, observacao] for data, dia, situacao, observacao in programacao_dias]
+        cronograma = [["Data", "Dia da semana", "Situa��o", "Observa��o"]] + [[fmt(data), dia, situacao, observacao] for data, dia, situacao, observacao in programacao_dias]
         cronograma = [[Paragraph(str(celula), styles["TableHeader"] if indice == 0 else styles["TableSmall"]) for celula in linha] for indice, linha in enumerate(cronograma)]
         story.append(Spacer(1, 3*mm))
         story.append(Table(cronograma, colWidths=[25*mm, 35*mm, 39*mm, 91*mm], repeatRows=1, style=TableStyle([["BACKGROUND", (0,0), (-1,0), colors.HexColor("#0B477D")], ["TEXTCOLOR", (0,0), (-1,0), colors.white], ["GRID", (0,0), (-1,-1), 0.25, colors.HexColor("#B7C7D6")], ["VALIGN", (0,0), (-1,-1), "TOP"]])))
-    section("4. Monitoramento", [("Localizações", monitoramento.localizacoes), ("Serviços", monitoramento.servicos), ("Materiais", monitoramento.materiais), ("Jornada total", monitoramento.total_jornada), ("Tempo improdutivo", monitoramento.tempo_improdutivo), ("Tempo produtivo", monitoramento.percentual_tempo_produtivo), ("Controles de liberação", monitoramento.total_controle_liberacao), ("Circulação de trens", monitoramento.total_circulacao), ("Intervenções adversas", monitoramento.total_intervencao), ("Último apontamento", fmt(monitoramento.ultimo_apontamento))])
-    story.append(Paragraph("5. Serviços realizados", styles["Section"]))
-    servicos_tabela = [["Serviço", "Total"]] + [[nome, f"{float(total):.2f}".replace('.', ',')] for nome, total in sorted(servicos.items())] or [["Nenhum serviço registrado", "-"]]
+    section("4. Monitoramento", [("Localiza��es", monitoramento.localizacoes), ("Servi�os", monitoramento.servicos), ("Materiais", monitoramento.materiais), ("Jornada total", monitoramento.total_jornada), ("Tempo improdutivo", monitoramento.tempo_improdutivo), ("Tempo produtivo", monitoramento.percentual_tempo_produtivo), ("Controles de libera��o", monitoramento.total_controle_liberacao), ("Circula��o de trens", monitoramento.total_circulacao), ("Interven��es adversas", monitoramento.total_intervencao), ("�ltimo apontamento", fmt(monitoramento.ultimo_apontamento))])
+    story.append(Paragraph("5. Servi�os realizados", styles["Section"]))
+    servicos_tabela = [["Servi�o", "Total"]] + [[nome, f"{float(total):.2f}".replace('.', ',')] for nome, total in sorted(servicos.items())] or [["Nenhum servi�o registrado", "-"]]
     servicos_tabela = [[Paragraph(str(celula), styles["SummaryTableHeader"] if i == 0 else styles["SummaryTableSmall"]) for celula in linha] for i, linha in enumerate(servicos_tabela)]
     story.append(Table(servicos_tabela, colWidths=[150*mm, 40*mm], style=TableStyle([["BACKGROUND", (0,0), (-1,0), colors.HexColor("#0B477D")], ["TEXTCOLOR", (0,0), (-1,0), colors.white], ["GRID", (0,0), (-1,-1), 0.25, colors.HexColor("#B7C7D6")], ["ALIGN", (1,1), (1,-1), "RIGHT"]])))
     story.append(Paragraph("6. Materiais aplicados", styles["Section"]))
-    materiais_tabela = [["Material", "Condição", "Total"]] + [[nome, tipo, f"{float(total):.2f}".replace('.', ',')] for (nome, tipo), total in sorted(materiais.items())] or [["Nenhum material registrado", "-", "-"]]
+    materiais_tabela = [["Material", "Condi��o", "Total"]] + [[nome, tipo, f"{float(total):.2f}".replace('.', ',')] for (nome, tipo), total in sorted(materiais.items())] or [["Nenhum material registrado", "-", "-"]]
     materiais_tabela = [[Paragraph(str(celula), styles["SummaryTableHeader"] if i == 0 else styles["SummaryTableSmall"]) for celula in linha] for i, linha in enumerate(materiais_tabela)]
     story.append(Table(materiais_tabela, colWidths=[100*mm, 55*mm, 35*mm], style=TableStyle([["BACKGROUND", (0,0), (-1,0), colors.HexColor("#0B477D")], ["TEXTCOLOR", (0,0), (-1,0), colors.white], ["GRID", (0,0), (-1,-1), 0.25, colors.HexColor("#B7C7D6")], ["ALIGN", (2,1), (2,-1), "RIGHT"]])))
     def tabela_detalhes(titulo, cabecalho, linhas, larguras):
@@ -452,21 +381,25 @@ def relatorio_pdf(id_os_interno):
         return total + 86400 if total < 0 else total
     def duracao_formatada(segundos):
         return f"{segundos // 3600:02d}:{(segundos % 3600) // 60:02d}:{segundos % 60:02d}"
+    auditoria = [["Ordem de Servi�o", fmt_dt(ordem.criado_em), nome_usuario(ordem.criado_por)]]
+    auditoria += [["Apontamento di�rio", fmt_dt(registro.criado_em), nome_usuario(registro.criado_por)] for registro in registros]
+    auditoria += [["Controle de libera��o", fmt_dt(controle.criado_em), nome_usuario(controle.criado_por)] for controle in controles]
+    tabela_detalhes("7. Auditoria dos registros", ["Registro", "Data e hora do cadastro", "Usu�rio respons�vel"], auditoria, [58*mm, 55*mm, 77*mm])
     localizacoes = [registro.diario_localizacao for registro in registros if registro.diario_localizacao]
-    tabela_detalhes("7. Registros de apontamentos de localização", ["Data", "Local", "Equipe", "Encarregado", "Jornada"], [[fmt(registro.apontamento.data_evento), registro.local, registro.apontamento.equipe, registro.encarregado, registro.total_jornada] for registro in localizacoes], [26*mm, 43*mm, 38*mm, 53*mm, 30*mm])
+    tabela_detalhes("8. Registros de apontamentos de localiza��o", ["Data", "Local", "Equipe", "Encarregado", "Jornada"], [[fmt(registro.apontamento.data_evento), registro.local, registro.apontamento.equipe, registro.encarregado, registro.total_jornada] for registro in localizacoes], [26*mm, 43*mm, 38*mm, 53*mm, 30*mm])
     total_controles = sum(segundos_horario(controle.pedido_liberacao_ccp, controle.termino_embandeiramento) for controle in controles)
-    tabela_detalhes("8. Registros de controles de liberação", ["Data", "Pedido CCP", "Embandeiramento", "Término", "Duração"], [[fmt(controle.data_evento), str(controle.pedido_liberacao_ccp or "-"), str(controle.liberacao_embandeiramento or "-"), str(controle.termino_embandeiramento or "-"), duracao_formatada(segundos_horario(controle.pedido_liberacao_ccp, controle.termino_embandeiramento))] for controle in controles] + [["TOTAL", "", "", "", duracao_formatada(total_controles)]], [27*mm, 30*mm, 42*mm, 30*mm, 61*mm])
+    tabela_detalhes("9. Registros de controles de libera��o", ["Data", "Pedido CCP", "Embandeiramento", "T�rmino", "Dura��o"], [[fmt(controle.data_evento), str(controle.pedido_liberacao_ccp or "-"), str(controle.liberacao_embandeiramento or "-"), str(controle.termino_embandeiramento or "-"), duracao_formatada(segundos_horario(controle.pedido_liberacao_ccp, controle.termino_embandeiramento))] for controle in controles] + [["TOTAL", "", "", "", duracao_formatada(total_controles)]], [27*mm, 30*mm, 42*mm, 30*mm, 61*mm])
     circulacoes = [registro.circulacao_trem for registro in registros if registro.circulacao_trem]
     total_circulacoes = sum(segundos_horario(registro.hora_inicio, registro.hora_fim) for registro in circulacoes)
-    tabela_detalhes("9. Registros de circulação de trens", ["Data", "Prefixo", "Início", "Fim", "Via/Linha", "Duração"], [[fmt(registro.apontamento.data_evento), registro.prefixo or "-", str(registro.hora_inicio or "-"), str(registro.hora_fim or "-"), registro.via_linha or "-", duracao_formatada(segundos_horario(registro.hora_inicio, registro.hora_fim))] for registro in circulacoes] + [["TOTAL", "", "", "", "", duracao_formatada(total_circulacoes)]], [25*mm, 28*mm, 24*mm, 24*mm, 55*mm, 34*mm])
+    tabela_detalhes("10. Registros de circula��o de trens", ["Data", "Prefixo", "In�cio", "Fim", "Via/Linha", "Dura��o"], [[fmt(registro.apontamento.data_evento), registro.prefixo or "-", str(registro.hora_inicio or "-"), str(registro.hora_fim or "-"), registro.via_linha or "-", duracao_formatada(segundos_horario(registro.hora_inicio, registro.hora_fim))] for registro in circulacoes] + [["TOTAL", "", "", "", "", duracao_formatada(total_circulacoes)]], [25*mm, 28*mm, 24*mm, 24*mm, 55*mm, 34*mm])
     intervencoes = [registro.intervencao_adversa for registro in registros if registro.intervencao_adversa]
     total_intervencoes = sum(segundos_horario(registro.hora_inicio, registro.hora_fim) for registro in intervencoes)
-    tabela_detalhes("9. Registros de intervenções adversas", ["Data", "Categoria", "Intervenção", "Início", "Fim", "Duração"], [[fmt(registro.apontamento.data_evento), registro.categoria or "-", registro.intervencao or "-", str(registro.hora_inicio or "-"), str(registro.hora_fim or "-"), duracao_formatada(segundos_horario(registro.hora_inicio, registro.hora_fim))] for registro in intervencoes] + [["TOTAL", "", "", "", "", duracao_formatada(total_intervencoes)]], [24*mm, 39*mm, 62*mm, 20*mm, 20*mm, 25*mm])
-    story.append(Paragraph("10. Pré-checagem para fechamento", styles["Section"]))
-    for item in ["Identificação da OS do cliente informada.", "Equipe e encarregado responsáveis definidos.", "Jornada de trabalho completa, sem registro em aberto.", "Controles de liberação com campos obrigatórios preenchidos.", "Circulações de trens com hora de início e fim.", "Intervenções adversas com horários completos quando informados.", "Data final realizada somente após a data inicial."]:
-        story.append(Paragraph("• " + item, styles["Small"]))
+    tabela_detalhes("10. Registros de interven��es adversas", ["Data", "Categoria", "Interven��o", "Observa��es", "In�cio", "Fim", "Dura��o"], [[fmt(registro.apontamento.data_evento), registro.categoria or "-", registro.intervencao or "-", registro.observacoes or "-", str(registro.hora_inicio or "-"), str(registro.hora_fim or "-"), duracao_formatada(segundos_horario(registro.hora_inicio, registro.hora_fim))] for registro in intervencoes] + [["TOTAL", "", "", "", "", "", duracao_formatada(total_intervencoes)]], [20*mm, 32*mm, 48*mm, 45*mm, 17*mm, 17*mm, 21*mm])
+    story.append(Paragraph("11. Pr�-checagem para fechamento", styles["Section"]))
+    for item in ["Identifica��o da OS do cliente informada.", "Equipe e encarregado respons�veis definidos.", "Jornada de trabalho completa, sem registro em aberto.", "Controles de libera��o com campos obrigat�rios preenchidos.", "Circula��es de trens com hora de in�cio e fim.", "Interven��es adversas com hor�rios completos quando informados.", "Data final realizada somente ap�s a data inicial."]:
+        story.append(Paragraph(" " + item, styles["Small"]))
     def footer(canvas, doc):
-        canvas.saveState(); canvas.setStrokeColor(colors.HexColor("#D0DCE6")); canvas.line(10*mm, 10*mm, 200*mm, 10*mm); canvas.setFont("Helvetica", 8); canvas.setFillColor(colors.HexColor("#5B6B78")); canvas.drawString(10*mm, 5*mm, "Rental Retros - Gestão Empresarial"); canvas.drawRightString(200*mm, 5*mm, f"Página {doc.page}"); canvas.restoreState()
+        canvas.saveState(); canvas.setStrokeColor(colors.HexColor("#D0DCE6")); canvas.line(10*mm, 10*mm, 200*mm, 10*mm); canvas.setFont("Helvetica", 8); canvas.setFillColor(colors.HexColor("#5B6B78")); canvas.drawString(10*mm, 5*mm, "Rental Retros - Gest�o Empresarial"); canvas.drawRightString(200*mm, 5*mm, f"P�gina {doc.page}"); canvas.restoreState()
     doc.build(story, onFirstPage=footer, onLaterPages=footer)
     buffer.seek(0)
     return send_file(buffer, mimetype="application/pdf", as_attachment=True, download_name=f"relatorio_{ordem.codigo_os_rental or ordem.id_os_interno}.pdf")
@@ -513,10 +446,10 @@ def localizacao(id_os_interno):
     try:
         ordem = buscar_ordem_por_id(id_os_interno, current_user)
     except OrdemServicoConsultaErro:
-        flash("Não foi possível consultar a Ordem de Serviço no momento.", "danger")
+        flash("N�o foi poss�vel consultar a Ordem de Servi�o no momento.", "danger")
         return redirect(url_for("ordens_servico.index"))
     if not ordem:
-        flash("Ordem de Serviço não encontrada ou sem identificação segura.", "warning")
+        flash("Ordem de Servi�o n�o encontrada ou sem identifica��o segura.", "warning")
         return redirect(url_for("ordens_servico.index"))
     if request.method == "POST":
         if not usuario_tem_permissao(current_user, DEPARTAMENTO, MODULO, "criar"):
@@ -528,11 +461,11 @@ def localizacao(id_os_interno):
                 dados, id_os_interno, request.form.get("chave_idempotencia"), current_user
             )
         except LocalizacaoErro as exc:
-            registrar_log("operacao_localizacao_gravacao_falhou", f"Falha ao registrar localização para OS {id_os_interno}.")
+            registrar_log("operacao_localizacao_gravacao_falhou", f"Falha ao registrar localiza��o para OS {id_os_interno}.")
             flash(str(exc), "danger")
         else:
             acao = "recuperado" if repetido else "criado"
-            flash(f"Apontamento de Localização {acao} com sucesso.", "success")
+            flash(f"Apontamento de Localiza��o {acao} com sucesso.", "success")
             return redirect(url_for("ordens_servico.localizacao", id_os_interno=id_os_interno))
     try:
         apontamentos = consultar_apontamentos(id_os_interno, current_user)
@@ -544,7 +477,7 @@ def localizacao(id_os_interno):
         "operacao/ordens_servico/localizacao.html",
         ordem=ordem,
         apontamentos=apontamentos,
-        opcoes_localizacao={**OPCOES, "chefe_boletim": tuple(c.nome for c in Colaborador.query.filter(Colaborador.ativo.is_(True), Colaborador.funcao == "CHEFE DE BOLETIM").order_by(Colaborador.nome).all())},
+        opcoes_localizacao={**OPCOES, "chefe_boletim": tuple(c.nome for c in OperacaoChefeBoletim.query.filter_by(ativo=True).order_by(OperacaoChefeBoletim.nome).all())},
         dados_localizacao=request.form.to_dict() if request.method == "POST" else _dados_formulario_localizacao(ordem),
         apontamento_edicao=None,
         controles_liberacao=OperacaoControleLiberacao.query.filter_by(id_os_interno=ordem.id_os_interno).order_by(OperacaoControleLiberacao.data_evento.desc(), OperacaoControleLiberacao.id.desc()).limit(3).all(),
@@ -566,7 +499,7 @@ def editar_localizacao(id_os_interno, id_apontamento_diario):
         flash(str(exc), "danger")
         return redirect(url_for("ordens_servico.localizacao", id_os_interno=id_os_interno))
     if not ordem:
-        flash("Ordem de Serviço não encontrada.", "warning")
+        flash("Ordem de Servi�o n�o encontrada.", "warning")
         return redirect(url_for("ordens_servico.index"))
     if request.method == "POST":
         try:
@@ -577,7 +510,7 @@ def editar_localizacao(id_os_interno, id_apontamento_diario):
         except LocalizacaoErro as exc:
             flash(str(exc), "danger")
         else:
-            flash("Apontamento de Localização atualizado com sucesso.", "success")
+            flash("Apontamento de Localiza��o atualizado com sucesso.", "success")
             return redirect(url_for("ordens_servico.localizacao", id_os_interno=id_os_interno))
     try:
         apontamentos = consultar_apontamentos(id_os_interno, current_user)
@@ -587,7 +520,7 @@ def editar_localizacao(id_os_interno, id_apontamento_diario):
         "operacao/ordens_servico/localizacao.html",
         ordem=ordem,
         apontamentos=apontamentos,
-        opcoes_localizacao={**OPCOES, "chefe_boletim": tuple(c.nome for c in Colaborador.query.filter(Colaborador.ativo.is_(True), Colaborador.funcao == "CHEFE DE BOLETIM").order_by(Colaborador.nome).all())},
+        opcoes_localizacao={**OPCOES, "chefe_boletim": tuple(c.nome for c in OperacaoChefeBoletim.query.filter_by(ativo=True).order_by(OperacaoChefeBoletim.nome).all())},
         dados_localizacao=request.form.to_dict() if request.method == "POST" else _dados_formulario_localizacao(ordem, apontamento),
         apontamento_edicao=apontamento,
         controles_liberacao=OperacaoControleLiberacao.query.filter_by(id_os_interno=ordem.id_os_interno).order_by(OperacaoControleLiberacao.data_evento.desc(), OperacaoControleLiberacao.id.desc()).limit(3).all(),
@@ -616,10 +549,10 @@ def controles_liberacao(id_os_interno):
             alvo = registro_edicao or OperacaoControleLiberacao(id_os_interno=ordem.id_os_interno, criado_por_usuario_id=current_user.id)
             alvo.data_evento = data_evento; alvo.pedido_liberacao_ccp = horario("pedido_liberacao_ccp"); alvo.liberacao_embandeiramento = horario("liberacao_embandeiramento"); alvo.termino_embandeiramento = horario("termino_embandeiramento")
             db.session.add(alvo)
-            db.session.commit(); flash("Controle de liberação cadastrado.", "success")
+            db.session.commit(); flash("Controle de libera��o cadastrado.", "success")
             return redirect(url_for("ordens_servico.controles_liberacao", id_os_interno=id_os_interno))
         except (ValueError, TypeError):
-            db.session.rollback(); flash("Informe uma data válida.", "danger")
+            db.session.rollback(); flash("Informe uma data v�lida.", "danger")
     controles = OperacaoControleLiberacao.query.filter_by(id_os_interno=ordem.id_os_interno).order_by(OperacaoControleLiberacao.data_evento.desc(), OperacaoControleLiberacao.id.desc()).all()
     return render_template("operacao/ordens_servico/controles_liberacao.html", ordem=ordem, controles=controles, data_evento_inicial=registro_edicao.data_evento.isoformat() if registro_edicao else request.args.get("data_evento", ""), registro_edicao=registro_edicao)
 
@@ -630,7 +563,7 @@ def controles_liberacao(id_os_interno):
 def excluir_controle_liberacao(id_os_interno, controle_id):
     registro = db.session.get(OperacaoControleLiberacao, controle_id)
     if registro and registro.id_os_interno == id_os_interno:
-        db.session.delete(registro); db.session.commit(); flash("Controle excluído.", "success")
+        db.session.delete(registro); db.session.commit(); flash("Controle exclu�do.", "success")
     return redirect(url_for("ordens_servico.controles_liberacao", id_os_interno=id_os_interno))
 
 
@@ -642,7 +575,7 @@ def chefes_boletim():
         matricula = (request.form.get("matricula") or "").strip().upper()
         nome = (request.form.get("nome") or "").strip().upper()
         if not matricula or not nome:
-            flash("Informe matrícula e nome.", "danger")
+            flash("Informe matr�cula e nome.", "danger")
         else:
             registro = OperacaoChefeBoletim.query.filter_by(matricula=matricula).first()
             if registro is None:
@@ -665,7 +598,7 @@ def servicos_catalogo():
         editar_id = request.form.get("editar_id")
         if nome:
             registro = db.session.get(OperacaoServicoCatalogo, int(editar_id)) if editar_id and editar_id.isdigit() else OperacaoServicoCatalogo.query.filter_by(nome=nome).first() or OperacaoServicoCatalogo(nome=nome)
-            registro.ativo = True; db.session.add(registro); db.session.commit(); flash("Serviço cadastrado.", "success")
+            registro.ativo = True; db.session.add(registro); db.session.commit(); flash("Servi�o cadastrado.", "success")
     return render_template("operacao/ordens_servico/servicos_catalogo.html", servicos=OperacaoServicoCatalogo.query.order_by(OperacaoServicoCatalogo.nome).all())
 
 
@@ -726,10 +659,10 @@ def _render_diario(id_os_interno, diario, apontamento_edicao=None):
     try:
         ordem = buscar_ordem_por_id(id_os_interno, current_user)
     except OrdemServicoConsultaErro:
-        flash("Não foi possível consultar a Ordem de Serviço no momento.", "danger")
+        flash("N�o foi poss�vel consultar a Ordem de Servi�o no momento.", "danger")
         return redirect(url_for("ordens_servico.index"))
     if not ordem:
-        flash("Ordem de Serviço não encontrada ou sem identificação segura.", "warning")
+        flash("Ordem de Servi�o n�o encontrada ou sem identifica��o segura.", "warning")
         return redirect(url_for("ordens_servico.index"))
     if request.method == "POST":
         try:
@@ -790,58 +723,6 @@ def editar_diario_producao(id_os_interno, diario, id_apontamento_diario):
     return _render_diario(id_os_interno, diario, apontamento)
 
 
-_APONTAMENTOS_EXCLUIVEIS = {
-    "localizacao": ("diario_localizacao", "Localização", "ordens_servico.localizacao"),
-    "servico": ("diario_servico", "Serviço", "ordens_servico.servicos"),
-    "material": ("diario_material", "Material", "ordens_servico.materiais"),
-    "circulacao": ("circulacao_trem", "Circulação de Trens", "ordens_servico.circulacao"),
-    "intervencao": ("intervencao_adversa", "Intervenção Adversa", "ordens_servico.intervencoes"),
-}
-
-
-@ordens_servico_bp.route("/<string:id_os_interno>/apontamentos/<string:tipo>/<string:id_apontamento_diario>/excluir", methods=["POST"])
-@login_required
-@module_permission_required(DEPARTAMENTO, MODULO, "editar")
-def excluir_apontamento_diario(id_os_interno, tipo, id_apontamento_diario):
-    configuracao = _APONTAMENTOS_EXCLUIVEIS.get(tipo)
-    if not configuracao:
-        return redirect(url_for("ordens_servico.ficha", id_os_interno=id_os_interno))
-    relacionamento, nome, endpoint = configuracao
-    apontamento = OperacaoApontamentoDiario.query.filter_by(
-        id_apontamento_diario=id_apontamento_diario,
-        id_os_interno=id_os_interno,
-    ).first()
-    registro = getattr(apontamento, relacionamento, None) if apontamento else None
-    if not registro:
-        flash(f"Apontamento de {nome} não encontrado para esta Ordem de Serviço.", "warning")
-        return redirect(url_for(endpoint, id_os_interno=id_os_interno))
-    if tipo == "localizacao" and OperacaoControleLiberacao.query.filter_by(
-        id_os_interno=id_os_interno,
-        data_evento=apontamento.data_evento,
-    ).first():
-        flash(
-            "Não é possível excluir a Localização enquanto houver Controle de Liberação "
-            "registrado para esta OS na mesma data.",
-            "warning",
-        )
-        return redirect(url_for(endpoint, id_os_interno=id_os_interno))
-    try:
-        db.session.delete(registro)
-        db.session.delete(apontamento)
-        db.session.commit()
-    except SQLAlchemyError:
-        db.session.rollback()
-        flash(f"Não foi possível excluir o apontamento de {nome}.", "danger")
-    else:
-        registrar_log(
-            f"operacao_{tipo}_excluido",
-            f"Apontamento de {nome} {id_apontamento_diario} excluído da OS {id_os_interno}.",
-            usuario=current_user,
-        )
-        flash(f"Apontamento de {nome} excluído com sucesso.", "success")
-    return redirect(url_for(endpoint, id_os_interno=id_os_interno))
-
-
 def _dados_formulario_circulacao(ordem, apontamento=None):
     if not apontamento:
         return {"equipe": ordem.equipe or ""}
@@ -871,12 +752,12 @@ def _render_circulacao(id_os_interno, apontamento_edicao=None):
                 editar_circulacao(request.form.to_dict(), id_os_interno, apontamento_edicao.id_apontamento_diario, request.form.get("versao"), current_user)
             else:
                 _, repetido = criar_circulacao(request.form.to_dict(), id_os_interno, request.form.get("chave_idempotencia"), current_user)
-                flash(f"Circulação de Trens {'recuperada' if repetido else 'criada'} com sucesso.", "success")
+                flash(f"Circula��o de Trens {'recuperada' if repetido else 'criada'} com sucesso.", "success")
                 return redirect(url_for("ordens_servico.circulacao", id_os_interno=id_os_interno))
         except CirculacaoErro as exc:
             flash(str(exc), "danger")
         else:
-            flash("Circulação de Trens atualizada com sucesso.", "success")
+            flash("Circula��o de Trens atualizada com sucesso.", "success")
             return redirect(url_for("ordens_servico.circulacao", id_os_interno=id_os_interno))
     try:
         apontamentos, erro_consulta = consultar_circulacoes(id_os_interno, current_user), None
@@ -913,13 +794,13 @@ def _render_intervencoes(id_os_interno, apontamento_edicao=None):
             if apontamento_edicao: editar_intervencao(request.form.to_dict(), id_os_interno, apontamento_edicao.id_apontamento_diario, request.form.get("versao"), current_user)
             else:
                 _, repetido = criar_intervencao(request.form.to_dict(), id_os_interno, request.form.get("chave_idempotencia"), current_user)
-                flash(f"Intervenção adversa {'recuperada' if repetido else 'criada'} com sucesso.", "success"); return redirect(url_for("ordens_servico.intervencoes", id_os_interno=id_os_interno))
+                flash(f"Interven��o adversa {'recuperada' if repetido else 'criada'} com sucesso.", "success"); return redirect(url_for("ordens_servico.intervencoes", id_os_interno=id_os_interno))
         except IntervencaoErro as exc: flash(str(exc), "danger")
-        else: flash("Intervenção adversa atualizada com sucesso.", "success"); return redirect(url_for("ordens_servico.intervencoes", id_os_interno=id_os_interno))
+        else: flash("Interven��o adversa atualizada com sucesso.", "success"); return redirect(url_for("ordens_servico.intervencoes", id_os_interno=id_os_interno))
     try: apontamentos, erro = consultar_intervencoes(id_os_interno, current_user), None
     except IntervencaoErro as exc: apontamentos, erro = [], str(exc)
-    dados = request.form.to_dict() if request.method == "POST" else ({"data_evento": apontamento_edicao.data_evento.isoformat(), "equipe": apontamento_edicao.equipe, "hora_inicio": apontamento_edicao.intervencao_adversa.hora_inicio.strftime("%H:%M") if apontamento_edicao and apontamento_edicao.intervencao_adversa.hora_inicio else "", "hora_fim": apontamento_edicao.intervencao_adversa.hora_fim.strftime("%H:%M") if apontamento_edicao and apontamento_edicao.intervencao_adversa.hora_fim else "", "intervencao": apontamento_edicao.intervencao_adversa.intervencao, "categoria": apontamento_edicao.intervencao_adversa.categoria} if apontamento_edicao else {"equipe": ordem.equipe or ""})
-    return render_template("operacao/ordens_servico/intervencoes.html", ordem=ordem, apontamentos=apontamentos, apontamento_edicao=apontamento_edicao, dados=dados, opcoes_equipe=OPCOES["equipe"], categorias=CATEGORIAS, chave_idempotencia=str(uuid.uuid4()), erro_consulta=erro, pode_criar=usuario_tem_permissao(current_user, DEPARTAMENTO, MODULO, "criar"), pode_editar=usuario_tem_permissao(current_user, DEPARTAMENTO, MODULO, "editar"))
+    dados = request.form.to_dict() if request.method == "POST" else ({"data_evento": apontamento_edicao.data_evento.isoformat(), "equipe": apontamento_edicao.equipe, "hora_inicio": apontamento_edicao.intervencao_adversa.hora_inicio.strftime("%H:%M") if apontamento_edicao and apontamento_edicao.intervencao_adversa.hora_inicio else "", "hora_fim": apontamento_edicao.intervencao_adversa.hora_fim.strftime("%H:%M") if apontamento_edicao and apontamento_edicao.intervencao_adversa.hora_fim else "", "intervencao": apontamento_edicao.intervencao_adversa.intervencao, "categoria": apontamento_edicao.intervencao_adversa.categoria, "observacoes": apontamento_edicao.intervencao_adversa.observacoes or ""} if apontamento_edicao else {"equipe": ordem.equipe or ""})
+    return render_template("operacao/ordens_servico/intervencoes.html", ordem=ordem, apontamentos=apontamentos, apontamento_edicao=apontamento_edicao, dados=dados, opcoes_equipe=OPCOES["equipe"], categorias=CATEGORIAS, intervencoes_por_categoria=INTERVENCOES_POR_CATEGORIA, chave_idempotencia=str(uuid.uuid4()), erro_consulta=erro, pode_criar=usuario_tem_permissao(current_user, DEPARTAMENTO, MODULO, "criar"), pode_editar=usuario_tem_permissao(current_user, DEPARTAMENTO, MODULO, "editar"))
 
 
 @ordens_servico_bp.route("/<string:id_os_interno>/intervencoes", methods=["GET", "POST"])
@@ -950,15 +831,15 @@ def nova():
             flash(str(exc), "danger")
         else:
             acao = "recuperada" if reutilizada else "criada"
-            flash(f"Ordem de Serviço {ordem.codigo_os_rental} {acao} com sucesso.", "success")
+            flash(f"Ordem de Servi�o {ordem.codigo_os_rental} {acao} com sucesso.", "success")
             return redirect(url_for("ordens_servico.ficha", id_os_interno=ordem.id_os_interno))
     return render_template(
         "operacao/ordens_servico/form.html",
         dados=dados,
         chave_idempotencia=chave_idempotencia,
         equipes=Equipe.query.filter_by(ativo=True).order_by(Equipe.nome.asc()).all(),
-        supervisores=Colaborador.query.filter(Colaborador.ativo.is_(True), Colaborador.funcao == "SUPERVISOR").order_by(Colaborador.nome.asc()).all(),
-        encarregados=Colaborador.query.filter(Colaborador.ativo.is_(True), Colaborador.funcao == "ENCARREGADO").order_by(Colaborador.nome.asc()).all(),
+        supervisores=Colaborador.query.filter(Colaborador.ativo.is_(True), Colaborador.cargo.ilike("%Supervisor%")).order_by(Colaborador.nome.asc()).all(),
+        encarregados=Colaborador.query.filter(Colaborador.ativo.is_(True), Colaborador.cargo.ilike("%Encarregado%")).order_by(Colaborador.nome.asc()).all(),
     )
 
 
@@ -968,7 +849,7 @@ def nova():
 def editar(id_os_interno):
     ordem = db.session.get(OperacaoOrdemServico, id_os_interno)
     if not ordem:
-        flash("Ordem de Serviço não encontrada.", "warning")
+        flash("Ordem de Servi�o n�o encontrada.", "warning")
         return redirect(url_for("ordens_servico.index"))
 
     dados = request.form.to_dict() if request.method == "POST" else {
@@ -987,14 +868,14 @@ def editar(id_os_interno):
         except OrdemServicoCadastroErro as exc:
             flash(str(exc), "danger")
         else:
-            flash(f"Ordem de Serviço {ordem.codigo_os_rental} atualizada com sucesso.", "success")
+            flash(f"Ordem de Servi�o {ordem.codigo_os_rental} atualizada com sucesso.", "success")
             return redirect(url_for("ordens_servico.ficha", id_os_interno=ordem.id_os_interno))
 
     return render_template(
         "operacao/ordens_servico/form.html", dados=dados, ordem=ordem, em_edicao=True,
         equipes=Equipe.query.filter_by(ativo=True).order_by(Equipe.nome.asc()).all(),
-        supervisores=Colaborador.query.filter(Colaborador.ativo.is_(True), Colaborador.funcao == "SUPERVISOR").order_by(Colaborador.nome.asc()).all(),
-        encarregados=Colaborador.query.filter(Colaborador.ativo.is_(True), Colaborador.funcao == "ENCARREGADO").order_by(Colaborador.nome.asc()).all(),
+        supervisores=Colaborador.query.filter(Colaborador.ativo.is_(True), Colaborador.cargo.ilike("%Supervisor%")).order_by(Colaborador.nome.asc()).all(),
+        encarregados=Colaborador.query.filter(Colaborador.ativo.is_(True), Colaborador.cargo.ilike("%Encarregado%")).order_by(Colaborador.nome.asc()).all(),
     )
 
 
@@ -1004,14 +885,14 @@ def editar(id_os_interno):
 def alternar_status(id_os_interno):
     ordem = db.session.get(OperacaoOrdemServico, id_os_interno)
     if not ordem:
-        flash("Ordem de Serviço não encontrada.", "warning")
+        flash("Ordem de Servi�o n�o encontrada.", "warning")
         return redirect(url_for("ordens_servico.index"))
     ordem.ativo = not ordem.ativo
     ordem.atualizado_por_usuario_id = current_user.id
     db.session.commit()
     acao = "ativada" if ordem.ativo else "desativada"
     registrar_log("operacao_ordem_servico_status_alterado", f"OS {ordem.codigo_os_rental} {acao}.", usuario=current_user)
-    flash(f"Ordem de Serviço {ordem.codigo_os_rental} {acao} com sucesso.", "success")
+    flash(f"Ordem de Servi�o {ordem.codigo_os_rental} {acao} com sucesso.", "success")
     return redirect(url_for("ordens_servico.index"))
 
 
