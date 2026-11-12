@@ -20,6 +20,7 @@ from app.operacao.ordens_servico.consulta_service import (
 )
 from app.operacao.ordens_servico.localizacao_service import (
     OPCOES,
+    intervalo_jornada_padrao,
     LocalizacaoErro,
     buscar_apontamento,
     consultar_apontamentos,
@@ -509,7 +510,7 @@ def _dados_formulario_localizacao(ordem, apontamento=None):
             "km_inicio": localizacao.km_inicio or "",
             "km_fim": localizacao.km_fim or "",
             "hora_inicial": horario_para_formulario(localizacao.hora_inicial),
-            "intervalo_jornada": horario_para_formulario(localizacao.intervalo_jornada) or "01:00",
+            "intervalo_jornada": horario_para_formulario(localizacao.intervalo_jornada) or intervalo_jornada_padrao(ordem.equipe).strftime("%H:%M"),
             "hora_final": horario_para_formulario(localizacao.hora_final),
             "intervalo_inicio": horario_para_formulario(localizacao.intervalo_inicio),
             "intervalo_fim": horario_para_formulario(localizacao.intervalo_fim),
@@ -522,7 +523,7 @@ def _dados_formulario_localizacao(ordem, apontamento=None):
         "equipe": ordem.equipe or "",
         "encarregado": ordem.encarregado or "",
         "local": ordem.local or "",
-        "intervalo_jornada": "01:00",
+        "intervalo_jornada": intervalo_jornada_padrao(ordem.equipe).strftime("%H:%M"),
     }
 
 
