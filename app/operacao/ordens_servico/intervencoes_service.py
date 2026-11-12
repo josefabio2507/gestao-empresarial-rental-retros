@@ -68,7 +68,9 @@ def criar_intervencao(dados, id_os_interno, chave_idempotencia, usuario):
     dados = _validar(dados); apontamento = OperacaoApontamentoDiario(id_os_interno=ordem.id_os_interno, chave_idempotencia=chave_idempotencia, data_evento=dados["data_evento"], equipe=dados["equipe"], criado_por_usuario_id=usuario.id)
     filho = OperacaoIntervencaoAdversa(apontamento=apontamento, hora_inicio=dados["hora_inicio"], hora_fim=dados["hora_fim"], intervencao=dados["intervencao"], categoria=dados["categoria"], observacoes=dados["observacoes"])
     db.session.add_all([apontamento, filho])
-    try: db.session.commit()        atualizar_status_operacional(ordem)
+    try:
+        atualizar_status_operacional(ordem)
+        db.session.commit()
 
     except IntegrityError as exc:
         db.session.rollback(); existente = OperacaoApontamentoDiario.query.filter_by(chave_idempotencia=chave_idempotencia).first()
