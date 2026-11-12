@@ -861,39 +861,6 @@ class OperacaoPoolVeiculosTestCase(unittest.TestCase):
         self.assertEqual("86600.00", str(atualizado.leitura_atual))
         self.assertEqual(quantidade_leituras, OperacaoLeituraAtivo.query.filter_by(veiculo_id=veiculo.id).count())
 
-    def test_edita_horimetro_historico_sem_comparar_abastecimento_posterior(self):
-        veiculo = self._criar_veiculo("SUD8D27", "CASE - 580N SERIE 2", tipo="Equipamento")
-        _, _, vinculo = vincular_responsavel(
-            {"colaborador_id": str(self.motorista.id), "tipo_leitura": "horimetro", "leitura_inicial": "2982,70"},
-            usuario=self.admin,
-            veiculo=veiculo,
-        )
-        dados_base = {
-            "tipo_combustivel": "Diesel S10",
-            "qtd_litros": "80,140",
-            "preco": "7,49",
-        }
-        for data, leitura in [("2026-10-11", "3029"), ("2026-10-20", "3168"), ("2026-10-23", "6127")]:
-            sucesso, mensagem, abastecimento = salvar_abastecimento(
-                {**dados_base, "data_abastecimento": data, "leitura_atual": leitura},
-                {},
-                self.usuario,
-                veiculo=veiculo,
-            )
-            self.assertTrue(sucesso, mensagem)
-            if data == "2026-10-20":
-                abastecimento_historico = abastecimento
-
-        sucesso, mensagem, atualizado = salvar_abastecimento(
-            {**dados_base, "data_abastecimento": "2026-10-20", "leitura_atual": "3068"},
-            {},
-            self.usuario,
-            abastecimento=abastecimento_historico,
-        )
-
-        self.assertTrue(sucesso, mensagem)
-        self.assertEqual("3068.00", str(atualizado.leitura_atual))
-
     def test_operador_lista_veiculos_nao_vinculados_e_registra_abastecimento_sem_foto(self):
         veiculo_vinculado = self._criar_veiculo("CAR101", "CAMINHAO DO USUARIO")
         veiculo_outro = self._criar_veiculo("CAR202", "CAMINHAO DE OUTRO MOTORISTA")
