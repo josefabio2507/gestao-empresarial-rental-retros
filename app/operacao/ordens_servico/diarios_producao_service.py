@@ -13,6 +13,7 @@ from app.models import (
     OperacaoMaterialCatalogo,
 )
 from app.operacao.ordens_servico.localizacao_service import OPCOES
+from app.operacao.ordens_servico.status_service import atualizar_status_operacional
 from app.services.logs_service import registrar_log
 from app.services.permissoes_service import usuario_tem_permissao
 
@@ -99,6 +100,7 @@ def criar_registro(dados, id_os_interno, chave_idempotencia, usuario, diario):
         filho = modelo(apontamento=apontamento, tipo_material=dados["tipo_material"], material_aplicado=dados[campo], quantidade=dados["quantidade"])
     db.session.add_all([apontamento, filho])
     try:
+        atualizar_status_operacional(ordem)
         db.session.commit()
     except IntegrityError as exc:
         db.session.rollback()
@@ -155,6 +157,7 @@ def editar_registro(dados, id_os_interno, id_apontamento_diario, versao, usuario
         if diario == "material":
             valores["tipo_material"] = dados["tipo_material"]
         modelo.query.filter_by(id_apontamento_diario=id_apontamento_diario).update(valores, synchronize_session=False)
+        atualizar_status_operacional(_ordem(id_os_interno))
         db.session.commit()
     except DiarioProducaoErro:
         raise

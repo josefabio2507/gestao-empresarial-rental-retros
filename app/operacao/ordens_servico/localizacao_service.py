@@ -12,6 +12,7 @@ from app.models import (
 )
 from app.services.logs_service import registrar_log
 from app.services.permissoes_service import usuario_tem_permissao
+from app.operacao.ordens_servico.status_service import atualizar_status_operacional
 
 
 class LocalizacaoErro(Exception):
@@ -148,6 +149,7 @@ def criar_apontamento(dados, id_os_interno, chave_idempotencia, usuario):
     )
     db.session.add_all([apontamento, localizacao])
     try:
+        atualizar_status_operacional(ordem)
         db.session.commit()
     except IntegrityError as exc:
         db.session.rollback()
@@ -229,6 +231,7 @@ def editar_apontamento(dados, id_os_interno, id_apontamento_diario, versao, usua
             )},
             synchronize_session=False,
         )
+        atualizar_status_operacional(ordem)
         db.session.commit()
     except LocalizacaoErro:
         raise

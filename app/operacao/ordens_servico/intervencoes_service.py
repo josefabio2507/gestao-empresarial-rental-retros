@@ -7,6 +7,7 @@ from app.models import OperacaoApontamentoDiario, OperacaoIntervencaoAdversa, Op
 from app.operacao.ordens_servico.localizacao_service import OPCOES
 from app.services.logs_service import registrar_log
 from app.services.permissoes_service import usuario_tem_permissao
+from app.operacao.ordens_servico.status_service import atualizar_status_operacional
 
 
 class IntervencaoErro(Exception):
@@ -67,7 +68,8 @@ def criar_intervencao(dados, id_os_interno, chave_idempotencia, usuario):
     dados = _validar(dados); apontamento = OperacaoApontamentoDiario(id_os_interno=ordem.id_os_interno, chave_idempotencia=chave_idempotencia, data_evento=dados["data_evento"], equipe=dados["equipe"], criado_por_usuario_id=usuario.id)
     filho = OperacaoIntervencaoAdversa(apontamento=apontamento, hora_inicio=dados["hora_inicio"], hora_fim=dados["hora_fim"], intervencao=dados["intervencao"], categoria=dados["categoria"], observacoes=dados["observacoes"])
     db.session.add_all([apontamento, filho])
-    try: db.session.commit()
+    try: db.session.commit()        atualizar_status_operacional(ordem)
+
     except IntegrityError as exc:
         db.session.rollback(); existente = OperacaoApontamentoDiario.query.filter_by(chave_idempotencia=chave_idempotencia).first()
         if existente and existente.id_os_interno == ordem.id_os_interno and existente.intervencao_adversa: return existente, True
@@ -95,7 +97,9 @@ def editar_intervencao(dados, id_os_interno, id_apontamento_diario, versao, usua
     try:
         atualizados = OperacaoApontamentoDiario.query.filter_by(id_apontamento_diario=id_apontamento_diario, id_os_interno=id_os_interno, versao=versao).update({"data_evento": dados["data_evento"], "equipe": dados["equipe"], "atualizado_por_usuario_id": usuario.id, "versao": versao + 1}, synchronize_session=False)
         if atualizados != 1: db.session.rollback(); raise IntervencaoErro("Este apontamento foi alterado por outro usuário. Atualize a página antes de salvar.")
-        OperacaoIntervencaoAdversa.query.filter_by(id_apontamento_diario=id_apontamento_diario).update({campo: dados[campo] for campo in ("hora_inicio", "hora_fim", "intervencao", "categoria", "observacoes")}, synchronize_session=False); db.session.commit()
+        OperacaoIntervencaoAdversa.query.filter_by(id_apontamento_diario=id_apontamento_diario).update({campo: dados[campo] for campo in ("hora_inicio", "hora_fim", "intervencao", "categoria", "observacoes")}, synchronize_session=False)
+        atualizar_status_operacional(_ordem(id_os_interno))
+        db.session.commit()
     except IntervencaoErro: raise
     except SQLAlchemyError as exc: db.session.rollback(); raise IntervencaoErro("Não foi possível atualizar a intervenção adversa.") from exc
     apontamento = buscar_intervencao(id_os_interno, id_apontamento_diario, usuario, "editar"); registrar_log("operacao_intervencao_editada", f"Intervenção {id_apontamento_diario} atualizada para a OS {id_os_interno}.", usuario=usuario); return apontamento
