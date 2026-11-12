@@ -7,6 +7,7 @@ from app.models import OperacaoApontamentoDiario, OperacaoCirculacaoTrem, Operac
 from app.operacao.ordens_servico.localizacao_service import OPCOES
 from app.services.logs_service import registrar_log
 from app.services.permissoes_service import usuario_tem_permissao
+from app.operacao.ordens_servico.status_service import atualizar_status_operacional
 
 
 class CirculacaoErro(Exception):
@@ -84,6 +85,7 @@ def criar_circulacao(dados, id_os_interno, chave_idempotencia, usuario):
     circulacao = OperacaoCirculacaoTrem(apontamento=apontamento, **{campo: dados[campo] for campo in ("prefixo", "motivo_paralisacao", "hora_inicio", "hora_fim", "via_linha", "operador_ccp_maquinista", "pedido_corte_composicao", "corte_composicao")})
     db.session.add_all([apontamento, circulacao])
     try:
+        atualizar_status_operacional(ordem)
         db.session.commit()
     except IntegrityError as exc:
         db.session.rollback()
@@ -128,6 +130,7 @@ def editar_circulacao(dados, id_os_interno, id_apontamento_diario, versao, usuar
             db.session.rollback()
             raise CirculacaoErro("Este apontamento foi alterado por outro usuário. Atualize a página antes de salvar.")
         OperacaoCirculacaoTrem.query.filter_by(id_apontamento_diario=id_apontamento_diario).update({campo: dados[campo] for campo in ("prefixo", "motivo_paralisacao", "hora_inicio", "hora_fim", "via_linha", "operador_ccp_maquinista", "pedido_corte_composicao", "corte_composicao")}, synchronize_session=False)
+        atualizar_status_operacional(_ordem(id_os_interno))
         db.session.commit()
     except CirculacaoErro:
         raise

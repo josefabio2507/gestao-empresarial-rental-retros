@@ -44,6 +44,7 @@ from app.operacao.ordens_servico.circulacao_service import (
 )
 from app.operacao.ordens_servico.intervencoes_service import CATEGORIAS, INTERVENCOES_POR_CATEGORIA, IntervencaoErro, buscar_intervencao, consultar_intervencoes, criar_intervencao, editar_intervencao
 from app.operacao.ordens_servico.monitoramento_service import MonitoramentoErro, obter_monitoramento
+from app.operacao.ordens_servico.status_service import STATUS_OPERACIONAIS, atualizar_status_operacional, sincronizar_statuses_operacionais
 from app.services.logs_service import registrar_log
 from app.services.permissoes_service import usuario_tem_permissao
 from app.models import Equipe, Colaborador, OperacaoChefeBoletim, OperacaoControleLiberacao, OperacaoServicoCatalogo, OperacaoMaterialCatalogo, OperacaoApontamentoDiario, OperacaoDiarioLocalizacao, OperacaoOrdemServico
@@ -64,6 +65,7 @@ def index():
     resumo = {"total": 0, "ativas": 0, "concluidas": 0, "desativadas": 0}
     progresso_por_os = {}
     try:
+        sincronizar_statuses_operacionais()
         resultado = consultar_ordens(request.args, request.args.get("pagina", 1), current_user)
         ordens = resultado.itens
         resumo = {
@@ -78,7 +80,7 @@ def index():
         for ordem in ordens:
             if not ordem.ativo:
                 progresso_por_os[ordem.id_os_interno] = 0
-            elif ordem.status_operacional == "Concluída" or ordem.data_final:
+            elif ordem.status_operacional in ("Concluída", "Concluída c/ Atraso") or ordem.data_final:
                 progresso_por_os[ordem.id_os_interno] = 100
             else:
                 total_dias = (ordem.data_programada_final - ordem.data_programada_inicial).days + 1
@@ -108,7 +110,7 @@ def index():
         pode_criar=usuario_tem_permissao(current_user, DEPARTAMENTO, MODULO, "criar"),
         pode_editar=usuario_tem_permissao(current_user, DEPARTAMENTO, MODULO, "editar"),
         equipes=Equipe.query.filter_by(ativo=True).order_by(Equipe.nome.asc()).all(),
-        status_operacionais=("Programada", "Em Andamento", "Concluída", "Cancelada"),
+        status_operacionais=STATUS_OPERACIONAIS,
     )
 
 
@@ -132,13 +134,9 @@ def ficha(id_os_interno):
         registrar_log("operacao_ordem_servico_monitoramento_falhou", str(exc))
         monitoramento = None
     if monitoramento:
-        novo_status = ordem.status_operacional
-        if ordem.data_final:
-            novo_status = "Concluída"
-        elif ordem.data_inicial and monitoramento.total_apontamentos > 0:
-            novo_status = "Em Andamento"
-        if novo_status != ordem.status_operacional:
-            ordem.status_operacional = novo_status
+        status_anterior = ordem.status_operacional
+        atualizar_status_operacional(ordem)
+        if ordem.status_operacional != status_anterior:
             db.session.commit()
     servicos_totais = {}
     registros_servico = OperacaoApontamentoDiario.query.filter_by(id_os_interno=ordem.id_os_interno).all()

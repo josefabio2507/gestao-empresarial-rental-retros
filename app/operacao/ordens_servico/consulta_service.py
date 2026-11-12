@@ -7,6 +7,7 @@ from app.extensions import db
 from app.models import OperacaoOrdemServico
 from app.models import Equipe
 from app.services.permissoes_service import usuario_tem_permissao
+from app.operacao.ordens_servico.status_service import STATUS_OPERACIONAIS
 
 
 TAMANHO_PAGINA = 10
@@ -70,7 +71,7 @@ def consultar_ordens(filtros, pagina, usuario, tamanho_pagina=TAMANHO_PAGINA):
         if equipe and not Equipe.query.filter_by(nome=equipe, ativo=True).first():
             raise OrdemServicoConsultaErro("Selecione uma equipe válida da lista.")
         status_operacional = _texto(filtros.get("status_operacional"))
-        if status_operacional and status_operacional not in ("Programada", "Em Andamento", "Concluída", "Cancelada"):
+        if status_operacional and status_operacional not in STATUS_OPERACIONAIS:
             raise OrdemServicoConsultaErro("Selecione um status válido da lista.")
         for campo in (
             "codigo_os_rental",

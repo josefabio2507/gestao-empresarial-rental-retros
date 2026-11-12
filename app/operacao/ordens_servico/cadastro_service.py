@@ -4,6 +4,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.extensions import db
 from app.models import OperacaoOrdemServico, Equipe, Colaborador
+from app.operacao.ordens_servico.status_service import atualizar_status_operacional
 from app.services.logs_service import registrar_log
 from app.services.permissoes_service import usuario_tem_permissao
 
@@ -117,11 +118,12 @@ def criar_ordem_servico(dados, chave_idempotencia, usuario):
         supervisor=dados["supervisor"] or None,
         encarregado=dados["encarregado"] or None,
         status_identificacao="Informado" if dados["numero_os_cliente"] else "Pendente",
-        status_operacional="Concluída" if dados["data_final"] else "Programada",
+        status_operacional="Programada",
         criado_por_usuario_id=usuario.id,
     )
     db.session.add(ordem)
     try:
+        atualizar_status_operacional(ordem)
         db.session.commit()
     except IntegrityError as exc:
         db.session.rollback()
@@ -157,7 +159,7 @@ def editar_ordem_servico(dados, id_os_interno, usuario):
         setattr(ordem, campo, dados[campo] or None)
 
     ordem.status_identificacao = "Informado" if ordem.numero_os_cliente else "Pendente"
-    ordem.status_operacional = "Concluída" if ordem.data_final else ("Em Andamento" if ordem.data_inicial else "Programada")
+    atualizar_status_operacional(ordem)
     ordem.atualizado_por_usuario_id = usuario.id
     try:
         db.session.commit()
