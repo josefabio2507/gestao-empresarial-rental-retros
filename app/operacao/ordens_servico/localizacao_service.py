@@ -38,6 +38,13 @@ _CAMPOS_HORARIO = (
     "liberacao_embandeiramento", "termino_embandeiramento",
 )
 
+_EQUIPES_INTERVALO_15_MINUTOS = frozenset({"TMC LIMPEZA", "TMC LIMPEZA II"})
+
+
+def intervalo_jornada_padrao(equipe):
+    equipe_normalizada = " ".join(_texto(equipe).upper().replace("-", " ").split())
+    return time(0, 15) if equipe_normalizada in _EQUIPES_INTERVALO_15_MINUTOS else time(1, 0)
+
 
 def _texto(valor):
     return str(valor or "").strip()
@@ -76,7 +83,7 @@ def _validar_dados(dados, equipe_os=None):
         "km_inicio": _texto(dados.get("km_inicio")) or None,
         "km_fim": _texto(dados.get("km_fim")) or None,
         "hora_inicial": _horario(dados.get("hora_inicial")),
-        "intervalo_jornada": _horario(dados.get("intervalo_jornada")) or time(1, 0),
+        "intervalo_jornada": _horario(dados.get("intervalo_jornada")) or intervalo_jornada_padrao(equipe_os or dados.get("equipe")),
         "hora_final": _horario(dados.get("hora_final")),
         "observacao": _texto(dados.get("observacao")).upper() or None,
     }
