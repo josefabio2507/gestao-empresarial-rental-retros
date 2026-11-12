@@ -4318,6 +4318,7 @@ class OperacaoIntervencaoAdversa(db.Model):
     tempo_total = db.Column(db.String(40), nullable=True)
     intervencao = db.Column(db.Text, nullable=True)
     categoria = db.Column(db.String(160), nullable=True)
+    observacoes = db.Column(db.Text, nullable=True)
 
     apontamento = db.relationship("OperacaoApontamentoDiario", back_populates="intervencao_adversa")
 

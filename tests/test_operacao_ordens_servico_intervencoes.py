@@ -32,7 +32,7 @@ class IntervencoesAdversasTestCase(unittest.TestCase):
         db.session.add(ordem); db.session.commit(); return ordem
 
     def _dados(self, **campos):
-        dados = {"data_evento": "2026-10-18", "equipe": OPCOES["equipe"][0], "hora_inicio": "08:00", "hora_fim": "08:30", "intervencao": "Chuva intensa", "categoria": "Clima"}; dados.update(campos); return dados
+        dados = {"data_evento": "2026-10-18", "equipe": OPCOES["equipe"][0], "hora_inicio": "08:00", "hora_fim": "08:30", "intervencao": "CHUVA FORTE C/ INCIDÊNCIA DE RAIOS E TROVÕES", "categoria": "CHUVA", "observacoes": "Equipe aguardou liberação."}; dados.update(campos); return dados
 
     def test_criacao_historico_isolamento_idempotencia_e_auditoria(self):
         chave = str(uuid.uuid4())
@@ -42,12 +42,13 @@ class IntervencoesAdversasTestCase(unittest.TestCase):
         criar_intervencao(self._dados(), self.outra_ordem.id_os_interno, str(uuid.uuid4()), self.usuario)
         self.assertFalse(repetido); self.assertTrue(foi_reenvio)
         self.assertEqual(primeiro.id_apontamento_diario, reenvio.id_apontamento_diario)
+        self.assertEqual("Equipe aguardou liberação.", primeiro.intervencao_adversa.observacoes)
         self.assertEqual(2, len(consultar_intervencoes(self.ordem.id_os_interno, self.usuario)))
         with self.assertRaises(IntervencaoErro): buscar_intervencao(self.outra_ordem.id_os_interno, primeiro.id_apontamento_diario, self.usuario)
         self.assertEqual(3, LogAcesso.query.filter_by(acao="operacao_intervencao_criada").count())
 
     def test_validacoes_os_inexistente_rollback_e_permissao(self):
-        for dados in (self._dados(categoria=""), self._dados(intervencao=""), self._dados(equipe="Outra")):
+        for dados in (self._dados(categoria=""), self._dados(intervencao=""), self._dados(intervencao="INTERVENÇÃO INEXISTENTE"), self._dados(equipe="Outra")):
             with self.assertRaises(IntervencaoErro): criar_intervencao(dados, self.ordem.id_os_interno, str(uuid.uuid4()), self.usuario)
         for identificador in ("invalido", str(uuid.uuid4())):
             with self.assertRaises(IntervencaoErro): criar_intervencao(self._dados(), identificador, str(uuid.uuid4()), self.usuario)
@@ -59,8 +60,8 @@ class IntervencoesAdversasTestCase(unittest.TestCase):
 
     def test_edicao_concorrencia_auditoria_e_permissao(self):
         apontamento, _ = criar_intervencao(self._dados(), self.ordem.id_os_interno, str(uuid.uuid4()), self.usuario)
-        editado = editar_intervencao(self._dados(categoria="Outra categoria"), self.ordem.id_os_interno, apontamento.id_apontamento_diario, 1, self.usuario)
-        self.assertEqual(2, editado.versao); self.assertEqual("Outra categoria", editado.intervencao_adversa.categoria)
+        editado = editar_intervencao(self._dados(categoria="ACIDENTE OU INCIDENTE", intervencao="EQUIPE ACIONADA PARA ATENDIMENTO DE INCIDENTE FERROVIÁRIO"), self.ordem.id_os_interno, apontamento.id_apontamento_diario, 1, self.usuario)
+        self.assertEqual(2, editado.versao); self.assertEqual("ACIDENTE OU INCIDENTE", editado.intervencao_adversa.categoria)
         with self.assertRaises(IntervencaoErro): editar_intervencao(self._dados(), self.ordem.id_os_interno, apontamento.id_apontamento_diario, 1, self.usuario)
         self.assertEqual(1, LogAcesso.query.filter_by(acao="operacao_intervencao_editada").count())
         self.permissao.pode_editar = False; db.session.commit()
