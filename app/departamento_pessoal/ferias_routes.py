@@ -102,9 +102,9 @@ def relatorio_csv():
     registros = FeriasColaborador.query.join(Colaborador).order_by(Colaborador.nome.asc(), FeriasColaborador.inicio_ferias.asc()).all()
     arquivo = StringIO()
     escritor = csv.writer(arquivo, delimiter=";")
-    escritor.writerow(["Matr�cula", "Colaborador", "Per�odo aquisitivo in�cio", "Per�odo aquisitivo fim", "F�rias in�cio", "F�rias fim", "Dias", "Prazo concessivo", "Situa��o do prazo", "Status", "Abono pecuni�rio", "Observa��es"])
+    escritor.writerow(["Matrícula", "Colaborador", "Período aquisitivo início", "Período aquisitivo fim", "Férias início", "Férias fim", "Dias", "Prazo concessivo", "Situação do prazo", "Status", "Abono pecuniário", "Observações"])
     for item in registros:
-        escritor.writerow([item.colaborador.matricula, item.colaborador.nome, item.periodo_aquisitivo_inicio.strftime("%d/%m/%Y"), item.periodo_aquisitivo_fim.strftime("%d/%m/%Y"), item.inicio_ferias.strftime("%d/%m/%Y"), item.fim_ferias.strftime("%d/%m/%Y"), item.dias, data_limite_concessao(item).strftime("%d/%m/%Y"), situacao_prazo(item), item.status, "Sim" if item.abono_pecuniario else "N�o", item.observacoes or ""])
+        escritor.writerow([item.colaborador.matricula, item.colaborador.nome, item.periodo_aquisitivo_inicio.strftime("%d/%m/%Y"), item.periodo_aquisitivo_fim.strftime("%d/%m/%Y"), item.inicio_ferias.strftime("%d/%m/%Y"), item.fim_ferias.strftime("%d/%m/%Y"), item.dias, data_limite_concessao(item).strftime("%d/%m/%Y"), situacao_prazo(item), item.status, "Sim" if item.abono_pecuniario else "Não", item.observacoes or ""])
     dados = arquivo.getvalue().encode("utf-8-sig")
     return send_file(BytesIO(dados), mimetype="text/csv", as_attachment=True, download_name="relatorio_ferias.csv")
 
@@ -120,7 +120,7 @@ def calculo(ferias_id):
         try:
             resultado = calcular_estimativa(Decimal(salario.replace(".", "").replace(",", ".")), registro.dias, registro.abono_pecuniario)
         except (InvalidOperation, TypeError, ValueError):
-            erro = "Informe um sal�rio v�lido para calcular a estimativa."
+            erro = "Informe um salário válido para calcular a estimativa."
     return render_template("departamento_pessoal/ferias/calculo.html", registro=registro, resultado=resultado, erro=erro, salario=salario)
 
 
@@ -144,22 +144,22 @@ def _gerar_documento_ferias(registro, tipo):
     buffer = BytesIO()
     documento = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=2 * cm, leftMargin=2 * cm, topMargin=1.8 * cm, bottomMargin=1.8 * cm)
     estilos = getSampleStyleSheet()
-    titulo = "AVISO DE F�RIAS" if tipo == "aviso" else "RECIBO DE F�RIAS"
-    elementos = [Paragraph("RENTAL RETROS", estilos["Title"]), Spacer(1, 0.5 * cm), Paragraph(titulo, estilos["Heading2"]), Spacer(1, 0.3 * cm), Paragraph("Documento gerado pelo MVP de Controle de F�rias - modelo para confer�ncia.", estilos["Normal"]), Spacer(1, 0.5 * cm)]
+    titulo = "AVISO DE FÉRIAS" if tipo == "aviso" else "RECIBO DE FÉRIAS"
+    elementos = [Paragraph("RENTAL RETROS", estilos["Title"]), Spacer(1, 0.5 * cm), Paragraph(titulo, estilos["Heading2"]), Spacer(1, 0.3 * cm), Paragraph("Documento gerado pelo MVP de Controle de Férias — modelo para conferência.", estilos["Normal"]), Spacer(1, 0.5 * cm)]
     dados = [
         ["Colaborador", registro.colaborador.nome],
-        ["Matr�cula", registro.colaborador.matricula],
-        ["Cargo", registro.colaborador.cargo or "N�o informado"],
-        ["Per�odo aquisitivo", f"{registro.periodo_aquisitivo_inicio.strftime('%d/%m/%Y')} a {registro.periodo_aquisitivo_fim.strftime('%d/%m/%Y')}"],
-        ["Per�odo de f�rias", f"{registro.inicio_ferias.strftime('%d/%m/%Y')} a {registro.fim_ferias.strftime('%d/%m/%Y')}"],
+        ["Matrícula", registro.colaborador.matricula],
+        ["Cargo", registro.colaborador.cargo or "Não informado"],
+        ["Período aquisitivo", f"{registro.periodo_aquisitivo_inicio.strftime('%d/%m/%Y')} a {registro.periodo_aquisitivo_fim.strftime('%d/%m/%Y')}"],
+        ["Período de férias", f"{registro.inicio_ferias.strftime('%d/%m/%Y')} a {registro.fim_ferias.strftime('%d/%m/%Y')}"],
         ["Quantidade de dias", str(registro.dias)],
-        ["Abono pecuni�rio", "Sim" if registro.abono_pecuniario else "N�o"],
+        ["Abono pecuniário", "Sim" if registro.abono_pecuniario else "Não"],
         ["Status", registro.status.replace("_", " ").title()],
     ]
     tabela = Table(dados, colWidths=[5 * cm, 11 * cm])
     tabela.setStyle(TableStyle([("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#eef3f7")), ("TEXTCOLOR", (0, 0), (-1, -1), colors.HexColor("#061b33")), ("GRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#d7e0e8")), ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"), ("VALIGN", (0, 0), (-1, -1), "TOP"), ("PADDING", (0, 0), (-1, -1), 8)]))
     elementos.append(tabela)
-    elementos.extend([Spacer(1, 1 * cm), Paragraph("Observa��es: " + (registro.observacoes or "N�o informado."), estilos["Normal"]), Spacer(1, 1.2 * cm), Paragraph("Assinatura do colaborador: ______________________________________________", estilos["Normal"]), Spacer(1, 0.7 * cm), Paragraph("Assinatura do respons�vel: ______________________________________________", estilos["Normal"]), Spacer(1, 1 * cm), Paragraph("Este documento � um modelo de confer�ncia e n�o substitui a valida��o do Departamento Pessoal.", estilos["Italic"])])
+    elementos.extend([Spacer(1, 1 * cm), Paragraph("Observações: " + (registro.observacoes or "Não informado."), estilos["Normal"]), Spacer(1, 1.2 * cm), Paragraph("Assinatura do colaborador: ______________________________________________", estilos["Normal"]), Spacer(1, 0.7 * cm), Paragraph("Assinatura do responsável: ______________________________________________", estilos["Normal"]), Spacer(1, 1 * cm), Paragraph("Este documento é um modelo de conferência e não substitui a validação do Departamento Pessoal.", estilos["Italic"])])
     documento.build(elementos)
     buffer.seek(0)
     return buffer
@@ -185,8 +185,8 @@ def aprovar(ferias_id):
     registro.aprovado_em = agora_brasil()
     registro.motivo_reprovacao = None
     db.session.commit()
-    registrar_log("ferias_aprovadas", f"F�rias aprovadas. Registro: {registro.id}; colaborador: {registro.colaborador.nome}.")
-    flash("Programa��o de f�rias aprovada.", "success")
+    registrar_log("ferias_aprovadas", f"Férias aprovadas. Registro: {registro.id}; colaborador: {registro.colaborador.nome}.")
+    flash("Programação de férias aprovada.", "success")
     return redirect(url_for("ferias.index"))
 
 
@@ -196,15 +196,15 @@ def reprovar(ferias_id):
     registro = FeriasColaborador.query.get_or_404(ferias_id)
     motivo = request.form.get("motivo_reprovacao", "").strip()
     if not motivo:
-        flash("Informe o motivo da reprova��o.", "danger")
+        flash("Informe o motivo da reprovação.", "danger")
         return redirect(url_for("ferias.index"))
     registro.aprovacao_status = "reprovada"
     registro.aprovado_por_usuario_id = current_user.id
     registro.aprovado_em = agora_brasil()
     registro.motivo_reprovacao = motivo
     db.session.commit()
-    registrar_log("ferias_reprovadas", f"F�rias reprovadas. Registro: {registro.id}; colaborador: {registro.colaborador.nome}.")
-    flash("Programa��o de f�rias reprovada.", "warning")
+    registrar_log("ferias_reprovadas", f"Férias reprovadas. Registro: {registro.id}; colaborador: {registro.colaborador.nome}.")
+    flash("Programação de férias reprovada.", "warning")
     return redirect(url_for("ferias.index"))
 
 
@@ -214,16 +214,16 @@ def novo():
     try:
         dados = _dados_formulario()
         if _possui_sobreposicao(dados):
-            raise RuntimeError("J� existe f�rias cadastrada para este colaborador no per�odo informado.")
+            raise RuntimeError("Já existe férias cadastrada para este colaborador no período informado.")
         db.session.add(FeriasColaborador(**dados))
         db.session.commit()
-        flash("F�rias cadastradas com sucesso.", "success")
+        flash("Férias cadastradas com sucesso.", "success")
     except RuntimeError as erro:
         db.session.rollback()
         flash(str(erro), "danger")
     except (KeyError, TypeError, ValueError):
         db.session.rollback()
-        flash("Confira os campos obrigat�rios e as datas informadas.", "danger")
+        flash("Confira os campos obrigatórios e as datas informadas.", "danger")
     return redirect(url_for("ferias.index"))
 
 
@@ -235,18 +235,18 @@ def editar(ferias_id):
         try:
             dados = _dados_formulario()
             if _possui_sobreposicao(dados, ignorar_id=registro.id):
-                raise RuntimeError("J� existe f�rias cadastrada para este colaborador no per�odo informado.")
+                raise RuntimeError("Já existe férias cadastrada para este colaborador no período informado.")
             for campo, valor in dados.items():
                 setattr(registro, campo, valor)
             db.session.commit()
-            flash("F�rias atualizadas com sucesso.", "success")
+            flash("Férias atualizadas com sucesso.", "success")
             return redirect(url_for("ferias.index"))
         except RuntimeError as erro:
             db.session.rollback()
             flash(str(erro), "danger")
         except (KeyError, TypeError, ValueError):
             db.session.rollback()
-            flash("Confira os campos obrigat�rios e as datas informadas.", "danger")
+            flash("Confira os campos obrigatórios e as datas informadas.", "danger")
     return render_template("departamento_pessoal/ferias/editar.html", registro=registro, colaboradores=Colaborador.query.filter_by(ativo=True).order_by(Colaborador.nome).all())
 
 
@@ -256,7 +256,7 @@ def excluir(ferias_id):
     registro = FeriasColaborador.query.get_or_404(ferias_id)
     registro.status = "cancelada"
     db.session.commit()
-    flash("F�rias canceladas com seguran�a. O hist�rico foi preservado.", "success")
+    flash("Férias canceladas com segurança. O histórico foi preservado.", "success")
     return redirect(url_for("ferias.index"))
 
 
@@ -266,5 +266,5 @@ def alterar_status(ferias_id):
     registro = FeriasColaborador.query.get_or_404(ferias_id)
     registro.status = request.form.get("status", registro.status)
     db.session.commit()
-    flash("Status das f�rias atualizado.", "success")
+    flash("Status das férias atualizado.", "success")
     return redirect(url_for("ferias.index"))
