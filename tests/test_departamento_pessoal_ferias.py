@@ -5,6 +5,7 @@ from types import SimpleNamespace
 from app.departamento_pessoal.ferias_routes import (
     calcular_estimativa,
     data_limite_concessao,
+    status_automatico,
     situacao_prazo,
 )
 
@@ -27,6 +28,18 @@ def test_situacao_prazo_identifica_vencido_e_proximo():
     assert situacao_prazo(registro(), hoje=date(2025, 12, 1)) == "proximo"
     assert situacao_prazo(registro(), hoje=date(2025, 6, 1)) == "no_prazo"
     assert situacao_prazo(registro(status="concluida"), hoje=date(2026, 2, 1)) == "encerrado"
+
+
+def test_status_automatico_usa_inicio_e_fim_do_gozo():
+    ferias = registro(inicio_ferias=date(2026, 11, 9), fim_ferias=date(2026, 12, 8))
+    assert status_automatico(ferias, hoje=date(2026, 11, 8)) == "programada"
+    assert status_automatico(ferias, hoje=date(2026, 11, 13)) == "em_andamento"
+    assert status_automatico(ferias, hoje=date(2026, 12, 9)) == "concluida"
+
+
+def test_status_automatico_preserva_cancelamento():
+    ferias = registro(status="cancelada", inicio_ferias=date(2026, 11, 9), fim_ferias=date(2026, 12, 8))
+    assert status_automatico(ferias, hoje=date(2026, 11, 13)) == "cancelada"
 
 
 def test_calculo_estimado_sem_abono():

@@ -25,6 +25,32 @@ def data_limite_concessao(registro):
     return registro.periodo_aquisitivo_fim + timedelta(days=365)
 
 
+def status_automatico(registro, hoje=None):
+    """Calcula o status operacional exclusivamente pelo período de gozo."""
+    hoje = hoje or date.today()
+    if registro.status == "cancelada":
+        return "cancelada"
+    if hoje < registro.inicio_ferias:
+        return "programada"
+    if hoje <= registro.fim_ferias:
+        return "em_andamento"
+    return "concluida"
+
+
+def sincronizar_statuses(hoje=None):
+    """Atualiza registros existentes para refletir o status calculado pelas datas."""
+    registros = FeriasColaborador.query.all()
+    alterados = 0
+    for registro in registros:
+        novo_status = status_automatico(registro, hoje=hoje)
+        if registro.status != novo_status:
+            registro.status = novo_status
+            alterados += 1
+    if alterados:
+        db.session.commit()
+    return alterados
+
+
 def situacao_prazo(registro, hoje=None):
     hoje = hoje or date.today()
     if registro.status in ("concluida", "cancelada"):
@@ -49,7 +75,8 @@ def _dados_formulario():
     dias = int(request.form.get("dias", "0"))
     if fim < inicio or aquisitivo_fim < aquisitivo_inicio or dias < 1 or dias > 30:
         raise ValueError
-    return {"colaborador_id": int(request.form["colaborador_id"]), "periodo_aquisitivo_inicio": aquisitivo_inicio, "periodo_aquisitivo_fim": aquisitivo_fim, "inicio_ferias": inicio, "fim_ferias": fim, "dias": dias, "abono_pecuniario": request.form.get("abono_pecuniario") == "on", "status": request.form.get("status", "programada"), "observacoes": request.form.get("observacoes", "").strip()}
+    status = "programada" if date.today() < inicio else ("em_andamento" if date.today() <= fim else "concluida")
+    return {"colaborador_id": int(request.form["colaborador_id"]), "periodo_aquisitivo_inicio": aquisitivo_inicio, "periodo_aquisitivo_fim": aquisitivo_fim, "inicio_ferias": inicio, "fim_ferias": fim, "dias": dias, "abono_pecuniario": request.form.get("abono_pecuniario") == "on", "status": status, "observacoes": request.form.get("observacoes", "").strip()}
 
 
 def _possui_sobreposicao(dados, ignorar_id=None):
@@ -78,6 +105,7 @@ def calcular_estimativa(salario, dias, abono=False):
 @ferias_bp.route("/")
 @module_permission_required("departamento_pessoal", "ferias", "visualizar")
 def index():
+    sincronizar_statuses()
     status = request.args.get("status", "").strip()
     busca = request.args.get("q", "").strip()
     query = FeriasColaborador.query.join(Colaborador).order_by(FeriasColaborador.inicio_ferias.asc())
@@ -264,7 +292,7 @@ def excluir(ferias_id):
 @module_permission_required("departamento_pessoal", "ferias", "editar")
 def alterar_status(ferias_id):
     registro = FeriasColaborador.query.get_or_404(ferias_id)
-    registro.status = request.form.get("status", registro.status)
+    registro.status = status_automatico(registro)
     db.session.commit()
     flash("Status das f�rias atualizado.", "success")
     return redirect(url_for("ferias.index"))
