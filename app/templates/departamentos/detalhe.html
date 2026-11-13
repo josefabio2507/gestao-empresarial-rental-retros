@@ -6,7 +6,7 @@
         <div>
             <span class="page-kicker">Departamento</span>
             <h1>{{ departamento.nome }}</h1>
-            <p>{{ departamento.descricao or "Módulos disponíveis neste departamento." }}</p>
+            <p>{{ departamento.descricao or "M�dulos dispon�veis neste departamento." }}</p>
         </div>
 
     </div>
@@ -16,13 +16,13 @@
             {% if departamento.slug == "operacao" %}
                 <a class="module-card module-card-link" href="{{ url_for('veiculos_equipamentos.index') }}">
                     <span class="module-card-icon">V</span>
-                    <h2>Gestão de Veículos e EGPs</h2>
-                    <p>Cadastro e consulta de veículos, máquinas e equipamentos operacionais.</p>
+                    <h2>Gest�o de Ve�culos e EGPs</h2>
+                    <p>Cadastro e consulta de ve�culos, m�quinas e equipamentos operacionais.</p>
                     <span class="badge badge-success">Liberado</span>
-                    <span class="module-status">Acessar gestão de veículos</span>
+                    <span class="module-status">Acessar gest�o de ve�culos</span>
                 </a>
-                <a class="module-card module-card-link" href="{{ url_for('ordens_servico.servicos_catalogo') }}"><span class="module-card-icon">S</span><h2>Cadastro de Serviços</h2><p>Serviços utilizados nos diários de produção.</p><span class="badge badge-success">Liberado</span><span class="module-status">Acessar cadastro</span></a>
-                <a class="module-card module-card-link" href="{{ url_for('ordens_servico.materiais_catalogo') }}"><span class="module-card-icon">M</span><h2>Cadastro de Materiais</h2><p>Materiais utilizados nos diários de produção.</p><span class="badge badge-success">Liberado</span><span class="module-status">Acessar cadastro</span></a>
+                <a class="module-card module-card-link" href="{{ url_for('ordens_servico.servicos_catalogo') }}"><span class="module-card-icon">S</span><h2>Cadastro de Servi�os</h2><p>Servi�os utilizados nos di�rios de produ��o.</p><span class="badge badge-success">Liberado</span><span class="module-status">Acessar cadastro</span></a>
+                <a class="module-card module-card-link" href="{{ url_for('ordens_servico.materiais_catalogo') }}"><span class="module-card-icon">M</span><h2>Cadastro de Materiais</h2><p>Materiais utilizados nos di�rios de produ��o.</p><span class="badge badge-success">Liberado</span><span class="module-status">Acessar cadastro</span></a>
             {% endif %}
             {% set navegacao = namespace(refeicoes_exibido=false) %}
             {% for modulo in modulos_liberados %}
@@ -35,11 +35,11 @@
                         "restaurante",
                         "restaurantes",
                         "cardapio",
-                        "cardápio",
+                        "card�pio",
                         "pedidos",
                         "pedido",
                         "relatorios",
-                        "relatórios",
+                        "relat�rios",
                         "relatorios-refeicoes",
                         "relatorios_refeicoes"
                     ]
@@ -47,34 +47,34 @@
                     or modulo_nome in [
                         "restaurantes",
                         "cardapio",
-                        "cardápio",
+                        "card�pio",
                         "pedidos",
-                        "pedidos de refeição",
+                        "pedidos de refei��o",
                         "relatorios",
-                        "relatórios",
-                        "relatórios de refeições"
+                        "relat�rios",
+                        "relat�rios de refei��es"
                     ]
                 ) %}
 
                 {% if departamento.slug == "operacao" and modulo_slug == "ordens_de_servico" %}
                     <a class="module-card module-card-link" href="{{ url_for('ordens_servico.index') }}">
                         <span class="module-card-icon">O</span>
-                        <h2>Ordens de Serviço</h2>
-                        <p>Central de criação, planejamento, acompanhamento e controle das Ordens de Serviço da Rental Retros.</p>
+                        <h2>Ordens de Servi�o</h2>
+                        <p>Central de cria��o, planejamento, acompanhamento e controle das Ordens de Servi�o da Rental Retros.</p>
                         <span class="badge badge-success">Liberado</span>
-                        <span class="module-status">Acessar módulo</span>
+                        <span class="module-status">Acessar m�dulo</span>
                     </a>
 
                 {% elif departamento.slug == "operacao" %}
-                    {# Os módulos de Gestão de Veículos e EGPs permanecem agrupados em seu próprio acesso. #}
+                    {# Os m�dulos de Gest�o de Ve�culos e EGPs permanecem agrupados em seu pr�prio acesso. #}
                 {% elif modulo_refeicoes %}
                     {% if not navegacao.refeicoes_exibido %}
                         <a class="module-card module-card-link" href="{{ url_for('pedido_refeicoes.index') }}">
                             <span class="module-card-icon">P</span>
-                            <h2>Pedidos de Refeição</h2>
-                            <p>Controle de restaurantes, cardápio, pedidos e relatórios de refeições.</p>
+                            <h2>Pedidos de Refei��o</h2>
+                            <p>Controle de restaurantes, card�pio, pedidos e relat�rios de refei��es.</p>
                             <span class="badge badge-success">Liberado</span>
-                            <span class="module-status">Acessar módulo</span>
+                            <span class="module-status">Acessar m�dulo</span>
                         </a>
                         {% set navegacao.refeicoes_exibido = true %}
                     {% endif %}
@@ -83,18 +83,18 @@
                     <a class="module-card module-card-link" href="{{ url_for('usuarios.listar_usuarios') }}">
                         <span class="module-card-icon">U</span>
                         <h2>{{ modulo.nome }}</h2>
-                        <p>{{ modulo.descricao or "Cadastro e gestão de usuários do sistema." }}</p>
+                        <p>{{ modulo.descricao or "Cadastro e gest�o de usu�rios do sistema." }}</p>
                         <span class="badge badge-success">Liberado</span>
-                        <span class="module-status">Acessar módulo</span>
+                        <span class="module-status">Acessar m�dulo</span>
                     </a>
 
                 {% elif departamento.slug == "administracao" and modulo_slug in ["permissoes", "permissao"] %}
                     <a class="module-card module-card-link" href="{{ url_for('permissoes.listar_permissoes') }}">
                         <span class="module-card-icon">P</span>
                         <h2>{{ modulo.nome }}</h2>
-                        <p>{{ modulo.descricao or "Gestão de permissões por usuário e módulo." }}</p>
+                        <p>{{ modulo.descricao or "Gest�o de permiss�es por usu�rio e m�dulo." }}</p>
                         <span class="badge badge-success">Liberado</span>
-                        <span class="module-status">Acessar módulo</span>
+                        <span class="module-status">Acessar m�dulo</span>
                     </a>
 
                 {% elif departamento.slug == "administracao" and modulo_slug in ["auditoria", "logs", "auditoria_logs"] and current_user.is_admin %}
@@ -112,7 +112,7 @@
                         <h2>{{ modulo.nome }}</h2>
                         <p>{{ modulo.descricao or "Cadastro e consulta de colaboradores." }}</p>
                         <span class="badge badge-success">Liberado</span>
-                        <span class="module-status">Acessar módulo</span>
+                        <span class="module-status">Acessar m�dulo</span>
                     </a>
 
                 {% elif departamento.slug == "departamento_pessoal" and modulo_slug == "documentos" %}
@@ -124,16 +124,25 @@
                         <span class="module-status">Acessar documentos</span>
                     </a>
 
+                {% elif departamento.slug == "departamento_pessoal" and modulo_slug in ["ferias", "f�rias"] %}
+                    <a class="module-card module-card-link" href="{{ url_for('ferias.index') }}">
+                        <span class="module-card-icon">F</span>
+                        <h2>{{ modulo.nome }}</h2>
+                        <p>{{ modulo.descricao or "Programa��o, acompanhamento e hist�rico de f�rias." }}</p>
+                        <span class="badge badge-success">Liberado</span>
+                        <span class="module-status">Acessar m�dulo</span>
+                    </a>
+
                 {% elif departamento.slug == "departamento_pessoal" and modulo_slug == "holerites" %}
-                    {# Holerites é configurável em permissões, mas navega pelo hub Documentos. #}
+                    {# Holerites � configur�vel em permiss�es, mas navega pelo hub Documentos. #}
 
                 {% elif departamento.slug == "departamento_pessoal" and modulo_slug == "vale_transporte" %}
                     <a class="module-card module-card-link" href="{{ url_for('vale_transporte.index') }}">
                         <span class="module-card-icon">V</span>
                         <h2>{{ modulo.nome }}</h2>
-                        <p>{{ modulo.descricao or "Cadastro de linhas e vínculos de Vale Transporte." }}</p>
+                        <p>{{ modulo.descricao or "Cadastro de linhas e v�nculos de Vale Transporte." }}</p>
                         <span class="badge badge-success">Liberado</span>
-                        <span class="module-status">Acessar módulo</span>
+                        <span class="module-status">Acessar m�dulo</span>
                     </a>
 
                 {% elif departamento.slug == "seguranca_trabalho" and modulo_slug == "epis" %}
@@ -166,9 +175,9 @@
                     <a class="module-card module-card-link" href="{{ url_for('fiscal.documentos') }}">
                         <span class="module-card-icon">F</span>
                         <h2>{{ modulo.nome }}</h2>
-                        <p>{{ modulo.descricao or "Central fiscal para XMLs, DANFEs e vínculo com O.C." }}</p>
+                        <p>{{ modulo.descricao or "Central fiscal para XMLs, DANFEs e v�nculo com O.C." }}</p>
                         <span class="badge badge-success">Liberado</span>
-                        <span class="module-status">Acessar módulo</span>
+                        <span class="module-status">Acessar m�dulo</span>
                     </a>
 
                 {% elif departamento.slug == "suprimentos" %}
@@ -214,18 +223,18 @@
                     <div class="module-card">
                         <span class="module-card-icon">M</span>
                         <h2>{{ modulo.nome }}</h2>
-                        <p>{{ modulo.descricao or "Módulo disponível." }}</p>
+                        <p>{{ modulo.descricao or "M�dulo dispon�vel." }}</p>
                         <span class="badge badge-success">Liberado</span>
-                        <span class="module-status">Funcionalidade em construção</span>
+                        <span class="module-status">Funcionalidade em constru��o</span>
                     </div>
                 {% endif %}
             {% endfor %}
         </div>
     {% else %}
         <div class="details-card">
-            <h2>Nenhum módulo liberado</h2>
+            <h2>Nenhum m�dulo liberado</h2>
             <p>
-                Você não possui módulos liberados neste departamento.
+                Voc� n�o possui m�dulos liberados neste departamento.
                 Entre em contato com o administrador do sistema.
             </p>
         </div>

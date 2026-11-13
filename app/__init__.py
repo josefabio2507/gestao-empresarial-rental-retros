@@ -85,7 +85,7 @@ def create_app(config_overrides=None):
             "navegacao_departamentos": departamentos,
         }
 
-    # Inicialização das extensões
+    # Inicializa��o das extens�es
     db.init_app(app)
     migrate.init_app(app, db)
     login_manager.init_app(app)
@@ -119,8 +119,10 @@ def create_app(config_overrides=None):
 
     from app.services.fiscal_scheduler import iniciar_consulta_automatica_sefaz
     iniciar_consulta_automatica_sefaz(app)
+    from app.services.ferias_scheduler import iniciar_verificacao_automatica_ferias
+    iniciar_verificacao_automatica_ferias(app)
 
-    # Importação dos Blueprints
+    # Importa��o dos Blueprints
     from app.main.routes import main_bp
     from app.auth.routes import auth_bp
     from app.usuarios.routes import usuarios_bp
@@ -131,6 +133,7 @@ def create_app(config_overrides=None):
     from app.departamento_pessoal.pedido_refeicoes.routes import pedido_refeicoes_bp
     from app.departamento_pessoal.documentos.routes import documentos_bp
     from app.departamento_pessoal.vale_transporte.routes import vale_transporte_bp
+    from app.departamento_pessoal.ferias_routes import ferias_bp
     from app.financeiro.routes import financeiro_bp
     from app.financeiro.contas_pagar.routes import financeiro_contas_pagar_bp
     from app.financeiro.contas_receber.routes import financeiro_contas_receber_bp
@@ -169,6 +172,7 @@ def create_app(config_overrides=None):
     app.register_blueprint(pedido_refeicoes_bp, url_prefix="/departamento-pessoal/pedido-refeicoes")
     app.register_blueprint(documentos_bp, url_prefix="/departamento-pessoal/documentos")
     app.register_blueprint(vale_transporte_bp, url_prefix="/departamento-pessoal/vale-transporte")
+    app.register_blueprint(ferias_bp, url_prefix="/departamento-pessoal/ferias")
     app.register_blueprint(financeiro_bp, url_prefix="/financeiro")
     app.register_blueprint(financeiro_contas_pagar_bp, url_prefix="/financeiro/contas-a-pagar")
     app.register_blueprint(financeiro_contas_receber_bp, url_prefix="/financeiro/contas-a-receber")
