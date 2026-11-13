@@ -1,0 +1,1 @@
+"""Unifica as heads de migrations do deploy.\n\nEsta migration não altera tabelas; apenas conecta a cadeia histórica\nda migration de observações à cadeia principal.\n"""\n\nrevision = "a8b9c0d1e2f3"\ndown_revision = ("z7q8r9s0t1u2", "z9a8b7c6d5e4")\nbranch_labels = None\ndepends_on = None\n\n\ndef upgrade():\n    pass\n\n\ndef downgrade():\n    pass\n
