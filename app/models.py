@@ -420,7 +420,7 @@ class OperacaoAbastecimento(db.Model):
 
     @property
     def valor_total_combustivel(self):
-        """Total do combustível: quantidade abastecida multiplicada pelo preço unitário."""
+        """Total do combust�vel: quantidade abastecida multiplicada pelo pre�o unit�rio."""
         return ((self.qtd_litros or 0) * (self.preco or 0)).quantize(Decimal("0.01"))
 
     @property
@@ -898,7 +898,7 @@ class FinanceiroContaReceberTitulo(db.Model):
             name="ck_fin_cr_titulos_status",
         ),
         db.CheckConstraint(
-            "origem_lancamento in ('Manual', 'Nota Fiscal Emitida', 'Medição', "
+            "origem_lancamento in ('Manual', 'Nota Fiscal Emitida', 'Medi��o', "
             "'Contrato', 'Reembolso', 'Outro')",
             name="ck_fin_cr_titulos_origem",
         ),
@@ -969,7 +969,7 @@ class FinanceiroNotaFiscalEmitida(db.Model):
     numero_parcelas = db.Column(db.Integer, nullable=False, default=1)
     condicao_recebimento = db.Column(db.String(120), nullable=True)
     status_fiscal = db.Column(db.String(30), nullable=False, default="Emitida", index=True)
-    status_financeiro = db.Column(db.String(40), nullable=False, default="Não integrado", index=True)
+    status_financeiro = db.Column(db.String(40), nullable=False, default="N�o integrado", index=True)
     arquivo_pdf_nome_original = db.Column(db.String(255), nullable=True)
     arquivo_pdf_nome_armazenado = db.Column(db.String(255), nullable=True)
     arquivo_pdf_path = db.Column(db.String(500), nullable=True)
@@ -1006,8 +1006,8 @@ class FinanceiroNotaFiscalEmitida(db.Model):
         db.CheckConstraint("valor_total > 0", name="ck_fin_notas_emitidas_valor_total"),
         db.CheckConstraint("numero_parcelas >= 1", name="ck_fin_notas_emitidas_parcelas"),
         db.CheckConstraint("tipo_nota in ('NFS-e', 'NF-e', 'Recibo', 'Fatura', 'Outro')", name="ck_fin_notas_emitidas_tipo"),
-        db.CheckConstraint("status_fiscal in ('Rascunho', 'Emitida', 'Enviada ao cliente', 'Cancelada', 'Substituída')", name="ck_fin_notas_emitidas_status_fiscal"),
-        db.CheckConstraint("status_financeiro in ('Não integrado', 'Pendente de geração', 'Título gerado', 'Parcialmente vinculado', 'Vinculado a título existente', 'Cancelado')", name="ck_fin_notas_emitidas_status_financeiro"),
+        db.CheckConstraint("status_fiscal in ('Rascunho', 'Emitida', 'Enviada ao cliente', 'Cancelada', 'Substitu�da')", name="ck_fin_notas_emitidas_status_fiscal"),
+        db.CheckConstraint("status_financeiro in ('N�o integrado', 'Pendente de gera��o', 'T�tulo gerado', 'Parcialmente vinculado', 'Vinculado a t�tulo existente', 'Cancelado')", name="ck_fin_notas_emitidas_status_financeiro"),
     )
 
     @property
@@ -1054,7 +1054,7 @@ class FinanceiroContratoCliente(db.Model):
     data_inicio = db.Column(db.Date, nullable=False, index=True)
     data_fim = db.Column(db.Date, nullable=True, index=True)
     valor_contratual = db.Column(db.Numeric(12, 2), nullable=False, default=0)
-    tipo_cobranca = db.Column(db.String(40), nullable=False, default="Medição variável")
+    tipo_cobranca = db.Column(db.String(40), nullable=False, default="Medi��o vari�vel")
     periodicidade_medicao = db.Column(db.String(30), nullable=False, default="Mensal")
     dia_padrao_vencimento = db.Column(db.Integer, nullable=True)
     condicao_recebimento = db.Column(db.String(120), nullable=True)
@@ -1086,8 +1086,8 @@ class FinanceiroContratoCliente(db.Model):
         db.UniqueConstraint("numero_contrato", "cliente_cnpj_cpf_snapshot", name="uq_fin_contratos_numero_cliente"),
         db.CheckConstraint("valor_contratual >= 0", name="ck_fin_contratos_valor"),
         db.CheckConstraint("status in ('Rascunho', 'Ativo', 'Suspenso', 'Encerrado', 'Cancelado')", name="ck_fin_contratos_status"),
-        db.CheckConstraint("tipo_cobranca in ('Medição variável', 'Valor fixo mensal', 'Por evento', 'Por ordem de serviço', 'Reembolso', 'Outro')", name="ck_fin_contratos_tipo_cobranca"),
-        db.CheckConstraint("periodicidade_medicao in ('Mensal', 'Quinzenal', 'Semanal', 'Por demanda', 'Única', 'Outra')", name="ck_fin_contratos_periodicidade"),
+        db.CheckConstraint("tipo_cobranca in ('Medi��o vari�vel', 'Valor fixo mensal', 'Por evento', 'Por ordem de servi�o', 'Reembolso', 'Outro')", name="ck_fin_contratos_tipo_cobranca"),
+        db.CheckConstraint("periodicidade_medicao in ('Mensal', 'Quinzenal', 'Semanal', 'Por demanda', '�nica', 'Outra')", name="ck_fin_contratos_periodicidade"),
     )
 
     @property
@@ -1146,7 +1146,7 @@ class FinanceiroContratoMedicao(db.Model):
     data_prevista_faturamento = db.Column(db.Date, nullable=True)
     data_prevista_vencimento = db.Column(db.Date, nullable=True)
     status_medicao = db.Column(db.String(40), nullable=False, default="Medida", index=True)
-    status_financeiro = db.Column(db.String(40), nullable=False, default="Não integrado", index=True)
+    status_financeiro = db.Column(db.String(40), nullable=False, default="N�o integrado", index=True)
     anexo_nome_original = db.Column(db.String(255), nullable=True)
     anexo_nome_armazenado = db.Column(db.String(255), nullable=True)
     anexo_path = db.Column(db.String(500), nullable=True)
@@ -1179,8 +1179,8 @@ class FinanceiroContratoMedicao(db.Model):
         db.CheckConstraint("valor_retencoes >= 0", name="ck_fin_medicoes_retencoes"),
         db.CheckConstraint("valor_liquido_medido > 0", name="ck_fin_medicoes_valor_liquido"),
         db.CheckConstraint("periodo_fim >= periodo_inicio", name="ck_fin_medicoes_periodo"),
-        db.CheckConstraint("status_medicao in ('Rascunho', 'Medida', 'Aguardando aprovação', 'Aprovada', 'Faturada', 'Gerada no Contas a Receber', 'Cancelada')", name="ck_fin_medicoes_status"),
-        db.CheckConstraint("status_financeiro in ('Não integrado', 'Pendente de geração', 'Título gerado', 'Vinculado a título existente', 'Vinculado à nota emitida', 'Cancelado')", name="ck_fin_medicoes_status_financeiro"),
+        db.CheckConstraint("status_medicao in ('Rascunho', 'Medida', 'Aguardando aprova��o', 'Aprovada', 'Faturada', 'Gerada no Contas a Receber', 'Cancelada')", name="ck_fin_medicoes_status"),
+        db.CheckConstraint("status_financeiro in ('N�o integrado', 'Pendente de gera��o', 'T�tulo gerado', 'Vinculado a t�tulo existente', 'Vinculado � nota emitida', 'Cancelado')", name="ck_fin_medicoes_status_financeiro"),
     )
 
     @property
@@ -1241,13 +1241,13 @@ class FinanceiroContaReceberCobranca(db.Model):
 
     __table_args__ = (
         db.CheckConstraint(
-            "tipo_contato in ('Telefone', 'WhatsApp', 'E-mail', 'Reunião', 'Presencial', 'Outro')",
+            "tipo_contato in ('Telefone', 'WhatsApp', 'E-mail', 'Reuni�o', 'Presencial', 'Outro')",
             name="ck_fin_cr_cobrancas_tipo_contato",
         ),
         db.CheckConstraint(
-            "status_cobranca in ('Sem cobrança', 'A cobrar', 'Cobrança enviada', 'Em negociação', "
+            "status_cobranca in ('Sem cobran�a', 'A cobrar', 'Cobran�a enviada', 'Em negocia��o', "
             "'Promessa de pagamento', 'Aguardando retorno', 'Recebido parcialmente', 'Resolvido', "
-            "'Suspenso', 'Inadimplência encerrada')",
+            "'Suspenso', 'Inadimpl�ncia encerrada')",
             name="ck_fin_cr_cobrancas_status_cobranca",
         ),
         db.CheckConstraint("status in ('Ativo', 'Cancelado')", name="ck_fin_cr_cobrancas_status"),
@@ -1290,7 +1290,7 @@ class FinanceiroContaReceberLoteBaixa(db.Model):
         db.CheckConstraint("valor_total_recebido >= 0", name="ck_fin_cr_lote_valor_total"),
         db.CheckConstraint("status in ('Ativo', 'Cancelado', 'Estornado')", name="ck_fin_cr_lote_status"),
         db.CheckConstraint(
-            "forma_recebimento in ('Pix', 'Transferência', 'Depósito', 'Boleto', 'Dinheiro', 'Cartão', 'Outro')",
+            "forma_recebimento in ('Pix', 'Transfer�ncia', 'Dep�sito', 'Boleto', 'Dinheiro', 'Cart�o', 'Outro')",
             name="ck_fin_cr_lote_forma_recebimento",
         ),
     )
@@ -1343,7 +1343,7 @@ class FinanceiroContaReceberBaixa(db.Model):
         db.CheckConstraint("valor_recebido > 0", name="ck_fin_cr_baixa_valor_recebido"),
         db.CheckConstraint("status in ('Ativa', 'Cancelada', 'Estornada')", name="ck_fin_cr_baixa_status"),
         db.CheckConstraint(
-            "forma_recebimento in ('Pix', 'Transferência', 'Depósito', 'Boleto', 'Dinheiro', 'Cartão', 'Outro')",
+            "forma_recebimento in ('Pix', 'Transfer�ncia', 'Dep�sito', 'Boleto', 'Dinheiro', 'Cart�o', 'Outro')",
             name="ck_fin_cr_baixa_forma_recebimento",
         ),
     )
@@ -1546,6 +1546,29 @@ class Colaborador(db.Model):
 
     def __repr__(self):
         return f"<Colaborador {self.matricula} - {self.nome}>"
+
+
+class FeriasColaborador(db.Model):
+    __tablename__ = "ferias_colaboradores"
+
+    id = db.Column(db.Integer, primary_key=True)
+    colaborador_id = db.Column(db.Integer, db.ForeignKey("colaboradores.id"), nullable=False, index=True)
+    periodo_aquisitivo_inicio = db.Column(db.Date, nullable=False)
+    periodo_aquisitivo_fim = db.Column(db.Date, nullable=False)
+    inicio_ferias = db.Column(db.Date, nullable=False)
+    fim_ferias = db.Column(db.Date, nullable=False)
+    dias = db.Column(db.Integer, nullable=False, default=30)
+    abono_pecuniario = db.Column(db.Boolean, nullable=False, default=False)
+    status = db.Column(db.String(20), nullable=False, default="programada", index=True)
+    aprovacao_status = db.Column(db.String(20), nullable=False, default="pendente", index=True)
+    aprovado_por_usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=True)
+    aprovado_em = db.Column(db.DateTime, nullable=True)
+    motivo_reprovacao = db.Column(db.Text, nullable=True)
+    observacoes = db.Column(db.Text, nullable=True)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
+    atualizado_em = db.Column(db.DateTime, default=agora_brasil, onupdate=agora_brasil, nullable=False)
+
+    colaborador = db.relationship("Colaborador", backref=db.backref("ferias", lazy=True))
 
 
 class LinhaOnibus(db.Model):
@@ -2860,7 +2883,7 @@ class SuprimentosRequisicaoCompra(db.Model):
             name="ck_suprimentos_requisicoes_compra_status",
         ),
         db.CheckConstraint(
-            "tipo_custo IS NULL OR tipo_custo IN ('Abastecimento', 'Diversos', 'Manutenção')",
+            "tipo_custo IS NULL OR tipo_custo IN ('Abastecimento', 'Diversos', 'Manuten��o')",
             name="ck_suprimentos_requisicoes_compra_tipo_custo",
         ),
         db.CheckConstraint(
@@ -3357,7 +3380,7 @@ class SuprimentosOrdemCompra(db.Model):
             name="ck_suprimentos_ordens_compra_qtd_parcelas",
         ),
         db.CheckConstraint(
-            "tipo_custo IS NULL OR tipo_custo IN ('Abastecimento', 'Diversos', 'Manutenção')",
+            "tipo_custo IS NULL OR tipo_custo IN ('Abastecimento', 'Diversos', 'Manuten��o')",
             name="ck_suprimentos_ordens_compra_tipo_custo",
         ),
         db.CheckConstraint(
@@ -4318,7 +4341,6 @@ class OperacaoIntervencaoAdversa(db.Model):
     tempo_total = db.Column(db.String(40), nullable=True)
     intervencao = db.Column(db.Text, nullable=True)
     categoria = db.Column(db.String(160), nullable=True)
-    observacoes = db.Column(db.Text, nullable=True)
 
     apontamento = db.relationship("OperacaoApontamentoDiario", back_populates="intervencao_adversa")
 
