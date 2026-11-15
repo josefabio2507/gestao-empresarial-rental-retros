@@ -88,6 +88,7 @@ DEPARTAMENTOS_BASE = [
             ("Documentos", "documentos", "Arquivos e pendências"),
             ("Pedido de Refeições", "pedido_refeicoes", "Controle de refeições, bebidas e pedidos"),
             ("Vale Transporte", "vale_transporte", "Cadastro de linhas e vínculos de Vale Transporte"),
+            ("Pedido Tícket", "pedido_tiquete", "Cadastros e preparação de pedidos de tíquete"),
         ],
     },
     {
