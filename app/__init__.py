@@ -134,6 +134,7 @@ def create_app(config_overrides=None):
     from app.departamento_pessoal.documentos.routes import documentos_bp
     from app.departamento_pessoal.vale_transporte.routes import vale_transporte_bp
     from app.departamento_pessoal.ferias_routes import ferias_bp
+    from app.departamento_pessoal.pedido_tiquete.routes import pedido_tiquete_bp
     from app.financeiro.routes import financeiro_bp
     from app.financeiro.contas_pagar.routes import financeiro_contas_pagar_bp
     from app.financeiro.contas_receber.routes import financeiro_contas_receber_bp
@@ -173,6 +174,7 @@ def create_app(config_overrides=None):
     app.register_blueprint(documentos_bp, url_prefix="/departamento-pessoal/documentos")
     app.register_blueprint(vale_transporte_bp, url_prefix="/departamento-pessoal/vale-transporte")
     app.register_blueprint(ferias_bp, url_prefix="/departamento-pessoal/ferias")
+    app.register_blueprint(pedido_tiquete_bp, url_prefix="/departamento-pessoal/pedido-tiquete")
     app.register_blueprint(financeiro_bp, url_prefix="/financeiro")
     app.register_blueprint(financeiro_contas_pagar_bp, url_prefix="/financeiro/contas-a-pagar")
     app.register_blueprint(financeiro_contas_receber_bp, url_prefix="/financeiro/contas-a-receber")
