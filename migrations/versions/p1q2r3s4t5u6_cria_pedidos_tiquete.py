@@ -1,7 +1,7 @@
 """Cria cadastros do submódulo Pedido Tícket.
 
 Revision ID: p1q2r3s4t5u6
-Revises: i0j1k2l3m4n5
+Revises: e7f8a9b0c1d2, i0j1k2l3m4n5
 Create Date: 2026-11-15 20:00:00.000000
 """
 
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 revision = "p1q2r3s4t5u6"
-down_revision = "i0j1k2l3m4n5"
+down_revision = ("e7f8a9b0c1d2", "i0j1k2l3m4n5")
 branch_labels = None
 depends_on = None
 
