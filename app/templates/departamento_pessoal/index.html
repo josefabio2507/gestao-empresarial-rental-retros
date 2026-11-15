@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div>
+            <span class="page-kicker">Gestão de pessoas</span>
+            <h1>Departamento Pessoal</h1>
+            <p>Acesse os cadastros e rotinas do departamento.</p>
+        </div>
+    </div>
+
+    <div class="modules-grid">
+        {% for modulo in submodulos %}
+            <a class="module-card module-card-link" href="{{ modulo.url }}">
+                <span class="module-card-icon">{{ modulo.nome[0] }}</span>
+                <h2>{{ modulo.nome }}</h2>
+                <p>{{ modulo.descricao }}</p>
+                <span class="badge badge-success">Acessar</span>
+            </a>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}
