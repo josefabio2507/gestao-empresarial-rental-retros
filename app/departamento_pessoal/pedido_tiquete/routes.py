@@ -1,0 +1,179 @@
+from datetime import date, timedelta
+from decimal import Decimal, InvalidOperation
+
+from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask_login import current_user
+
+from app.decorators import module_permission_required
+from app.extensions import db
+from app.models import (
+    PedidoTicketBeneficiario,
+    PedidoTicketEmpresa,
+    PedidoTicketUnidadeEntrega,
+)
+from app.services.permissoes_service import usuario_tem_permissao
+
+
+pedido_tiquete_bp = Blueprint("pedido_tiquete", __name__)
+PRODUTOS = ("TAE", "TRE", "TKE", "TFE")
+ESTADOS = "AC AL AP AM BA CE DF ES GO MA MT MS MG PA PB PR PE PI RJ RN RS RO RR SC SP SE TO".split()
+
+
+def _digitos(valor):
+    return "".join(caractere for caractere in valor if caractere.isdigit())
+
+
+def _data_form(nome):
+    return date.fromisoformat(request.form.get(nome, ""))
+
+
+def _somar_dias_uteis(inicio, quantidade):
+    atual = inicio
+    contagem = 0
+    while contagem < quantidade:
+        atual += timedelta(days=1)
+        if atual.weekday() < 5:
+            contagem += 1
+    return atual
+
+
+def _idade_minima_atendida(nascimento, idade):
+    try:
+        limite = nascimento.replace(year=nascimento.year + idade)
+    except ValueError:
+        limite = date(nascimento.year + idade, 3, 1)
+    return date.today() >= limite
+
+
+def _pode(acao):
+    return usuario_tem_permissao(current_user, "departamento_pessoal", "pedido_tiquete", acao)
+
+
+@pedido_tiquete_bp.route("/")
+@module_permission_required("departamento_pessoal", "pedido_tiquete", "visualizar")
+def index():
+    aba = request.args.get("aba", "empresas")
+    if aba not in {"empresas", "unidades", "beneficiarios"}:
+        aba = "empresas"
+    return render_template(
+        "departamento_pessoal/pedido_tiquete/index.html",
+        aba=aba,
+        empresas=PedidoTicketEmpresa.query.order_by(PedidoTicketEmpresa.criado_em.desc()).limit(100).all(),
+        unidades=PedidoTicketUnidadeEntrega.query.order_by(PedidoTicketUnidadeEntrega.nome_unidade).limit(100).all(),
+        beneficiarios=PedidoTicketBeneficiario.query.order_by(PedidoTicketBeneficiario.nome).limit(100).all(),
+        produtos=PRODUTOS,
+        estados=ESTADOS,
+        pode_criar=_pode("criar"),
+    )
+
+
+@pedido_tiquete_bp.route("/empresas", methods=["POST"])
+@module_permission_required("departamento_pessoal", "pedido_tiquete", "criar")
+def criar_empresa():
+    try:
+        empresa_id = int(request.form.get("empresa_pedido", ""))
+        empresa = PedidoTicketEmpresa.query.filter_by(id=empresa_id).first()
+        cnpj = request.form.get("cnpj", "").strip().upper()
+        nome = request.form.get("nome_empresa", "").strip()
+        contrato = _digitos(request.form.get("numero_contrato", ""))
+        produto = request.form.get("produto", "").strip().upper()
+        data_credito = _data_form("data_credito")
+        if not (1 <= len(numero_pedido) <= 10 and 1 <= len(cnpj) <= 14 and cnpj.isalnum()):
+            raise ValueError("Confira o número do pedido e o CNPJ/CPF da empresa.")
+        if not nome or len(nome) > 26 or not (1 <= len(contrato) <= 10) or produto not in PRODUTOS:
+            raise ValueError("Confira o nome, o contrato e o produto da empresa.")
+        if PedidoTicketEmpresa.query.filter_by(numero_pedido=numero_pedido, numero_contrato=contrato, produto=produto).first():
+            raise ValueError("Esse contrato e produto já foram incluídos no pedido.")
+        primeiro_registro = not PedidoTicketEmpresa.query.filter_by(numero_pedido=numero_pedido).first()
+        prazo = _somar_dias_uteis(date.today(), 7 if primeiro_registro else 3)
+        if data_credito < prazo:
+            raise ValueError(f"A data de crédito deve respeitar o prazo mínimo de {7 if primeiro_registro else 3} dias úteis.")
+        db.session.add(PedidoTicketEmpresa(numero_pedido=numero_pedido, cnpj=cnpj, nome_empresa=nome,
+                                           numero_contrato=contrato, produto=produto, data_credito=data_credito))
+        db.session.commit()
+        flash("Empresa/contrato cadastrado com sucesso.", "success")
+    except (ValueError, TypeError):
+        db.session.rollback()
+        flash("Não foi possível cadastrar. Confira os campos e o prazo da data de crédito.", "danger")
+    return redirect(url_for("pedido_tiquete.index", aba="empresas"))
+
+
+@pedido_tiquete_bp.route("/unidades", methods=["POST"])
+@module_permission_required("departamento_pessoal", "pedido_tiquete", "criar")
+def criar_unidade():
+    try:
+        dados = {campo: request.form.get(campo, "").strip() for campo in (
+            "cnpj", "codigo_unidade", "nome_unidade", "tipo_logradouro", "logradouro", "numero",
+            "complemento", "bairro", "estado", "cidade", "cep", "interlocutor", "cpf_interlocutor",
+            "rg_interlocutor", "ddd", "telefone", "ramal",
+        )}
+        dados["cnpj"] = dados["cnpj"].upper()
+        dados["estado"] = dados["estado"].upper()
+        if not (dados["cnpj"].isalnum() and len(dados["cnpj"]) <= 14):
+            raise ValueError
+        limites = {"codigo_unidade": 6, "nome_unidade": 26, "tipo_logradouro": 4, "logradouro": 50,
+                   "numero": 6, "complemento": 10, "bairro": 15, "cidade": 25, "cep": 8,
+                   "interlocutor": 50, "cpf_interlocutor": 11, "rg_interlocutor": 10, "ddd": 3,
+                   "telefone": 9, "ramal": 5}
+        for campo, limite in limites.items():
+            if len(dados[campo]) > limite:
+                raise ValueError
+        if any(not dados[campo] for campo in ("codigo_unidade", "nome_unidade", "tipo_logradouro", "logradouro", "numero", "bairro", "cidade", "cep", "interlocutor")):
+            raise ValueError
+        if dados["estado"] not in ESTADOS or len(_digitos(dados["cep"])) != 8:
+            raise ValueError
+        if PedidoTicketUnidadeEntrega.query.filter_by(cnpj=dados["cnpj"], codigo_unidade=dados["codigo_unidade"]).first():
+            raise ValueError
+        for campo, tamanho in (("cpf_interlocutor", 11), ("ddd", 2), ("telefone", 8)):
+            if dados[campo] and len(_digitos(dados[campo])) != tamanho and not (campo == "telefone" and len(_digitos(dados[campo])) == 9):
+                raise ValueError
+        dados["cep"] = _digitos(dados["cep"])
+        for campo in ("cpf_interlocutor", "ddd", "telefone", "rg_interlocutor", "ramal", "numero", "codigo_unidade"):
+            if dados[campo]:
+                dados[campo] = _digitos(dados[campo])
+        db.session.add(PedidoTicketUnidadeEntrega(**dados))
+        db.session.commit()
+        flash("Unidade de entrega cadastrada com sucesso.", "success")
+    except (ValueError, TypeError):
+        db.session.rollback()
+        flash("Não foi possível cadastrar. Confira os campos obrigatórios e os formatos informados.", "danger")
+    return redirect(url_for("pedido_tiquete.index", aba="unidades"))
+
+
+@pedido_tiquete_bp.route("/beneficiarios", methods=["POST"])
+@module_permission_required("departamento_pessoal", "pedido_tiquete", "criar")
+def criar_beneficiario():
+    try:
+        numero_pedido = _digitos(request.form.get("numero_pedido", ""))
+        matricula = _digitos(request.form.get("matricula", ""))
+        cpf = _digitos(request.form.get("cpf", ""))
+        nome = request.form.get("nome", "").strip()
+        nascimento = _data_form("data_nascimento")
+        departamento = request.form.get("departamento", "").strip()
+        unidade_id = int(request.form.get("unidade_entrega", ""))
+        unidade = PedidoTicketUnidadeEntrega.query.filter_by(id=unidade_id).first()
+        valor = Decimal(request.form.get("valor_mensal", "").replace(",", "."))
+        parcelas_texto = _digitos(request.form.get("numero_parcelas", ""))
+        parcelas = int(parcelas_texto) if parcelas_texto else None
+        if not empresa or not unidade or unidade.cnpj != empresa.cnpj:
+            raise ValueError
+        if not (1 <= len(matricula) <= 12 and len(cpf) == 11 and 1 <= len(nome) <= 60):
+            raise ValueError
+        if nascimento > date.today() or not _idade_minima_atendida(nascimento, 14) or not departamento or len(departamento) > 50:
+            raise ValueError
+        if valor < 0:
+            raise ValueError
+        if PedidoTicketBeneficiario.query.filter_by(numero_pedido=empresa.numero_pedido, cpf=cpf).first():
+            raise ValueError
+        if parcelas is not None and parcelas < 1:
+            raise ValueError
+        db.session.add(PedidoTicketBeneficiario(numero_pedido=empresa.numero_pedido, matricula=matricula, cpf=cpf, nome=nome,
+                                                data_nascimento=nascimento, departamento=departamento,
+                                                unidade_entrega=f"{unidade.codigo_unidade} - {unidade.nome_unidade}", valor_mensal=valor,
+                                                contrato_produto=f"{empresa.numero_contrato} - {empresa.produto}", numero_parcelas=parcelas))
+        db.session.commit()
+        flash("Beneficiário cadastrado com sucesso.", "success")
+    except (ValueError, TypeError, InvalidOperation):
+        db.session.rollback()
+        flash("Não foi possível cadastrar. Confira os campos obrigatórios e os formatos informados.", "danger")
+    return redirect(url_for("pedido_tiquete.index", aba="beneficiarios"))

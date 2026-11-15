@@ -4352,3 +4352,60 @@ class OperacaoIntervencaoAdversa(db.Model):
         if segundos < 0:
             return "-"
         return f"{segundos // 3600:02d}:{(segundos % 3600) // 60:02d}:{segundos % 60:02d}"
+
+
+class PedidoTicketEmpresa(db.Model):
+    __tablename__ = "dp_pedido_ticket_empresas"
+
+    id = db.Column(db.Integer, primary_key=True)
+    numero_pedido = db.Column(db.String(10), nullable=False, index=True)
+    cnpj = db.Column(db.String(14), nullable=False, index=True)
+    nome_empresa = db.Column(db.String(26), nullable=False)
+    numero_contrato = db.Column(db.String(10), nullable=False)
+    produto = db.Column(db.String(3), nullable=False)
+    data_credito = db.Column(db.Date, nullable=False)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
+    __table_args__ = (db.UniqueConstraint("numero_pedido", "numero_contrato", "produto", name="uq_dp_ticket_pedido_contrato_produto"),)
+
+
+class PedidoTicketUnidadeEntrega(db.Model):
+    __tablename__ = "dp_pedido_ticket_unidades"
+
+    id = db.Column(db.Integer, primary_key=True)
+    cnpj = db.Column(db.String(14), nullable=False, index=True)
+    codigo_unidade = db.Column(db.String(6), nullable=False)
+    nome_unidade = db.Column(db.String(26), nullable=False)
+    tipo_logradouro = db.Column(db.String(4), nullable=False)
+    logradouro = db.Column(db.String(50), nullable=False)
+    numero = db.Column(db.String(6), nullable=False)
+    complemento = db.Column(db.String(10), nullable=True)
+    bairro = db.Column(db.String(15), nullable=False)
+    estado = db.Column(db.String(2), nullable=False)
+    cidade = db.Column(db.String(25), nullable=False)
+    cep = db.Column(db.String(8), nullable=False)
+    interlocutor = db.Column(db.String(50), nullable=False)
+    cpf_interlocutor = db.Column(db.String(11), nullable=True)
+    rg_interlocutor = db.Column(db.String(10), nullable=True)
+    ddd = db.Column(db.String(3), nullable=True)
+    telefone = db.Column(db.String(9), nullable=True)
+    ramal = db.Column(db.String(5), nullable=True)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
+    __table_args__ = (db.UniqueConstraint("cnpj", "codigo_unidade", name="uq_dp_ticket_unidade_empresa_codigo"),)
+
+
+class PedidoTicketBeneficiario(db.Model):
+    __tablename__ = "dp_pedido_ticket_beneficiarios"
+
+    id = db.Column(db.Integer, primary_key=True)
+    numero_pedido = db.Column(db.String(10), nullable=False, index=True)
+    matricula = db.Column(db.String(12), nullable=False, index=True)
+    cpf = db.Column(db.String(11), nullable=False, index=True)
+    nome = db.Column(db.String(60), nullable=False)
+    data_nascimento = db.Column(db.Date, nullable=False)
+    departamento = db.Column(db.String(50), nullable=True)
+    unidade_entrega = db.Column(db.String(40), nullable=False)
+    valor_mensal = db.Column(db.Numeric(12, 2), nullable=False)
+    contrato_produto = db.Column(db.String(30), nullable=False)
+    numero_parcelas = db.Column(db.Integer, nullable=True)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
+    __table_args__ = (db.UniqueConstraint("numero_pedido", "cpf", name="uq_dp_ticket_beneficiario_pedido_cpf"),)
