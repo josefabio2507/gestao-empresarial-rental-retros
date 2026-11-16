@@ -302,7 +302,10 @@ def editar_unidade(unidade_id):
             or dados["nome_unidade"] != unidade.nome_unidade
         )
         referencia_antiga = f"{unidade.codigo_unidade} - {unidade.nome_unidade}"
-        if chave_mudou and PedidoTicketBeneficiario.query.filter_by(unidade_entrega=referencia_antiga).first():
+        beneficiario_vinculado = PedidoTicketBeneficiario.query.filter_by(unidade_entrega=referencia_antiga).first()
+        if unidade.ativo and not dados["ativo"] and beneficiario_vinculado:
+            raise ValueError("Esta unidade está vinculada a beneficiários e não pode ser desativada.")
+        if chave_mudou and beneficiario_vinculado:
             raise ValueError("Não altere empresa, código ou nome: há beneficiários vinculados a esta unidade.")
         for campo, valor in dados.items():
             setattr(unidade, campo, valor)

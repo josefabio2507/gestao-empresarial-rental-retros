@@ -130,3 +130,20 @@ def test_desativa_unidade_sem_excluir_registro(cliente_ticket_unidades):
         unidade = db.session.get(PedidoTicketUnidadeEntrega, unidade_id)
         assert unidade.ativo is False
         assert PedidoTicketUnidadeEntrega.query.count() == 1
+
+
+def test_bloqueia_desativacao_pela_edicao_com_beneficiario(cliente_ticket_unidades):
+    app, client = cliente_ticket_unidades
+    client.post("/pedido-tiquete/unidades", data=_unidade_form())
+    with app.app_context():
+        unidade = PedidoTicketUnidadeEntrega.query.one()
+        db.session.add(PedidoTicketBeneficiario(
+            numero_pedido="42", matricula="1", cpf="12345678901", nome="COLABORADOR",
+            data_nascimento=date(1990, 1, 1), departamento="TESTE",
+            unidade_entrega="001 - MATRIZ", valor_mensal=1, contrato_produto="1234 - TAE"
+        ))
+        db.session.commit()
+        unidade_id = unidade.id
+    client.post(f"/pedido-tiquete/unidades/{unidade_id}/editar", data=_unidade_form())
+    with app.app_context():
+        assert db.session.get(PedidoTicketUnidadeEntrega, unidade_id).ativo is True
