@@ -465,7 +465,10 @@ def relatorio_pdf(id_os_interno):
         dados = [cabecalho] + (linhas or [["Nenhum registro", *(["-"] * (len(cabecalho) - 1))]])
         dados = [[Paragraph(str(celula), styles["TableHeader"] if indice == 0 else styles["TableSmall"]) for celula in linha] for indice, linha in enumerate(dados)]
         tabela = Table(dados, colWidths=larguras, repeatRows=1, style=TableStyle([["BACKGROUND", (0,0), (-1,0), colors.HexColor("#0B477D")], ["TEXTCOLOR", (0,0), (-1,0), colors.white], ["GRID", (0,0), (-1,-1), 0.25, colors.HexColor("#B7C7D6")], ["VALIGN", (0,0), (-1,-1), "TOP"]]))
-        story.append(KeepTogether([Paragraph(titulo, styles["Section"]), tabela]))
+        # A tabela precisa poder quebrar entre páginas. Envolvê-la em
+        # KeepTogether faz o ReportLab lançar LayoutError em relatórios longos.
+        story.append(Paragraph(titulo, styles["Section"]))
+        story.append(tabela)
     def segundos_horario(inicio, fim):
         if not (inicio and fim):
             return 0
@@ -482,8 +485,8 @@ def relatorio_pdf(id_os_interno):
     tabela_detalhes("9. Registros de circulação de trens", ["Data", "Prefixo", "Início", "Fim", "Via/Linha", "Duração"], [[fmt(registro.apontamento.data_evento), registro.prefixo or "-", str(registro.hora_inicio or "-"), str(registro.hora_fim or "-"), registro.via_linha or "-", duracao_formatada(segundos_horario(registro.hora_inicio, registro.hora_fim))] for registro in circulacoes] + [["TOTAL", "", "", "", "", duracao_formatada(total_circulacoes)]], [25*mm, 28*mm, 24*mm, 24*mm, 55*mm, 34*mm])
     intervencoes = [registro.intervencao_adversa for registro in registros if registro.intervencao_adversa]
     total_intervencoes = sum(segundos_horario(registro.hora_inicio, registro.hora_fim) for registro in intervencoes)
-    tabela_detalhes("9. Registros de intervenções adversas", ["Data", "Categoria", "Intervenção", "Observações", "Início", "Fim", "Duração"], [[fmt(registro.apontamento.data_evento), registro.categoria or "-", registro.intervencao or "-", registro.observacoes or "-", str(registro.hora_inicio or "-"), str(registro.hora_fim or "-"), duracao_formatada(segundos_horario(registro.hora_inicio, registro.hora_fim))] for registro in intervencoes] + [["TOTAL", "", "", "", "", "", duracao_formatada(total_intervencoes)]], [20*mm, 32*mm, 48*mm, 45*mm, 17*mm, 17*mm, 21*mm])
-    story.append(Paragraph("10. Pré-checagem para fechamento", styles["Section"]))
+    tabela_detalhes("10. Registros de intervenções adversas", ["Data", "Categoria", "Intervenção", "Observações", "Início", "Fim", "Duração"], [[fmt(registro.apontamento.data_evento), registro.categoria or "-", registro.intervencao or "-", registro.observacoes or "-", str(registro.hora_inicio or "-"), str(registro.hora_fim or "-"), duracao_formatada(segundos_horario(registro.hora_inicio, registro.hora_fim))] for registro in intervencoes] + [["TOTAL", "", "", "", "", "", duracao_formatada(total_intervencoes)]], [18*mm, 30*mm, 45*mm, 43*mm, 17*mm, 17*mm, 20*mm])
+    story.append(Paragraph("11. Pré-checagem para fechamento", styles["Section"]))
     for item in ["Identificação da OS do cliente informada.", "Equipe e encarregado responsáveis definidos.", "Jornada de trabalho completa, sem registro em aberto.", "Controles de liberação com campos obrigatórios preenchidos.", "Circulações de trens com hora de início e fim.", "Intervenções adversas com horários completos quando informados.", "Data final realizada somente após a data inicial."]:
         story.append(Paragraph("• " + item, styles["Small"]))
     def footer(canvas, doc):

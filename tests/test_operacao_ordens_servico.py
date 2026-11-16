@@ -1,6 +1,6 @@
 import unittest
 import uuid
-from datetime import date
+from datetime import date, time
 from unittest.mock import patch
 
 from app import create_app
@@ -12,6 +12,7 @@ from app.models import (
     OperacaoApontamentoDiario,
     OperacaoControleLiberacao,
     OperacaoDiarioLocalizacao,
+    OperacaoIntervencaoAdversa,
     OperacaoOrdemServico,
     PermissaoUsuarioModulo,
     Usuario,
@@ -158,6 +159,40 @@ class OperacaoOrdensServicoTestCase(unittest.TestCase):
         ordem = self._criar_ordem("RR-OS-2026-PDF", "Pátio XI", "TMC")
 
         resposta = self.client.get(f"/operacao/ordens-de-servico/{ordem.id_os_interno}/relatorio-pdf")
+
+        self.assertEqual(200, resposta.status_code)
+        self.assertEqual("application/pdf", resposta.mimetype)
+        self.assertTrue(resposta.data.startswith(b"%PDF"))
+
+    def test_relatorio_pdf_paginas_intervencoes_adversas_extensas(self):
+        self._liberar_visualizacao()
+        self._autenticar(self.usuario)
+        ordem = self._criar_ordem("RR-OS-2026-PDF-INTERVENCOES", "Pátio XI", "TMC")
+
+        for indice in range(45):
+            apontamento = OperacaoApontamentoDiario(
+                id_os_interno=ordem.id_os_interno,
+                chave_idempotencia=str(uuid.uuid4()),
+                data_evento=date(2026, 10, 18),
+                equipe=ordem.equipe,
+                criado_por_usuario_id=self.usuario.id,
+            )
+            db.session.add_all([
+                apontamento,
+                OperacaoIntervencaoAdversa(
+                    apontamento=apontamento,
+                    categoria="CHUVA",
+                    intervencao="CHUVA FORTE C/ INCIDÊNCIA DE RAIOS E TROVÕES",
+                    observacoes=("A equipe aguardou a liberação operacional após o evento climático. " * 3),
+                    hora_inicio=time(8, 0),
+                    hora_fim=time(8, 30),
+                ),
+            ])
+        db.session.commit()
+
+        resposta = self.client.get(
+            f"/operacao/ordens-de-servico/{ordem.id_os_interno}/relatorio-pdf"
+        )
 
         self.assertEqual(200, resposta.status_code)
         self.assertEqual("application/pdf", resposta.mimetype)
