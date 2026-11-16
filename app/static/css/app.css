@@ -2158,3 +2158,20 @@ textarea:focus {
 .ferias-hero { background-image: linear-gradient(90deg, rgba(3, 28, 56, .18), rgba(3, 28, 56, .05)), url('/static/img/ferias-banner.svg'); background-size: cover; background-position: center; overflow: hidden; }
 .ferias-hero::before { display: none; }
 .ferias-hero::after { opacity: .35; }
+
+
+.pedido-ticket-empresa-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (max-width: 900px) {
+    .pedido-ticket-empresa-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 560px) {
+    .pedido-ticket-empresa-grid {
+        grid-template-columns: 1fr;
+    }
+}
