@@ -1,5 +1,6 @@
 from datetime import date, timedelta
 from decimal import Decimal
+import warnings
 
 import pytest
 from flask import Blueprint, Flask
@@ -197,8 +198,11 @@ def test_nao_cria_pedido_para_colaborador_inativo_ou_unidade_de_outra_empresa(cl
 
 def test_tela_de_novo_pedido_lista_colaboradores_ativos(cliente_pedidos_ticket):
     _app, client, _ids = cliente_pedidos_ticket
-    response = client.get("/pedido-tiquete/?aba=novo_pedido")
+    with warnings.catch_warnings(record=True) as avisos:
+        warnings.simplefilter("always")
+        response = client.get("/pedido-tiquete/?aba=novo_pedido")
     assert response.status_code == 200
+    assert not any("fully NULL primary key identity" in str(aviso.message) for aviso in avisos)
     assert b"COLABORADOR UM" in response.data
     assert b"COLABORADOR DOIS" in response.data
     assert b"INATIVO" not in response.data
