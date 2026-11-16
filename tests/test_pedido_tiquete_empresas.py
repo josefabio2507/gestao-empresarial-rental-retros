@@ -95,6 +95,27 @@ def test_cadastra_empresa_e_rejeita_contrato_duplicado(cliente_ticket):
         assert db.session.get(PedidoTicketEmpresa, empresa_id).nome_empresa == "EMPRESA TESTE"
 
 
+def test_gera_numero_pedido_sequencialmente(cliente_ticket):
+    app, client = cliente_ticket
+    primeira = client.post("/pedido-tiquete/empresas", data=_empresa_form())
+    segunda = client.post(
+        "/pedido-tiquete/empresas",
+        data=_empresa_form(
+            cnpj="98765432000190",
+            nome_empresa="SEGUNDA EMPRESA",
+            numero_contrato="5678",
+        ),
+    )
+    assert primeira.status_code == 302
+    assert segunda.status_code == 302
+    with app.app_context():
+        numeros = [
+            empresa.numero_pedido
+            for empresa in PedidoTicketEmpresa.query.order_by(PedidoTicketEmpresa.id).all()
+        ]
+        assert numeros == ["0000000001", "0000000002"]
+
+
 def test_edita_e_desativa_sem_apagar_o_registro(cliente_ticket):
     app, client = cliente_ticket
     client.post("/pedido-tiquete/empresas", data=_empresa_form())
