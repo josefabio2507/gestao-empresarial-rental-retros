@@ -23,6 +23,7 @@ class _LocalizadorFalso:
 
     def click(self):
         self.pagina.upload = True
+        self.pagina.url = "https://beneficios.ticket.com.br/pedidos/novo-pedido?fileType=upload-ticket"
 
     def set_input_files(self, caminho):
         self.pagina.arquivo = caminho
@@ -33,6 +34,7 @@ class _PaginaFalsa:
         self.desafio = desafio
         self.upload = False
         self.arquivo = None
+        self.url = "https://beneficios.ticket.com.br/"
 
     def set_default_timeout(self, _timeout):
         pass

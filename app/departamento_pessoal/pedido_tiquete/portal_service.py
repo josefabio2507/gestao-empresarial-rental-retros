@@ -42,6 +42,10 @@ def _validar_url_portal(url):
         raise PortalTicketError("A URL configurada para o Portal Ticket não é permitida.")
 
 
+
+
+def _validar_url_atual(pagina):
+    _validar_url_portal(pagina.url)
 def enviar_planilha_para_portal(
     caminho_arquivo,
     *,
@@ -87,12 +91,14 @@ def enviar_planilha_para_portal(
             pagina = navegador.new_page()
             pagina.set_default_timeout(30000)
             pagina.goto(portal_url, wait_until="domcontentloaded")
+            _validar_url_atual(pagina)
 
             if pagina.locator("#localAccountForm").count():
                 pagina.get_by_label("E-mail", exact=True).fill(login)
                 pagina.get_by_label("Senha", exact=True).fill(senha)
                 pagina.locator("#next").click()
                 pagina.wait_for_timeout(1500)
+                _validar_url_atual(pagina)
 
             if _tem_desafio_humano(pagina):
                 raise PortalTicketInteracaoHumana(
@@ -110,6 +116,7 @@ def enviar_planilha_para_portal(
                 "() => location.pathname === '/pedidos/novo-pedido' && "
                 "new URLSearchParams(location.search).get('fileType') === 'upload-ticket'"
             )
+            _validar_url_atual(pagina)
             if _tem_desafio_humano(pagina):
                 raise PortalTicketInteracaoHumana(
                     "O Portal Ticket exige validação humana. Use o envio manual."
