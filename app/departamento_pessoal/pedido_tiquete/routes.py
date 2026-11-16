@@ -269,19 +269,28 @@ def enviar_pedido_ticket(pedido_id):
             caminho.unlink(missing_ok=True)
 
 
-def _proximo_numero_pedido():
-    existentes = PedidoTicketEmpresa.query.with_entities(
-        PedidoTicketEmpresa.numero_pedido
+def _proximo_numero_pedido(empresa):
+    existentes = PedidoTicketEmpresa.query.filter(
+        PedidoTicketEmpresa.id != empresa.id
+    ).with_entities(
+        PedidoTicketEmpresa.id,
+        PedidoTicketEmpresa.numero_pedido,
     ).all()
-    numeros = [int(row[0]) for row in existentes if str(row[0]).isdigit()]
-    proximo = max(numeros, default=0) + 1
+    numeros = [
+        int(numero) for _, numero in existentes
+        if str(numero).isdigit()
+    ]
+    maior_numero = max(numeros, default=0)
+    maior_id = max((registro_id for registro_id, _ in existentes), default=0)
+    deslocamento = max(maior_numero - maior_id, 0)
+    proximo = deslocamento + empresa.id
     if proximo > 9_999_999_999:
         raise ValueError("O limite de numeração de pedidos foi atingido.")
     return f"{proximo:010d}"
 
 
 def _dados_empresa_form(empresa=None):
-    numero_pedido = empresa.numero_pedido if empresa else _proximo_numero_pedido()
+    numero_pedido = empresa.numero_pedido if empresa else None
     cnpj = request.form.get("cnpj", "").strip().upper()
     nome = request.form.get("nome_empresa", "").strip()
     contrato = _digitos(request.form.get("numero_contrato", ""))
@@ -323,8 +332,7 @@ def _dados_empresa_form(empresa=None):
         if data_credito < _somar_dias_uteis(date.today(), prazo_dias):
             raise ValueError(f"A data de crédito deve respeitar o prazo mínimo de {prazo_dias} dias úteis.")
 
-    return {
-        "numero_pedido": numero_pedido,
+    dados = {
         "cnpj": cnpj,
         "nome_empresa": nome,
         "numero_contrato": contrato,
@@ -332,6 +340,9 @@ def _dados_empresa_form(empresa=None):
         "data_credito": data_credito,
         "ativo": True if empresa is None else request.form.get("ativo") == "on",
     }
+    if empresa:
+        dados["numero_pedido"] = empresa.numero_pedido
+    return dados
 
 
 @pedido_tiquete_bp.route("/empresas", methods=["POST"])
@@ -339,7 +350,10 @@ def _dados_empresa_form(empresa=None):
 def criar_empresa():
     _exigir_feature_ativa()
     try:
-        db.session.add(PedidoTicketEmpresa(**_dados_empresa_form()))
+        empresa = PedidoTicketEmpresa(numero_pedido="", **_dados_empresa_form())
+        db.session.add(empresa)
+        db.session.flush()
+        empresa.numero_pedido = _proximo_numero_pedido(empresa)
         db.session.commit()
         flash("Empresa/contrato cadastrado com sucesso.", "success")
     except (ValueError, TypeError):
