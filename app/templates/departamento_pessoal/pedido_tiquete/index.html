@@ -24,22 +24,23 @@
         {% endfor %}
     </nav>
 
-    {% if pode_criar and aba == 'empresas' %}
-    <form class="form-card" method="post" action="{{ url_for('pedido_tiquete.criar_empresa') }}">
-        <h2 class="section-title">Cadastrar empresa e contrato</h2>
+    {% if aba == 'empresas' and (pode_criar or (pode_editar and editar_empresa)) %}
+    <form class="form-card" method="post" action="{% if editar_empresa %}{{ url_for('pedido_tiquete.editar_empresa', empresa_id=editar_empresa.id) }}{% else %}{{ url_for('pedido_tiquete.criar_empresa') }}{% endif %}">
+        <h2 class="section-title">{% if editar_empresa %}Editar empresa e contrato{% else %}Cadastrar empresa e contrato{% endif %}</h2>
         <div class="form-grid">
-            <div class="form-group"><label for="numero_pedido">Número do pedido</label><input id="numero_pedido" name="numero_pedido" inputmode="numeric" maxlength="10" required></div>
-            <div class="form-group"><label for="cnpj">CNPJ/CPF da empresa</label><input id="cnpj" name="cnpj" maxlength="14" required></div>
-            <div class="form-group"><label for="nome_empresa">Nome da empresa</label><input id="nome_empresa" name="nome_empresa" maxlength="26" required></div>
-            <div class="form-group"><label for="numero_contrato">Número do contrato</label><input id="numero_contrato" name="numero_contrato" inputmode="numeric" maxlength="10" required></div>
-            <div class="form-group"><label for="produto">Produto</label><select id="produto" name="produto" required><option value="">Selecione</option>{% for produto in produtos %}<option>{{ produto }}</option>{% endfor %}</select></div>
-            <div class="form-group"><label for="data_credito">Data de crédito solicitada</label><input id="data_credito" name="data_credito" type="date" required></div>
+            <div class="form-group"><label for="numero_pedido">Número do pedido</label><input id="numero_pedido" name="numero_pedido" inputmode="numeric" maxlength="10" value="{{ editar_empresa.numero_pedido if editar_empresa else '' }}" required></div>
+            <div class="form-group"><label for="cnpj">CNPJ/CPF da empresa</label><input id="cnpj" name="cnpj" maxlength="14" value="{{ editar_empresa.cnpj if editar_empresa else '' }}" required></div>
+            <div class="form-group"><label for="nome_empresa">Nome da empresa</label><input id="nome_empresa" name="nome_empresa" maxlength="26" value="{{ editar_empresa.nome_empresa if editar_empresa else '' }}" required></div>
+            <div class="form-group"><label for="numero_contrato">Número do contrato</label><input id="numero_contrato" name="numero_contrato" inputmode="numeric" maxlength="10" value="{{ editar_empresa.numero_contrato if editar_empresa else '' }}" required></div>
+            <div class="form-group"><label for="produto">Produto</label><select id="produto" name="produto" required><option value="">Selecione</option>{% for produto in produtos %}<option {% if editar_empresa and editar_empresa.produto == produto %}selected{% endif %}>{{ produto }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="data_credito">Data de crédito solicitada</label><input id="data_credito" name="data_credito" type="date" value="{{ editar_empresa.data_credito.isoformat() if editar_empresa else '' }}" required></div>
+            {% if editar_empresa %}<div class="form-group"><label for="ativo">Situação</label><label><input id="ativo" name="ativo" type="checkbox" {% if editar_empresa.ativo %}checked{% endif %}> Ativa</label></div>{% endif %}
         </div>
-        <button class="btn btn-primary" type="submit">Salvar empresa/contrato</button>
+        <button class="btn btn-primary" type="submit">{% if editar_empresa %}Salvar alterações{% else %}Salvar empresa/contrato{% endif %}</button>
+        {% if editar_empresa %}<a class="btn btn-secondary" href="{{ url_for('pedido_tiquete.index', aba='empresas') }}">Cancelar edição</a>{% endif %}
         <p class="form-help">A planilha exige antecedência mínima de 7 dias úteis no primeiro pedido e 3 dias úteis nos seguintes.</p>
     </form>
     {% endif %}
-
     {% if pode_criar and aba == 'unidades' %}
     <form class="form-card" method="post" action="{{ url_for('pedido_tiquete.criar_unidade') }}">
         <h2 class="section-title">Cadastrar unidade de entrega</h2>
@@ -63,7 +64,7 @@
     <form class="form-card" method="post" action="{{ url_for('pedido_tiquete.criar_beneficiario') }}">
         <h2 class="section-title">Cadastrar beneficiário</h2>
         <div class="form-grid">
-            <div class="form-group"><label for="empresa_pedido">Pedido, empresa e contrato</label><select id="empresa_pedido" name="empresa_pedido" required><option value="">Selecione</option>{% for empresa in empresas %}<option value="{{ empresa.id }}">Pedido {{ empresa.numero_pedido }} — {{ empresa.nome_empresa }} — {{ empresa.numero_contrato }} / {{ empresa.produto }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="empresa_pedido">Pedido, empresa e contrato</label><select id="empresa_pedido" name="empresa_pedido" required><option value="">Selecione</option>{% for empresa in empresas_ativas %}<option value="{{ empresa.id }}">Pedido {{ empresa.numero_pedido }} — {{ empresa.nome_empresa }} — {{ empresa.numero_contrato }} / {{ empresa.produto }}</option>{% endfor %}</select></div>
             <div class="form-group"><label for="matricula">Matrícula</label><input id="matricula" name="matricula" inputmode="numeric" maxlength="12" required></div>
             <div class="form-group"><label for="cpf">CPF</label><input id="cpf" name="cpf" inputmode="numeric" maxlength="14" required></div>
             <div class="form-group"><label for="nome">Nome do usuário</label><input id="nome" name="nome" maxlength="60" required></div>
@@ -79,7 +80,7 @@
     {% endif %}
 
     {% if aba == 'empresas' %}
-    <div class="details-card"><h2 class="section-title">Empresas e contratos cadastrados</h2><div class="table-wrapper"><table><thead><tr><th>Pedido</th><th>Empresa</th><th>CNPJ/CPF</th><th>Contrato</th><th>Produto</th><th>Crédito</th></tr></thead><tbody>{% for item in empresas %}<tr><td>{{ item.numero_pedido }}</td><td>{{ item.nome_empresa }}</td><td>{{ item.cnpj }}</td><td>{{ item.numero_contrato }}</td><td>{{ item.produto }}</td><td>{{ item.data_credito.strftime('%d/%m/%Y') }}</td></tr>{% else %}<tr><td colspan="6">Nenhuma empresa cadastrada.</td></tr>{% endfor %}</tbody></table></div></div>
+    <div class="details-card"><h2 class="section-title">Empresas e contratos cadastrados</h2><div class="table-wrapper"><table><thead><tr><th>Pedido</th><th>Empresa</th><th>CNPJ/CPF</th><th>Contrato</th><th>Produto</th><th>Crédito</th><th>Situação</th>{% if pode_editar %}<th>Ações</th>{% endif %}</tr></thead><tbody>{% for item in empresas %}<tr><td>{{ item.numero_pedido }}</td><td>{{ item.nome_empresa }}</td><td>{{ item.cnpj }}</td><td>{{ item.numero_contrato }}</td><td>{{ item.produto }}</td><td>{{ item.data_credito.strftime('%d/%m/%Y') }}</td><td>{{ 'Ativa' if item.ativo else 'Inativa' }}</td>{% if pode_editar %}<td><a class="btn btn-secondary" href="{{ url_for('pedido_tiquete.editar_empresa', empresa_id=item.id) }}">Editar</a><form method="post" action="{{ url_for('pedido_tiquete.alternar_status_empresa', empresa_id=item.id) }}" style="display:inline"><button class="btn btn-secondary" type="submit">{{ 'Desativar' if item.ativo else 'Reativar' }}</button></form></td>{% endif %}</tr>{% else %}<tr><td colspan="{{ 8 if pode_editar else 7 }}">Nenhuma empresa cadastrada.</td></tr>{% endfor %}</tbody></table></div></div>
     {% if pode_criar and pedidos %}
     <div class="details-card"><h2 class="section-title">Gerar arquivo do pedido</h2><p>Baixe a planilha preenchida com os cadastros deste sistema. O envio ao Portal da Tícket continua separado.</p><div class="form-grid">{% for numero in pedidos %}<a class="btn btn-secondary" href="{{ url_for('pedido_tiquete.baixar_excel', numero_pedido=numero) }}">Baixar pedido {{ numero }}</a>{% endfor %}</div></div>
     {% endif %}

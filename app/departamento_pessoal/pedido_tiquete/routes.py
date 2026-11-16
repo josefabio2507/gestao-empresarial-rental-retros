@@ -67,6 +67,8 @@ def index():
         "departamento_pessoal/pedido_tiquete/index.html",
         aba=aba,
         empresas=PedidoTicketEmpresa.query.order_by(PedidoTicketEmpresa.criado_em.desc()).limit(100).all(),
+        empresas_ativas=PedidoTicketEmpresa.query.filter_by(ativo=True).order_by(PedidoTicketEmpresa.numero_pedido.desc(), PedidoTicketEmpresa.nome_empresa).limit(100).all(),
+        editar_empresa=db.session.get(PedidoTicketEmpresa, request.args.get("editar_empresa", type=int)),
         unidades=PedidoTicketUnidadeEntrega.query.order_by(PedidoTicketUnidadeEntrega.nome_unidade).limit(100).all(),
         beneficiarios=PedidoTicketBeneficiario.query.order_by(PedidoTicketBeneficiario.nome).limit(100).all(),
         pedidos=[linha[0] for linha in PedidoTicketBeneficiario.query.with_entities(
@@ -75,6 +77,7 @@ def index():
         produtos=PRODUTOS,
         estados=ESTADOS,
         pode_criar=_pode("criar"),
+        pode_editar=_pode("editar"),
     )
 
 
@@ -122,36 +125,105 @@ def baixar_excel(numero_pedido):
     return resposta
 
 
+def _dados_empresa_form(empresa=None):
+    numero_pedido = _digitos(request.form.get("numero_pedido", ""))
+    cnpj = request.form.get("cnpj", "").strip().upper()
+    nome = request.form.get("nome_empresa", "").strip()
+    contrato = _digitos(request.form.get("numero_contrato", ""))
+    produto = request.form.get("produto", "").strip().upper()
+    data_credito = _data_form("data_credito")
+
+    if not (1 <= len(numero_pedido) <= 10 and 1 <= len(cnpj) <= 14 and cnpj.isalnum()):
+        raise ValueError("Confira o número do pedido e o CNPJ/CPF da empresa.")
+    if not nome or len(nome) > 26 or not (1 <= len(contrato) <= 10) or produto not in PRODUTOS:
+        raise ValueError("Confira o nome, o contrato e o produto da empresa.")
+
+    duplicado = PedidoTicketEmpresa.query.filter_by(
+        numero_pedido=numero_pedido, numero_contrato=contrato, produto=produto
+    )
+    if empresa:
+        duplicado = duplicado.filter(PedidoTicketEmpresa.id != empresa.id)
+    if duplicado.first():
+        raise ValueError("Esse contrato e produto já foram incluídos no pedido.")
+
+    if empresa:
+        chave_antiga = f"{empresa.numero_contrato} - {empresa.produto}"
+        identidade_mudou = (
+            numero_pedido != empresa.numero_pedido
+            or contrato != empresa.numero_contrato
+            or produto != empresa.produto
+        )
+        if identidade_mudou and PedidoTicketBeneficiario.query.filter_by(
+            numero_pedido=empresa.numero_pedido, contrato_produto=chave_antiga
+        ).first():
+            raise ValueError("Não altere o pedido, contrato ou produto: já há beneficiários vinculados.")
+        if cnpj != empresa.cnpj and PedidoTicketUnidadeEntrega.query.filter_by(cnpj=empresa.cnpj).first():
+            raise ValueError("Não altere o CNPJ enquanto houver unidades vinculadas a ele.")
+
+    if not empresa or data_credito != empresa.data_credito:
+        outros = PedidoTicketEmpresa.query.filter_by(numero_pedido=numero_pedido)
+        if empresa:
+            outros = outros.filter(PedidoTicketEmpresa.id != empresa.id)
+        prazo_dias = 7 if outros.count() == 0 else 3
+        if data_credito < _somar_dias_uteis(date.today(), prazo_dias):
+            raise ValueError(f"A data de crédito deve respeitar o prazo mínimo de {prazo_dias} dias úteis.")
+
+    return {
+        "numero_pedido": numero_pedido,
+        "cnpj": cnpj,
+        "nome_empresa": nome,
+        "numero_contrato": contrato,
+        "produto": produto,
+        "data_credito": data_credito,
+        "ativo": True if empresa is None else request.form.get("ativo") == "on",
+    }
+
+
 @pedido_tiquete_bp.route("/empresas", methods=["POST"])
 @module_permission_required("departamento_pessoal", "pedido_tiquete", "criar")
 def criar_empresa():
     _exigir_feature_ativa()
     try:
-        numero_pedido = _digitos(request.form.get("numero_pedido", ""))
-        cnpj = request.form.get("cnpj", "").strip().upper()
-        nome = request.form.get("nome_empresa", "").strip()
-        contrato = _digitos(request.form.get("numero_contrato", ""))
-        produto = request.form.get("produto", "").strip().upper()
-        data_credito = _data_form("data_credito")
-        if not (1 <= len(numero_pedido) <= 10 and 1 <= len(cnpj) <= 14 and cnpj.isalnum()):
-            raise ValueError("Confira o número do pedido e o CNPJ/CPF da empresa.")
-        if not nome or len(nome) > 26 or not (1 <= len(contrato) <= 10) or produto not in PRODUTOS:
-            raise ValueError("Confira o nome, o contrato e o produto da empresa.")
-        if PedidoTicketEmpresa.query.filter_by(numero_pedido=numero_pedido, numero_contrato=contrato, produto=produto).first():
-            raise ValueError("Esse contrato e produto já foram incluídos no pedido.")
-        primeiro_registro = not PedidoTicketEmpresa.query.filter_by(numero_pedido=numero_pedido).first()
-        prazo = _somar_dias_uteis(date.today(), 7 if primeiro_registro else 3)
-        if data_credito < prazo:
-            raise ValueError(f"A data de crédito deve respeitar o prazo mínimo de {7 if primeiro_registro else 3} dias úteis.")
-        db.session.add(PedidoTicketEmpresa(numero_pedido=numero_pedido, cnpj=cnpj, nome_empresa=nome,
-                                           numero_contrato=contrato, produto=produto, data_credito=data_credito))
+        db.session.add(PedidoTicketEmpresa(**_dados_empresa_form()))
         db.session.commit()
         flash("Empresa/contrato cadastrado com sucesso.", "success")
     except (ValueError, TypeError):
         db.session.rollback()
-        flash("Não foi possível cadastrar. Confira os campos e o prazo da data de crédito.", "danger")
+        flash("Não foi possível cadastrar. Confira os campos, a unicidade e o prazo da data de crédito.", "danger")
     return redirect(url_for("pedido_tiquete.index", aba="empresas"))
 
+
+@pedido_tiquete_bp.route("/empresas/<int:empresa_id>/editar", methods=["GET", "POST"])
+@module_permission_required("departamento_pessoal", "pedido_tiquete", "editar")
+def editar_empresa(empresa_id):
+    _exigir_feature_ativa()
+    empresa = db.session.get(PedidoTicketEmpresa, empresa_id)
+    if not empresa:
+        abort(404)
+    if request.method == "GET":
+        return redirect(url_for("pedido_tiquete.index", aba="empresas", editar_empresa=empresa.id))
+    try:
+        for campo, valor in _dados_empresa_form(empresa).items():
+            setattr(empresa, campo, valor)
+        db.session.commit()
+        flash("Empresa/contrato atualizado com sucesso.", "success")
+    except (ValueError, TypeError):
+        db.session.rollback()
+        flash("Não foi possível atualizar. Confira os campos, os vínculos e a unicidade do contrato.", "danger")
+    return redirect(url_for("pedido_tiquete.index", aba="empresas"))
+
+
+@pedido_tiquete_bp.route("/empresas/<int:empresa_id>/status", methods=["POST"])
+@module_permission_required("departamento_pessoal", "pedido_tiquete", "editar")
+def alternar_status_empresa(empresa_id):
+    _exigir_feature_ativa()
+    empresa = db.session.get(PedidoTicketEmpresa, empresa_id)
+    if not empresa:
+        abort(404)
+    empresa.ativo = not empresa.ativo
+    db.session.commit()
+    flash("Empresa/contrato ativado." if empresa.ativo else "Empresa/contrato desativado.", "success")
+    return redirect(url_for("pedido_tiquete.index", aba="empresas"))
 
 @pedido_tiquete_bp.route("/unidades", methods=["POST"])
 @module_permission_required("departamento_pessoal", "pedido_tiquete", "criar")
@@ -202,7 +274,7 @@ def criar_beneficiario():
     _exigir_feature_ativa()
     try:
         empresa_id = int(request.form.get("empresa_pedido", ""))
-        empresa = PedidoTicketEmpresa.query.filter_by(id=empresa_id).first()
+        empresa = PedidoTicketEmpresa.query.filter_by(id=empresa_id, ativo=True).first()
         matricula = _digitos(request.form.get("matricula", ""))
         cpf = _digitos(request.form.get("cpf", ""))
         nome = request.form.get("nome", "").strip()
