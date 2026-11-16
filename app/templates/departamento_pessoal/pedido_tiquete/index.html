@@ -28,7 +28,7 @@
     <form class="form-card" method="post" action="{{ url_for('pedido_tiquete.criar_empresa') }}">
         <h2 class="section-title">Cadastrar empresa e contrato</h2>
         <div class="form-grid">
-            <div class="form-group"><label for="empresa_pedido">Pedido, empresa e contrato</label><select id="empresa_pedido" name="empresa_pedido" required><option value="">Selecione</option>{% for empresa in empresas %}<option value="{{ empresa.id }}">Pedido {{ empresa.numero_pedido }} — {{ empresa.nome_empresa }} — {{ empresa.numero_contrato }} / {{ empresa.produto }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="numero_pedido">Número do pedido</label><input id="numero_pedido" name="numero_pedido" inputmode="numeric" maxlength="10" required></div>
             <div class="form-group"><label for="cnpj">CNPJ/CPF da empresa</label><input id="cnpj" name="cnpj" maxlength="14" required></div>
             <div class="form-group"><label for="nome_empresa">Nome da empresa</label><input id="nome_empresa" name="nome_empresa" maxlength="26" required></div>
             <div class="form-group"><label for="numero_contrato">Número do contrato</label><input id="numero_contrato" name="numero_contrato" inputmode="numeric" maxlength="10" required></div>
@@ -80,6 +80,9 @@
 
     {% if aba == 'empresas' %}
     <div class="details-card"><h2 class="section-title">Empresas e contratos cadastrados</h2><div class="table-wrapper"><table><thead><tr><th>Pedido</th><th>Empresa</th><th>CNPJ/CPF</th><th>Contrato</th><th>Produto</th><th>Crédito</th></tr></thead><tbody>{% for item in empresas %}<tr><td>{{ item.numero_pedido }}</td><td>{{ item.nome_empresa }}</td><td>{{ item.cnpj }}</td><td>{{ item.numero_contrato }}</td><td>{{ item.produto }}</td><td>{{ item.data_credito.strftime('%d/%m/%Y') }}</td></tr>{% else %}<tr><td colspan="6">Nenhuma empresa cadastrada.</td></tr>{% endfor %}</tbody></table></div></div>
+    {% if pode_criar and pedidos %}
+    <div class="details-card"><h2 class="section-title">Gerar arquivo do pedido</h2><p>Baixe a planilha preenchida com os cadastros deste sistema. O envio ao Portal da Tícket continua separado.</p><div class="form-grid">{% for numero in pedidos %}<a class="btn btn-secondary" href="{{ url_for('pedido_tiquete.baixar_excel', numero_pedido=numero) }}">Baixar pedido {{ numero }}</a>{% endfor %}</div></div>
+    {% endif %}
     {% elif aba == 'unidades' %}
     <div class="details-card"><h2 class="section-title">Unidades cadastradas</h2><div class="table-wrapper"><table><thead><tr><th>Código</th><th>Unidade</th><th>CNPJ/CPF</th><th>Endereço</th><th>Cidade/UF</th><th>Interlocutor</th></tr></thead><tbody>{% for item in unidades %}<tr><td>{{ item.codigo_unidade }}</td><td>{{ item.nome_unidade }}</td><td>{{ item.cnpj }}</td><td>{{ item.tipo_logradouro }} {{ item.logradouro }}, {{ item.numero }}{% if item.complemento %} - {{ item.complemento }}{% endif %}</td><td>{{ item.cidade }}/{{ item.estado }}</td><td>{{ item.interlocutor }}</td></tr>{% else %}<tr><td colspan="6">Nenhuma unidade cadastrada.</td></tr>{% endfor %}</tbody></table></div></div>
     {% else %}

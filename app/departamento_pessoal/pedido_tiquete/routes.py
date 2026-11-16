@@ -1,7 +1,8 @@
 from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
+from pathlib import Path
 
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, abort, current_app, flash, redirect, render_template, request, send_file, url_for
 from flask_login import current_user
 
 from app.decorators import module_permission_required
@@ -11,6 +12,7 @@ from app.models import (
     PedidoTicketEmpresa,
     PedidoTicketUnidadeEntrega,
 )
+from app.departamento_pessoal.pedido_tiquete.excel_service import gerar_planilha_pedido
 from app.services.permissoes_service import usuario_tem_permissao
 
 
@@ -49,9 +51,15 @@ def _pode(acao):
     return usuario_tem_permissao(current_user, "departamento_pessoal", "pedido_tiquete", acao)
 
 
+def _exigir_feature_ativa():
+    if not current_app.config.get("PEDIDO_TICKET_ENABLED", False):
+        abort(404)
+
+
 @pedido_tiquete_bp.route("/")
 @module_permission_required("departamento_pessoal", "pedido_tiquete", "visualizar")
 def index():
+    _exigir_feature_ativa()
     aba = request.args.get("aba", "empresas")
     if aba not in {"empresas", "unidades", "beneficiarios"}:
         aba = "empresas"
@@ -61,18 +69,65 @@ def index():
         empresas=PedidoTicketEmpresa.query.order_by(PedidoTicketEmpresa.criado_em.desc()).limit(100).all(),
         unidades=PedidoTicketUnidadeEntrega.query.order_by(PedidoTicketUnidadeEntrega.nome_unidade).limit(100).all(),
         beneficiarios=PedidoTicketBeneficiario.query.order_by(PedidoTicketBeneficiario.nome).limit(100).all(),
+        pedidos=[linha[0] for linha in PedidoTicketBeneficiario.query.with_entities(
+            PedidoTicketBeneficiario.numero_pedido
+        ).distinct().order_by(PedidoTicketBeneficiario.numero_pedido.desc()).limit(100).all()],
         produtos=PRODUTOS,
         estados=ESTADOS,
         pode_criar=_pode("criar"),
     )
 
 
+@pedido_tiquete_bp.route("/pedidos/<numero_pedido>/excel", methods=["GET"])
+@module_permission_required("departamento_pessoal", "pedido_tiquete", "visualizar")
+def baixar_excel(numero_pedido):
+    _exigir_feature_ativa()
+    if not numero_pedido.isdigit() or len(numero_pedido) > 10:
+        flash("Número de pedido inválido.", "danger")
+        return redirect(url_for("pedido_tiquete.index", aba="empresas"))
+
+    empresas = PedidoTicketEmpresa.query.filter_by(numero_pedido=numero_pedido).order_by(
+        PedidoTicketEmpresa.id
+    ).all()
+    beneficiarios = PedidoTicketBeneficiario.query.filter_by(
+        numero_pedido=numero_pedido
+    ).order_by(PedidoTicketBeneficiario.id).all()
+    cnpjs = {empresa.cnpj for empresa in empresas}
+    unidades = PedidoTicketUnidadeEntrega.query.filter(
+        PedidoTicketUnidadeEntrega.cnpj.in_(cnpjs)
+    ).order_by(PedidoTicketUnidadeEntrega.id).all()
+    if not empresas or not beneficiarios:
+        flash("Cadastre os contratos e beneficiários do pedido antes de gerar a planilha.", "warning")
+        return redirect(url_for("pedido_tiquete.index", aba="empresas"))
+
+    modelo = Path(__file__).with_name("modelo_pedido_ticket.xlsx")
+    if not modelo.is_file():
+        flash("O modelo oficial do Excel não está disponível.", "danger")
+        return redirect(url_for("pedido_tiquete.index", aba="empresas"))
+
+    try:
+        arquivo = gerar_planilha_pedido(modelo, numero_pedido, empresas, unidades, beneficiarios)
+    except ValueError as erro:
+        flash(str(erro), "danger")
+        return redirect(url_for("pedido_tiquete.index", aba="empresas"))
+
+    resposta = send_file(
+        arquivo,
+        as_attachment=True,
+        download_name=f"pedido_tiquete_{numero_pedido}.xlsx",
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        max_age=0,
+    )
+    resposta.headers["Cache-Control"] = "no-store"
+    return resposta
+
+
 @pedido_tiquete_bp.route("/empresas", methods=["POST"])
 @module_permission_required("departamento_pessoal", "pedido_tiquete", "criar")
 def criar_empresa():
+    _exigir_feature_ativa()
     try:
-        empresa_id = int(request.form.get("empresa_pedido", ""))
-        empresa = PedidoTicketEmpresa.query.filter_by(id=empresa_id).first()
+        numero_pedido = _digitos(request.form.get("numero_pedido", ""))
         cnpj = request.form.get("cnpj", "").strip().upper()
         nome = request.form.get("nome_empresa", "").strip()
         contrato = _digitos(request.form.get("numero_contrato", ""))
@@ -101,6 +156,7 @@ def criar_empresa():
 @pedido_tiquete_bp.route("/unidades", methods=["POST"])
 @module_permission_required("departamento_pessoal", "pedido_tiquete", "criar")
 def criar_unidade():
+    _exigir_feature_ativa()
     try:
         dados = {campo: request.form.get(campo, "").strip() for campo in (
             "cnpj", "codigo_unidade", "nome_unidade", "tipo_logradouro", "logradouro", "numero",
@@ -143,8 +199,10 @@ def criar_unidade():
 @pedido_tiquete_bp.route("/beneficiarios", methods=["POST"])
 @module_permission_required("departamento_pessoal", "pedido_tiquete", "criar")
 def criar_beneficiario():
+    _exigir_feature_ativa()
     try:
-        numero_pedido = _digitos(request.form.get("numero_pedido", ""))
+        empresa_id = int(request.form.get("empresa_pedido", ""))
+        empresa = PedidoTicketEmpresa.query.filter_by(id=empresa_id).first()
         matricula = _digitos(request.form.get("matricula", ""))
         cpf = _digitos(request.form.get("cpf", ""))
         nome = request.form.get("nome", "").strip()
