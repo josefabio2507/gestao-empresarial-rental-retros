@@ -92,7 +92,7 @@
             {% for colaborador in colaboradores %}
             <tr class="{% if colaborador.id in colaboradores_no_pedido %}muted{% endif %}">
                 <td><label><input class="pedido-colaborador-check" type="checkbox" name="colaborador_ids" value="{{ colaborador.id }}" {% if colaborador.id in colaboradores_no_pedido %}disabled{% endif %}>Selecionar{% if colaborador.id in colaboradores_no_pedido %} (já incluído){% endif %}</label></td>
-                <td>{{ colaborador.matricula }}</td><td>{{ colaborador.nome }}</td><td>{{ colaborador.cpf }}</td><td>{{ colaborador.equipe.nome }}</td>
+                <td>{{ colaborador.cpf|replace('.', '')|replace('/', '')|replace('-', '') }}</td><td>{{ colaborador.nome }}</td><td>{{ colaborador.cpf }}</td><td>{{ colaborador.equipe.nome }}</td>
                 <td><input class="pedido-colaborador-input" data-obrigatorio="true" type="date" name="data_nascimento_{{ colaborador.id }}" max="{{ data_hoje }}" aria-label="Nascimento de {{ colaborador.nome }}" disabled></td>
                 <td><input class="pedido-colaborador-input pedido-valor" data-obrigatorio="true" type="number" min="0" step="0.01" name="valor_mensal_{{ colaborador.id }}" aria-label="Valor mensal de {{ colaborador.nome }}" disabled></td>
                 <td><input class="pedido-colaborador-input" type="number" min="1" step="1" name="numero_parcelas_{{ colaborador.id }}" aria-label="Parcelas de {{ colaborador.nome }}" disabled></td>
