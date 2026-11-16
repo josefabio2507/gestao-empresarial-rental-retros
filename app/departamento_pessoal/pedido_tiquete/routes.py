@@ -1,6 +1,7 @@
 from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 
 from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
@@ -19,6 +20,7 @@ from app.models import (
     PedidoTicketUnidadeEntrega,
 )
 from app.departamento_pessoal.pedido_tiquete.excel_service import gerar_planilha_pedido
+from app.departamento_pessoal.pedido_tiquete.portal_service import PortalTicketError, enviar_planilha_para_portal
 from app.services.permissoes_service import usuario_tem_permissao
 
 
@@ -136,6 +138,7 @@ def index():
         pode_editar=_pode("editar"),
         limite_beneficiarios=LIMITE_BENEFICIARIOS_PEDIDO,
         data_hoje=date.today().isoformat(),
+        ticket_upload_habilitado=current_app.config.get("PEDIDO_TICKET_UPLOAD_ENABLED", False),
     )
 
 
@@ -181,6 +184,89 @@ def baixar_excel(numero_pedido):
     )
     resposta.headers["Cache-Control"] = "no-store"
     return resposta
+
+
+@pedido_tiquete_bp.route("/pedidos/<int:pedido_id>/enviar-ticket", methods=["POST"])
+@module_permission_required("departamento_pessoal", "pedido_tiquete", "criar")
+def enviar_pedido_ticket(pedido_id):
+    _exigir_feature_ativa()
+    if not current_app.config.get("PEDIDO_TICKET_UPLOAD_ENABLED", False):
+        abort(404)
+    if request.form.get("confirmacao_envio") != "sim":
+        abort(400)
+
+    pedido = db.session.get(PedidoTicketPedido, pedido_id)
+    if not pedido or pedido.status != "rascunho":
+        abort(404)
+
+    empresas = PedidoTicketEmpresa.query.filter_by(
+        numero_pedido=pedido.numero_pedido
+    ).order_by(PedidoTicketEmpresa.id).all()
+    beneficiarios = PedidoTicketBeneficiario.query.filter_by(
+        pedido_id=pedido.id
+    ).order_by(PedidoTicketBeneficiario.id).all()
+    if not empresas or not beneficiarios:
+        flash("O pedido precisa ter contrato e beneficiários antes do envio.", "warning")
+        return redirect(url_for("pedido_tiquete.index", aba="pedidos"))
+
+    cnpjs = {empresa.cnpj for empresa in empresas}
+    unidades = PedidoTicketUnidadeEntrega.query.filter(
+        PedidoTicketUnidadeEntrega.cnpj.in_(cnpjs)
+    ).order_by(PedidoTicketUnidadeEntrega.id).all()
+    modelo = Path(__file__).with_name("modelo_pedido_ticket.xlsx")
+    if not modelo.is_file():
+        flash("O modelo oficial do Excel não está disponível.", "danger")
+        return redirect(url_for("pedido_tiquete.index", aba="pedidos"))
+
+    try:
+        arquivo = gerar_planilha_pedido(
+            modelo, pedido.numero_pedido, empresas, unidades, beneficiarios
+        )
+        arquivo.seek(0)
+        with NamedTemporaryFile(suffix=".xlsx", delete=False) as temporario:
+            temporario.write(arquivo.read())
+            caminho = Path(temporario.name)
+
+        simulacao = current_app.config.get("PEDIDO_TICKET_SIMULATION", False)
+        if not simulacao:
+            atualizado = PedidoTicketPedido.query.filter_by(
+                id=pedido.id, status="rascunho"
+            ).update({"status": "enviando"}, synchronize_session=False)
+            if not atualizado:
+                db.session.rollback()
+                flash("Este pedido já está sendo enviado ou não está mais em rascunho.", "warning")
+                return redirect(url_for("pedido_tiquete.index", aba="pedidos"))
+            db.session.commit()
+
+        resultado = enviar_planilha_para_portal(
+            caminho,
+            operador_id=str(current_user.get_id()),
+            confirmado=True,
+            settings=current_app.config,
+        )
+        if resultado.status == "upload_iniciado":
+            flash(
+                "Upload iniciado no Portal Ticket. O processamento do pedido ainda precisa ser confirmado no portal.",
+                "info",
+            )
+        else:
+            flash(resultado.mensagem, "info")
+        return redirect(url_for("pedido_tiquete.index", aba="pedidos"))
+    except PortalTicketError as erro:
+        db.session.rollback()
+        pedido_atual = db.session.get(PedidoTicketPedido, pedido_id)
+        if pedido_atual and pedido_atual.status == "enviando":
+            pedido_atual.status = "falha"
+            db.session.commit()
+        flash(str(erro), "warning")
+        return redirect(url_for("pedido_tiquete.index", aba="pedidos"))
+    except ValueError as erro:
+        db.session.rollback()
+        flash(str(erro), "warning")
+        return redirect(url_for("pedido_tiquete.index", aba="pedidos"))
+    finally:
+        if "caminho" in locals():
+            caminho.unlink(missing_ok=True)
 
 
 def _dados_empresa_form(empresa=None):

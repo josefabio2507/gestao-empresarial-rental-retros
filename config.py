@@ -14,6 +14,11 @@ class Config:
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     PEDIDO_TICKET_ENABLED = os.getenv("PEDIDO_TICKET_ENABLED", "true").strip().lower() == "true"
+    PEDIDO_TICKET_UPLOAD_ENABLED = os.getenv("PEDIDO_TICKET_UPLOAD_ENABLED", "false").strip().lower() == "true"
+    PEDIDO_TICKET_SIMULATION = os.getenv("PEDIDO_TICKET_SIMULATION", "false").strip().lower() == "true"
+    PEDIDO_TICKET_PORTAL_URL = os.getenv("PEDIDO_TICKET_PORTAL_URL", "https://beneficios.ticket.com.br/").strip()
+    PEDIDO_TICKET_PORTAL_LOGIN = os.getenv("PEDIDO_TICKET_PORTAL_LOGIN", "").strip()
+    PEDIDO_TICKET_PORTAL_PASSWORD = os.getenv("PEDIDO_TICKET_PORTAL_PASSWORD", "")
     SQLALCHEMY_ENGINE_OPTIONS = {
         "pool_pre_ping": True,
         "pool_recycle": 300,
