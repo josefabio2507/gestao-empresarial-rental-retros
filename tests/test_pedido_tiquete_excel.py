@@ -99,5 +99,5 @@ def test_rejeita_unidade_que_nao_corresponde_ao_contrato():
     empresa, unidade, beneficiario = _dados_teste()
     unidade.cnpj = "99999999000199"
 
-    with pytest.raises(ValueError, match="v�nculo v�lido"):
+    with pytest.raises(ValueError, match="vínculo válido"):
         gerar_planilha_pedido(MODELO, "42", [empresa], [unidade], [beneficiario])

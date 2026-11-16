@@ -83,7 +83,7 @@ def index():
 def baixar_excel(numero_pedido):
     _exigir_feature_ativa()
     if not numero_pedido.isdigit() or len(numero_pedido) > 10:
-        flash("N�mero de pedido inv�lido.", "danger")
+        flash("Número de pedido inválido.", "danger")
         return redirect(url_for("pedido_tiquete.index", aba="empresas"))
 
     empresas = PedidoTicketEmpresa.query.filter_by(numero_pedido=numero_pedido).order_by(
@@ -97,12 +97,12 @@ def baixar_excel(numero_pedido):
         PedidoTicketUnidadeEntrega.cnpj.in_(cnpjs)
     ).order_by(PedidoTicketUnidadeEntrega.id).all()
     if not empresas or not beneficiarios:
-        flash("Cadastre os contratos e benefici�rios do pedido antes de gerar a planilha.", "warning")
+        flash("Cadastre os contratos e beneficiários do pedido antes de gerar a planilha.", "warning")
         return redirect(url_for("pedido_tiquete.index", aba="empresas"))
 
     modelo = Path(__file__).with_name("modelo_pedido_ticket.xlsx")
     if not modelo.is_file():
-        flash("O modelo oficial do Excel n�o est� dispon�vel.", "danger")
+        flash("O modelo oficial do Excel não está disponível.", "danger")
         return redirect(url_for("pedido_tiquete.index", aba="empresas"))
 
     try:
@@ -134,22 +134,22 @@ def criar_empresa():
         produto = request.form.get("produto", "").strip().upper()
         data_credito = _data_form("data_credito")
         if not (1 <= len(numero_pedido) <= 10 and 1 <= len(cnpj) <= 14 and cnpj.isalnum()):
-            raise ValueError("Confira o n�mero do pedido e o CNPJ/CPF da empresa.")
+            raise ValueError("Confira o número do pedido e o CNPJ/CPF da empresa.")
         if not nome or len(nome) > 26 or not (1 <= len(contrato) <= 10) or produto not in PRODUTOS:
             raise ValueError("Confira o nome, o contrato e o produto da empresa.")
         if PedidoTicketEmpresa.query.filter_by(numero_pedido=numero_pedido, numero_contrato=contrato, produto=produto).first():
-            raise ValueError("Esse contrato e produto j� foram inclu�dos no pedido.")
+            raise ValueError("Esse contrato e produto já foram incluídos no pedido.")
         primeiro_registro = not PedidoTicketEmpresa.query.filter_by(numero_pedido=numero_pedido).first()
         prazo = _somar_dias_uteis(date.today(), 7 if primeiro_registro else 3)
         if data_credito < prazo:
-            raise ValueError(f"A data de cr�dito deve respeitar o prazo m�nimo de {7 if primeiro_registro else 3} dias �teis.")
+            raise ValueError(f"A data de crédito deve respeitar o prazo mínimo de {7 if primeiro_registro else 3} dias úteis.")
         db.session.add(PedidoTicketEmpresa(numero_pedido=numero_pedido, cnpj=cnpj, nome_empresa=nome,
                                            numero_contrato=contrato, produto=produto, data_credito=data_credito))
         db.session.commit()
         flash("Empresa/contrato cadastrado com sucesso.", "success")
     except (ValueError, TypeError):
         db.session.rollback()
-        flash("N�o foi poss�vel cadastrar. Confira os campos e o prazo da data de cr�dito.", "danger")
+        flash("Não foi possível cadastrar. Confira os campos e o prazo da data de crédito.", "danger")
     return redirect(url_for("pedido_tiquete.index", aba="empresas"))
 
 
@@ -192,7 +192,7 @@ def criar_unidade():
         flash("Unidade de entrega cadastrada com sucesso.", "success")
     except (ValueError, TypeError):
         db.session.rollback()
-        flash("N�o foi poss�vel cadastrar. Confira os campos obrigat�rios e os formatos informados.", "danger")
+        flash("Não foi possível cadastrar. Confira os campos obrigatórios e os formatos informados.", "danger")
     return redirect(url_for("pedido_tiquete.index", aba="unidades"))
 
 
@@ -230,8 +230,8 @@ def criar_beneficiario():
                                                 unidade_entrega=f"{unidade.codigo_unidade} - {unidade.nome_unidade}", valor_mensal=valor,
                                                 contrato_produto=f"{empresa.numero_contrato} - {empresa.produto}", numero_parcelas=parcelas))
         db.session.commit()
-        flash("Benefici�rio cadastrado com sucesso.", "success")
+        flash("Beneficiário cadastrado com sucesso.", "success")
     except (ValueError, TypeError, InvalidOperation):
         db.session.rollback()
-        flash("N�o foi poss�vel cadastrar. Confira os campos obrigat�rios e os formatos informados.", "danger")
+        flash("Não foi possível cadastrar. Confira os campos obrigatórios e os formatos informados.", "danger")
     return redirect(url_for("pedido_tiquete.index", aba="beneficiarios"))

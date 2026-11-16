@@ -13,10 +13,10 @@ ABAS_ESPERADAS = (
 
 
 def gerar_planilha_pedido(modelo: Path, numero_pedido, empresas, unidades, beneficiarios):
-    """Preenche uma c�pia do modelo oficial sem alterar o arquivo base."""
+    """Preenche uma cópia do modelo oficial sem alterar o arquivo base."""
     workbook = load_workbook(modelo, data_only=False)
     if tuple(workbook.sheetnames) != ABAS_ESPERADAS:
-        raise ValueError("O modelo da planilha n�o corresponde � estrutura esperada.")
+        raise ValueError("O modelo da planilha não corresponde à estrutura esperada.")
 
     empresa_sheet = workbook["Empresa"]
     unidade_sheet = workbook["Unidade(s) de Entrega"]
@@ -81,7 +81,7 @@ def gerar_planilha_pedido(modelo: Path, numero_pedido, empresas, unidades, benef
         empresa = empresa_por_contrato.get(item.contrato_produto)
         unidade = unidade_por_empresa.get((empresa.cnpj, item.unidade_entrega)) if empresa else None
         if not empresa or not unidade:
-            raise ValueError("Um benefici�rio est� sem v�nculo v�lido de contrato ou unidade.")
+            raise ValueError("Um beneficiário está sem vínculo válido de contrato ou unidade.")
         values = (
             item.matricula,
             item.cpf,
