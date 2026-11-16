@@ -4354,6 +4354,19 @@ class OperacaoIntervencaoAdversa(db.Model):
         return f"{segundos // 3600:02d}:{(segundos % 3600) // 60:02d}:{segundos % 60:02d}"
 
 
+class PedidoTicketPedido(db.Model):
+    __tablename__ = "dp_pedido_ticket_pedidos"
+
+    id = db.Column(db.Integer, primary_key=True)
+    numero_pedido = db.Column(db.String(10), nullable=False, unique=True, index=True)
+    status = db.Column(db.String(20), default="rascunho", nullable=False, index=True)
+    quantidade_beneficiarios = db.Column(db.Integer, default=0, nullable=False)
+    valor_total = db.Column(db.Numeric(12, 2), default=Decimal("0.00"), nullable=False)
+    criado_por_usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=True)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
+    atualizado_em = db.Column(db.DateTime, default=agora_brasil, onupdate=agora_brasil, nullable=False)
+
+
 class PedidoTicketEmpresa(db.Model):
     __tablename__ = "dp_pedido_ticket_empresas"
 
@@ -4399,6 +4412,8 @@ class PedidoTicketBeneficiario(db.Model):
     __tablename__ = "dp_pedido_ticket_beneficiarios"
 
     id = db.Column(db.Integer, primary_key=True)
+    pedido_id = db.Column(db.Integer, db.ForeignKey("dp_pedido_ticket_pedidos.id"), nullable=True, index=True)
+    colaborador_id = db.Column(db.Integer, db.ForeignKey("colaboradores.id"), nullable=True, index=True)
     numero_pedido = db.Column(db.String(10), nullable=False, index=True)
     matricula = db.Column(db.String(12), nullable=False, index=True)
     cpf = db.Column(db.String(11), nullable=False, index=True)
