@@ -46,6 +46,11 @@ def _somar_dias_uteis(inicio, quantidade):
     return atual
 
 
+def _get_por_parametro(modelo, nome_parametro):
+    registro_id = request.args.get(nome_parametro, type=int)
+    return db.session.get(modelo, registro_id) if registro_id is not None else None
+
+
 def _pode(acao):
     return usuario_tem_permissao(current_user, "departamento_pessoal", "pedido_tiquete", acao)
 
@@ -79,14 +84,14 @@ def index():
             ))
         colaboradores = consulta_colaboradores.order_by(Colaborador.nome).limit(LIMITE_BENEFICIARIOS_PEDIDO).all()
 
-    pedido_edicao = db.session.get(PedidoTicketPedido, request.args.get("pedido_id", type=int))
+    pedido_edicao = _get_por_parametro(PedidoTicketPedido, "pedido_id")
     if pedido_edicao and pedido_edicao.status != "rascunho":
         pedido_edicao = None
     empresas_para_pedido = PedidoTicketEmpresa.query.filter_by(ativo=True)
     if pedido_edicao:
         empresas_para_pedido = empresas_para_pedido.filter_by(numero_pedido=pedido_edicao.numero_pedido)
     empresas_para_pedido = empresas_para_pedido.order_by(PedidoTicketEmpresa.numero_pedido.desc(), PedidoTicketEmpresa.nome_empresa).limit(100).all()
-    pedido_selecionado = db.session.get(PedidoTicketPedido, request.args.get("ver_pedido", type=int))
+    pedido_selecionado = _get_por_parametro(PedidoTicketPedido, "ver_pedido")
     beneficiarios_do_pedido = []
     colaboradores_no_pedido = set()
     if pedido_selecionado:
@@ -107,12 +112,12 @@ def index():
         empresas=PedidoTicketEmpresa.query.order_by(PedidoTicketEmpresa.criado_em.desc()).limit(100).all(),
         empresas_ativas=PedidoTicketEmpresa.query.filter_by(ativo=True).order_by(PedidoTicketEmpresa.numero_pedido.desc(), PedidoTicketEmpresa.nome_empresa).limit(100).all(),
         empresas_para_pedido=empresas_para_pedido,
-        editar_empresa=db.session.get(PedidoTicketEmpresa, request.args.get("editar_empresa", type=int)),
+        editar_empresa=_get_por_parametro(PedidoTicketEmpresa, "editar_empresa"),
         empresas_unidades=PedidoTicketEmpresa.query.order_by(PedidoTicketEmpresa.nome_empresa, PedidoTicketEmpresa.numero_contrato).limit(100).all(),
         empresas_unidades_ativas=PedidoTicketEmpresa.query.filter_by(ativo=True).order_by(PedidoTicketEmpresa.nome_empresa, PedidoTicketEmpresa.numero_contrato).limit(100).all(),
         unidades=PedidoTicketUnidadeEntrega.query.order_by(PedidoTicketUnidadeEntrega.nome_unidade).limit(100).all(),
         unidades_ativas=unidades_ativas,
-        editar_unidade=db.session.get(PedidoTicketUnidadeEntrega, request.args.get("editar_unidade", type=int)),
+        editar_unidade=_get_por_parametro(PedidoTicketUnidadeEntrega, "editar_unidade"),
         beneficiarios=PedidoTicketBeneficiario.query.order_by(PedidoTicketBeneficiario.nome).limit(100).all(),
         pedidos=[linha[0] for linha in PedidoTicketBeneficiario.query.with_entities(
             PedidoTicketBeneficiario.numero_pedido
