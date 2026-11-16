@@ -2,12 +2,18 @@ from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
+from sqlalchemy import or_
+from sqlalchemy.exc import IntegrityError
+
 from flask import Blueprint, abort, current_app, flash, redirect, render_template, request, send_file, url_for
 from flask_login import current_user
 
 from app.decorators import module_permission_required
 from app.extensions import db
 from app.models import (
+    Colaborador,
+    Equipe,
+    PedidoTicketPedido,
     PedidoTicketBeneficiario,
     PedidoTicketEmpresa,
     PedidoTicketUnidadeEntrega,
@@ -18,6 +24,7 @@ from app.services.permissoes_service import usuario_tem_permissao
 
 pedido_tiquete_bp = Blueprint("pedido_tiquete", __name__)
 PRODUTOS = ("TAE", "TRE", "TKE", "TFE")
+LIMITE_BENEFICIARIOS_PEDIDO = 245
 ESTADOS = "AC AL AP AM BA CE DF ES GO MA MT MS MG PA PB PR PE PI RJ RN RS RO RR SC SP SE TO".split()
 
 
@@ -39,14 +46,6 @@ def _somar_dias_uteis(inicio, quantidade):
     return atual
 
 
-def _idade_minima_atendida(nascimento, idade):
-    try:
-        limite = nascimento.replace(year=nascimento.year + idade)
-    except ValueError:
-        limite = date(nascimento.year + idade, 3, 1)
-    return date.today() >= limite
-
-
 def _pode(acao):
     return usuario_tem_permissao(current_user, "departamento_pessoal", "pedido_tiquete", acao)
 
@@ -60,28 +59,78 @@ def _exigir_feature_ativa():
 @module_permission_required("departamento_pessoal", "pedido_tiquete", "visualizar")
 def index():
     _exigir_feature_ativa()
+    abas = {"empresas", "unidades", "beneficiarios", "novo_pedido", "pedidos"}
     aba = request.args.get("aba", "empresas")
-    if aba not in {"empresas", "unidades", "beneficiarios"}:
+    if aba not in abas:
         aba = "empresas"
+    busca_colaborador = request.args.get("busca", "").strip()[:80]
+    colaboradores = []
+    if aba == "novo_pedido":
+        consulta_colaboradores = Colaborador.query.join(Equipe).filter(
+            Colaborador.ativo.is_(True),
+            Equipe.ativo.is_(True),
+        )
+        if busca_colaborador:
+            termo = f"%{busca_colaborador}%"
+            consulta_colaboradores = consulta_colaboradores.filter(or_(
+                Colaborador.nome.ilike(termo),
+                Colaborador.matricula.ilike(termo),
+                Colaborador.cpf.ilike(termo),
+            ))
+        colaboradores = consulta_colaboradores.order_by(Colaborador.nome).limit(LIMITE_BENEFICIARIOS_PEDIDO).all()
+
+    pedido_edicao = db.session.get(PedidoTicketPedido, request.args.get("pedido_id", type=int))
+    if pedido_edicao and pedido_edicao.status != "rascunho":
+        pedido_edicao = None
+    empresas_para_pedido = PedidoTicketEmpresa.query.filter_by(ativo=True)
+    if pedido_edicao:
+        empresas_para_pedido = empresas_para_pedido.filter_by(numero_pedido=pedido_edicao.numero_pedido)
+    empresas_para_pedido = empresas_para_pedido.order_by(PedidoTicketEmpresa.numero_pedido.desc(), PedidoTicketEmpresa.nome_empresa).limit(100).all()
+    pedido_selecionado = db.session.get(PedidoTicketPedido, request.args.get("ver_pedido", type=int))
+    beneficiarios_do_pedido = []
+    colaboradores_no_pedido = set()
+    if pedido_selecionado:
+        beneficiarios_do_pedido = PedidoTicketBeneficiario.query.filter_by(
+            pedido_id=pedido_selecionado.id
+        ).order_by(PedidoTicketBeneficiario.nome).all()
+    if pedido_edicao:
+        colaboradores_no_pedido = {
+            row[0] for row in PedidoTicketBeneficiario.query.with_entities(
+                PedidoTicketBeneficiario.colaborador_id
+            ).filter_by(pedido_id=pedido_edicao.id).all() if row[0] is not None
+        }
+
+    unidades_ativas = PedidoTicketUnidadeEntrega.query.filter_by(ativo=True).order_by(PedidoTicketUnidadeEntrega.nome_unidade).limit(245).all()
     return render_template(
         "departamento_pessoal/pedido_tiquete/index.html",
         aba=aba,
         empresas=PedidoTicketEmpresa.query.order_by(PedidoTicketEmpresa.criado_em.desc()).limit(100).all(),
         empresas_ativas=PedidoTicketEmpresa.query.filter_by(ativo=True).order_by(PedidoTicketEmpresa.numero_pedido.desc(), PedidoTicketEmpresa.nome_empresa).limit(100).all(),
+        empresas_para_pedido=empresas_para_pedido,
         editar_empresa=db.session.get(PedidoTicketEmpresa, request.args.get("editar_empresa", type=int)),
         empresas_unidades=PedidoTicketEmpresa.query.order_by(PedidoTicketEmpresa.nome_empresa, PedidoTicketEmpresa.numero_contrato).limit(100).all(),
         empresas_unidades_ativas=PedidoTicketEmpresa.query.filter_by(ativo=True).order_by(PedidoTicketEmpresa.nome_empresa, PedidoTicketEmpresa.numero_contrato).limit(100).all(),
         unidades=PedidoTicketUnidadeEntrega.query.order_by(PedidoTicketUnidadeEntrega.nome_unidade).limit(100).all(),
-        unidades_ativas=PedidoTicketUnidadeEntrega.query.filter_by(ativo=True).order_by(PedidoTicketUnidadeEntrega.nome_unidade).limit(100).all(),
+        unidades_ativas=unidades_ativas,
         editar_unidade=db.session.get(PedidoTicketUnidadeEntrega, request.args.get("editar_unidade", type=int)),
         beneficiarios=PedidoTicketBeneficiario.query.order_by(PedidoTicketBeneficiario.nome).limit(100).all(),
         pedidos=[linha[0] for linha in PedidoTicketBeneficiario.query.with_entities(
             PedidoTicketBeneficiario.numero_pedido
         ).distinct().order_by(PedidoTicketBeneficiario.numero_pedido.desc()).limit(100).all()],
+        pedidos_ticket=PedidoTicketPedido.query.order_by(PedidoTicketPedido.criado_em.desc()).limit(100).all(),
+        pedido_edicao=pedido_edicao,
+        pedido_selecionado=pedido_selecionado,
+        beneficiarios_do_pedido=beneficiarios_do_pedido,
+        colaboradores=colaboradores,
+        busca_colaborador=busca_colaborador,
+        colaboradores_no_pedido=colaboradores_no_pedido,
+        unidades_pedido=unidades_ativas,
         produtos=PRODUTOS,
         estados=ESTADOS,
         pode_criar=_pode("criar"),
         pode_editar=_pode("editar"),
+        limite_beneficiarios=LIMITE_BENEFICIARIOS_PEDIDO,
+        data_hoje=date.today().isoformat(),
     )
 
 
@@ -335,42 +384,144 @@ def alternar_status_unidade(unidade_id):
     return redirect(url_for("pedido_tiquete.index", aba="unidades"))
 
 
+@pedido_tiquete_bp.route("/pedidos", methods=["POST"])
+@module_permission_required("departamento_pessoal", "pedido_tiquete", "criar")
+def criar_pedido_rascunho():
+    _exigir_feature_ativa()
+    pedido = None
+    try:
+        empresa_id = request.form.get("empresa_id", type=int)
+        unidade_id = request.form.get("unidade_id", type=int)
+        empresa = db.session.get(PedidoTicketEmpresa, empresa_id) if empresa_id else None
+        unidade = db.session.get(PedidoTicketUnidadeEntrega, unidade_id) if unidade_id else None
+        if not empresa or not empresa.ativo:
+            raise ValueError("Selecione uma empresa ou contrato ativo.")
+        if not unidade or not unidade.ativo or unidade.cnpj != empresa.cnpj:
+            raise ValueError("Selecione uma unidade ativa vinculada à empresa escolhida.")
+
+        ids_texto = request.form.getlist("colaborador_ids")
+        if not ids_texto:
+            raise ValueError("Selecione ao menos um colaborador.")
+        try:
+            ids_recebidos = [int(item) for item in ids_texto]
+        except (ValueError, TypeError):
+            raise ValueError("A seleção de colaboradores contém um identificador inválido.")
+        if len(ids_recebidos) != len(set(ids_recebidos)):
+            raise ValueError("Há colaboradores repetidos na seleção.")
+        if len(ids_recebidos) > LIMITE_BENEFICIARIOS_PEDIDO:
+            raise ValueError(f"O modelo aceita no máximo {LIMITE_BENEFICIARIOS_PEDIDO} beneficiários por pedido.")
+
+        colaboradores = Colaborador.query.join(Equipe).filter(
+            Colaborador.id.in_(ids_recebidos),
+            Colaborador.ativo.is_(True),
+            Equipe.ativo.is_(True),
+        ).all()
+        if len(colaboradores) != len(ids_recebidos):
+            raise ValueError("Um ou mais colaboradores não estão ativos ou não existem mais no cadastro.")
+        pedido_id = request.form.get("pedido_id", type=int)
+        if pedido_id:
+            pedido = db.session.get(PedidoTicketPedido, pedido_id)
+            if not pedido or pedido.status != "rascunho":
+                raise ValueError("O rascunho não existe ou não está mais aberto.")
+            if pedido.numero_pedido != empresa.numero_pedido:
+                raise ValueError("A empresa selecionada não pertence ao número deste rascunho.")
+        else:
+            pedido = PedidoTicketPedido.query.filter_by(numero_pedido=empresa.numero_pedido).first()
+            if pedido and pedido.status != "rascunho":
+                raise ValueError("Este pedido já foi encerrado e não pode receber novos beneficiários.")
+
+        ja_vinculados = PedidoTicketBeneficiario.query.filter_by(
+            numero_pedido=empresa.numero_pedido
+        ).with_entities(PedidoTicketBeneficiario.cpf).all()
+        cpfs_existentes = {cpf for (cpf,) in ja_vinculados}
+        novos_itens = []
+        for colaborador in colaboradores:
+            matricula = (colaborador.matricula or "").strip()
+            cpf = _digitos(colaborador.cpf or "")
+            nome = (colaborador.nome or "").strip()
+            departamento = (colaborador.equipe.nome or "").strip()
+            if not (1 <= len(matricula) <= 12 and matricula.isalnum()):
+                raise ValueError(f"Corrija a matrícula de {nome or 'um colaborador'} no cadastro antes de continuar.")
+            if len(cpf) != 11 or not (1 <= len(nome) <= 60):
+                raise ValueError(f"Corrija CPF ou nome de {nome or 'um colaborador'} no cadastro antes de continuar.")
+            if not departamento or len(departamento) > 50:
+                raise ValueError(f"A equipe de {nome} precisa ter um nome de até 50 caracteres.")
+            if cpf in cpfs_existentes:
+                raise ValueError(f"{nome} já está incluído no pedido {empresa.numero_pedido}.")
+            try:
+                nascimento = date.fromisoformat(request.form.get(f"data_nascimento_{colaborador.id}", ""))
+            except ValueError:
+                raise ValueError(f"Informe a data de nascimento de {nome}.")
+            if nascimento > date.today():
+                raise ValueError(f"A data de nascimento de {nome} não pode estar no futuro.")
+            try:
+                valor = Decimal(request.form.get(f"valor_mensal_{colaborador.id}", "").replace(",", "."))
+                valor_centavos = valor.quantize(Decimal("0.01"))
+            except (InvalidOperation, AttributeError):
+                raise ValueError(f"Informe um valor mensal válido para {nome}.")
+            if valor < 0 or valor != valor_centavos or valor > Decimal("9999999999.99"):
+                raise ValueError(f"Confira o valor mensal informado para {nome}.")
+            parcelas_texto = request.form.get(f"numero_parcelas_{colaborador.id}", "").strip()
+            if parcelas_texto and not parcelas_texto.isdigit():
+                raise ValueError(f"Confira o número de parcelas de {nome}.")
+            parcelas = int(parcelas_texto) if parcelas_texto else None
+            if parcelas is not None and parcelas < 1:
+                raise ValueError(f"Confira o número de parcelas de {nome}.")
+            novos_itens.append({
+                "pedido_id": None,
+                "colaborador_id": colaborador.id,
+                "numero_pedido": empresa.numero_pedido,
+                "matricula": matricula,
+                "cpf": cpf,
+                "nome": nome,
+                "data_nascimento": nascimento,
+                "departamento": departamento,
+                "unidade_entrega": f"{unidade.codigo_unidade} - {unidade.nome_unidade}",
+                "valor_mensal": valor_centavos,
+                "contrato_produto": f"{empresa.numero_contrato} - {empresa.produto}",
+                "numero_parcelas": parcelas,
+            })
+
+        if pedido:
+            quantidade_atual = PedidoTicketBeneficiario.query.filter_by(pedido_id=pedido.id).count()
+            if quantidade_atual + len(novos_itens) > LIMITE_BENEFICIARIOS_PEDIDO:
+                raise ValueError(f"O pedido ultrapassaria o limite de {LIMITE_BENEFICIARIOS_PEDIDO} beneficiários do modelo.")
+        else:
+            pedido = PedidoTicketPedido(
+                numero_pedido=empresa.numero_pedido,
+                status="rascunho",
+                criado_por_usuario_id=current_user.id,
+            )
+            db.session.add(pedido)
+            db.session.flush()
+
+        for dados in novos_itens:
+            dados["pedido_id"] = pedido.id
+            db.session.add(PedidoTicketBeneficiario(**dados))
+        db.session.flush()
+        itens = PedidoTicketBeneficiario.query.filter_by(pedido_id=pedido.id).all()
+        pedido.quantidade_beneficiarios = len(itens)
+        pedido.valor_total = sum((item.valor_mensal for item in itens), Decimal("0.00"))
+        db.session.commit()
+        flash("Rascunho salvo. Confira colaboradores, quantidade e valor total antes da próxima etapa.", "success")
+        return redirect(url_for("pedido_tiquete.index", aba="pedidos", ver_pedido=pedido.id))
+    except (ValueError, TypeError, InvalidOperation) as erro:
+        db.session.rollback()
+        flash(str(erro) or "Não foi possível salvar o rascunho. Confira os dados selecionados.", "danger")
+    except IntegrityError:
+        db.session.rollback()
+        flash("O pedido mudou durante o salvamento. Atualize a tela e tente novamente.", "danger")
+    destino = {"aba": "novo_pedido"}
+    if pedido and pedido.id:
+        destino["pedido_id"] = pedido.id
+    return redirect(url_for("pedido_tiquete.index", **destino))
+
+
 @pedido_tiquete_bp.route("/beneficiarios", methods=["POST"])
 @module_permission_required("departamento_pessoal", "pedido_tiquete", "criar")
 def criar_beneficiario():
     _exigir_feature_ativa()
-    try:
-        empresa_id = int(request.form.get("empresa_pedido", ""))
-        empresa = PedidoTicketEmpresa.query.filter_by(id=empresa_id, ativo=True).first()
-        matricula = _digitos(request.form.get("matricula", ""))
-        cpf = _digitos(request.form.get("cpf", ""))
-        nome = request.form.get("nome", "").strip()
-        nascimento = _data_form("data_nascimento")
-        departamento = request.form.get("departamento", "").strip()
-        unidade_id = int(request.form.get("unidade_entrega", ""))
-        unidade = PedidoTicketUnidadeEntrega.query.filter_by(id=unidade_id, ativo=True).first()
-        valor = Decimal(request.form.get("valor_mensal", "").replace(",", "."))
-        parcelas_texto = _digitos(request.form.get("numero_parcelas", ""))
-        parcelas = int(parcelas_texto) if parcelas_texto else None
-        if not empresa or not unidade or unidade.cnpj != empresa.cnpj:
-            raise ValueError
-        if not (1 <= len(matricula) <= 12 and len(cpf) == 11 and 1 <= len(nome) <= 60):
-            raise ValueError
-        if nascimento > date.today() or not _idade_minima_atendida(nascimento, 14) or not departamento or len(departamento) > 50:
-            raise ValueError
-        if valor < 0:
-            raise ValueError
-        if PedidoTicketBeneficiario.query.filter_by(numero_pedido=empresa.numero_pedido, cpf=cpf).first():
-            raise ValueError
-        if parcelas is not None and parcelas < 1:
-            raise ValueError
-        db.session.add(PedidoTicketBeneficiario(numero_pedido=empresa.numero_pedido, matricula=matricula, cpf=cpf, nome=nome,
-                                                data_nascimento=nascimento, departamento=departamento,
-                                                unidade_entrega=f"{unidade.codigo_unidade} - {unidade.nome_unidade}", valor_mensal=valor,
-                                                contrato_produto=f"{empresa.numero_contrato} - {empresa.produto}", numero_parcelas=parcelas))
-        db.session.commit()
-        flash("Beneficiário cadastrado com sucesso.", "success")
-    except (ValueError, TypeError, InvalidOperation):
-        db.session.rollback()
-        flash("Não foi possível cadastrar. Confira os campos obrigatórios e os formatos informados.", "danger")
-    return redirect(url_for("pedido_tiquete.index", aba="beneficiarios"))
+    flash("Os beneficiários agora são selecionados do cadastro de colaboradores na aba Novo Pedido.", "warning")
+    return redirect(url_for("pedido_tiquete.index", aba="novo_pedido"))
+
+

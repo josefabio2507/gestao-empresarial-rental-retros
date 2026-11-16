@@ -14,7 +14,9 @@
         {% for chave, titulo, descricao in [
             ('empresas', 'Empresas e contratos', 'Número do pedido, empresa, contrato, produto e data de crédito.'),
             ('unidades', 'Unidades de entrega', 'Endereço da unidade e dados do interlocutor.'),
-            ('beneficiarios', 'Beneficiários', 'Cadastro do colaborador e valor mensal do benefício.')
+            ('novo_pedido', 'Novo pedido', 'Selecione colaboradores existentes e monte um rascunho.'),
+            ('pedidos', 'Pedidos', 'Consulte rascunhos, quantidade de pessoas e valores.'),
+            ('beneficiarios', 'Beneficiários', 'Consulte os itens cadastrados para os pedidos.')
         ] %}
             <a class="module-card module-card-link {% if aba == chave %}active{% endif %}" href="{{ url_for('pedido_tiquete.index', aba=chave) }}">
                 <span class="module-card-icon">{{ loop.index }}</span>
@@ -63,23 +65,89 @@
     </form>
     {% endif %}
 
-    {% if pode_criar and aba == 'beneficiarios' %}
-    <form class="form-card" method="post" action="{{ url_for('pedido_tiquete.criar_beneficiario') }}">
-        <h2 class="section-title">Cadastrar beneficiário</h2>
+    {% if pode_criar and aba == 'novo_pedido' %}
+    {% if pedido_edicao %}
+    <div class="details-card">
+        <h2 class="section-title">Continuar rascunho do pedido {{ pedido_edicao.numero_pedido }}</h2>
+        <p>O rascunho já tem {{ pedido_edicao.quantidade_beneficiarios }} colaborador(es), total de {{ formatar_moeda_brl(pedido_edicao.valor_total) }}.</p>
+    </div>
+    {% endif %}
+    <form class="form-card" method="get" action="{{ url_for('pedido_tiquete.index') }}">
+        <input type="hidden" name="aba" value="novo_pedido">
+        {% if pedido_edicao %}<input type="hidden" name="pedido_id" value="{{ pedido_edicao.id }}">{% endif %}
+        <h2 class="section-title">Localizar colaboradores</h2>
         <div class="form-grid">
-            <div class="form-group"><label for="empresa_pedido">Pedido, empresa e contrato</label><select id="empresa_pedido" name="empresa_pedido" required><option value="">Selecione</option>{% for empresa in empresas_ativas %}<option value="{{ empresa.id }}">Pedido {{ empresa.numero_pedido }} — {{ empresa.nome_empresa }} — {{ empresa.numero_contrato }} / {{ empresa.produto }}</option>{% endfor %}</select></div>
-            <div class="form-group"><label for="matricula">Matrícula</label><input id="matricula" name="matricula" inputmode="numeric" maxlength="12" required></div>
-            <div class="form-group"><label for="cpf">CPF</label><input id="cpf" name="cpf" inputmode="numeric" maxlength="14" required></div>
-            <div class="form-group"><label for="nome">Nome do usuário</label><input id="nome" name="nome" maxlength="60" required></div>
-            <div class="form-group"><label for="data_nascimento">Data de nascimento</label><input id="data_nascimento" name="data_nascimento" type="date" required></div>
-            <div class="form-group"><label for="departamento">Departamento</label><input id="departamento" name="departamento" maxlength="50" required></div>
-            <div class="form-group"><label for="unidade_entrega">Unidade de entrega</label><select id="unidade_entrega" name="unidade_entrega" required><option value="">Selecione</option>{% for unidade in unidades_ativas %}<option value="{{ unidade.id }}">{{ unidade.codigo_unidade }} - {{ unidade.nome_unidade }}</option>{% endfor %}</select></div>
-            <div class="form-group"><label for="valor_mensal">Valor mensal do benefício (R$)</label><input id="valor_mensal" name="valor_mensal" type="number" min="0" step="0.01" required></div>
-            <div class="form-group"><label for="numero_parcelas">Número de parcelas (quando aplicável)</label><input id="numero_parcelas" name="numero_parcelas" type="number" min="1" step="1"></div>
+            <div class="form-group"><label for="busca">Nome, matrícula ou CPF</label><input id="busca" name="busca" value="{{ busca_colaborador }}" maxlength="80"></div>
         </div>
-        <button class="btn btn-primary" type="submit">Salvar beneficiário</button>
-        <p class="form-help">A planilha exige idade mínima de 14 anos. Matrícula e CPF são armazenados como texto para preservar zeros à esquerda.</p>
+        <button class="btn btn-secondary" type="submit">Filtrar colaboradores</button>
     </form>
+    <form id="form-novo-pedido" class="form-card" method="post" action="{{ url_for('pedido_tiquete.criar_pedido_rascunho') }}">
+        {% if pedido_edicao %}<input type="hidden" name="pedido_id" value="{{ pedido_edicao.id }}">{% endif %}
+        <h2 class="section-title">{% if pedido_edicao %}Adicionar colaboradores ao rascunho{% else %}Criar rascunho de pedido{% endif %}</h2>
+        <div class="form-grid">
+            <div class="form-group"><label for="empresa_id">Pedido, empresa, contrato e produto</label><select id="empresa_id" name="empresa_id" required><option value="">Selecione</option>{% for empresa in empresas_para_pedido %}<option value="{{ empresa.id }}" data-cnpj="{{ empresa.cnpj }}" {% if pedido_edicao and empresa.numero_pedido == pedido_edicao.numero_pedido and loop.first %}selected{% endif %}>Pedido {{ empresa.numero_pedido }} — {{ empresa.nome_empresa }} — {{ empresa.numero_contrato }} / {{ empresa.produto }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="unidade_id">Unidade de entrega</label><select id="unidade_id" name="unidade_id" required><option value="">Selecione</option>{% for unidade in unidades_pedido %}<option value="{{ unidade.id }}" data-cnpj="{{ unidade.cnpj }}">{{ unidade.codigo_unidade }} — {{ unidade.nome_unidade }} — {{ unidade.cnpj }}</option>{% endfor %}</select></div>
+        </div>
+        <p class="form-help">Nome, matrícula e CPF vêm do cadastro ativo. A equipe do colaborador será usada como departamento na planilha; informe nascimento e valor mensal de cada selecionado. Capacidade do modelo: {{ limite_beneficiarios }} colaboradores por pedido.</p>
+        <div class="table-wrapper"><table><thead><tr><th>Selecionar</th><th>Matrícula</th><th>Colaborador</th><th>CPF</th><th>Equipe</th><th>Nascimento</th><th>Valor mensal</th><th>Parcelas</th></tr></thead><tbody>
+            {% for colaborador in colaboradores %}
+            <tr class="{% if colaborador.id in colaboradores_no_pedido %}muted{% endif %}">
+                <td><label><input class="pedido-colaborador-check" type="checkbox" name="colaborador_ids" value="{{ colaborador.id }}" {% if colaborador.id in colaboradores_no_pedido %}disabled{% endif %}>Selecionar{% if colaborador.id in colaboradores_no_pedido %} (já incluído){% endif %}</label></td>
+                <td>{{ colaborador.matricula }}</td><td>{{ colaborador.nome }}</td><td>{{ colaborador.cpf }}</td><td>{{ colaborador.equipe.nome }}</td>
+                <td><input class="pedido-colaborador-input" data-obrigatorio="true" type="date" name="data_nascimento_{{ colaborador.id }}" max="{{ data_hoje }}" aria-label="Nascimento de {{ colaborador.nome }}" disabled></td>
+                <td><input class="pedido-colaborador-input pedido-valor" data-obrigatorio="true" type="number" min="0" step="0.01" name="valor_mensal_{{ colaborador.id }}" aria-label="Valor mensal de {{ colaborador.nome }}" disabled></td>
+                <td><input class="pedido-colaborador-input" type="number" min="1" step="1" name="numero_parcelas_{{ colaborador.id }}" aria-label="Parcelas de {{ colaborador.nome }}" disabled></td>
+            </tr>
+            {% else %}<tr><td colspan="8">Nenhum colaborador ativo encontrado. Use a busca ou confira o cadastro de colaboradores.</td></tr>{% endfor %}
+        </tbody></table></div>
+        <p class="form-help">Selecionados: <strong id="pedido-qtd-selecionados">0</strong> · Total mensal: <strong id="pedido-valor-total">R$ 0,00</strong></p>
+        <button class="btn btn-primary" type="submit">{% if pedido_edicao %}Salvar no rascunho{% else %}Criar rascunho{% endif %}</button>
+    </form>
+    <script>
+    (() => {
+        const empresa = document.getElementById("empresa_id");
+        const unidade = document.getElementById("unidade_id");
+        const linhas = Array.from(document.querySelectorAll("#form-novo-pedido tbody tr"));
+        const checks = Array.from(document.querySelectorAll(".pedido-colaborador-check"));
+        const atualizarUnidades = () => {
+            const cnpj = empresa?.selectedOptions?.[0]?.dataset?.cnpj || "";
+            if (!unidade) return;
+            Array.from(unidade.options).forEach((opcao) => {
+                if (!opcao.value) return;
+                const disponivel = !cnpj || opcao.dataset.cnpj === cnpj;
+                opcao.hidden = !disponivel;
+                if (!disponivel && opcao.selected) unidade.value = "";
+            });
+        };
+        const atualizarTotais = () => {
+            let quantidade = 0;
+            let total = 0;
+            linhas.forEach((linha) => {
+                const check = linha.querySelector(".pedido-colaborador-check");
+                const inputs = Array.from(linha.querySelectorAll(".pedido-colaborador-input"));
+                if (!check) return;
+                inputs.forEach((input) => {
+                    input.disabled = !check.checked;
+                    input.required = check.checked && input.dataset.obrigatorio === "true";
+                });
+                if (check.checked) {
+                    quantidade += 1;
+                    const valor = Number(linha.querySelector(".pedido-valor")?.value || 0);
+                    if (Number.isFinite(valor)) total += valor;
+                }
+            });
+            const qtd = document.getElementById("pedido-qtd-selecionados");
+            const soma = document.getElementById("pedido-valor-total");
+            if (qtd) qtd.textContent = String(quantidade);
+            if (soma) soma.textContent = new Intl.NumberFormat("pt-BR", {style:"currency",currency:"BRL"}).format(total);
+        };
+        checks.forEach((check) => check.addEventListener("change", atualizarTotais));
+        document.querySelectorAll(".pedido-valor").forEach((campo) => campo.addEventListener("input", atualizarTotais));
+        empresa?.addEventListener("change", atualizarUnidades);
+        atualizarUnidades();
+        atualizarTotais();
+    })();
+    </script>
     {% endif %}
 
     {% if aba == 'empresas' %}
@@ -89,6 +157,28 @@
     {% endif %}
     {% elif aba == 'unidades' %}
     <div class="details-card"><h2 class="section-title">Unidades cadastradas</h2><div class="table-wrapper"><table><thead><tr><th>Código</th><th>Unidade</th><th>Empresa</th><th>CNPJ/CPF</th><th>Endereço</th><th>Cidade/UF</th><th>Interlocutor</th><th>Situação</th>{% if pode_editar %}<th>Ações</th>{% endif %}</tr></thead><tbody>{% for item in unidades %}{% set empresa_unidade = empresas_unidades | selectattr('cnpj', 'equalto', item.cnpj) | first %}<tr><td>{{ item.codigo_unidade }}</td><td>{{ item.nome_unidade }}</td><td>{{ empresa_unidade.nome_empresa if empresa_unidade else '—' }}</td><td>{{ item.cnpj }}</td><td>{{ item.tipo_logradouro }} {{ item.logradouro }}, {{ item.numero }}{% if item.complemento %} - {{ item.complemento }}{% endif %}</td><td>{{ item.cidade }}/{{ item.estado }}</td><td>{{ item.interlocutor }}</td><td>{{ 'Ativa' if item.ativo else 'Inativa' }}</td>{% if pode_editar %}<td><a class="btn btn-secondary" href="{{ url_for('pedido_tiquete.editar_unidade', unidade_id=item.id) }}">Editar</a><form method="post" action="{{ url_for('pedido_tiquete.alternar_status_unidade', unidade_id=item.id) }}" style="display:inline"><button class="btn btn-secondary" type="submit">{{ 'Desativar' if item.ativo else 'Reativar' }}</button></form></td>{% endif %}</tr>{% else %}<tr><td colspan="9">Nenhuma unidade cadastrada.</td></tr>{% endfor %}</tbody></table></div></div>
+    {% elif aba == 'pedidos' %}
+    <div class="details-card">
+        <h2 class="section-title">Pedidos e rascunhos</h2>
+        <p>Os pedidos desta etapa ficam salvos como rascunho. Ainda não há envio ao Portal da Tícket.</p>
+        <div class="table-wrapper"><table><thead><tr><th>Número</th><th>Situação</th><th>Colaboradores</th><th>Total mensal</th><th>Criado em</th><th>Detalhes</th></tr></thead><tbody>
+            {% for pedido in pedidos_ticket %}
+            <tr><td>{{ pedido.numero_pedido }}</td><td>{{ 'Rascunho' if pedido.status == 'rascunho' else pedido.status }}</td><td>{{ pedido.quantidade_beneficiarios }}</td><td>{{ formatar_moeda_brl(pedido.valor_total) }}</td><td>{{ pedido.criado_em.strftime('%d/%m/%Y %H:%M') }}</td><td><a class="btn btn-secondary" href="{{ url_for('pedido_tiquete.index', aba='pedidos', ver_pedido=pedido.id) }}">Abrir</a>{% if pedido.status == 'rascunho' %} <a class="btn btn-secondary" href="{{ url_for('pedido_tiquete.index', aba='novo_pedido', pedido_id=pedido.id) }}">Continuar rascunho</a>{% endif %}</td></tr>
+            {% else %}<tr><td colspan="6">Nenhum rascunho criado.</td></tr>{% endfor %}
+        </tbody></table></div>
+    </div>
+    {% if pedido_selecionado %}
+    <div class="details-card">
+        <h2 class="section-title">Pedido {{ pedido_selecionado.numero_pedido }} — {{ 'Rascunho' if pedido_selecionado.status == 'rascunho' else pedido_selecionado.status }}</h2>
+        <p>{{ pedido_selecionado.quantidade_beneficiarios }} colaborador(es) · Total mensal {{ formatar_moeda_brl(pedido_selecionado.valor_total) }}</p>
+        {% if pedido_selecionado.status == 'rascunho' and pode_criar %}<a class="btn btn-primary" href="{{ url_for('pedido_tiquete.index', aba='novo_pedido', pedido_id=pedido_selecionado.id) }}">Continuar rascunho</a>{% endif %}
+        <div class="table-wrapper"><table><thead><tr><th>Matrícula</th><th>Colaborador</th><th>CPF</th><th>Nascimento</th><th>Equipe</th><th>Unidade</th><th>Valor mensal</th><th>Contrato</th><th>Parcelas</th></tr></thead><tbody>
+            {% for item in beneficiarios_do_pedido %}
+            <tr><td>{{ item.matricula }}</td><td>{{ item.nome }}</td><td>{{ item.cpf }}</td><td>{{ item.data_nascimento.strftime('%d/%m/%Y') }}</td><td>{{ item.departamento }}</td><td>{{ item.unidade_entrega }}</td><td>{{ formatar_moeda_brl(item.valor_mensal) }}</td><td>{{ item.contrato_produto }}</td><td>{{ item.numero_parcelas or '—' }}</td></tr>
+            {% else %}<tr><td colspan="9">Este rascunho ainda não tem colaboradores.</td></tr>{% endfor %}
+        </tbody></table></div>
+    </div>
+    {% endif %}
     {% else %}
     <div class="details-card"><h2 class="section-title">Beneficiários cadastrados</h2><div class="table-wrapper"><table><thead><tr><th>Pedido</th><th>Matrícula</th><th>CPF</th><th>Nome</th><th>Departamento</th><th>Unidade</th><th>Benefício mensal</th><th>Contrato</th></tr></thead><tbody>{% for item in beneficiarios %}<tr><td>{{ item.numero_pedido }}</td><td>{{ item.matricula }}</td><td>{{ item.cpf }}</td><td>{{ item.nome }}</td><td>{{ item.departamento }}</td><td>{{ item.unidade_entrega }}</td><td>{{ formatar_moeda_brl(item.valor_mensal) }}</td><td>{{ item.contrato_produto }}</td></tr>{% else %}<tr><td colspan="8">Nenhum beneficiário cadastrado.</td></tr>{% endfor %}</tbody></table></div></div>
     {% endif %}
