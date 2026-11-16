@@ -13,6 +13,7 @@ class Config:
     SQLALCHEMY_DATABASE_URI = DATABASE_URL or "sqlite:///app.db"
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    PEDIDO_TICKET_ENABLED = os.getenv("PEDIDO_TICKET_ENABLED", "true").strip().lower() == "true"
     SQLALCHEMY_ENGINE_OPTIONS = {
         "pool_pre_ping": True,
         "pool_recycle": 300,

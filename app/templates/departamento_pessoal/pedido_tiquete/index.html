@@ -4,17 +4,17 @@
     <div class="top-bar">
         <div>
             <span class="page-kicker">Departamento Pessoal</span>
-            <h1>Pedido Tícket</h1>
-            <p>Cadastros para preparar pedidos de benefícios no padrão da planilha da empresa.</p>
+            <h1>Pedido T�cket</h1>
+            <p>Cadastros para preparar pedidos de benef�cios no padr�o da planilha da empresa.</p>
         </div>
         <a class="btn btn-secondary" href="{{ url_for('departamento_pessoal.index') }}">Voltar ao Departamento Pessoal</a>
     </div>
 
-    <nav class="modules-grid" aria-label="Cadastros do Pedido Tícket">
+    <nav class="modules-grid" aria-label="Cadastros do Pedido T�cket">
         {% for chave, titulo, descricao in [
-            ('empresas', 'Empresas e contratos', 'Número do pedido, empresa, contrato, produto e data de crédito.'),
-            ('unidades', 'Unidades de entrega', 'Endereço da unidade e dados do interlocutor.'),
-            ('beneficiarios', 'Beneficiários', 'Cadastro do colaborador e valor mensal do benefício.')
+            ('empresas', 'Empresas e contratos', 'N�mero do pedido, empresa, contrato, produto e data de cr�dito.'),
+            ('unidades', 'Unidades de entrega', 'Endere�o da unidade e dados do interlocutor.'),
+            ('beneficiarios', 'Benefici�rios', 'Cadastro do colaborador e valor mensal do benef�cio.')
         ] %}
             <a class="module-card module-card-link {% if aba == chave %}active{% endif %}" href="{{ url_for('pedido_tiquete.index', aba=chave) }}">
                 <span class="module-card-icon">{{ loop.index }}</span>
@@ -28,15 +28,15 @@
     <form class="form-card" method="post" action="{{ url_for('pedido_tiquete.criar_empresa') }}">
         <h2 class="section-title">Cadastrar empresa e contrato</h2>
         <div class="form-grid">
-            <div class="form-group"><label for="empresa_pedido">Pedido, empresa e contrato</label><select id="empresa_pedido" name="empresa_pedido" required><option value="">Selecione</option>{% for empresa in empresas %}<option value="{{ empresa.id }}">Pedido {{ empresa.numero_pedido }} — {{ empresa.nome_empresa }} — {{ empresa.numero_contrato }} / {{ empresa.produto }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="numero_pedido">N�mero do pedido</label><input id="numero_pedido" name="numero_pedido" inputmode="numeric" maxlength="10" required></div>
             <div class="form-group"><label for="cnpj">CNPJ/CPF da empresa</label><input id="cnpj" name="cnpj" maxlength="14" required></div>
             <div class="form-group"><label for="nome_empresa">Nome da empresa</label><input id="nome_empresa" name="nome_empresa" maxlength="26" required></div>
-            <div class="form-group"><label for="numero_contrato">Número do contrato</label><input id="numero_contrato" name="numero_contrato" inputmode="numeric" maxlength="10" required></div>
+            <div class="form-group"><label for="numero_contrato">N�mero do contrato</label><input id="numero_contrato" name="numero_contrato" inputmode="numeric" maxlength="10" required></div>
             <div class="form-group"><label for="produto">Produto</label><select id="produto" name="produto" required><option value="">Selecione</option>{% for produto in produtos %}<option>{{ produto }}</option>{% endfor %}</select></div>
-            <div class="form-group"><label for="data_credito">Data de crédito solicitada</label><input id="data_credito" name="data_credito" type="date" required></div>
+            <div class="form-group"><label for="data_credito">Data de cr�dito solicitada</label><input id="data_credito" name="data_credito" type="date" required></div>
         </div>
         <button class="btn btn-primary" type="submit">Salvar empresa/contrato</button>
-        <p class="form-help">A planilha exige antecedência mínima de 7 dias úteis no primeiro pedido e 3 dias úteis nos seguintes.</p>
+        <p class="form-help">A planilha exige anteced�ncia m�nima de 7 dias �teis no primeiro pedido e 3 dias �teis nos seguintes.</p>
     </form>
     {% endif %}
 
@@ -45,8 +45,8 @@
         <h2 class="section-title">Cadastrar unidade de entrega</h2>
         <div class="form-grid">
             {% for id, rotulo, max, required in [
-                ('cnpj','CNPJ/CPF da empresa',14,true), ('codigo_unidade','Código da unidade',6,true), ('nome_unidade','Nome da unidade',26,true),
-                ('tipo_logradouro','Tipo de logradouro',4,true), ('logradouro','Logradouro',50,true), ('numero','Número',6,true),
+                ('cnpj','CNPJ/CPF da empresa',14,true), ('codigo_unidade','C�digo da unidade',6,true), ('nome_unidade','Nome da unidade',26,true),
+                ('tipo_logradouro','Tipo de logradouro',4,true), ('logradouro','Logradouro',50,true), ('numero','N�mero',6,true),
                 ('complemento','Complemento',10,false), ('bairro','Bairro',15,true), ('cidade','Cidade',25,true), ('cep','CEP',8,true),
                 ('interlocutor','Nome do interlocutor',50,true), ('cpf_interlocutor','CPF do interlocutor',11,false), ('rg_interlocutor','RG do interlocutor',10,false),
                 ('ddd','DDD',3,false), ('telefone','Telefone',9,false), ('ramal','Ramal',5,false)
@@ -61,29 +61,32 @@
 
     {% if pode_criar and aba == 'beneficiarios' %}
     <form class="form-card" method="post" action="{{ url_for('pedido_tiquete.criar_beneficiario') }}">
-        <h2 class="section-title">Cadastrar beneficiário</h2>
+        <h2 class="section-title">Cadastrar benefici�rio</h2>
         <div class="form-grid">
-            <div class="form-group"><label for="empresa_pedido">Pedido, empresa e contrato</label><select id="empresa_pedido" name="empresa_pedido" required><option value="">Selecione</option>{% for empresa in empresas %}<option value="{{ empresa.id }}">Pedido {{ empresa.numero_pedido }} — {{ empresa.nome_empresa }} — {{ empresa.numero_contrato }} / {{ empresa.produto }}</option>{% endfor %}</select></div>
-            <div class="form-group"><label for="matricula">Matrícula</label><input id="matricula" name="matricula" inputmode="numeric" maxlength="12" required></div>
+            <div class="form-group"><label for="empresa_pedido">Pedido, empresa e contrato</label><select id="empresa_pedido" name="empresa_pedido" required><option value="">Selecione</option>{% for empresa in empresas %}<option value="{{ empresa.id }}">Pedido {{ empresa.numero_pedido }} � {{ empresa.nome_empresa }} � {{ empresa.numero_contrato }} / {{ empresa.produto }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="matricula">Matr�cula</label><input id="matricula" name="matricula" inputmode="numeric" maxlength="12" required></div>
             <div class="form-group"><label for="cpf">CPF</label><input id="cpf" name="cpf" inputmode="numeric" maxlength="14" required></div>
-            <div class="form-group"><label for="nome">Nome do usuário</label><input id="nome" name="nome" maxlength="60" required></div>
+            <div class="form-group"><label for="nome">Nome do usu�rio</label><input id="nome" name="nome" maxlength="60" required></div>
             <div class="form-group"><label for="data_nascimento">Data de nascimento</label><input id="data_nascimento" name="data_nascimento" type="date" required></div>
             <div class="form-group"><label for="departamento">Departamento</label><input id="departamento" name="departamento" maxlength="50" required></div>
             <div class="form-group"><label for="unidade_entrega">Unidade de entrega</label><select id="unidade_entrega" name="unidade_entrega" required><option value="">Selecione</option>{% for unidade in unidades %}<option value="{{ unidade.id }}">{{ unidade.codigo_unidade }} - {{ unidade.nome_unidade }}</option>{% endfor %}</select></div>
-            <div class="form-group"><label for="valor_mensal">Valor mensal do benefício (R$)</label><input id="valor_mensal" name="valor_mensal" type="number" min="0" step="0.01" required></div>
-            <div class="form-group"><label for="numero_parcelas">Número de parcelas (quando aplicável)</label><input id="numero_parcelas" name="numero_parcelas" type="number" min="1" step="1"></div>
+            <div class="form-group"><label for="valor_mensal">Valor mensal do benef�cio (R$)</label><input id="valor_mensal" name="valor_mensal" type="number" min="0" step="0.01" required></div>
+            <div class="form-group"><label for="numero_parcelas">N�mero de parcelas (quando aplic�vel)</label><input id="numero_parcelas" name="numero_parcelas" type="number" min="1" step="1"></div>
         </div>
-        <button class="btn btn-primary" type="submit">Salvar beneficiário</button>
-        <p class="form-help">A planilha exige idade mínima de 14 anos. Matrícula e CPF são armazenados como texto para preservar zeros à esquerda.</p>
+        <button class="btn btn-primary" type="submit">Salvar benefici�rio</button>
+        <p class="form-help">A planilha exige idade m�nima de 14 anos. Matr�cula e CPF s�o armazenados como texto para preservar zeros � esquerda.</p>
     </form>
     {% endif %}
 
     {% if aba == 'empresas' %}
-    <div class="details-card"><h2 class="section-title">Empresas e contratos cadastrados</h2><div class="table-wrapper"><table><thead><tr><th>Pedido</th><th>Empresa</th><th>CNPJ/CPF</th><th>Contrato</th><th>Produto</th><th>Crédito</th></tr></thead><tbody>{% for item in empresas %}<tr><td>{{ item.numero_pedido }}</td><td>{{ item.nome_empresa }}</td><td>{{ item.cnpj }}</td><td>{{ item.numero_contrato }}</td><td>{{ item.produto }}</td><td>{{ item.data_credito.strftime('%d/%m/%Y') }}</td></tr>{% else %}<tr><td colspan="6">Nenhuma empresa cadastrada.</td></tr>{% endfor %}</tbody></table></div></div>
+    <div class="details-card"><h2 class="section-title">Empresas e contratos cadastrados</h2><div class="table-wrapper"><table><thead><tr><th>Pedido</th><th>Empresa</th><th>CNPJ/CPF</th><th>Contrato</th><th>Produto</th><th>Cr�dito</th></tr></thead><tbody>{% for item in empresas %}<tr><td>{{ item.numero_pedido }}</td><td>{{ item.nome_empresa }}</td><td>{{ item.cnpj }}</td><td>{{ item.numero_contrato }}</td><td>{{ item.produto }}</td><td>{{ item.data_credito.strftime('%d/%m/%Y') }}</td></tr>{% else %}<tr><td colspan="6">Nenhuma empresa cadastrada.</td></tr>{% endfor %}</tbody></table></div></div>
+    {% if pode_criar and pedidos %}
+    <div class="details-card"><h2 class="section-title">Gerar arquivo do pedido</h2><p>Baixe a planilha preenchida com os cadastros deste sistema. O envio ao Portal da T�cket continua separado.</p><div class="form-grid">{% for numero in pedidos %}<a class="btn btn-secondary" href="{{ url_for('pedido_tiquete.baixar_excel', numero_pedido=numero) }}">Baixar pedido {{ numero }}</a>{% endfor %}</div></div>
+    {% endif %}
     {% elif aba == 'unidades' %}
-    <div class="details-card"><h2 class="section-title">Unidades cadastradas</h2><div class="table-wrapper"><table><thead><tr><th>Código</th><th>Unidade</th><th>CNPJ/CPF</th><th>Endereço</th><th>Cidade/UF</th><th>Interlocutor</th></tr></thead><tbody>{% for item in unidades %}<tr><td>{{ item.codigo_unidade }}</td><td>{{ item.nome_unidade }}</td><td>{{ item.cnpj }}</td><td>{{ item.tipo_logradouro }} {{ item.logradouro }}, {{ item.numero }}{% if item.complemento %} - {{ item.complemento }}{% endif %}</td><td>{{ item.cidade }}/{{ item.estado }}</td><td>{{ item.interlocutor }}</td></tr>{% else %}<tr><td colspan="6">Nenhuma unidade cadastrada.</td></tr>{% endfor %}</tbody></table></div></div>
+    <div class="details-card"><h2 class="section-title">Unidades cadastradas</h2><div class="table-wrapper"><table><thead><tr><th>C�digo</th><th>Unidade</th><th>CNPJ/CPF</th><th>Endere�o</th><th>Cidade/UF</th><th>Interlocutor</th></tr></thead><tbody>{% for item in unidades %}<tr><td>{{ item.codigo_unidade }}</td><td>{{ item.nome_unidade }}</td><td>{{ item.cnpj }}</td><td>{{ item.tipo_logradouro }} {{ item.logradouro }}, {{ item.numero }}{% if item.complemento %} - {{ item.complemento }}{% endif %}</td><td>{{ item.cidade }}/{{ item.estado }}</td><td>{{ item.interlocutor }}</td></tr>{% else %}<tr><td colspan="6">Nenhuma unidade cadastrada.</td></tr>{% endfor %}</tbody></table></div></div>
     {% else %}
-    <div class="details-card"><h2 class="section-title">Beneficiários cadastrados</h2><div class="table-wrapper"><table><thead><tr><th>Pedido</th><th>Matrícula</th><th>CPF</th><th>Nome</th><th>Departamento</th><th>Unidade</th><th>Benefício mensal</th><th>Contrato</th></tr></thead><tbody>{% for item in beneficiarios %}<tr><td>{{ item.numero_pedido }}</td><td>{{ item.matricula }}</td><td>{{ item.cpf }}</td><td>{{ item.nome }}</td><td>{{ item.departamento }}</td><td>{{ item.unidade_entrega }}</td><td>{{ formatar_moeda_brl(item.valor_mensal) }}</td><td>{{ item.contrato_produto }}</td></tr>{% else %}<tr><td colspan="8">Nenhum beneficiário cadastrado.</td></tr>{% endfor %}</tbody></table></div></div>
+    <div class="details-card"><h2 class="section-title">Benefici�rios cadastrados</h2><div class="table-wrapper"><table><thead><tr><th>Pedido</th><th>Matr�cula</th><th>CPF</th><th>Nome</th><th>Departamento</th><th>Unidade</th><th>Benef�cio mensal</th><th>Contrato</th></tr></thead><tbody>{% for item in beneficiarios %}<tr><td>{{ item.numero_pedido }}</td><td>{{ item.matricula }}</td><td>{{ item.cpf }}</td><td>{{ item.nome }}</td><td>{{ item.departamento }}</td><td>{{ item.unidade_entrega }}</td><td>{{ formatar_moeda_brl(item.valor_mensal) }}</td><td>{{ item.contrato_produto }}</td></tr>{% else %}<tr><td colspan="8">Nenhum benefici�rio cadastrado.</td></tr>{% endfor %}</tbody></table></div></div>
     {% endif %}
 </section>
 {% endblock %}

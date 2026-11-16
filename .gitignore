@@ -8,3 +8,4 @@ instance/imports/
 *.log
 .DS_Store
 *.db
+/Planilha Pedido Tícket*.xlsx
