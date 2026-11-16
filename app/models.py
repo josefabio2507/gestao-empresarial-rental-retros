@@ -4364,6 +4364,7 @@ class PedidoTicketEmpresa(db.Model):
     numero_contrato = db.Column(db.String(10), nullable=False)
     produto = db.Column(db.String(3), nullable=False)
     data_credito = db.Column(db.Date, nullable=False)
+    ativo = db.Column(db.Boolean, default=True, nullable=False)
     criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
     __table_args__ = (db.UniqueConstraint("numero_pedido", "numero_contrato", "produto", name="uq_dp_ticket_pedido_contrato_produto"),)
 
