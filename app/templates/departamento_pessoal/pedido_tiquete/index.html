@@ -95,7 +95,7 @@
                 <td>{{ colaborador.cpf|replace('.', '')|replace('/', '')|replace('-', '') }}</td><td>{{ colaborador.nome }}</td><td>{{ colaborador.cpf }}</td><td>{{ colaborador.equipe.nome }}</td>
                 <td><input class="pedido-colaborador-input" data-obrigatorio="true" type="date" name="data_nascimento_{{ colaborador.id }}" max="{{ data_hoje }}" aria-label="Nascimento de {{ colaborador.nome }}" disabled></td>
                 <td><input class="pedido-colaborador-input pedido-valor" data-obrigatorio="true" type="number" min="0" step="0.01" name="valor_mensal_{{ colaborador.id }}" aria-label="Valor mensal de {{ colaborador.nome }}" disabled></td>
-                <td><input class="pedido-colaborador-input" type="number" min="1" step="1" name="numero_parcelas_{{ colaborador.id }}" aria-label="Parcelas de {{ colaborador.nome }}" disabled></td>
+                <td><input class="pedido-colaborador-input" type="number" min="1" step="1" name="numero_parcelas_{{ colaborador.id }}" value="1" aria-label="Parcelas de {{ colaborador.nome }}" disabled></td>
             </tr>
             {% else %}<tr><td colspan="8">Nenhum colaborador ativo encontrado. Use a busca ou confira o cadastro de colaboradores.</td></tr>{% endfor %}
         </tbody></table></div>
