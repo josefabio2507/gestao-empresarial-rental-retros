@@ -4390,6 +4390,7 @@ class PedidoTicketUnidadeEntrega(db.Model):
     ddd = db.Column(db.String(3), nullable=True)
     telefone = db.Column(db.String(9), nullable=True)
     ramal = db.Column(db.String(5), nullable=True)
+    ativo = db.Column(db.Boolean, default=True, nullable=False)
     criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
     __table_args__ = (db.UniqueConstraint("cnpj", "codigo_unidade", name="uq_dp_ticket_unidade_empresa_codigo"),)
 
