@@ -269,26 +269,37 @@ def enviar_pedido_ticket(pedido_id):
             caminho.unlink(missing_ok=True)
 
 
+def _proximo_numero_pedido():
+    existentes = PedidoTicketEmpresa.query.with_entities(
+        PedidoTicketEmpresa.numero_pedido
+    ).all()
+    numeros = [int(row[0]) for row in existentes if str(row[0]).isdigit()]
+    proximo = max(numeros, default=0) + 1
+    if proximo > 9_999_999_999:
+        raise ValueError("O limite de numeração de pedidos foi atingido.")
+    return f"{proximo:010d}"
+
+
 def _dados_empresa_form(empresa=None):
-    numero_pedido = _digitos(request.form.get("numero_pedido", ""))
+    numero_pedido = empresa.numero_pedido if empresa else _proximo_numero_pedido()
     cnpj = request.form.get("cnpj", "").strip().upper()
     nome = request.form.get("nome_empresa", "").strip()
     contrato = _digitos(request.form.get("numero_contrato", ""))
     produto = request.form.get("produto", "").strip().upper()
     data_credito = _data_form("data_credito")
 
-    if not (1 <= len(numero_pedido) <= 10 and 1 <= len(cnpj) <= 14 and cnpj.isalnum()):
-        raise ValueError("Confira o número do pedido e o CNPJ/CPF da empresa.")
+    if not (1 <= len(cnpj) <= 14 and cnpj.isalnum()):
+        raise ValueError("Confira o CNPJ/CPF da empresa.")
     if not nome or len(nome) > 26 or not (1 <= len(contrato) <= 10) or produto not in PRODUTOS:
         raise ValueError("Confira o nome, o contrato e o produto da empresa.")
 
     duplicado = PedidoTicketEmpresa.query.filter_by(
-        numero_pedido=numero_pedido, numero_contrato=contrato, produto=produto
+        cnpj=cnpj, numero_contrato=contrato, produto=produto, data_credito=data_credito
     )
     if empresa:
         duplicado = duplicado.filter(PedidoTicketEmpresa.id != empresa.id)
     if duplicado.first():
-        raise ValueError("Esse contrato e produto já foram incluídos no pedido.")
+        raise ValueError("Esse contrato e produto já foram cadastrados para a mesma data de crédito.")
 
     if empresa:
         chave_antiga = f"{empresa.numero_contrato} - {empresa.produto}"
