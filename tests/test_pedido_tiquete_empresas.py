@@ -67,7 +67,6 @@ def cliente_ticket(monkeypatch):
 
 def _empresa_form(**overrides):
     dados = {
-        "numero_pedido": "42",
         "cnpj": "12345678000190",
         "nome_empresa": "EMPRESA TESTE",
         "numero_contrato": "1234",
@@ -85,6 +84,7 @@ def test_cadastra_empresa_e_rejeita_contrato_duplicado(cliente_ticket):
     with app.app_context():
         empresa = PedidoTicketEmpresa.query.one()
         assert empresa.nome_empresa == "EMPRESA TESTE"
+        assert empresa.numero_pedido == "0000000001"
         assert empresa.ativo is True
         empresa_id = empresa.id
 
@@ -93,6 +93,27 @@ def test_cadastra_empresa_e_rejeita_contrato_duplicado(cliente_ticket):
     with app.app_context():
         assert PedidoTicketEmpresa.query.count() == 1
         assert db.session.get(PedidoTicketEmpresa, empresa_id).nome_empresa == "EMPRESA TESTE"
+
+
+def test_gera_numero_pedido_sequencialmente(cliente_ticket):
+    app, client = cliente_ticket
+    primeira = client.post("/pedido-tiquete/empresas", data=_empresa_form())
+    segunda = client.post(
+        "/pedido-tiquete/empresas",
+        data=_empresa_form(
+            cnpj="98765432000190",
+            nome_empresa="SEGUNDA EMPRESA",
+            numero_contrato="5678",
+        ),
+    )
+    assert primeira.status_code == 302
+    assert segunda.status_code == 302
+    with app.app_context():
+        numeros = [
+            empresa.numero_pedido
+            for empresa in PedidoTicketEmpresa.query.order_by(PedidoTicketEmpresa.id).all()
+        ]
+        assert numeros == ["0000000001", "0000000002"]
 
 
 def test_edita_e_desativa_sem_apagar_o_registro(cliente_ticket):
@@ -110,6 +131,7 @@ def test_edita_e_desativa_sem_apagar_o_registro(cliente_ticket):
     with app.app_context():
         empresa = db.session.get(PedidoTicketEmpresa, empresa_id)
         assert empresa.nome_empresa == "EMPRESA EDITADA"
+        assert empresa.numero_pedido == "0000000001"
         assert empresa.ativo is False
         assert PedidoTicketEmpresa.query.count() == 1
 
@@ -121,7 +143,7 @@ def test_impede_mudar_chave_de_contrato_com_beneficiario_vinculado(cliente_ticke
         empresa = PedidoTicketEmpresa.query.one()
         db.session.add(
             PedidoTicketBeneficiario(
-                numero_pedido="42",
+                numero_pedido=empresa.numero_pedido,
                 matricula="1",
                 cpf="12345678901",
                 nome="COLABORADOR SINTETICO",

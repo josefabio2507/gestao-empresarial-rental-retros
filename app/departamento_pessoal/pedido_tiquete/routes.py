@@ -269,26 +269,46 @@ def enviar_pedido_ticket(pedido_id):
             caminho.unlink(missing_ok=True)
 
 
+def _proximo_numero_pedido(empresa):
+    existentes = PedidoTicketEmpresa.query.filter(
+        PedidoTicketEmpresa.id != empresa.id
+    ).with_entities(
+        PedidoTicketEmpresa.id,
+        PedidoTicketEmpresa.numero_pedido,
+    ).all()
+    numeros = [
+        int(numero) for _, numero in existentes
+        if str(numero).isdigit()
+    ]
+    maior_numero = max(numeros, default=0)
+    maior_id = max((registro_id for registro_id, _ in existentes), default=0)
+    deslocamento = max(maior_numero - maior_id, 0)
+    proximo = deslocamento + empresa.id
+    if proximo > 9_999_999_999:
+        raise ValueError("O limite de numeração de pedidos foi atingido.")
+    return f"{proximo:010d}"
+
+
 def _dados_empresa_form(empresa=None):
-    numero_pedido = _digitos(request.form.get("numero_pedido", ""))
+    numero_pedido = empresa.numero_pedido if empresa else None
     cnpj = request.form.get("cnpj", "").strip().upper()
     nome = request.form.get("nome_empresa", "").strip()
     contrato = _digitos(request.form.get("numero_contrato", ""))
     produto = request.form.get("produto", "").strip().upper()
     data_credito = _data_form("data_credito")
 
-    if not (1 <= len(numero_pedido) <= 10 and 1 <= len(cnpj) <= 14 and cnpj.isalnum()):
-        raise ValueError("Confira o número do pedido e o CNPJ/CPF da empresa.")
+    if not (1 <= len(cnpj) <= 14 and cnpj.isalnum()):
+        raise ValueError("Confira o CNPJ/CPF da empresa.")
     if not nome or len(nome) > 26 or not (1 <= len(contrato) <= 10) or produto not in PRODUTOS:
         raise ValueError("Confira o nome, o contrato e o produto da empresa.")
 
     duplicado = PedidoTicketEmpresa.query.filter_by(
-        numero_pedido=numero_pedido, numero_contrato=contrato, produto=produto
+        cnpj=cnpj, numero_contrato=contrato, produto=produto, data_credito=data_credito
     )
     if empresa:
         duplicado = duplicado.filter(PedidoTicketEmpresa.id != empresa.id)
     if duplicado.first():
-        raise ValueError("Esse contrato e produto já foram incluídos no pedido.")
+        raise ValueError("Esse contrato e produto já foram cadastrados para a mesma data de crédito.")
 
     if empresa:
         chave_antiga = f"{empresa.numero_contrato} - {empresa.produto}"
@@ -312,8 +332,7 @@ def _dados_empresa_form(empresa=None):
         if data_credito < _somar_dias_uteis(date.today(), prazo_dias):
             raise ValueError(f"A data de crédito deve respeitar o prazo mínimo de {prazo_dias} dias úteis.")
 
-    return {
-        "numero_pedido": numero_pedido,
+    dados = {
         "cnpj": cnpj,
         "nome_empresa": nome,
         "numero_contrato": contrato,
@@ -321,6 +340,9 @@ def _dados_empresa_form(empresa=None):
         "data_credito": data_credito,
         "ativo": True if empresa is None else request.form.get("ativo") == "on",
     }
+    if empresa:
+        dados["numero_pedido"] = empresa.numero_pedido
+    return dados
 
 
 @pedido_tiquete_bp.route("/empresas", methods=["POST"])
@@ -328,7 +350,10 @@ def _dados_empresa_form(empresa=None):
 def criar_empresa():
     _exigir_feature_ativa()
     try:
-        db.session.add(PedidoTicketEmpresa(**_dados_empresa_form()))
+        empresa = PedidoTicketEmpresa(numero_pedido="", **_dados_empresa_form())
+        db.session.add(empresa)
+        db.session.flush()
+        empresa.numero_pedido = _proximo_numero_pedido(empresa)
         db.session.commit()
         flash("Empresa/contrato cadastrado com sucesso.", "success")
     except (ValueError, TypeError):
