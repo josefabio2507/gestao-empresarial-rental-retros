@@ -12,7 +12,7 @@
 
     <nav class="modules-grid" aria-label="Cadastros do Pedido Tícket">
         {% for chave, titulo, descricao in [
-            ('empresas', 'Empresas e contratos', 'Número do pedido, empresa, contrato, produto e data de crédito.'),
+            ('empresas', 'Empresas e contratos', 'Empresa, contrato, produto e data de crédito.'),
             ('unidades', 'Unidades de entrega', 'Endereço da unidade e dados do interlocutor.'),
             ('novo_pedido', 'Novo pedido', 'Selecione colaboradores existentes e monte um rascunho.'),
             ('pedidos', 'Pedidos', 'Consulte rascunhos, quantidade de pessoas e valores.'),
@@ -29,8 +29,7 @@
     {% if aba == 'empresas' and (pode_criar or (pode_editar and editar_empresa)) %}
     <form class="form-card" method="post" action="{% if editar_empresa %}{{ url_for('pedido_tiquete.editar_empresa', empresa_id=editar_empresa.id) }}{% else %}{{ url_for('pedido_tiquete.criar_empresa') }}{% endif %}">
         <h2 class="section-title">{% if editar_empresa %}Editar empresa e contrato{% else %}Cadastrar empresa e contrato{% endif %}</h2>
-        <div class="form-grid">
-            <div class="form-group"><label for="numero_pedido">Número do pedido</label><input id="numero_pedido" name="numero_pedido" inputmode="numeric" maxlength="10" value="{{ editar_empresa.numero_pedido if editar_empresa else '' }}" required></div>
+        <div class="form-grid pedido-ticket-empresa-grid">
             <div class="form-group"><label for="cnpj">CNPJ/CPF da empresa</label><input id="cnpj" name="cnpj" maxlength="14" value="{{ editar_empresa.cnpj if editar_empresa else '' }}" required></div>
             <div class="form-group"><label for="nome_empresa">Nome da empresa</label><input id="nome_empresa" name="nome_empresa" maxlength="26" value="{{ editar_empresa.nome_empresa if editar_empresa else '' }}" required></div>
             <div class="form-group"><label for="numero_contrato">Número do contrato</label><input id="numero_contrato" name="numero_contrato" inputmode="numeric" maxlength="10" value="{{ editar_empresa.numero_contrato if editar_empresa else '' }}" required></div>
@@ -40,7 +39,7 @@
         </div>
         <button class="btn btn-primary" type="submit">{% if editar_empresa %}Salvar alterações{% else %}Salvar empresa/contrato{% endif %}</button>
         {% if editar_empresa %}<a class="btn btn-secondary" href="{{ url_for('pedido_tiquete.index', aba='empresas') }}">Cancelar edição</a>{% endif %}
-        <p class="form-help">A planilha exige antecedência mínima de 7 dias úteis no primeiro pedido e 3 dias úteis nos seguintes.</p>
+        <p class="form-help">O número do pedido é gerado automaticamente e incluído na planilha Excel. A planilha exige antecedência mínima de 7 dias úteis no primeiro pedido e 3 dias úteis nos seguintes.</p>
     </form>
     {% endif %}
     {% if aba == 'unidades' and (pode_criar or (pode_editar and editar_unidade)) %}
