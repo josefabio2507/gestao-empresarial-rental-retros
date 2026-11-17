@@ -643,7 +643,8 @@ def criar_pedido_rascunho():
         else:
             pedido = PedidoTicketPedido.query.filter_by(numero_pedido=empresa.numero_pedido).first()
             if pedido and pedido.status != "rascunho":
-                raise ValueError("Este pedido já foi encerrado e não pode receber novos beneficiários.")            rascunho_existente = pedido is not None
+                raise ValueError("Este pedido já foi encerrado e não pode receber novos beneficiários.")
+            rascunho_existente = pedido is not None
 
         ja_vinculados = PedidoTicketBeneficiario.query.filter_by(
             numero_pedido=empresa.numero_pedido
