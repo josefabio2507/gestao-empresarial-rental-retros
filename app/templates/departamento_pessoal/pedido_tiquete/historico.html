@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page">
+    <div class="top-bar">
+        <div><span class="page-kicker">Departamento Pessoal</span><h1>Histórico do pedido {{ pedido.numero_pedido }}</h1><p>Status atual: {{ pedido.status }} · {{ pedido.quantidade_beneficiarios }} beneficiário(s) · {{ formatar_moeda_brl(pedido.valor_total) }}</p></div>
+        <a class="btn btn-secondary" href="{{ url_for('pedido_tiquete.index', aba='pedidos', ver_pedido=pedido.id) }}">Voltar ao pedido</a>
+    </div>
+    {% if pode_editar %}
+    <form class="form-card" method="post">
+        <h2 class="section-title">Registrar retorno do Portal Ticket</h2>
+        <div class="form-grid">
+            <div class="form-group"><label for="status">Resultado</label><select id="status" name="status" required><option value="">Selecione</option>{% for status in status_opcoes %}<option value="{{ status }}">{{ status|capitalize }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="protocolo">Protocolo (opcional)</label><input id="protocolo" name="protocolo" maxlength="100"></div>
+            <div class="form-group"><label for="descricao">Observação (opcional)</label><input id="descricao" name="descricao" maxlength="255"></div>
+        </div>
+        {% if pedido.status == 'falha' %}<label><input type="checkbox" name="portal_sem_processamento" value="sim" required> Verifiquei no Portal Ticket e este pedido não foi processado; autorizo reabrir o rascunho para nova tentativa.</label>{% endif %}
+        <button class="btn btn-primary" type="submit">Registrar no histórico</button>
+        <p class="form-help">Este registro documenta um resultado já verificado no Portal Ticket; não envia nem altera pedidos no portal.</p>
+    </form>
+    {% endif %}
+    <div class="details-card"><h2 class="section-title">Linha do tempo</h2>
+        <form method="get" class="form-grid">
+            <div class="form-group"><label for="tipo">Tipo de evento</label><input id="tipo" name="tipo" maxlength="30" value="{{ tipo_filtro }}"></div>
+            <div class="form-group"><label for="status_filtro">Status</label><input id="status_filtro" name="status" maxlength="20" value="{{ status_filtro }}"></div>
+            <div class="form-group"><button class="btn btn-secondary" type="submit">Filtrar</button> <a class="btn btn-secondary" href="{{ url_for('pedido_tiquete.historico_pedido', pedido_id=pedido.id) }}">Limpar</a></div>
+        </form>
+        <div class="table-wrapper"><table><thead><tr><th>Data e hora</th><th>Evento</th><th>Status</th><th>Detalhe</th><th>Protocolo</th><th>Beneficiários</th><th>Total</th><th>Arquivo SHA-256</th><th>Usuário ID</th></tr></thead><tbody>
+    {% for evento in eventos %}<tr><td>{{ evento.criado_em.strftime('%d/%m/%Y %H:%M') }}</td><td>{{ evento.tipo|replace('_', ' ')|capitalize }}</td><td>{{ evento.status_anterior or '—' }} → {{ evento.status_novo or '—' }}</td><td>{{ evento.descricao }}</td><td>{{ evento.protocolo or '—' }}</td><td>{{ evento.quantidade_beneficiarios if evento.quantidade_beneficiarios is not none else '—' }}</td><td>{{ formatar_moeda_brl(evento.valor_total) if evento.valor_total is not none else '—' }}</td><td>{{ evento.arquivo_sha256 or '—' }}</td><td>{{ evento.usuario_id or '—' }}</td></tr>{% else %}<tr><td colspan="9">Nenhum evento registrado para este pedido.</td></tr>{% endfor %}
+    </tbody></table></div></div>
+</section>
+{% endblock %}

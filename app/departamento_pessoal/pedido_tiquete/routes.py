@@ -1,4 +1,5 @@
 from datetime import date, timedelta
+import hashlib
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from tempfile import NamedTemporaryFile
@@ -15,6 +16,7 @@ from app.models import (
     Colaborador,
     Equipe,
     PedidoTicketPedido,
+    PedidoTicketEvento,
     PedidoTicketBeneficiario,
     PedidoTicketEmpresa,
     PedidoTicketUnidadeEntrega,
@@ -27,6 +29,12 @@ from app.services.permissoes_service import usuario_tem_permissao
 pedido_tiquete_bp = Blueprint("pedido_tiquete", __name__)
 PRODUTOS = ("TAE", "TRE", "TKE", "TFE")
 LIMITE_BENEFICIARIOS_PEDIDO = 245
+TRANSICOES_HISTORICO = {
+    "rascunho": {"cancelado"},
+    "enviando": {"processado", "rejeitado", "falha"},
+    "enviado": {"processado", "rejeitado", "falha"},
+    "falha": {"processado", "rejeitado", "rascunho"},
+}
 ESTADOS = "AC AL AP AM BA CE DF ES GO MA MT MS MG PA PB PR PE PI RJ RN RS RO RR SC SP SE TO".split()
 
 
@@ -60,6 +68,22 @@ def _pode(acao):
 def _exigir_feature_ativa():
     if not current_app.config.get("PEDIDO_TICKET_ENABLED", False):
         abort(404)
+
+
+def _registrar_evento(numero_pedido, tipo, descricao, *, pedido=None, status_anterior=None, status_novo=None, protocolo=None, arquivo_sha256=None, quantidade_beneficiarios=None, valor_total=None):
+    db.session.add(PedidoTicketEvento(
+        pedido_id=pedido.id if pedido else None,
+        numero_pedido=numero_pedido,
+        tipo=tipo,
+        descricao=descricao,
+        status_anterior=status_anterior,
+        status_novo=status_novo,
+        protocolo=protocolo,
+        arquivo_sha256=arquivo_sha256,
+        quantidade_beneficiarios=quantidade_beneficiarios,
+        valor_total=valor_total,
+        usuario_id=current_user.id if current_user.is_authenticated else None,
+    ))
 
 
 @pedido_tiquete_bp.route("/")
@@ -175,6 +199,21 @@ def baixar_excel(numero_pedido):
         flash(str(erro), "danger")
         return redirect(url_for("pedido_tiquete.index", aba="empresas"))
 
+    pedido = PedidoTicketPedido.query.filter_by(numero_pedido=numero_pedido).first()
+    arquivo.seek(0)
+    arquivo_sha256 = hashlib.sha256(arquivo.getvalue()).hexdigest()
+    arquivo.seek(0)
+    _registrar_evento(
+        numero_pedido,
+        "arquivo_gerado",
+        "Planilha Excel gerada para download.",
+        pedido=pedido,
+        status_novo="arquivo_gerado",
+        arquivo_sha256=arquivo_sha256,
+        quantidade_beneficiarios=len(beneficiarios),
+        valor_total=sum((item.valor_mensal for item in beneficiarios), Decimal("0.00")),
+    )
+    db.session.commit()
     resposta = send_file(
         arquivo,
         as_attachment=True,
@@ -222,6 +261,7 @@ def enviar_pedido_ticket(pedido_id):
         arquivo = gerar_planilha_pedido(
             modelo, pedido.numero_pedido, empresas, unidades, beneficiarios
         )
+        arquivo_sha256 = hashlib.sha256(arquivo.getvalue()).hexdigest()
         arquivo.seek(0)
         with NamedTemporaryFile(suffix=".xlsx", delete=False) as temporario:
             temporario.write(arquivo.read())
@@ -236,6 +276,17 @@ def enviar_pedido_ticket(pedido_id):
                 db.session.rollback()
                 flash("Este pedido já está sendo enviado ou não está mais em rascunho.", "warning")
                 return redirect(url_for("pedido_tiquete.index", aba="pedidos"))
+            _registrar_evento(
+                pedido.numero_pedido,
+                "envio_iniciado",
+                "Envio confirmado pelo operador e iniciado no Portal Ticket.",
+                pedido=pedido,
+                status_anterior="rascunho",
+                status_novo="enviando",
+                arquivo_sha256=arquivo_sha256,
+                quantidade_beneficiarios=pedido.quantidade_beneficiarios,
+                valor_total=pedido.valor_total,
+            )
             db.session.commit()
 
         resultado = enviar_planilha_para_portal(
@@ -245,11 +296,37 @@ def enviar_pedido_ticket(pedido_id):
             settings=current_app.config,
         )
         if resultado.status == "upload_iniciado":
+            pedido.status = "enviado"
+            _registrar_evento(
+                pedido.numero_pedido,
+                "upload_iniciado",
+                "Portal Ticket confirmou o início do upload; processamento ainda pendente.",
+                pedido=pedido,
+                status_anterior="enviando",
+                status_novo="enviado",
+                protocolo=resultado.protocolo,
+                arquivo_sha256=arquivo_sha256,
+                quantidade_beneficiarios=pedido.quantidade_beneficiarios,
+                valor_total=pedido.valor_total,
+            )
+            db.session.commit()
             flash(
                 "Upload iniciado no Portal Ticket. O processamento do pedido ainda precisa ser confirmado no portal.",
                 "info",
             )
         else:
+            _registrar_evento(
+                pedido.numero_pedido,
+                "envio_simulado" if resultado.status == "simulado" else "retorno_portal",
+                resultado.mensagem[:255],
+                pedido=pedido,
+                status_anterior="rascunho" if simulacao else "enviando",
+                status_novo=resultado.status[:20],
+                protocolo=resultado.protocolo,
+                quantidade_beneficiarios=pedido.quantidade_beneficiarios,
+                valor_total=pedido.valor_total,
+            )
+            db.session.commit()
             flash(resultado.mensagem, "info")
         return redirect(url_for("pedido_tiquete.index", aba="pedidos"))
     except PortalTicketError as erro:
@@ -257,11 +334,31 @@ def enviar_pedido_ticket(pedido_id):
         pedido_atual = db.session.get(PedidoTicketPedido, pedido_id)
         if pedido_atual and pedido_atual.status == "enviando":
             pedido_atual.status = "falha"
+            _registrar_evento(
+                pedido_atual.numero_pedido,
+                "falha_envio",
+                f"Portal Ticket interrompeu o envio ({type(erro).__name__}).",
+                pedido=pedido_atual,
+                status_anterior="enviando",
+                status_novo="falha",
+            )
             db.session.commit()
         flash(str(erro), "warning")
         return redirect(url_for("pedido_tiquete.index", aba="pedidos"))
     except ValueError as erro:
         db.session.rollback()
+        pedido_atual = db.session.get(PedidoTicketPedido, pedido_id)
+        if pedido_atual and pedido_atual.status == "enviando":
+            pedido_atual.status = "falha"
+            _registrar_evento(
+                pedido_atual.numero_pedido,
+                "falha_envio",
+                f"Portal Ticket interrompeu o envio ({type(erro).__name__}).",
+                pedido=pedido_atual,
+                status_anterior="enviando",
+                status_novo="falha",
+            )
+            db.session.commit()
         flash(str(erro), "warning")
         return redirect(url_for("pedido_tiquete.index", aba="pedidos"))
     finally:
@@ -535,16 +632,19 @@ def criar_pedido_rascunho():
         if len(colaboradores) != len(ids_recebidos):
             raise ValueError("Um ou mais colaboradores não estão ativos ou não existem mais no cadastro.")
         pedido_id = request.form.get("pedido_id", type=int)
+        rascunho_existente = False
         if pedido_id:
             pedido = db.session.get(PedidoTicketPedido, pedido_id)
             if not pedido or pedido.status != "rascunho":
                 raise ValueError("O rascunho não existe ou não está mais aberto.")
             if pedido.numero_pedido != empresa.numero_pedido:
                 raise ValueError("A empresa selecionada não pertence ao número deste rascunho.")
+            rascunho_existente = True
         else:
             pedido = PedidoTicketPedido.query.filter_by(numero_pedido=empresa.numero_pedido).first()
             if pedido and pedido.status != "rascunho":
                 raise ValueError("Este pedido já foi encerrado e não pode receber novos beneficiários.")
+            rascunho_existente = pedido is not None
 
         ja_vinculados = PedidoTicketBeneficiario.query.filter_by(
             numero_pedido=empresa.numero_pedido
@@ -618,6 +718,16 @@ def criar_pedido_rascunho():
         itens = PedidoTicketBeneficiario.query.filter_by(pedido_id=pedido.id).all()
         pedido.quantidade_beneficiarios = len(itens)
         pedido.valor_total = sum((item.valor_mensal for item in itens), Decimal("0.00"))
+        _registrar_evento(
+            pedido.numero_pedido,
+            "rascunho_atualizado" if rascunho_existente else "rascunho_criado",
+            f"Rascunho {'atualizado' if rascunho_existente else 'criado'} com {pedido.quantidade_beneficiarios} beneficiário(s).",
+            pedido=pedido,
+            status_anterior="rascunho" if rascunho_existente else None,
+            status_novo="rascunho",
+            quantidade_beneficiarios=pedido.quantidade_beneficiarios,
+            valor_total=pedido.valor_total,
+        )
         db.session.commit()
         flash("Rascunho salvo. Confira colaboradores, quantidade e valor total antes da próxima etapa.", "success")
         return redirect(url_for("pedido_tiquete.index", aba="pedidos", ver_pedido=pedido.id))
@@ -640,4 +750,61 @@ def criar_beneficiario():
     flash("Os beneficiários agora são selecionados do cadastro de colaboradores na aba Novo Pedido.", "warning")
     return redirect(url_for("pedido_tiquete.index", aba="novo_pedido"))
 
-
+@pedido_tiquete_bp.route("/pedidos/<int:pedido_id>/historico", methods=["GET", "POST"])
+@module_permission_required("departamento_pessoal", "pedido_tiquete", "visualizar")
+def historico_pedido(pedido_id):
+    _exigir_feature_ativa()
+    pedido = db.session.get(PedidoTicketPedido, pedido_id)
+    if not pedido:
+        abort(404)
+    if request.method == "POST":
+        if not _pode("editar"):
+            abort(403)
+        status_novo = request.form.get("status", "").strip().lower()
+        protocolo = request.form.get("protocolo", "").strip() or None
+        descricao = request.form.get("descricao", "").strip()
+        if status_novo not in TRANSICOES_HISTORICO.get(pedido.status, set()):
+            flash("A atualização não é permitida a partir do status atual do pedido.", "warning")
+        elif status_novo == "rascunho" and request.form.get("portal_sem_processamento") != "sim":
+            flash("Para reabrir o envio, confirme que o pedido não foi processado no Portal Ticket.", "warning")
+        elif len(descricao) > 255 or (protocolo and len(protocolo) > 100):
+            flash("Confira a descrição (até 255 caracteres) e o protocolo (até 100 caracteres).", "danger")
+        else:
+            status_anterior = pedido.status
+            pedido.status = status_novo
+            _registrar_evento(
+                pedido.numero_pedido,
+                "retorno_portal" if status_novo != "cancelado" else "pedido_cancelado",
+                descricao or f"Status atualizado manualmente para {status_novo}.",
+                pedido=pedido,
+                status_anterior=status_anterior,
+                status_novo=status_novo,
+                protocolo=protocolo,
+                quantidade_beneficiarios=pedido.quantidade_beneficiarios,
+                valor_total=pedido.valor_total,
+            )
+            db.session.commit()
+            flash("Histórico do pedido atualizado.", "success")
+        return redirect(url_for("pedido_tiquete.historico_pedido", pedido_id=pedido_id))
+    tipo_filtro = request.args.get("tipo", "").strip()[:30]
+    status_filtro = request.args.get("status", "").strip()[:20]
+    consulta = PedidoTicketEvento.query.filter_by(pedido_id=pedido.id)
+    if tipo_filtro:
+        consulta = consulta.filter_by(tipo=tipo_filtro)
+    if status_filtro:
+        consulta = consulta.filter(
+            (PedidoTicketEvento.status_anterior == status_filtro)
+            | (PedidoTicketEvento.status_novo == status_filtro)
+        )
+    eventos = consulta.order_by(
+        PedidoTicketEvento.criado_em.desc(), PedidoTicketEvento.id.desc()
+    ).limit(200).all()
+    return render_template(
+        "departamento_pessoal/pedido_tiquete/historico.html",
+        pedido=pedido,
+        eventos=eventos,
+        pode_editar=_pode("editar"),
+        status_opcoes=TRANSICOES_HISTORICO.get(pedido.status, set()),
+        tipo_filtro=tipo_filtro,
+        status_filtro=status_filtro,
+    )
