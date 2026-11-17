@@ -15,6 +15,7 @@ from app.models import (
     Usuario,
     PedidoTicketBeneficiario,
     PedidoTicketEmpresa,
+    PedidoTicketEvento,
     PedidoTicketPedido,
     PedidoTicketUnidadeEntrega,
 )
@@ -68,6 +69,7 @@ def cliente_pedidos_ticket(monkeypatch):
         PedidoTicketEmpresa.__table__,
         PedidoTicketUnidadeEntrega.__table__,
         PedidoTicketBeneficiario.__table__,
+        PedidoTicketEvento.__table__,
     ]
     with app.app_context():
         db.metadata.create_all(bind=db.engine, tables=tabelas)
@@ -207,3 +209,79 @@ def test_tela_de_novo_pedido_lista_colaboradores_ativos(cliente_pedidos_ticket):
     assert b"COLABORADOR DOIS" in response.data
     assert b"INATIVO" not in response.data
     assert b"data_nascimento_" in response.data
+
+
+def test_historico_registra_rascunho_e_retorno_com_protocolo(cliente_pedidos_ticket):
+    app, client, ids = cliente_pedidos_ticket
+    response = client.post("/pedido-tiquete/pedidos", data=_pedido_form(ids[0]))
+    assert response.status_code == 302
+    with app.app_context():
+        pedido = PedidoTicketPedido.query.one()
+        pedido_id = pedido.id
+        eventos = PedidoTicketEvento.query.filter_by(pedido_id=pedido_id).all()
+        assert [(evento.tipo, evento.status_novo) for evento in eventos] == [
+            ("rascunho_criado", "rascunho")
+        ]
+        pedido.status = "enviado"
+        db.session.commit()
+    response = client.post(
+        f"/pedido-tiquete/pedidos/{pedido_id}/historico",
+        data={"status": "processado", "protocolo": "TK-123", "descricao": "Processamento confirmado no portal."},
+    )
+    assert response.status_code == 302
+    with app.app_context():
+        pedido = db.session.get(PedidoTicketPedido, pedido_id)
+        evento = PedidoTicketEvento.query.filter_by(pedido_id=pedido_id).order_by(PedidoTicketEvento.id.desc()).first()
+        assert pedido.status == "processado"
+        assert evento.status_anterior == "enviado"
+        assert evento.status_novo == "processado"
+        assert evento.protocolo == "TK-123"
+
+
+def test_historico_rejeita_transicao_invalida(cliente_pedidos_ticket):
+    app, client, ids = cliente_pedidos_ticket
+    client.post("/pedido-tiquete/pedidos", data=_pedido_form(ids[0]))
+    with app.app_context():
+        pedido_id = PedidoTicketPedido.query.one().id
+    response = client.post(
+        f"/pedido-tiquete/pedidos/{pedido_id}/historico",
+        data={"status": "processado", "protocolo": "", "descricao": "Invalido"},
+    )
+    assert response.status_code == 302
+    with app.app_context():
+        assert PedidoTicketPedido.query.get(pedido_id).status == "rascunho"
+        assert PedidoTicketEvento.query.filter_by(pedido_id=pedido_id, status_novo="processado").count() == 0
+
+
+def test_reabertura_de_falha_exige_confirmacao_de_nao_processamento(cliente_pedidos_ticket):
+    app, client, ids = cliente_pedidos_ticket
+    client.post("/pedido-tiquete/pedidos", data=_pedido_form(ids[0]))
+    with app.app_context():
+        pedido = PedidoTicketPedido.query.one()
+        pedido_id = pedido.id
+        pedido.status = "falha"
+        db.session.commit()
+
+    response = client.post(
+        f"/pedido-tiquete/pedidos/{pedido_id}/historico",
+        data={"status": "rascunho", "descricao": "Revisado"},
+    )
+    assert response.status_code == 302
+    with app.app_context():
+        assert db.session.get(PedidoTicketPedido, pedido_id).status == "falha"
+
+    response = client.post(
+        f"/pedido-tiquete/pedidos/{pedido_id}/historico",
+        data={
+            "status": "rascunho",
+            "portal_sem_processamento": "sim",
+            "descricao": "Portal conferido; nenhum pedido foi processado.",
+        },
+    )
+    assert response.status_code == 302
+    with app.app_context():
+        pedido = db.session.get(PedidoTicketPedido, pedido_id)
+        assert pedido.status == "rascunho"
+        evento = PedidoTicketEvento.query.filter_by(pedido_id=pedido_id).order_by(PedidoTicketEvento.id.desc()).first()
+        assert evento.status_anterior == "falha"
+        assert evento.status_novo == "rascunho"
