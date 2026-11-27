@@ -42,6 +42,7 @@ def _url_modulo_navegacao(departamento_slug, modulo_slug):
         ("departamento_pessoal", "documentos"): ("documentos.index", {}),
         ("departamento_pessoal", "vale_transporte"): ("vale_transporte.index", {}),
         ("departamento_pessoal", "pedido_refeicoes"): ("pedido_refeicoes.index", {}),
+        ("departamento_pessoal", "pedido_tiquete"): ("pedido_tiquete.index", {}),
         ("seguranca_trabalho", "epis"): ("seguranca_trabalho.epis", {}),
         ("fiscal", "documentos_fiscais"): ("fiscal.documentos", {}),
         ("administracao", "usuarios"): ("usuarios.listar_usuarios", {}),
