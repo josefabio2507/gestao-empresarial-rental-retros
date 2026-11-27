@@ -98,6 +98,17 @@
             cursor: pointer;
         }
         .ticket-colaborador-opcao[hidden] { display: none; }
+        .ticket-beneficiarios-lista {
+            max-height: min(42rem, 70vh);
+            overflow: auto;
+            overscroll-behavior: contain;
+        }
+        .ticket-beneficiarios-lista thead th {
+            position: sticky;
+            top: 0;
+            z-index: 1;
+            background: #fff;
+        }
         .ticket-colaborador-opcao:hover,
         .ticket-colaborador-opcao:focus { background: #eef4fb; outline: none; }
     </style>
@@ -234,7 +245,7 @@
     {% endif %}
     <div class="details-card">
         <h2 class="section-title">Beneficiários cadastrados</h2>
-        <div class="table-wrapper"><table>
+        <div class="table-wrapper ticket-beneficiarios-lista" role="region" aria-label="Lista de beneficiários cadastrados" tabindex="0"><table>
             <thead><tr><th>Colaborador</th><th>Matrícula Portal Tícket</th><th>CPF</th><th>Data de Nascimento</th><th>Benefício</th><th>Situação</th>{% if pode_editar %}<th>Ações</th>{% endif %}</tr></thead>
             <tbody>
             {% for cadastro in cadastros_beneficiarios %}
