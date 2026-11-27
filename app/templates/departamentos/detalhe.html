@@ -137,6 +137,15 @@
                 {% elif departamento.slug == "departamento_pessoal" and modulo_slug == "holerites" %}
                     {# Holerites é configurável em permissões, mas navega pelo hub Documentos. #}
 
+                {% elif departamento.slug == "departamento_pessoal" and modulo_slug in ["pedido_tiquete", "pedido-tiquete", "pedido_ticket", "pedido-ticket"] %}
+                    <a class="module-card module-card-link" href="{{ url_for('pedido_tiquete.index') }}">
+                        <span class="module-card-icon">T</span>
+                        <h2>{{ modulo.nome }}</h2>
+                        <p>{{ modulo.descricao or "Cadastro e acompanhamento de pedidos de tíquete." }}</p>
+                        <span class="badge badge-success">Liberado</span>
+                        <span class="module-status">Acessar módulo</span>
+                    </a>
+
                 {% elif departamento.slug == "departamento_pessoal" and modulo_slug == "vale_transporte" %}
                     <a class="module-card module-card-link" href="{{ url_for('vale_transporte.index') }}">
                         <span class="module-card-icon">V</span>
