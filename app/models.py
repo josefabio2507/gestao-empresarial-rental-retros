@@ -4426,3 +4426,20 @@ class PedidoTicketBeneficiario(db.Model):
     numero_parcelas = db.Column(db.Integer, nullable=True)
     criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
     __table_args__ = (db.UniqueConstraint("numero_pedido", "cpf", name="uq_dp_ticket_beneficiario_pedido_cpf"),)
+
+class PedidoTicketEvento(db.Model):
+    __tablename__ = "dp_pedido_ticket_eventos"
+
+    id = db.Column(db.Integer, primary_key=True)
+    pedido_id = db.Column(db.Integer, db.ForeignKey("dp_pedido_ticket_pedidos.id", ondelete="SET NULL"), nullable=True, index=True)
+    numero_pedido = db.Column(db.String(10), nullable=False, index=True)
+    tipo = db.Column(db.String(30), nullable=False)
+    descricao = db.Column(db.String(255), nullable=False)
+    status_anterior = db.Column(db.String(20), nullable=True)
+    status_novo = db.Column(db.String(20), nullable=True)
+    protocolo = db.Column(db.String(100), nullable=True)
+    arquivo_sha256 = db.Column(db.String(64), nullable=True)
+    quantidade_beneficiarios = db.Column(db.Integer, nullable=True)
+    valor_total = db.Column(db.Numeric(12, 2), nullable=True)
+    usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True, index=True)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False, index=True)
