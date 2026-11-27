@@ -159,9 +159,13 @@
 
         const buscar = () => {
             const termo = normalizar(campo.value.trim());
+            const termoNumerico = termo.replace(/\D/g, "");
             let exibidos = 0;
             opcoes.forEach((opcao) => {
-                const corresponde = termo && normalizar(opcao.dataset.busca || "").includes(termo);
+                const correspondePorTexto = termo && normalizar(opcao.dataset.busca || "").includes(termo);
+                const cpfNumeros = (opcao.dataset.cpf || "").replace(/\D/g, "");
+                const correspondePorCpf = termoNumerico.length >= 3 && cpfNumeros.includes(termoNumerico);
+                const corresponde = correspondePorTexto || correspondePorCpf;
                 opcao.hidden = !corresponde || exibidos >= 10;
                 if (!opcao.hidden) exibidos += 1;
             });
@@ -175,6 +179,7 @@
         };
 
         const selecionar = (opcao) => {
+            campo.setCustomValidity("");
             campo.value = opcao.textContent.trim().replace(/\s+/g, " ");
             colaboradorId.value = opcao.dataset.id || "";
             const digitos = (opcao.dataset.cpf || "").replace(/\D/g, "");
@@ -189,13 +194,14 @@
             status.textContent = nascimento.value
                 ? "Colaborador selecionado; CPF, matrícula e nascimento preenchidos."
                 : "Colaborador selecionado. Data de nascimento não informada no Cadastro de Colaboradores.";
+            campo.focus();
         };
 
         campo.addEventListener("input", () => {
             limparDados();
             buscar();
         });
-        campo.addEventListener("focus", buscar);
+        campo.addEventListener("focus", () => { if (!colaboradorId.value) buscar(); });
         campo.addEventListener("keydown", (evento) => {
             if (evento.key === "ArrowDown" && !resultados.hidden) {
                 evento.preventDefault();
