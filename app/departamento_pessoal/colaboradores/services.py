@@ -1,5 +1,6 @@
 import logging
 import re
+from datetime import date
 
 from sqlalchemy import func, or_
 from sqlalchemy.exc import SQLAlchemyError
@@ -13,6 +14,8 @@ from app.utils.mascaras_lgpd import (
     normalizar_telefone_brasil,
 )
 
+
+_CAMPO_NAO_INFORMADO = object()
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +51,18 @@ def formatar_telefone(telefone):
 
 def normalizar_email(email):
     return email.strip().lower() if email else ""
+
+
+def normalizar_data_nascimento(valor):
+    if not valor:
+        return None, ""
+    try:
+        nascimento = date.fromisoformat(str(valor))
+    except (TypeError, ValueError):
+        return None, "Informe uma data de nascimento válida."
+    if nascimento > date.today():
+        return None, "A data de nascimento não pode estar no futuro."
+    return nascimento, ""
 
 
 def normalizar_equipe_id(equipe_id):
@@ -214,9 +229,13 @@ def criar_colaborador(
     funcao,
     equipe_id,
     vale_transporte_optante=False,
-    ativo=True
+    ativo=True,
+    data_nascimento=None
 ):
     equipe_id = normalizar_equipe_id(equipe_id)
+    data_nascimento, erro_data = normalizar_data_nascimento(data_nascimento)
+    if erro_data:
+        return False, erro_data
 
     valido, mensagem = validar_dados_colaborador(
         matricula=matricula,
@@ -242,6 +261,7 @@ def criar_colaborador(
         matricula=matricula.strip(),
         nome=nome.strip(),
         cpf=limpar_cpf(cpf),
+        data_nascimento=data_nascimento,
         email=normalizar_email(email),
         telefone=normalizar_telefone_brasil(telefone),
         cargo=cargo_selecionado.nome if cargo_selecionado else "",
@@ -277,9 +297,16 @@ def atualizar_colaborador(
     funcao,
     equipe_id,
     vale_transporte_optante=False,
-    ativo=True
+    ativo=True,
+    data_nascimento=_CAMPO_NAO_INFORMADO
 ):
     equipe_id = normalizar_equipe_id(equipe_id)
+    if data_nascimento is _CAMPO_NAO_INFORMADO:
+        data_nascimento = colaborador.data_nascimento
+    else:
+        data_nascimento, erro_data = normalizar_data_nascimento(data_nascimento)
+        if erro_data:
+            return False, erro_data
 
     valido, mensagem = validar_dados_colaborador(
         matricula=matricula,
@@ -311,6 +338,7 @@ def atualizar_colaborador(
     colaborador.matricula = matricula.strip()
     colaborador.nome = nome.strip()
     colaborador.cpf = limpar_cpf(cpf)
+    colaborador.data_nascimento = data_nascimento
     colaborador.email = normalizar_email(email)
     colaborador.telefone = normalizar_telefone_brasil(telefone)
     colaborador.cargo = (

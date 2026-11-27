@@ -15,8 +15,9 @@
             ('empresas', 'Empresas e contratos', 'Empresa, contrato, produto e data de crédito.'),
             ('unidades', 'Unidades de entrega', 'Endereço da unidade e dados do interlocutor.'),
             ('novo_pedido', 'Novo pedido', 'Selecione colaboradores existentes e monte um rascunho.'),
+            ('cadastro_beneficiarios', 'Cadastro de beneficiários', 'Associe colaboradores ativos aos tipos de benefício.'),
             ('pedidos', 'Pedidos', 'Consulte rascunhos, quantidade de pessoas e valores.'),
-            ('beneficiarios', 'Beneficiários', 'Consulte os itens cadastrados para os pedidos.')
+            ('beneficiarios', 'Beneficiários dos pedidos', 'Consulte os itens cadastrados para os pedidos.')
         ] %}
             <a class="module-card module-card-link {% if aba == chave %}active{% endif %}" href="{{ url_for('pedido_tiquete.index', aba=chave) }}">
                 <span class="module-card-icon">{{ loop.index }}</span>
@@ -64,6 +65,87 @@
     </form>
     {% endif %}
 
+    {% if aba == 'cadastro_beneficiarios' %}
+    <div class="details-card">
+        <h2 class="section-title">Cadastro de colaboradores beneficiários</h2>
+        <p>A matrícula do Portal Tícket é o CPF sem pontuação. CPF e data de nascimento vêm do Cadastro de Colaboradores. Se a data estiver vazia, preencha primeiro o cadastro do colaborador.</p>
+    </div>
+    <form class="form-card" method="get" action="{{ url_for('pedido_tiquete.index') }}">
+        <input type="hidden" name="aba" value="cadastro_beneficiarios">
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="busca_colaborador_cadastro">Buscar colaborador ativo</label>
+                <input id="busca_colaborador_cadastro" type="search" name="busca" value="{{ busca_colaborador }}" maxlength="80" placeholder="Nome, matrícula ou CPF">
+            </div>
+        </div>
+        <button class="btn btn-secondary" type="submit">Buscar</button>
+        {% if busca_colaborador %}<a class="btn btn-secondary" href="{{ url_for('pedido_tiquete.index', aba='cadastro_beneficiarios') }}">Limpar busca</a>{% endif %}
+    </form>
+    {% if pode_criar %}
+    <form class="form-card" method="post" action="{{ url_for('pedido_tiquete.criar_cadastro_beneficiario') }}">
+        <h2 class="section-title">Novo beneficiário</h2>
+        <div class="form-grid">
+            <div class="form-group"><label for="cadastro_colaborador_id">Colaborador</label>
+                <select id="cadastro_colaborador_id" name="colaborador_id" required>
+                    <option value="">Selecione um colaborador ativo</option>
+                    {% for colaborador in colaboradores_cadastro %}
+                    <option value="{{ colaborador.id }}" data-cpf="{{ colaborador.cpf }}" data-nascimento="{{ colaborador.data_nascimento.isoformat() if colaborador.data_nascimento else '' }}">{{ colaborador.nome }} — matrícula {{ colaborador.matricula }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group"><label for="cadastro_matricula_portal">Matrícula do Portal Tícket</label><input id="cadastro_matricula_portal" name="matricula_portal" type="text" readonly></div>
+            <div class="form-group"><label for="cadastro_cpf">CPF</label><input id="cadastro_cpf" name="cpf" type="text" readonly></div>
+            <div class="form-group"><label for="cadastro_data_nascimento">Data de Nascimento</label><input id="cadastro_data_nascimento" name="data_nascimento" type="text" placeholder="DD/MM/AAAA" readonly></div>
+            <div class="form-group"><label for="cadastro_tipo_beneficio">Tipo de Benefício</label>
+                <select id="cadastro_tipo_beneficio" name="tipo_beneficio" required>
+                    <option value="">Selecione</option>
+                    {% for produto in produtos %}<option value="{{ produto }}">{{ produto }}</option>{% endfor %}
+                </select>
+            </div>
+        </div>
+        <button class="btn btn-primary" type="submit">Cadastrar beneficiário</button>
+    </form>
+    <script>
+    (() => {
+        const colaborador = document.getElementById("cadastro_colaborador_id");
+        const matricula = document.getElementById("cadastro_matricula_portal");
+        const cpf = document.getElementById("cadastro_cpf");
+        const nascimento = document.getElementById("cadastro_data_nascimento");
+        const atualizar = () => {
+            const option = colaborador?.selectedOptions?.[0];
+            const digits = (option?.dataset?.cpf || "").replace(/\D/g, "");
+            const iso = option?.dataset?.nascimento || "";
+            matricula.value = digits;
+            cpf.value = digits.length === 11 ? digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4") : "";
+            nascimento.value = iso ? iso.split("-").reverse().join("/") : "";
+        };
+        colaborador?.addEventListener("change", atualizar);
+        atualizar();
+    })();
+    </script>
+    {% endif %}
+    <div class="details-card">
+        <h2 class="section-title">Beneficiários cadastrados</h2>
+        <div class="table-wrapper"><table>
+            <thead><tr><th>Colaborador</th><th>Matrícula Portal Tícket</th><th>CPF</th><th>Data de Nascimento</th><th>Benefício</th><th>Situação</th>{% if pode_editar %}<th>Ações</th>{% endif %}</tr></thead>
+            <tbody>
+            {% for cadastro in cadastros_beneficiarios %}
+                <tr>
+                    <td>{{ cadastro.colaborador.nome }} <small>({{ cadastro.colaborador.matricula }})</small></td>
+                    <td>{{ cadastro.matricula_portal }}</td>
+                    <td>{{ formatar_cpf(cadastro.colaborador.cpf) }}</td>
+                    <td>{{ cadastro.colaborador.data_nascimento.strftime('%d/%m/%Y') if cadastro.colaborador.data_nascimento else 'Não informada' }}</td>
+                    <td>{{ cadastro.tipo_beneficio }}</td>
+                    <td>{% if not cadastro.colaborador.ativo %}Colaborador inativo{% elif cadastro.ativo %}Ativo{% else %}Inativo{% endif %}</td>
+                    {% if pode_editar %}<td><form method="post" action="{{ url_for('pedido_tiquete.alternar_status_cadastro_beneficiario', cadastro_id=cadastro.id) }}"><button class="btn btn-secondary" type="submit">{{ 'Inativar' if cadastro.ativo else 'Reativar' }}</button></form></td>{% endif %}
+                </tr>
+            {% else %}
+                <tr><td colspan="{{ 7 if pode_editar else 6 }}">Nenhum beneficiário cadastrado.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table></div>
+    </div>
+
     {% if pode_criar and aba == 'novo_pedido' %}
     {% if pedido_edicao %}
     <div class="details-card">
@@ -93,7 +175,7 @@
             <tr class="{% if colaborador.id in colaboradores_no_pedido %}muted{% endif %}">
                 <td><label><input class="pedido-colaborador-check" type="checkbox" name="colaborador_ids" value="{{ colaborador.id }}" {% if colaborador.id in colaboradores_no_pedido %}disabled{% endif %}>Selecionar{% if colaborador.id in colaboradores_no_pedido %} (já incluído){% endif %}</label></td>
                 <td>{{ colaborador.cpf|replace('.', '')|replace('/', '')|replace('-', '') }}</td><td>{{ colaborador.nome }}</td><td>{{ colaborador.cpf }}</td><td>{{ colaborador.equipe.nome }}</td>
-                <td><input class="pedido-colaborador-input" data-obrigatorio="true" type="date" name="data_nascimento_{{ colaborador.id }}" max="{{ data_hoje }}" aria-label="Nascimento de {{ colaborador.nome }}" disabled></td>
+                <td><input class="pedido-colaborador-input" data-obrigatorio="true" type="date" value="{{ colaborador.data_nascimento.isoformat() if colaborador.data_nascimento else '' }}" name="data_nascimento_{{ colaborador.id }}" max="{{ data_hoje }}" aria-label="Nascimento de {{ colaborador.nome }}" disabled></td>
                 <td><input class="pedido-colaborador-input pedido-valor" data-obrigatorio="true" type="number" min="0" step="0.01" name="valor_mensal_{{ colaborador.id }}" aria-label="Valor mensal de {{ colaborador.nome }}" disabled></td>
                 <td><input class="pedido-colaborador-input" type="number" min="1" step="1" name="numero_parcelas_{{ colaborador.id }}" value="1" aria-label="Parcelas de {{ colaborador.nome }}" disabled></td>
             </tr>
