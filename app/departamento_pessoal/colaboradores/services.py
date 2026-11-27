@@ -2,8 +2,6 @@ import logging
 import re
 from datetime import date
 
-_CAMPO_NAO_INFORMADO = object()
-
 from sqlalchemy import func, or_
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -16,6 +14,8 @@ from app.utils.mascaras_lgpd import (
     normalizar_telefone_brasil,
 )
 
+
+_CAMPO_NAO_INFORMADO = object()
 
 logger = logging.getLogger(__name__)
 
