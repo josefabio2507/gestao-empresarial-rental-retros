@@ -145,8 +145,9 @@
             </tbody>
         </table></div>
     </div>
+    {% endif %}
 
-    {% if pode_criar and aba == 'novo_pedido' %}
+    {% if pode_criar and aba == 'novo_pedido' %
     {% if pedido_edicao %}
     <div class="details-card">
         <h2 class="section-title">Continuar rascunho do pedido {{ pedido_edicao.numero_pedido }}</h2>
