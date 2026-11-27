@@ -18,12 +18,14 @@ from app.models import (
     PedidoTicketPedido,
     PedidoTicketEvento,
     PedidoTicketBeneficiario,
+    PedidoTicketCadastroBeneficiario,
     PedidoTicketEmpresa,
     PedidoTicketUnidadeEntrega,
 )
 from app.departamento_pessoal.pedido_tiquete.excel_service import gerar_planilha_pedido
 from app.departamento_pessoal.pedido_tiquete.portal_service import PortalTicketError, enviar_planilha_para_portal
 from app.services.permissoes_service import usuario_tem_permissao
+from app.departamento_pessoal.colaboradores.services import formatar_cpf
 
 
 pedido_tiquete_bp = Blueprint("pedido_tiquete", __name__)
@@ -90,13 +92,14 @@ def _registrar_evento(numero_pedido, tipo, descricao, *, pedido=None, status_ant
 @module_permission_required("departamento_pessoal", "pedido_tiquete", "visualizar")
 def index():
     _exigir_feature_ativa()
-    abas = {"empresas", "unidades", "beneficiarios", "novo_pedido", "pedidos"}
+    abas = {"empresas", "unidades", "beneficiarios", "cadastro_beneficiarios", "novo_pedido", "pedidos"}
     aba = request.args.get("aba", "empresas")
     if aba not in abas:
         aba = "empresas"
     busca_colaborador = request.args.get("busca", "").strip()[:80]
     colaboradores = []
-    if aba == "novo_pedido":
+    cadastros_beneficiarios = []
+    if aba in {"novo_pedido", "cadastro_beneficiarios"}:
         consulta_colaboradores = Colaborador.query.join(Equipe).filter(
             Colaborador.ativo.is_(True),
             Equipe.ativo.is_(True),
@@ -109,6 +112,8 @@ def index():
                 Colaborador.cpf.ilike(termo),
             ))
         colaboradores = consulta_colaboradores.order_by(Colaborador.nome).limit(LIMITE_BENEFICIARIOS_PEDIDO).all()
+        if aba == "cadastro_beneficiarios":
+            cadastros_beneficiarios = PedidoTicketCadastroBeneficiario.query.join(Colaborador).order_by(Colaborador.nome, PedidoTicketCadastroBeneficiario.tipo_beneficio).limit(500).all()
 
     pedido_edicao = _get_por_parametro(PedidoTicketPedido, "pedido_id")
     if pedido_edicao and pedido_edicao.status != "rascunho":
@@ -153,6 +158,9 @@ def index():
         pedido_selecionado=pedido_selecionado,
         beneficiarios_do_pedido=beneficiarios_do_pedido,
         colaboradores=colaboradores,
+        colaboradores_cadastro=colaboradores if aba == "cadastro_beneficiarios" else [],
+        cadastros_beneficiarios=cadastros_beneficiarios,
+        formatar_cpf=formatar_cpf,
         busca_colaborador=busca_colaborador,
         colaboradores_no_pedido=colaboradores_no_pedido,
         unidades_pedido=unidades_ativas,
@@ -741,6 +749,51 @@ def criar_pedido_rascunho():
     if pedido and pedido.id:
         destino["pedido_id"] = pedido.id
     return redirect(url_for("pedido_tiquete.index", **destino))
+
+
+@pedido_tiquete_bp.route("/cadastro-beneficiarios", methods=["POST"])
+@module_permission_required("departamento_pessoal", "pedido_tiquete", "criar")
+def criar_cadastro_beneficiario():
+    _exigir_feature_ativa()
+    colaborador_id = request.form.get("colaborador_id", type=int)
+    tipo_beneficio = request.form.get("tipo_beneficio", "").strip().upper()
+    colaborador = db.session.get(Colaborador, colaborador_id) if colaborador_id else None
+    if not colaborador or not colaborador.ativo or not colaborador.equipe or not colaborador.equipe.ativo:
+        flash("Selecione um colaborador ativo do Cadastro de Colaboradores.", "danger")
+        return redirect(url_for("pedido_tiquete.index", aba="cadastro_beneficiarios"))
+    if tipo_beneficio not in PRODUTOS:
+        flash("Selecione um tipo de benefício válido.", "danger")
+        return redirect(url_for("pedido_tiquete.index", aba="cadastro_beneficiarios"))
+
+    cadastro = PedidoTicketCadastroBeneficiario.query.filter_by(
+        colaborador_id=colaborador.id,
+        tipo_beneficio=tipo_beneficio,
+    ).first()
+    if cadastro:
+        flash("Este colaborador já possui cadastro para esse benefício. Reative o existente se estiver inativo.", "warning")
+        return redirect(url_for("pedido_tiquete.index", aba="cadastro_beneficiarios"))
+
+    db.session.add(PedidoTicketCadastroBeneficiario(colaborador_id=colaborador.id, tipo_beneficio=tipo_beneficio))
+    try:
+        db.session.commit()
+        flash("Beneficiário cadastrado com sucesso.", "success")
+    except IntegrityError:
+        db.session.rollback()
+        flash("O cadastro já existe. Atualize a página e confira a lista.", "warning")
+    return redirect(url_for("pedido_tiquete.index", aba="cadastro_beneficiarios"))
+
+
+@pedido_tiquete_bp.route("/cadastro-beneficiarios/<int:cadastro_id>/status", methods=["POST"])
+@module_permission_required("departamento_pessoal", "pedido_tiquete", "editar")
+def alternar_status_cadastro_beneficiario(cadastro_id):
+    _exigir_feature_ativa()
+    cadastro = db.session.get(PedidoTicketCadastroBeneficiario, cadastro_id)
+    if not cadastro:
+        abort(404)
+    cadastro.ativo = not cadastro.ativo
+    db.session.commit()
+    flash("Cadastro de benefício ativado." if cadastro.ativo else "Cadastro de benefício inativado.", "success")
+    return redirect(url_for("pedido_tiquete.index", aba="cadastro_beneficiarios"))
 
 
 @pedido_tiquete_bp.route("/beneficiarios", methods=["POST"])

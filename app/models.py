@@ -1497,6 +1497,7 @@ class Colaborador(db.Model):
     matricula = db.Column(db.String(40), unique=True, nullable=False, index=True)
     nome = db.Column(db.String(150), nullable=False)
     cpf = db.Column(db.String(11), unique=True, nullable=False, index=True)
+    data_nascimento = db.Column(db.Date, nullable=True)
     email = db.Column(db.String(150), nullable=True)
     telefone = db.Column(db.String(20), nullable=True)
     cargo = db.Column(db.String(120), nullable=True)
@@ -4426,6 +4427,25 @@ class PedidoTicketBeneficiario(db.Model):
     numero_parcelas = db.Column(db.Integer, nullable=True)
     criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
     __table_args__ = (db.UniqueConstraint("numero_pedido", "cpf", name="uq_dp_ticket_beneficiario_pedido_cpf"),)
+
+class PedidoTicketCadastroBeneficiario(db.Model):
+    __tablename__ = "dp_pedido_ticket_cadastros_beneficiarios"
+    id = db.Column(db.Integer, primary_key=True)
+    colaborador_id = db.Column(db.Integer, db.ForeignKey("colaboradores.id"), nullable=False, index=True)
+    tipo_beneficio = db.Column(db.String(3), nullable=False)
+    ativo = db.Column(db.Boolean, default=True, nullable=False)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
+    atualizado_em = db.Column(db.DateTime, default=agora_brasil, onupdate=agora_brasil, nullable=False)
+    colaborador = db.relationship("Colaborador")
+
+    @property
+    def matricula_portal(self):
+        return "".join(caractere for caractere in (self.colaborador.cpf or "") if caractere.isdigit())
+
+    __table_args__ = (
+        db.UniqueConstraint("colaborador_id", "tipo_beneficio", name="uq_dp_ticket_cadastro_colaborador_beneficio"),
+    )
+
 
 class PedidoTicketEvento(db.Model):
     __tablename__ = "dp_pedido_ticket_eventos"
