@@ -2,6 +2,8 @@ import logging
 import re
 from datetime import date
 
+_CAMPO_NAO_INFORMADO = object()
+
 from sqlalchemy import func, or_
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -296,12 +298,15 @@ def atualizar_colaborador(
     equipe_id,
     vale_transporte_optante=False,
     ativo=True,
-    data_nascimento=None
+    data_nascimento=_CAMPO_NAO_INFORMADO
 ):
     equipe_id = normalizar_equipe_id(equipe_id)
-    data_nascimento, erro_data = normalizar_data_nascimento(data_nascimento)
-    if erro_data:
-        return False, erro_data
+    if data_nascimento is _CAMPO_NAO_INFORMADO:
+        data_nascimento = colaborador.data_nascimento
+    else:
+        data_nascimento, erro_data = normalizar_data_nascimento(data_nascimento)
+        if erro_data:
+            return False, erro_data
 
     valido, mensagem = validar_dados_colaborador(
         matricula=matricula,

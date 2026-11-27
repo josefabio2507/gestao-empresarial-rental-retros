@@ -100,10 +100,18 @@ def index():
     colaboradores = []
     cadastros_beneficiarios = []
     if aba in {"novo_pedido", "cadastro_beneficiarios"}:
-        consulta_colaboradores = Colaborador.query.join(Equipe).filter(
-            Colaborador.ativo.is_(True),
-            Equipe.ativo.is_(True),
-        )
+        if aba == "novo_pedido":
+            # Mantém para pedidos a regra atual de equipe ativa e o limite do lote.
+            consulta_colaboradores = Colaborador.query.join(Equipe).filter(
+                Colaborador.ativo.is_(True),
+                Equipe.ativo.is_(True),
+            )
+            limite_colaboradores = LIMITE_BENEFICIARIOS_PEDIDO
+        else:
+            # O cadastro mestre depende apenas do status do colaborador.
+            consulta_colaboradores = Colaborador.query.filter(Colaborador.ativo.is_(True))
+            limite_colaboradores = 500
+
         if busca_colaborador:
             termo = f"%{busca_colaborador}%"
             consulta_colaboradores = consulta_colaboradores.filter(or_(
@@ -111,7 +119,7 @@ def index():
                 Colaborador.matricula.ilike(termo),
                 Colaborador.cpf.ilike(termo),
             ))
-        colaboradores = consulta_colaboradores.order_by(Colaborador.nome).limit(LIMITE_BENEFICIARIOS_PEDIDO).all()
+        colaboradores = consulta_colaboradores.order_by(Colaborador.nome).limit(limite_colaboradores).all()
         if aba == "cadastro_beneficiarios":
             cadastros_beneficiarios = PedidoTicketCadastroBeneficiario.query.join(Colaborador).order_by(Colaborador.nome, PedidoTicketCadastroBeneficiario.tipo_beneficio).limit(500).all()
 
@@ -758,7 +766,7 @@ def criar_cadastro_beneficiario():
     colaborador_id = request.form.get("colaborador_id", type=int)
     tipo_beneficio = request.form.get("tipo_beneficio", "").strip().upper()
     colaborador = db.session.get(Colaborador, colaborador_id) if colaborador_id else None
-    if not colaborador or not colaborador.ativo or not colaborador.equipe or not colaborador.equipe.ativo:
+    if not colaborador or not colaborador.ativo:
         flash("Selecione um colaborador ativo do Cadastro de Colaboradores.", "danger")
         return redirect(url_for("pedido_tiquete.index", aba="cadastro_beneficiarios"))
     if tipo_beneficio not in PRODUTOS:

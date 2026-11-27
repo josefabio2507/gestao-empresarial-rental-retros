@@ -20,6 +20,10 @@ def upgrade():
         sa.Column("atualizado_em", sa.DateTime(), server_default=sa.func.now(), nullable=False),
         sa.ForeignKeyConstraint(["colaborador_id"], ["colaboradores.id"], name="fk_dp_ticket_cadastro_beneficiario_colaborador"),
         sa.PrimaryKeyConstraint("id"),
+        sa.CheckConstraint(
+            "tipo_beneficio in ('TAE', 'TRE', 'TKE', 'TFE')",
+            name="ck_dp_ticket_cadastro_tipo_beneficio",
+        ),
         sa.UniqueConstraint("colaborador_id", "tipo_beneficio", name="uq_dp_ticket_cadastro_colaborador_beneficio"),
     )
     op.create_index(

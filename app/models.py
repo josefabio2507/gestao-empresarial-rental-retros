@@ -4443,6 +4443,10 @@ class PedidoTicketCadastroBeneficiario(db.Model):
         return "".join(caractere for caractere in (self.colaborador.cpf or "") if caractere.isdigit())
 
     __table_args__ = (
+        db.CheckConstraint(
+            "tipo_beneficio in ('TAE', 'TRE', 'TKE', 'TFE')",
+            name="ck_dp_ticket_cadastro_tipo_beneficio",
+        ),
         db.UniqueConstraint("colaborador_id", "tipo_beneficio", name="uq_dp_ticket_cadastro_colaborador_beneficio"),
     )
 

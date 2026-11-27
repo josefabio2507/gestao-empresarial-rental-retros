@@ -70,6 +70,17 @@
         <h2 class="section-title">Cadastro de colaboradores beneficiários</h2>
         <p>A matrícula do Portal Tícket é o CPF sem pontuação. CPF e data de nascimento vêm do Cadastro de Colaboradores. Se a data estiver vazia, preencha primeiro o cadastro do colaborador.</p>
     </div>
+    <form class="form-card" method="get" action="{{ url_for('pedido_tiquete.index') }}">
+        <input type="hidden" name="aba" value="cadastro_beneficiarios">
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="busca_colaborador_cadastro">Buscar colaborador ativo</label>
+                <input id="busca_colaborador_cadastro" type="search" name="busca" value="{{ busca_colaborador }}" maxlength="80" placeholder="Nome, matrícula ou CPF">
+            </div>
+        </div>
+        <button class="btn btn-secondary" type="submit">Buscar</button>
+        {% if busca_colaborador %}<a class="btn btn-secondary" href="{{ url_for('pedido_tiquete.index', aba='cadastro_beneficiarios') }}">Limpar busca</a>{% endif %}
+    </form>
     {% if pode_criar %}
     <form class="form-card" method="post" action="{{ url_for('pedido_tiquete.criar_cadastro_beneficiario') }}">
         <h2 class="section-title">Novo beneficiário</h2>
