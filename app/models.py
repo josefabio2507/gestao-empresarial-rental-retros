@@ -4446,7 +4446,6 @@ class PedidoTicketCadastroBeneficiario(db.Model):
         db.UniqueConstraint("colaborador_id", "tipo_beneficio", name="uq_dp_ticket_cadastro_colaborador_beneficio"),
     )
 
-
 class PedidoTicketEvento(db.Model):
     __tablename__ = "dp_pedido_ticket_eventos"
 
