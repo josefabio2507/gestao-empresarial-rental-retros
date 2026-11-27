@@ -109,6 +109,8 @@
             z-index: 1;
             background: #fff;
         }
+        .ticket-beneficiarios-filtro { max-width: 22rem; margin-bottom: 1rem; }
+        .ticket-beneficiarios-filtro select { width: 100%; }
         .ticket-colaborador-opcao:hover,
         .ticket-colaborador-opcao:focus { background: #eef4fb; outline: none; }
     </style>
@@ -250,11 +252,18 @@
     {% endif %}
     <div class="details-card">
         <h2 class="section-title">Beneficiários cadastrados</h2>
+        <div class="form-group ticket-beneficiarios-filtro">
+            <label for="ticket-filtro-beneficio">Filtrar colaboradores por tipo de benefício</label>
+            <select id="ticket-filtro-beneficio">
+                <option value="">Todos os tipos</option>
+                {% for produto in produtos %}<option value="{{ produto }}">{{ produto }}</option>{% endfor %}
+            </select>
+        </div>
         <div class="table-wrapper ticket-beneficiarios-lista" role="region" aria-label="Lista de beneficiários cadastrados" tabindex="0"><table>
             <thead><tr><th>Colaborador</th><th>Matrícula Portal Tícket</th><th>CPF</th><th>Data de Nascimento</th><th>Benefício</th><th>Situação</th>{% if pode_editar %}<th>Ações</th>{% endif %}</tr></thead>
             <tbody>
             {% for cadastro in cadastros_beneficiarios %}
-                <tr>
+                <tr class="ticket-beneficiarios-linha" data-beneficio="{{ cadastro.tipo_beneficio }}">
                     <td>{{ cadastro.colaborador.nome }} <small>({{ cadastro.colaborador.matricula }})</small></td>
                     <td>{{ cadastro.matricula_portal }}</td>
                     <td>{{ formatar_cpf(cadastro.colaborador.cpf) }}</td>
@@ -266,8 +275,26 @@
             {% else %}
                 <tr><td colspan="{{ 7 if pode_editar else 6 }}">Nenhum beneficiário cadastrado.</td></tr>
             {% endfor %}
+                <tr id="ticket-beneficiarios-sem-resultado" hidden><td colspan="{{ 7 if pode_editar else 6 }}">Nenhum colaborador cadastrado para este tipo de benefício.</td></tr>
             </tbody>
         </table></div>
+        <script>
+        (() => {
+            const filtro = document.getElementById("ticket-filtro-beneficio");
+            const lista = document.querySelector(".ticket-beneficiarios-lista");
+            const linhas = Array.from(lista.querySelectorAll("tbody tr[data-beneficio]"));
+            const semResultado = document.getElementById("ticket-beneficiarios-sem-resultado");
+            filtro.addEventListener("change", () => {
+                let exibidos = 0;
+                linhas.forEach((linha) => {
+                    const corresponde = !filtro.value || linha.dataset.beneficio === filtro.value;
+                    linha.hidden = !corresponde;
+                    if (corresponde) exibidos += 1;
+                });
+                semResultado.hidden = exibidos > 0 || linhas.length === 0;
+            });
+        })();
+        </script>
     </div>
     {% endif %}
 
