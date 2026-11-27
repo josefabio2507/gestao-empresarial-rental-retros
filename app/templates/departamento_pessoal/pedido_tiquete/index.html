@@ -130,6 +130,7 @@
                         data-id="{{ colaborador.id }}"
                         data-cpf="{{ colaborador.cpf }}"
                         data-nascimento="{{ colaborador.data_nascimento.isoformat() if colaborador.data_nascimento else '' }}"
+                        data-equipe="{{ colaborador.equipe.nome if colaborador.equipe else '' }}"
                         data-busca="{{ colaborador.nome }} {{ colaborador.matricula }} {{ colaborador.cpf }}">
                         {{ colaborador.nome }} — matrícula {{ colaborador.matricula }}
                     </button>
@@ -140,6 +141,7 @@
             <div class="form-group"><label for="cadastro_matricula_portal">Matrícula do Portal Tícket</label><input id="cadastro_matricula_portal" name="matricula_portal" type="text" readonly></div>
             <div class="form-group"><label for="cadastro_cpf">CPF</label><input id="cadastro_cpf" name="cpf" type="text" readonly></div>
             <div class="form-group"><label for="cadastro_data_nascimento">Data de Nascimento</label><input id="cadastro_data_nascimento" name="data_nascimento" type="text" placeholder="DD/MM/AAAA" readonly></div>
+            <div class="form-group"><label for="cadastro_equipe">Equipe</label><input id="cadastro_equipe" type="text" readonly aria-describedby="cadastro_colaborador_status"></div>
             <div class="form-group"><label for="cadastro_tipo_beneficio">Tipo de Benefício</label>
                 <select id="cadastro_tipo_beneficio" name="tipo_beneficio" required>
                     <option value="">Selecione</option>
@@ -158,6 +160,7 @@
         const matricula = document.getElementById("cadastro_matricula_portal");
         const cpf = document.getElementById("cadastro_cpf");
         const nascimento = document.getElementById("cadastro_data_nascimento");
+        const equipe = document.getElementById("cadastro_equipe");
         const opcoes = [...resultados.querySelectorAll(".ticket-colaborador-opcao")];
         const normalizar = (valor) => valor.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
@@ -166,6 +169,7 @@
             matricula.value = "";
             cpf.value = "";
             nascimento.value = "";
+            equipe.value = "";
         };
 
         const buscar = () => {
@@ -200,6 +204,7 @@
                 ? digitos.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4")
                 : "";
             nascimento.value = iso ? iso.split("-").reverse().join("/") : "";
+            equipe.value = (opcao.dataset.equipe || "").trim() || "Não informada";
             resultados.hidden = true;
             campo.setAttribute("aria-expanded", "false");
             status.textContent = nascimento.value
