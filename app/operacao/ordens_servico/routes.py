@@ -1,6 +1,7 @@
 import uuid
+from pathlib import Path
 
-from flask import flash, redirect, render_template, request, url_for, send_file
+from flask import current_app, flash, redirect, render_template, request, url_for, send_file
 from io import BytesIO
 from flask_login import current_user, login_required
 from sqlalchemy import or_
@@ -422,7 +423,8 @@ def relatorio_pdf(id_os_interno):
     styles.add(ParagraphStyle(name="SummaryTableSmall", parent=styles["BodyText"], fontSize=7.5, leading=9))
     styles.add(ParagraphStyle(name="SummaryTableHeader", parent=styles["BodyText"], fontSize=7.5, leading=9, textColor=colors.white))
     story = []
-    logo = Image("app/static/img/logo-rental-retros.png", width=28*mm, height=19*mm)
+    logo_path = Path(current_app.root_path) / "static" / "img" / "logo-rental-retros.png"
+    logo = Image(str(logo_path), width=28*mm, height=19*mm)
     story.append(Table([[logo, Paragraph("FICHA DA ORDEM DE SERVIÇO", styles["BrandTitle"])]] , colWidths=[36*mm, 154*mm], rowHeights=[22*mm], style=TableStyle([["BACKGROUND", (0,0), (-1,-1), colors.HexColor("#082B4C")], ["VALIGN", (0,0), (-1,-1), "MIDDLE"], ["ALIGN", (0,0), (0,0), "CENTER"]])))
     story.append(Paragraph("Relatório detalhado para impressão", styles["Section"]))
     if periodo_inicio and periodo_fim:
