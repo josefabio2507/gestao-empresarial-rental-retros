@@ -164,6 +164,7 @@ def index():
             ).all()
             calculo_beneficiario_por_colaborador = {
                 item.colaborador_id: {
+                    "cadastro_id": item.id,
                     "tipo_calculo": item.tipo_calculo or "",
                     "valor_fixo_mensal": str(item.valor_fixo_mensal or Decimal("0.00")),
                 }

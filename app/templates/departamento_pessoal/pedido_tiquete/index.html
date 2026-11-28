@@ -376,13 +376,14 @@
             <div class="form-group"><label for="unidade_id">Unidade de entrega</label><select id="unidade_id" name="unidade_id" required><option value="">Selecione</option>{% for unidade in unidades_pedido %}<option value="{{ unidade.id }}" data-cnpj="{{ unidade.cnpj }}">{{ unidade.codigo_unidade }} — {{ unidade.nome_unidade }} — {{ unidade.cnpj }}</option>{% endfor %}</select></div>
         </div>
         <p class="form-help">Nome, matrícula e CPF vêm do Cadastro de Colaboradores. A forma de cálculo vem do Cadastro de Beneficiários; diária e cesta vêm da tabela de valores vigente na data de crédito. Informe as diárias e o nascimento quando solicitados. Capacidade: {{ limite_beneficiarios }} colaboradores.</p>
+        <p class="form-help">Se um colaborador aparecer como “Configuração pendente”, use o link na linha para definir o cálculo. Para diária ou cesta, também é necessário cadastrar uma tabela vigente para o contrato e a data de crédito.</p>
         <p id="ticket-aviso-valores" class="form-help" role="status" hidden>Não há valores de diária/cesta vigentes para este contrato e data de crédito. Cadastre a tabela ou selecione um benefício com valor fixo individual.</p>
         <div class="table-wrapper"><table><thead><tr><th>Selecionar</th><th>Matrícula</th><th>Colaborador / cálculo</th><th>CPF</th><th>Equipe</th><th>Nascimento</th><th>Diárias</th><th>Valor diária</th><th>Cesta</th><th>Valor fixo</th><th>Valor mensal</th><th>Parcelas</th></tr></thead><tbody>
             {% for colaborador in colaboradores %}
             {% set calculo = calculo_beneficiario_por_colaborador.get(colaborador.id, {}) %}
             <tr class="{% if colaborador.id in colaboradores_no_pedido %}muted{% endif %}" data-colaborador-id="{{ colaborador.id }}" data-tipo-calculo="{{ calculo.get('tipo_calculo', '') }}" data-valor-fixo="{{ calculo.get('valor_fixo_mensal', '0') }}">
                 <td><label><input class="pedido-colaborador-check" type="checkbox" name="colaborador_ids" value="{{ colaborador.id }}" data-bloqueado="{% if colaborador.id in colaboradores_no_pedido %}true{% else %}false{% endif %}" {% if colaborador.id in colaboradores_no_pedido %}disabled{% endif %}>Selecionar{% if colaborador.id in colaboradores_no_pedido %} (já incluído){% endif %}</label></td>
-                <td>{{ colaborador.cpf|replace('.', '')|replace('/', '')|replace('-', '') }}</td><td>{{ colaborador.nome }}<br><small>{% if calculo.get('tipo_calculo') == 'DIARIA' %}Diária{% elif calculo.get('tipo_calculo') == 'CESTA' %}Cesta básica{% elif calculo.get('tipo_calculo') == 'CESTA_DIARIA' %}Cesta + diária{% elif calculo.get('tipo_calculo') == 'FIXO' %}Fixo individual{% else %}Configuração pendente{% endif %}</small></td><td>{{ colaborador.cpf }}</td><td>{{ colaborador.equipe.nome }}</td>
+                <td>{{ colaborador.cpf|replace('.', '')|replace('/', '')|replace('-', '') }}</td><td>{{ colaborador.nome }}<br><small>{% if calculo.get('tipo_calculo') == 'DIARIA' %}Diária{% elif calculo.get('tipo_calculo') == 'CESTA' %}Cesta básica{% elif calculo.get('tipo_calculo') == 'CESTA_DIARIA' %}Cesta + diária{% elif calculo.get('tipo_calculo') == 'FIXO' %}Fixo individual{% else %}Configuração pendente{% endif %}</small><br><a class="pedido-configuracao-link" data-cadastro-url="{{ url_for('pedido_tiquete.index', aba='cadastro_beneficiarios', editar_calculo=calculo.get('cadastro_id')) }}" data-valores-url="{{ url_for('pedido_tiquete.index', aba='valores') }}" href="#" hidden>Resolver configuração</a></td><td>{{ colaborador.cpf }}</td><td>{{ colaborador.equipe.nome }}</td>
                 <td><input class="pedido-colaborador-input" data-tipo="nascimento" type="date" value="{{ colaborador.data_nascimento.isoformat() if colaborador.data_nascimento else '' }}" name="data_nascimento_{{ colaborador.id }}" max="{{ data_hoje }}" aria-label="Nascimento de {{ colaborador.nome }}" disabled></td>
                 <td><input class="pedido-colaborador-input" data-tipo="diarias" type="number" min="1" max="31" step="1" name="quantidade_diarias_{{ colaborador.id }}" aria-label="Quantidade de diárias de {{ colaborador.nome }}" disabled></td>
                 <td><output class="pedido-valor-diaria">—</output></td>
@@ -434,6 +435,20 @@
                 const pronto = formaValida && (fixo || !empresa?.value || politicaValida);
                 const bloqueado = check.dataset.bloqueado === "true";
                 check.disabled = bloqueado || !pronto;
+                const linkConfiguracao = linha.querySelector(".pedido-configuracao-link");
+                if (linkConfiguracao) {
+                    if (!formaValida) {
+                        linkConfiguracao.href = linkConfiguracao.dataset.cadastroUrl;
+                        linkConfiguracao.textContent = "Configurar cálculo";
+                        linkConfiguracao.hidden = false;
+                    } else if (!fixo && empresa?.value && !politicaValida) {
+                        linkConfiguracao.href = linkConfiguracao.dataset.valoresUrl;
+                        linkConfiguracao.textContent = "Cadastrar tabela de valores";
+                        linkConfiguracao.hidden = false;
+                    } else {
+                        linkConfiguracao.hidden = true;
+                    }
+                }
                 if (check.disabled && check.checked) check.checked = false;
 
                 const dias = linha.querySelector('[data-tipo="diarias"]');
@@ -464,7 +479,7 @@
                 if (saidaFixo) saidaFixo.textContent = fixo ? dinheiro.format(valorFixo) : "—";
                 if (saidaMensal) saidaMensal.textContent = dinheiro.format(subtotal);
 
-                if ((diario || cesta) && empresa?.value && !politicaValida) requerPolitica = true;
+                if (formaValida && (diario || cesta) && empresa?.value && !politicaValida) requerPolitica = true;
                 if (check.checked) {
                     quantidade += 1;
                     total += subtotal;
