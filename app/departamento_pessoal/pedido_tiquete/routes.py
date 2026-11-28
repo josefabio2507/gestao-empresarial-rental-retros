@@ -21,6 +21,7 @@ from app.models import (
     PedidoTicketCadastroBeneficiario,
     PedidoTicketEmpresa,
     PedidoTicketUnidadeEntrega,
+    PedidoTicketTabelaValor,
 )
 from app.departamento_pessoal.pedido_tiquete.excel_service import gerar_planilha_pedido
 from app.departamento_pessoal.pedido_tiquete.portal_service import PortalTicketError, enviar_planilha_para_portal
@@ -30,6 +31,15 @@ from app.departamento_pessoal.colaboradores.services import formatar_cpf
 
 pedido_tiquete_bp = Blueprint("pedido_tiquete", __name__)
 PRODUTOS = ("TAE", "TRE", "TKE", "TFE")
+FORMAS_CALCULO = (
+    ("DIARIA", "Valor de diária"),
+    ("CESTA", "Cesta básica"),
+    ("CESTA_DIARIA", "Cesta + diária"),
+    ("FIXO", "Valor fixo mensal individual"),
+)
+FORMAS_CALCULO_IDS = {item[0] for item in FORMAS_CALCULO}
+CALCULOS_COM_DIARIA = {"DIARIA", "CESTA_DIARIA"}
+CALCULOS_COM_CESTA = {"CESTA", "CESTA_DIARIA"}
 LIMITE_BENEFICIARIOS_PEDIDO = 245
 TRANSICOES_HISTORICO = {
     "rascunho": {"cancelado"},
@@ -46,6 +56,17 @@ def _digitos(valor):
 
 def _data_form(nome):
     return date.fromisoformat(request.form.get(nome, ""))
+
+
+def _valor_monetario_form(nome, descricao):
+    texto = request.form.get(nome, "").strip().replace(",", ".")
+    try:
+        valor = Decimal(texto).quantize(Decimal("0.01"))
+    except (InvalidOperation, AttributeError):
+        raise ValueError(f"Informe um valor válido para {descricao}.")
+    if not valor.is_finite() or valor < 0 or valor > Decimal("9999999999.99"):
+        raise ValueError(f"Confira o valor de {descricao}.")
+    return valor
 
 
 def _somar_dias_uteis(inicio, quantidade):
@@ -92,7 +113,7 @@ def _registrar_evento(numero_pedido, tipo, descricao, *, pedido=None, status_ant
 @module_permission_required("departamento_pessoal", "pedido_tiquete", "visualizar")
 def index():
     _exigir_feature_ativa()
-    abas = {"empresas", "unidades", "beneficiarios", "cadastro_beneficiarios", "novo_pedido", "pedidos"}
+    abas = {"empresas", "unidades", "beneficiarios", "cadastro_beneficiarios", "novo_pedido", "pedidos", "valores"}
     aba = request.args.get("aba", "empresas")
     if aba not in abas:
         aba = "empresas"
@@ -102,34 +123,52 @@ def index():
         tipo_beneficio_filtro = ""
     colaboradores = []
     cadastros_beneficiarios = []
+    calculo_beneficiario_por_colaborador = {}
+    valores_por_empresa_pedido = {}
     if aba in {"novo_pedido", "cadastro_beneficiarios"}:
         if aba == "novo_pedido":
-            # Pedidos só podem selecionar colaboradores com cadastro Ticket ativo.
-            cadastros_ativos = PedidoTicketCadastroBeneficiario.query.filter_by(ativo=True)
             if tipo_beneficio_filtro:
-                cadastros_ativos = cadastros_ativos.filter_by(tipo_beneficio=tipo_beneficio_filtro)
-            colaboradores_com_beneficio = cadastros_ativos.with_entities(
-                PedidoTicketCadastroBeneficiario.colaborador_id
-            ).distinct()
-            consulta_colaboradores = Colaborador.query.join(Equipe).filter(
-                Colaborador.ativo.is_(True),
-                Equipe.ativo.is_(True),
-                Colaborador.id.in_(colaboradores_com_beneficio),
-            )
-            limite_colaboradores = LIMITE_BENEFICIARIOS_PEDIDO
+                cadastros_ativos = PedidoTicketCadastroBeneficiario.query.filter_by(
+                    ativo=True, tipo_beneficio=tipo_beneficio_filtro
+                )
+                colaboradores_com_beneficio = cadastros_ativos.with_entities(
+                    PedidoTicketCadastroBeneficiario.colaborador_id
+                ).distinct()
+                consulta_colaboradores = Colaborador.query.join(Equipe).filter(
+                    Colaborador.ativo.is_(True),
+                    Equipe.ativo.is_(True),
+                    Colaborador.id.in_(colaboradores_com_beneficio),
+                )
+                limite_colaboradores = LIMITE_BENEFICIARIOS_PEDIDO
+            else:
+                consulta_colaboradores = None
+                limite_colaboradores = 0
         else:
             # O cadastro mestre depende apenas do status do colaborador.
             consulta_colaboradores = Colaborador.query.filter(Colaborador.ativo.is_(True))
             limite_colaboradores = 500
 
-        if busca_colaborador:
+        if busca_colaborador and consulta_colaboradores is not None:
             termo = f"%{busca_colaborador}%"
             consulta_colaboradores = consulta_colaboradores.filter(or_(
                 Colaborador.nome.ilike(termo),
                 Colaborador.matricula.ilike(termo),
                 Colaborador.cpf.ilike(termo),
             ))
-        colaboradores = consulta_colaboradores.order_by(Colaborador.nome).limit(limite_colaboradores).all()
+        if consulta_colaboradores is not None:
+            colaboradores = consulta_colaboradores.order_by(Colaborador.nome).limit(limite_colaboradores).all()
+            registros_calculo = PedidoTicketCadastroBeneficiario.query.filter(
+                PedidoTicketCadastroBeneficiario.ativo.is_(True),
+                PedidoTicketCadastroBeneficiario.tipo_beneficio == tipo_beneficio_filtro,
+                PedidoTicketCadastroBeneficiario.colaborador_id.in_([item.id for item in colaboradores]),
+            ).all()
+            calculo_beneficiario_por_colaborador = {
+                item.colaborador_id: {
+                    "tipo_calculo": item.tipo_calculo or "",
+                    "valor_fixo_mensal": str(item.valor_fixo_mensal or Decimal("0.00")),
+                }
+                for item in registros_calculo
+            }
         if aba == "cadastro_beneficiarios":
             cadastros_beneficiarios = PedidoTicketCadastroBeneficiario.query.join(Colaborador).order_by(Colaborador.nome, PedidoTicketCadastroBeneficiario.tipo_beneficio).limit(500).all()
 
@@ -139,7 +178,27 @@ def index():
     empresas_para_pedido = PedidoTicketEmpresa.query.filter_by(ativo=True)
     if pedido_edicao:
         empresas_para_pedido = empresas_para_pedido.filter_by(numero_pedido=pedido_edicao.numero_pedido)
+    if aba == "novo_pedido" and tipo_beneficio_filtro:
+        empresas_para_pedido = empresas_para_pedido.filter_by(produto=tipo_beneficio_filtro)
     empresas_para_pedido = empresas_para_pedido.order_by(PedidoTicketEmpresa.numero_pedido.desc(), PedidoTicketEmpresa.nome_empresa).limit(100).all()
+
+    if aba == "novo_pedido" and empresas_para_pedido:
+        tabelas_valores = PedidoTicketTabelaValor.query.filter_by(ativo=True).all()
+        for empresa_item in empresas_para_pedido:
+            tabela = next((
+                item for item in tabelas_valores
+                if item.cnpj == empresa_item.cnpj
+                and item.numero_contrato == empresa_item.numero_contrato
+                and item.tipo_beneficio == empresa_item.produto
+                and item.data_inicio <= empresa_item.data_credito
+                and (item.data_fim is None or item.data_fim >= empresa_item.data_credito)
+            ), None)
+            if tabela:
+                valores_por_empresa_pedido[str(empresa_item.id)] = {
+                    "id": tabela.id,
+                    "valor_diaria": str(tabela.valor_diaria),
+                    "valor_cesta": str(tabela.valor_cesta),
+                }
     pedido_selecionado = _get_por_parametro(PedidoTicketPedido, "ver_pedido")
     beneficiarios_do_pedido = []
     colaboradores_no_pedido = set()
@@ -181,6 +240,26 @@ def index():
         formatar_cpf=formatar_cpf,
         busca_colaborador=busca_colaborador,
         tipo_beneficio_filtro=tipo_beneficio_filtro,
+        calculo_beneficiario_por_colaborador=calculo_beneficiario_por_colaborador,
+        valores_por_empresa_pedido=valores_por_empresa_pedido,
+        contratos_para_valores=db.session.query(
+            PedidoTicketEmpresa.cnpj,
+            PedidoTicketEmpresa.nome_empresa,
+            PedidoTicketEmpresa.numero_contrato,
+            PedidoTicketEmpresa.produto,
+        ).filter_by(ativo=True).distinct().order_by(
+            PedidoTicketEmpresa.nome_empresa,
+            PedidoTicketEmpresa.numero_contrato,
+            PedidoTicketEmpresa.produto,
+        ).all() if aba == "valores" else [],
+        tabelas_valores=PedidoTicketTabelaValor.query.order_by(
+            PedidoTicketTabelaValor.cnpj,
+            PedidoTicketTabelaValor.numero_contrato,
+            PedidoTicketTabelaValor.tipo_beneficio,
+            PedidoTicketTabelaValor.data_inicio.desc(),
+        ).limit(500).all() if aba == "valores" else [],
+        editar_calculo_beneficiario=_get_por_parametro(PedidoTicketCadastroBeneficiario, "editar_calculo"),
+        formas_calculo=FORMAS_CALCULO,
         colaboradores_no_pedido=colaboradores_no_pedido,
         unidades_pedido=unidades_ativas,
         produtos=PRODUTOS,
@@ -659,17 +738,31 @@ def criar_pedido_rascunho():
         if len(colaboradores) != len(ids_recebidos):
             raise ValueError("Um ou mais colaboradores não estão ativos ou não existem mais no cadastro.")
 
-        cadastros_validos = {
-            colaborador_id for (colaborador_id,) in PedidoTicketCadastroBeneficiario.query.filter(
-                PedidoTicketCadastroBeneficiario.colaborador_id.in_(ids_recebidos),
-                PedidoTicketCadastroBeneficiario.tipo_beneficio == empresa.produto,
-                PedidoTicketCadastroBeneficiario.ativo.is_(True),
-            ).with_entities(PedidoTicketCadastroBeneficiario.colaborador_id).distinct().all()
-        }
-        if cadastros_validos != set(ids_recebidos):
+        registros_beneficio = PedidoTicketCadastroBeneficiario.query.filter(
+            PedidoTicketCadastroBeneficiario.colaborador_id.in_(ids_recebidos),
+            PedidoTicketCadastroBeneficiario.tipo_beneficio == empresa.produto,
+            PedidoTicketCadastroBeneficiario.ativo.is_(True),
+        ).all()
+        cadastro_por_colaborador = {item.colaborador_id: item for item in registros_beneficio}
+        if set(cadastro_por_colaborador) != set(ids_recebidos):
             raise ValueError(
                 f"Todos os colaboradores selecionados precisam ter cadastro ativo para o benefício {empresa.produto}."
             )
+
+        tabela_valor = None
+        if any(item.tipo_calculo in CALCULOS_COM_DIARIA or item.tipo_calculo in CALCULOS_COM_CESTA for item in registros_beneficio):
+            tabela_valor = PedidoTicketTabelaValor.query.filter_by(
+                cnpj=empresa.cnpj,
+                numero_contrato=empresa.numero_contrato,
+                tipo_beneficio=empresa.produto,
+                ativo=True,
+            ).filter(
+                PedidoTicketTabelaValor.data_inicio <= empresa.data_credito,
+                or_(
+                    PedidoTicketTabelaValor.data_fim.is_(None),
+                    PedidoTicketTabelaValor.data_fim >= empresa.data_credito,
+                ),
+            ).order_by(PedidoTicketTabelaValor.data_inicio.desc()).first()
 
         pedido_id = request.form.get("pedido_id", type=int)
         rascunho_existente = False
@@ -710,13 +803,52 @@ def criar_pedido_rascunho():
                 raise ValueError(f"Informe a data de nascimento de {nome}.")
             if nascimento > date.today():
                 raise ValueError(f"A data de nascimento de {nome} não pode estar no futuro.")
-            try:
-                valor = Decimal(request.form.get(f"valor_mensal_{colaborador.id}", "").replace(",", "."))
-                valor_centavos = valor.quantize(Decimal("0.01"))
-            except (InvalidOperation, AttributeError):
-                raise ValueError(f"Informe um valor mensal válido para {nome}.")
-            if valor < 0 or valor != valor_centavos or valor > Decimal("9999999999.99"):
-                raise ValueError(f"Confira o valor mensal informado para {nome}.")
+            cadastro_beneficio = cadastro_por_colaborador[colaborador.id]
+            tipo_calculo = cadastro_beneficio.tipo_calculo
+            if tipo_calculo not in FORMAS_CALCULO_IDS:
+                raise ValueError(f"Configure a forma de cálculo do benefício de {nome} no Cadastro de Beneficiários.")
+
+            usa_diaria = tipo_calculo in CALCULOS_COM_DIARIA
+            usa_cesta = tipo_calculo in CALCULOS_COM_CESTA
+            quantidade_diarias = 0
+            valor_diaria = Decimal("0.00")
+            valor_cesta = Decimal("0.00")
+            valor_fixo_aplicado = Decimal("0.00")
+            tabela_valor_id = None
+
+            if tipo_calculo == "FIXO":
+                valor_fixo_aplicado = cadastro_beneficio.valor_fixo_mensal or Decimal("0.00")
+                if valor_fixo_aplicado <= 0:
+                    raise ValueError(f"Informe o valor fixo mensal individual de {nome} no Cadastro de Beneficiários.")
+            else:
+                if not tabela_valor:
+                    raise ValueError(
+                        f"Não há tabela de diária/cesta vigente para o contrato e benefício selecionados."
+                    )
+                tabela_valor_id = tabela_valor.id
+                if usa_diaria:
+                    valor_diaria = tabela_valor.valor_diaria
+                    if valor_diaria <= 0:
+                        raise ValueError(f"Cadastre um valor de diária positivo para {nome}.")
+                    quantidade_texto = request.form.get(f"quantidade_diarias_{colaborador.id}", "").strip()
+                    if not quantidade_texto.isdigit():
+                        raise ValueError(f"Informe a quantidade de diárias de {nome}.")
+                    quantidade_diarias = int(quantidade_texto)
+                    if not 1 <= quantidade_diarias <= 31:
+                        raise ValueError(f"A quantidade de diárias de {nome} deve estar entre 1 e 31.")
+                if usa_cesta:
+                    valor_cesta = tabela_valor.valor_cesta
+                    if valor_cesta <= 0:
+                        raise ValueError(f"Cadastre um valor de cesta positivo para {nome}.")
+
+            valor_centavos = (
+                valor_diaria * quantidade_diarias
+                + valor_cesta
+                + valor_fixo_aplicado
+            ).quantize(Decimal("0.01"))
+            if valor_centavos <= 0 or valor_centavos > Decimal("9999999999.99"):
+                raise ValueError(f"O valor mensal calculado para {nome} precisa ser maior que zero e dentro do limite.")
+
             parcelas_texto = request.form.get(f"numero_parcelas_{colaborador.id}", "").strip()
             if parcelas_texto and not parcelas_texto.isdigit():
                 raise ValueError(f"Confira o número de parcelas de {nome}.")
@@ -734,6 +866,12 @@ def criar_pedido_rascunho():
                 "departamento": departamento,
                 "unidade_entrega": f"{unidade.codigo_unidade} - {unidade.nome_unidade}",
                 "valor_mensal": valor_centavos,
+                "tipo_calculo": tipo_calculo,
+                "quantidade_diarias": quantidade_diarias,
+                "valor_diaria": valor_diaria,
+                "valor_cesta": valor_cesta,
+                "valor_fixo_mensal_aplicado": valor_fixo_aplicado,
+                "tabela_valor_id": tabela_valor_id,
                 "contrato_produto": f"{empresa.numero_contrato} - {empresa.produto}",
                 "numero_parcelas": parcelas,
             })
@@ -789,6 +927,7 @@ def criar_cadastro_beneficiario():
     _exigir_feature_ativa()
     colaborador_id = request.form.get("colaborador_id", type=int)
     tipo_beneficio = request.form.get("tipo_beneficio", "").strip().upper()
+    tipo_calculo = request.form.get("tipo_calculo", "").strip().upper()
     colaborador = db.session.get(Colaborador, colaborador_id) if colaborador_id else None
     if not colaborador or not colaborador.ativo:
         flash("Selecione um colaborador ativo do Cadastro de Colaboradores.", "danger")
@@ -796,6 +935,19 @@ def criar_cadastro_beneficiario():
     if tipo_beneficio not in PRODUTOS:
         flash("Selecione um tipo de benefício válido.", "danger")
         return redirect(url_for("pedido_tiquete.index", aba="cadastro_beneficiarios"))
+    if tipo_calculo not in FORMAS_CALCULO_IDS:
+        flash("Selecione a forma de cálculo do benefício.", "danger")
+        return redirect(url_for("pedido_tiquete.index", aba="cadastro_beneficiarios"))
+
+    valor_fixo = None
+    if tipo_calculo == "FIXO":
+        try:
+            valor_fixo = _valor_monetario_form("valor_fixo_mensal", "valor fixo mensal")
+            if valor_fixo <= 0:
+                raise ValueError("O valor fixo mensal individual precisa ser maior que zero.")
+        except ValueError as erro:
+            flash(str(erro), "danger")
+            return redirect(url_for("pedido_tiquete.index", aba="cadastro_beneficiarios"))
 
     cadastro = PedidoTicketCadastroBeneficiario.query.filter_by(
         colaborador_id=colaborador.id,
@@ -805,13 +957,47 @@ def criar_cadastro_beneficiario():
         flash("Este colaborador já possui cadastro para esse benefício. Reative o existente se estiver inativo.", "warning")
         return redirect(url_for("pedido_tiquete.index", aba="cadastro_beneficiarios"))
 
-    db.session.add(PedidoTicketCadastroBeneficiario(colaborador_id=colaborador.id, tipo_beneficio=tipo_beneficio))
+    db.session.add(PedidoTicketCadastroBeneficiario(
+        colaborador_id=colaborador.id,
+        tipo_beneficio=tipo_beneficio,
+        tipo_calculo=tipo_calculo,
+        valor_fixo_mensal=valor_fixo,
+    ))
     try:
         db.session.commit()
-        flash("Beneficiário cadastrado com sucesso.", "success")
+        flash("Beneficiário cadastrado com a forma de cálculo.", "success")
     except IntegrityError:
         db.session.rollback()
         flash("O cadastro já existe. Atualize a página e confira a lista.", "warning")
+    return redirect(url_for("pedido_tiquete.index", aba="cadastro_beneficiarios"))
+
+
+@pedido_tiquete_bp.route("/cadastro-beneficiarios/<int:cadastro_id>/calculo", methods=["POST"])
+@module_permission_required("departamento_pessoal", "pedido_tiquete", "editar")
+def atualizar_calculo_cadastro_beneficiario(cadastro_id):
+    _exigir_feature_ativa()
+    cadastro = db.session.get(PedidoTicketCadastroBeneficiario, cadastro_id)
+    if not cadastro:
+        abort(404)
+    tipo_calculo = request.form.get("tipo_calculo", "").strip().upper()
+    if tipo_calculo not in FORMAS_CALCULO_IDS:
+        flash("Selecione uma forma de cálculo válida.", "danger")
+        return redirect(url_for("pedido_tiquete.index", aba="cadastro_beneficiarios"))
+
+    valor_fixo = None
+    if tipo_calculo == "FIXO":
+        try:
+            valor_fixo = _valor_monetario_form("valor_fixo_mensal", "valor fixo mensal")
+            if valor_fixo <= 0:
+                raise ValueError("O valor fixo mensal individual precisa ser maior que zero.")
+        except ValueError as erro:
+            flash(str(erro), "danger")
+            return redirect(url_for("pedido_tiquete.index", aba="cadastro_beneficiarios"))
+
+    cadastro.tipo_calculo = tipo_calculo
+    cadastro.valor_fixo_mensal = valor_fixo
+    db.session.commit()
+    flash("Forma de cálculo do beneficiário atualizada.", "success")
     return redirect(url_for("pedido_tiquete.index", aba="cadastro_beneficiarios"))
 
 
@@ -826,6 +1012,108 @@ def alternar_status_cadastro_beneficiario(cadastro_id):
     db.session.commit()
     flash("Cadastro de benefício ativado." if cadastro.ativo else "Cadastro de benefício inativado.", "success")
     return redirect(url_for("pedido_tiquete.index", aba="cadastro_beneficiarios"))
+
+
+@pedido_tiquete_bp.route("/valores", methods=["POST"])
+@module_permission_required("departamento_pessoal", "pedido_tiquete", "criar")
+def criar_tabela_valor():
+    _exigir_feature_ativa()
+    try:
+        chave = request.form.get("contrato_produto", "")
+        partes = chave.split("|")
+        if len(partes) != 3:
+            raise ValueError("Selecione um contrato e produto válidos.")
+        cnpj, numero_contrato, tipo_beneficio = partes
+        if tipo_beneficio not in PRODUTOS:
+            raise ValueError("Selecione um tipo de benefício válido.")
+        contrato = PedidoTicketEmpresa.query.filter_by(
+            cnpj=cnpj,
+            numero_contrato=numero_contrato,
+            produto=tipo_beneficio,
+            ativo=True,
+        ).first()
+        if not contrato:
+            raise ValueError("O contrato selecionado não está ativo.")
+
+        data_inicio = date.fromisoformat(request.form.get("data_inicio", ""))
+        fim_texto = request.form.get("data_fim", "").strip()
+        data_fim = date.fromisoformat(fim_texto) if fim_texto else None
+        if data_fim and data_fim < data_inicio:
+            raise ValueError("A data final da vigência não pode ser anterior à data inicial.")
+        valor_diaria = _valor_monetario_form("valor_diaria", "valor da diária")
+        valor_cesta = _valor_monetario_form("valor_cesta", "valor da cesta")
+        if valor_diaria == 0 and valor_cesta == 0:
+            raise ValueError("Informe ao menos um valor positivo: diária ou cesta.")
+
+        fim_intervalo = data_fim or date.max
+        sobreposicoes = PedidoTicketTabelaValor.query.filter_by(
+            cnpj=cnpj,
+            numero_contrato=numero_contrato,
+            tipo_beneficio=tipo_beneficio,
+            ativo=True,
+        ).filter(
+            PedidoTicketTabelaValor.data_inicio <= fim_intervalo,
+            or_(
+                PedidoTicketTabelaValor.data_fim.is_(None),
+                PedidoTicketTabelaValor.data_fim >= data_inicio,
+            ),
+        ).all()
+        for tabela_existente in sobreposicoes:
+            if tabela_existente.data_inicio >= data_inicio:
+                raise ValueError("A vigência se sobrepõe a um valor já cadastrado. Confira as datas ou inative a tabela anterior.")
+            if tabela_existente.data_fim is None:
+                tabela_existente.data_fim = data_inicio - timedelta(days=1)
+            else:
+                raise ValueError("A vigência se sobrepõe a um valor já cadastrado. Confira as datas da tabela anterior.")
+
+        db.session.add(PedidoTicketTabelaValor(
+            cnpj=cnpj,
+            numero_contrato=numero_contrato,
+            tipo_beneficio=tipo_beneficio,
+            data_inicio=data_inicio,
+            data_fim=data_fim,
+            valor_diaria=valor_diaria,
+            valor_cesta=valor_cesta,
+            criado_por_usuario_id=current_user.id,
+        ))
+        db.session.commit()
+        flash("Tabela de valores cadastrada com vigência.", "success")
+    except (ValueError, TypeError, InvalidOperation) as erro:
+        db.session.rollback()
+        flash(str(erro) or "Confira os valores e o período informado.", "danger")
+    except IntegrityError:
+        db.session.rollback()
+        flash("Já existe uma tabela com estes dados e data inicial.", "warning")
+    return redirect(url_for("pedido_tiquete.index", aba="valores"))
+
+
+@pedido_tiquete_bp.route("/valores/<int:tabela_id>/status", methods=["POST"])
+@module_permission_required("departamento_pessoal", "pedido_tiquete", "editar")
+def alternar_status_tabela_valor(tabela_id):
+    _exigir_feature_ativa()
+    tabela = db.session.get(PedidoTicketTabelaValor, tabela_id)
+    if not tabela:
+        abort(404)
+    if not tabela.ativo:
+        sobreposicao = PedidoTicketTabelaValor.query.filter(
+            PedidoTicketTabelaValor.id != tabela.id,
+            PedidoTicketTabelaValor.cnpj == tabela.cnpj,
+            PedidoTicketTabelaValor.numero_contrato == tabela.numero_contrato,
+            PedidoTicketTabelaValor.tipo_beneficio == tabela.tipo_beneficio,
+            PedidoTicketTabelaValor.ativo.is_(True),
+            PedidoTicketTabelaValor.data_inicio <= (tabela.data_fim or date.max),
+            or_(
+                PedidoTicketTabelaValor.data_fim.is_(None),
+                PedidoTicketTabelaValor.data_fim >= tabela.data_inicio,
+            ),
+        ).first()
+        if sobreposicao:
+            flash("Não é possível ativar: existe outra tabela ativa com vigência sobreposta.", "warning")
+            return redirect(url_for("pedido_tiquete.index", aba="valores"))
+    tabela.ativo = not tabela.ativo
+    db.session.commit()
+    flash("Tabela de valores ativada." if tabela.ativo else "Tabela de valores inativada.", "success")
+    return redirect(url_for("pedido_tiquete.index", aba="valores"))
 
 
 @pedido_tiquete_bp.route("/beneficiarios", methods=["POST"])
