@@ -4424,6 +4424,12 @@ class PedidoTicketBeneficiario(db.Model):
     departamento = db.Column(db.String(50), nullable=True)
     unidade_entrega = db.Column(db.String(40), nullable=False)
     valor_mensal = db.Column(db.Numeric(12, 2), nullable=False)
+    tipo_calculo = db.Column(db.String(20), nullable=True)
+    quantidade_diarias = db.Column(db.Integer, nullable=True)
+    valor_diaria = db.Column(db.Numeric(12, 2), nullable=True)
+    valor_cesta = db.Column(db.Numeric(12, 2), nullable=True)
+    valor_fixo_mensal_aplicado = db.Column(db.Numeric(12, 2), nullable=True)
+    tabela_valor_id = db.Column(db.Integer, db.ForeignKey("dp_pedido_ticket_tabelas_valores.id", ondelete="SET NULL"), nullable=True, index=True)
     contrato_produto = db.Column(db.String(30), nullable=False)
     numero_parcelas = db.Column(db.Integer, nullable=True)
     criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
@@ -4434,6 +4440,8 @@ class PedidoTicketCadastroBeneficiario(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     colaborador_id = db.Column(db.Integer, db.ForeignKey("colaboradores.id"), nullable=False, index=True)
     tipo_beneficio = db.Column(db.String(3), nullable=False)
+    tipo_calculo = db.Column(db.String(20), nullable=True)
+    valor_fixo_mensal = db.Column(db.Numeric(12, 2), nullable=True)
     ativo = db.Column(db.Boolean, default=True, nullable=False)
     criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
     atualizado_em = db.Column(db.DateTime, default=agora_brasil, onupdate=agora_brasil, nullable=False)
@@ -4450,6 +4458,41 @@ class PedidoTicketCadastroBeneficiario(db.Model):
         ),
         db.UniqueConstraint("colaborador_id", "tipo_beneficio", name="uq_dp_ticket_cadastro_colaborador_beneficio"),
     )
+
+class PedidoTicketTabelaValor(db.Model):
+    __tablename__ = "dp_pedido_ticket_tabelas_valores"
+
+    id = db.Column(db.Integer, primary_key=True)
+    cnpj = db.Column(db.String(14), nullable=False, index=True)
+    numero_contrato = db.Column(db.String(10), nullable=False)
+    tipo_beneficio = db.Column(db.String(3), nullable=False)
+    data_inicio = db.Column(db.Date, nullable=False)
+    data_fim = db.Column(db.Date, nullable=True)
+    valor_diaria = db.Column(db.Numeric(12, 2), nullable=False)
+    valor_cesta = db.Column(db.Numeric(12, 2), nullable=False)
+    ativo = db.Column(db.Boolean, default=True, nullable=False)
+    criado_por_usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
+
+    __table_args__ = (
+        db.CheckConstraint(
+            "tipo_beneficio in ('TAE', 'TRE', 'TKE', 'TFE')",
+            name="ck_dp_ticket_valor_tipo_beneficio",
+        ),
+        db.CheckConstraint(
+            "valor_diaria >= 0 AND valor_cesta >= 0 AND (valor_diaria > 0 OR valor_cesta > 0)",
+            name="ck_dp_ticket_valor_componentes_positivos",
+        ),
+        db.CheckConstraint(
+            "data_fim is null or data_fim >= data_inicio",
+            name="ck_dp_ticket_valor_vigencia",
+        ),
+        db.UniqueConstraint(
+            "cnpj", "numero_contrato", "tipo_beneficio", "data_inicio",
+            name="uq_dp_ticket_valor_vigencia",
+        ),
+    )
+
 
 class PedidoTicketEvento(db.Model):
     __tablename__ = "dp_pedido_ticket_eventos"
