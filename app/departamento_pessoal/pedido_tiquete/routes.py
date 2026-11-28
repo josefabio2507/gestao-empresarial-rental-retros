@@ -1096,7 +1096,7 @@ def criar_tabela_valor():
         cnpj, numero_contrato, tipo_beneficio = partes
         if tipo_beneficio not in PRODUTOS:
             raise ValueError("Selecione um tipo de benefício válido.")
-        contrato = PedidoTicketEmpresa.query.filter_by(
+        contrato = PedidoTicketContrato.query.filter_by(
             cnpj=cnpj,
             numero_contrato=numero_contrato,
             produto=tipo_beneficio,
