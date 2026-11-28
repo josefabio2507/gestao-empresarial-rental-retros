@@ -16,6 +16,7 @@
             ('unidades', 'Unidades de entrega', 'Endereço da unidade e dados do interlocutor.'),
             ('novo_pedido', 'Novo pedido', 'Selecione colaboradores existentes e monte um rascunho.'),
             ('cadastro_beneficiarios', 'Cadastro de beneficiários', 'Associe colaboradores ativos aos tipos de benefício.'),
+            ('valores', 'Valores dos benefícios', 'Configure diária e cesta por contrato e vigência.'),
             ('pedidos', 'Pedidos', 'Consulte rascunhos, quantidade de pessoas e valores.'),
             ('beneficiarios', 'Beneficiários dos pedidos', 'Consulte os itens cadastrados para os pedidos.')
         ] %}
@@ -68,8 +69,40 @@
     {% if aba == 'cadastro_beneficiarios' %}
     <div class="details-card">
         <h2 class="section-title">Cadastro de colaboradores beneficiários</h2>
-        <p>A matrícula do Portal Tícket é o CPF sem pontuação. CPF e data de nascimento vêm do Cadastro de Colaboradores. Se a data estiver vazia, preencha primeiro o cadastro do colaborador.</p>
+        <p>A matrícula do Portal Tícket é o CPF sem pontuação. CPF e data de nascimento vêm do Cadastro de Colaboradores. Se a data estiver vazia, preencha primeiro o cadastro do colaborador. A forma de cálculo é individual; os valores da diária e da cesta são configurados por contrato e vigência.</p>
     </div>
+    {% if editar_calculo_beneficiario and pode_editar %}
+    <form class="form-card" method="post" action="{{ url_for('pedido_tiquete.atualizar_calculo_cadastro_beneficiario', cadastro_id=editar_calculo_beneficiario.id) }}">
+        <h2 class="section-title">Configurar cálculo — {{ editar_calculo_beneficiario.colaborador.nome }} / {{ editar_calculo_beneficiario.tipo_beneficio }}</h2>
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="editar_tipo_calculo">Forma de cálculo</label>
+                <select id="editar_tipo_calculo" name="tipo_calculo" required>
+                    <option value="">Selecione</option>
+                    {% for chave, rotulo in formas_calculo %}<option value="{{ chave }}" {% if editar_calculo_beneficiario.tipo_calculo == chave %}selected{% endif %}>{{ rotulo }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="form-group"><label for="editar_valor_fixo">Valor fixo mensal individual</label><input id="editar_valor_fixo" name="valor_fixo_mensal" type="number" min="0.01" step="0.01" value="{{ editar_calculo_beneficiario.valor_fixo_mensal or '' }}"></div>
+        </div>
+        <p class="form-help">Use valor fixo somente quando a forma de cálculo for “Valor fixo mensal individual”.</p>
+        <button class="btn btn-primary" type="submit">Salvar cálculo</button>
+        <a class="btn btn-secondary" href="{{ url_for('pedido_tiquete.index', aba='cadastro_beneficiarios') }}">Cancelar</a>
+    </form>
+    <script>
+    (() => {
+        const forma = document.getElementById("editar_tipo_calculo");
+        const valor = document.getElementById("editar_valor_fixo");
+        const atualizar = () => {
+            const fixo = forma.value === "FIXO";
+            valor.disabled = !fixo;
+            valor.required = fixo;
+            if (!fixo) valor.value = "";
+        };
+        forma.addEventListener("change", atualizar);
+        atualizar();
+    })();
+    </script>
+    {% endif %}
     <style>
         .ticket-colaborador-busca { position: relative; }
         .ticket-colaborador-resultados {
@@ -150,6 +183,13 @@
                     {% for produto in produtos %}<option value="{{ produto }}">{{ produto }}</option>{% endfor %}
                 </select>
             </div>
+            <div class="form-group"><label for="cadastro_tipo_calculo">Forma de cálculo</label>
+                <select id="cadastro_tipo_calculo" name="tipo_calculo" required>
+                    <option value="">Selecione</option>
+                    {% for chave, rotulo in formas_calculo %}<option value="{{ chave }}">{{ rotulo }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="form-group"><label for="cadastro_valor_fixo_mensal">Valor fixo mensal individual</label><input id="cadastro_valor_fixo_mensal" name="valor_fixo_mensal" type="number" min="0.01" step="0.01" disabled></div>
         </div>
         <button class="btn btn-primary" type="submit">Cadastrar beneficiário</button>
     </form>
@@ -163,6 +203,8 @@
         const cpf = document.getElementById("cadastro_cpf");
         const nascimento = document.getElementById("cadastro_data_nascimento");
         const equipe = document.getElementById("cadastro_equipe");
+        const formaCalculo = document.getElementById("cadastro_tipo_calculo");
+        const valorFixo = document.getElementById("cadastro_valor_fixo_mensal");
         const opcoes = [...resultados.querySelectorAll(".ticket-colaborador-opcao")];
         const normalizar = (valor) => valor.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
@@ -245,6 +287,14 @@
             }
         });
         campo.addEventListener("input", () => campo.setCustomValidity(""));
+        const atualizarValorFixo = () => {
+            const fixo = formaCalculo.value === "FIXO";
+            valorFixo.disabled = !fixo;
+            valorFixo.required = fixo;
+            if (!fixo) valorFixo.value = "";
+        };
+        formaCalculo.addEventListener("change", atualizarValorFixo);
+        atualizarValorFixo();
 
         buscar();
     })();
@@ -260,7 +310,7 @@
             </select>
         </div>
         <div class="table-wrapper ticket-beneficiarios-lista" role="region" aria-label="Lista de beneficiários cadastrados" tabindex="0"><table>
-            <thead><tr><th>Colaborador</th><th>Matrícula Portal Tícket</th><th>CPF</th><th>Data de Nascimento</th><th>Benefício</th><th>Situação</th>{% if pode_editar %}<th>Ações</th>{% endif %}</tr></thead>
+            <thead><tr><th>Colaborador</th><th>Matrícula Portal Tícket</th><th>CPF</th><th>Data de Nascimento</th><th>Benefício</th><th>Forma de cálculo</th><th>Valor fixo mensal</th><th>Situação</th>{% if pode_editar %}<th>Ações</th>{% endif %}</tr></thead>
             <tbody>
             {% for cadastro in cadastros_beneficiarios %}
                 <tr class="ticket-beneficiarios-linha" data-beneficio="{{ cadastro.tipo_beneficio }}">
@@ -269,13 +319,15 @@
                     <td>{{ formatar_cpf(cadastro.colaborador.cpf) }}</td>
                     <td>{{ cadastro.colaborador.data_nascimento.strftime('%d/%m/%Y') if cadastro.colaborador.data_nascimento else 'Não informada' }}</td>
                     <td>{{ cadastro.tipo_beneficio }}</td>
+                    <td>{% if cadastro.tipo_calculo == 'DIARIA' %}Valor de diária{% elif cadastro.tipo_calculo == 'CESTA' %}Cesta básica{% elif cadastro.tipo_calculo == 'CESTA_DIARIA' %}Cesta + diária{% elif cadastro.tipo_calculo == 'FIXO' %}Fixo individual{% else %}Configuração pendente{% endif %}</td>
+                    <td>{% if cadastro.tipo_calculo == 'FIXO' and cadastro.valor_fixo_mensal %}R$ {{ '%.2f'|format(cadastro.valor_fixo_mensal) }}{% else %}—{% endif %}</td>
                     <td>{% if not cadastro.colaborador.ativo %}Colaborador inativo{% elif cadastro.ativo %}Ativo{% else %}Inativo{% endif %}</td>
-                    {% if pode_editar %}<td><form method="post" action="{{ url_for('pedido_tiquete.alternar_status_cadastro_beneficiario', cadastro_id=cadastro.id) }}"><button class="btn btn-secondary" type="submit">{{ 'Inativar' if cadastro.ativo else 'Reativar' }}</button></form></td>{% endif %}
+                    {% if pode_editar %}<td><a class="btn btn-secondary" href="{{ url_for('pedido_tiquete.index', aba='cadastro_beneficiarios', editar_calculo=cadastro.id) }}">Configurar cálculo</a><form method="post" action="{{ url_for('pedido_tiquete.alternar_status_cadastro_beneficiario', cadastro_id=cadastro.id) }}"><button class="btn btn-secondary" type="submit">{{ 'Inativar' if cadastro.ativo else 'Reativar' }}</button></form></td>{% endif %}
                 </tr>
             {% else %}
-                <tr><td colspan="{{ 7 if pode_editar else 6 }}">Nenhum beneficiário cadastrado.</td></tr>
+                <tr><td colspan="{{ 9 if pode_editar else 8 }}">Nenhum beneficiário cadastrado.</td></tr>
             {% endfor %}
-                <tr id="ticket-beneficiarios-sem-resultado" hidden><td colspan="{{ 7 if pode_editar else 6 }}">Nenhum colaborador cadastrado para este tipo de benefício.</td></tr>
+                <tr id="ticket-beneficiarios-sem-resultado" hidden><td colspan="{{ 9 if pode_editar else 8 }}">Nenhum colaborador cadastrado para este tipo de benefício.</td></tr>
             </tbody>
         </table></div>
         <script>
