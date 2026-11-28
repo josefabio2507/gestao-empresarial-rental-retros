@@ -311,8 +311,10 @@
         <h2 class="section-title">Localizar colaboradores</h2>
         <div class="form-grid">
             <div class="form-group"><label for="busca">Nome, matrícula ou CPF</label><input id="busca" name="busca" value="{{ busca_colaborador }}" maxlength="80"></div>
+            <div class="form-group"><label for="tipo_beneficio">Tipo de Benefício</label><select id="tipo_beneficio" name="tipo_beneficio"><option value="">Todos os tipos</option>{% for produto in produtos %}<option value="{{ produto }}" {% if tipo_beneficio_filtro == produto %}selected{% endif %}>{{ produto }}</option>{% endfor %}</select></div>
         </div>
-        <button class="btn btn-secondary" type="submit">Filtrar colaboradores</button>
+        <p class="form-help">A lista inclui somente colaboradores ativos com cadastro ativo de beneficiário. Para criar o pedido, selecione o tipo correspondente ao produto do contrato.</p>
+        <button class="btn btn-secondary" type="submit">Aplicar filtros</button>
     </form>
     <form id="form-novo-pedido" class="form-card" method="post" action="{{ url_for('pedido_tiquete.criar_pedido_rascunho') }}">
         {% if pedido_edicao %}<input type="hidden" name="pedido_id" value="{{ pedido_edicao.id }}">{% endif %}
@@ -321,7 +323,7 @@
             <div class="form-group"><label for="empresa_id">Pedido, empresa, contrato e produto</label><select id="empresa_id" name="empresa_id" required><option value="">Selecione</option>{% for empresa in empresas_para_pedido %}<option value="{{ empresa.id }}" data-cnpj="{{ empresa.cnpj }}" {% if pedido_edicao and empresa.numero_pedido == pedido_edicao.numero_pedido and loop.first %}selected{% endif %}>Pedido {{ empresa.numero_pedido }} — {{ empresa.nome_empresa }} — {{ empresa.numero_contrato }} / {{ empresa.produto }}</option>{% endfor %}</select></div>
             <div class="form-group"><label for="unidade_id">Unidade de entrega</label><select id="unidade_id" name="unidade_id" required><option value="">Selecione</option>{% for unidade in unidades_pedido %}<option value="{{ unidade.id }}" data-cnpj="{{ unidade.cnpj }}">{{ unidade.codigo_unidade }} — {{ unidade.nome_unidade }} — {{ unidade.cnpj }}</option>{% endfor %}</select></div>
         </div>
-        <p class="form-help">Nome, matrícula e CPF vêm do cadastro ativo. A equipe do colaborador será usada como departamento na planilha; informe nascimento e valor mensal de cada selecionado. Capacidade do modelo: {{ limite_beneficiarios }} colaboradores por pedido.</p>
+        <p class="form-help">Nome, matrícula e CPF vêm do Cadastro de Colaboradores; somente pessoas com cadastro ativo de beneficiário aparecem. A equipe será usada como departamento na planilha. Informe nascimento e valor mensal de cada selecionado. Capacidade do modelo: {{ limite_beneficiarios }} colaboradores por pedido.</p>
         <div class="table-wrapper"><table><thead><tr><th>Selecionar</th><th>Matrícula</th><th>Colaborador</th><th>CPF</th><th>Equipe</th><th>Nascimento</th><th>Valor mensal</th><th>Parcelas</th></tr></thead><tbody>
             {% for colaborador in colaboradores %}
             <tr class="{% if colaborador.id in colaboradores_no_pedido %}muted{% endif %}">
@@ -331,7 +333,7 @@
                 <td><input class="pedido-colaborador-input pedido-valor" data-obrigatorio="true" type="number" min="0" step="0.01" name="valor_mensal_{{ colaborador.id }}" aria-label="Valor mensal de {{ colaborador.nome }}" disabled></td>
                 <td><input class="pedido-colaborador-input" type="number" min="1" step="1" name="numero_parcelas_{{ colaborador.id }}" value="1" aria-label="Parcelas de {{ colaborador.nome }}" disabled></td>
             </tr>
-            {% else %}<tr><td colspan="8">Nenhum colaborador ativo encontrado. Use a busca ou confira o cadastro de colaboradores.</td></tr>{% endfor %}
+            {% else %}<tr><td colspan="8">Nenhum colaborador ativo com cadastro de beneficiário encontrado para os filtros aplicados.</td></tr>{% endfor %}
         </tbody></table></div>
         <p class="form-help">Selecionados: <strong id="pedido-qtd-selecionados">0</strong> · Total mensal: <strong id="pedido-valor-total">R$ 0,00</strong></p>
         <button class="btn btn-primary" type="submit">{% if pedido_edicao %}Salvar no rascunho{% else %}Criar rascunho{% endif %}</button>

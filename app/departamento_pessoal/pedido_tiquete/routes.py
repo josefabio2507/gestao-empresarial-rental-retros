@@ -97,14 +97,24 @@ def index():
     if aba not in abas:
         aba = "empresas"
     busca_colaborador = request.args.get("busca", "").strip()[:80]
+    tipo_beneficio_filtro = request.args.get("tipo_beneficio", "").strip().upper()
+    if tipo_beneficio_filtro not in PRODUTOS:
+        tipo_beneficio_filtro = ""
     colaboradores = []
     cadastros_beneficiarios = []
     if aba in {"novo_pedido", "cadastro_beneficiarios"}:
         if aba == "novo_pedido":
-            # Mantém para pedidos a regra atual de equipe ativa e o limite do lote.
+            # Pedidos só podem selecionar colaboradores com cadastro Ticket ativo.
+            cadastros_ativos = PedidoTicketCadastroBeneficiario.query.filter_by(ativo=True)
+            if tipo_beneficio_filtro:
+                cadastros_ativos = cadastros_ativos.filter_by(tipo_beneficio=tipo_beneficio_filtro)
+            colaboradores_com_beneficio = cadastros_ativos.with_entities(
+                PedidoTicketCadastroBeneficiario.colaborador_id
+            ).distinct()
             consulta_colaboradores = Colaborador.query.join(Equipe).filter(
                 Colaborador.ativo.is_(True),
                 Equipe.ativo.is_(True),
+                Colaborador.id.in_(colaboradores_com_beneficio),
             )
             limite_colaboradores = LIMITE_BENEFICIARIOS_PEDIDO
         else:
@@ -170,6 +180,7 @@ def index():
         cadastros_beneficiarios=cadastros_beneficiarios,
         formatar_cpf=formatar_cpf,
         busca_colaborador=busca_colaborador,
+        tipo_beneficio_filtro=tipo_beneficio_filtro,
         colaboradores_no_pedido=colaboradores_no_pedido,
         unidades_pedido=unidades_ativas,
         produtos=PRODUTOS,
@@ -647,6 +658,19 @@ def criar_pedido_rascunho():
         ).all()
         if len(colaboradores) != len(ids_recebidos):
             raise ValueError("Um ou mais colaboradores não estão ativos ou não existem mais no cadastro.")
+
+        cadastros_validos = {
+            colaborador_id for (colaborador_id,) in PedidoTicketCadastroBeneficiario.query.filter(
+                PedidoTicketCadastroBeneficiario.colaborador_id.in_(ids_recebidos),
+                PedidoTicketCadastroBeneficiario.tipo_beneficio == empresa.produto,
+                PedidoTicketCadastroBeneficiario.ativo.is_(True),
+            ).with_entities(PedidoTicketCadastroBeneficiario.colaborador_id).distinct().all()
+        }
+        if cadastros_validos != set(ids_recebidos):
+            raise ValueError(
+                f"Todos os colaboradores selecionados precisam ter cadastro ativo para o benefício {empresa.produto}."
+            )
+
         pedido_id = request.form.get("pedido_id", type=int)
         rascunho_existente = False
         if pedido_id:
