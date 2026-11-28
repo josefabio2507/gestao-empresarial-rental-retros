@@ -53,6 +53,7 @@ def upgrade():
         sa.column("nome_empresa", sa.String()),
         sa.column("numero_contrato", sa.String()),
         sa.column("produto", sa.String()),
+        sa.column("ativo", sa.Boolean()),
         sa.column("contrato_id", sa.Integer()),
     )
 
@@ -78,6 +79,7 @@ def upgrade():
             pedidos_empresa.c.nome_empresa,
             pedidos_empresa.c.numero_contrato,
             pedidos_empresa.c.produto,
+            pedidos_empresa.c.ativo,
         ).order_by(pedidos_empresa.c.id)
     )
     ids_por_identidade = {}
@@ -91,11 +93,17 @@ def upgrade():
                     nome_empresa=linha.nome_empresa,
                     numero_contrato=linha.numero_contrato,
                     produto=linha.produto,
-                    ativo=True,
+                    ativo=bool(linha.ativo),
                 )
             )
             contrato_id = result.inserted_primary_key[0]
             ids_por_identidade[identidade] = contrato_id
+        elif linha.ativo:
+            bind.execute(
+                contratos.update()
+                .where(contratos.c.id == contrato_id)
+                .values(ativo=True)
+            )
         bind.execute(
             pedidos_empresa.update()
             .where(pedidos_empresa.c.id == linha.id)
