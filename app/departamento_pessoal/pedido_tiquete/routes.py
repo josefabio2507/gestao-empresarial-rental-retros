@@ -738,17 +738,31 @@ def criar_pedido_rascunho():
         if len(colaboradores) != len(ids_recebidos):
             raise ValueError("Um ou mais colaboradores não estão ativos ou não existem mais no cadastro.")
 
-        cadastros_validos = {
-            colaborador_id for (colaborador_id,) in PedidoTicketCadastroBeneficiario.query.filter(
-                PedidoTicketCadastroBeneficiario.colaborador_id.in_(ids_recebidos),
-                PedidoTicketCadastroBeneficiario.tipo_beneficio == empresa.produto,
-                PedidoTicketCadastroBeneficiario.ativo.is_(True),
-            ).with_entities(PedidoTicketCadastroBeneficiario.colaborador_id).distinct().all()
-        }
-        if cadastros_validos != set(ids_recebidos):
+        registros_beneficio = PedidoTicketCadastroBeneficiario.query.filter(
+            PedidoTicketCadastroBeneficiario.colaborador_id.in_(ids_recebidos),
+            PedidoTicketCadastroBeneficiario.tipo_beneficio == empresa.produto,
+            PedidoTicketCadastroBeneficiario.ativo.is_(True),
+        ).all()
+        cadastro_por_colaborador = {item.colaborador_id: item for item in registros_beneficio}
+        if set(cadastro_por_colaborador) != set(ids_recebidos):
             raise ValueError(
                 f"Todos os colaboradores selecionados precisam ter cadastro ativo para o benefício {empresa.produto}."
             )
+
+        tabela_valor = None
+        if any(item.tipo_calculo in CALCULOS_COM_DIARIA or item.tipo_calculo in CALCULOS_COM_CESTA for item in registros_beneficio):
+            tabela_valor = PedidoTicketTabelaValor.query.filter_by(
+                cnpj=empresa.cnpj,
+                numero_contrato=empresa.numero_contrato,
+                tipo_beneficio=empresa.produto,
+                ativo=True,
+            ).filter(
+                PedidoTicketTabelaValor.data_inicio <= empresa.data_credito,
+                or_(
+                    PedidoTicketTabelaValor.data_fim.is_(None),
+                    PedidoTicketTabelaValor.data_fim >= empresa.data_credito,
+                ),
+            ).order_by(PedidoTicketTabelaValor.data_inicio.desc()).first()
 
         pedido_id = request.form.get("pedido_id", type=int)
         rascunho_existente = False
@@ -789,13 +803,52 @@ def criar_pedido_rascunho():
                 raise ValueError(f"Informe a data de nascimento de {nome}.")
             if nascimento > date.today():
                 raise ValueError(f"A data de nascimento de {nome} não pode estar no futuro.")
-            try:
-                valor = Decimal(request.form.get(f"valor_mensal_{colaborador.id}", "").replace(",", "."))
-                valor_centavos = valor.quantize(Decimal("0.01"))
-            except (InvalidOperation, AttributeError):
-                raise ValueError(f"Informe um valor mensal válido para {nome}.")
-            if valor < 0 or valor != valor_centavos or valor > Decimal("9999999999.99"):
-                raise ValueError(f"Confira o valor mensal informado para {nome}.")
+            cadastro_beneficio = cadastro_por_colaborador[colaborador.id]
+            tipo_calculo = cadastro_beneficio.tipo_calculo
+            if tipo_calculo not in FORMAS_CALCULO_IDS:
+                raise ValueError(f"Configure a forma de cálculo do benefício de {nome} no Cadastro de Beneficiários.")
+
+            usa_diaria = tipo_calculo in CALCULOS_COM_DIARIA
+            usa_cesta = tipo_calculo in CALCULOS_COM_CESTA
+            quantidade_diarias = 0
+            valor_diaria = Decimal("0.00")
+            valor_cesta = Decimal("0.00")
+            valor_fixo_aplicado = Decimal("0.00")
+            tabela_valor_id = None
+
+            if tipo_calculo == "FIXO":
+                valor_fixo_aplicado = cadastro_beneficio.valor_fixo_mensal or Decimal("0.00")
+                if valor_fixo_aplicado <= 0:
+                    raise ValueError(f"Informe o valor fixo mensal individual de {nome} no Cadastro de Beneficiários.")
+            else:
+                if not tabela_valor:
+                    raise ValueError(
+                        f"Não há tabela de diária/cesta vigente para o contrato e benefício selecionados."
+                    )
+                tabela_valor_id = tabela_valor.id
+                if usa_diaria:
+                    valor_diaria = tabela_valor.valor_diaria
+                    if valor_diaria <= 0:
+                        raise ValueError(f"Cadastre um valor de diária positivo para {nome}.")
+                    quantidade_texto = request.form.get(f"quantidade_diarias_{colaborador.id}", "").strip()
+                    if not quantidade_texto.isdigit():
+                        raise ValueError(f"Informe a quantidade de diárias de {nome}.")
+                    quantidade_diarias = int(quantidade_texto)
+                    if not 1 <= quantidade_diarias <= 31:
+                        raise ValueError(f"A quantidade de diárias de {nome} deve estar entre 1 e 31.")
+                if usa_cesta:
+                    valor_cesta = tabela_valor.valor_cesta
+                    if valor_cesta <= 0:
+                        raise ValueError(f"Cadastre um valor de cesta positivo para {nome}.")
+
+            valor_centavos = (
+                valor_diaria * quantidade_diarias
+                + valor_cesta
+                + valor_fixo_aplicado
+            ).quantize(Decimal("0.01"))
+            if valor_centavos <= 0 or valor_centavos > Decimal("9999999999.99"):
+                raise ValueError(f"O valor mensal calculado para {nome} precisa ser maior que zero e dentro do limite.")
+
             parcelas_texto = request.form.get(f"numero_parcelas_{colaborador.id}", "").strip()
             if parcelas_texto and not parcelas_texto.isdigit():
                 raise ValueError(f"Confira o número de parcelas de {nome}.")
@@ -813,6 +866,12 @@ def criar_pedido_rascunho():
                 "departamento": departamento,
                 "unidade_entrega": f"{unidade.codigo_unidade} - {unidade.nome_unidade}",
                 "valor_mensal": valor_centavos,
+                "tipo_calculo": tipo_calculo,
+                "quantidade_diarias": quantidade_diarias,
+                "valor_diaria": valor_diaria,
+                "valor_cesta": valor_cesta,
+                "valor_fixo_mensal_aplicado": valor_fixo_aplicado,
+                "tabela_valor_id": tabela_valor_id,
                 "contrato_produto": f"{empresa.numero_contrato} - {empresa.produto}",
                 "numero_parcelas": parcelas,
             })
