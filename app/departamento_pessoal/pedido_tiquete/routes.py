@@ -20,6 +20,7 @@ from app.models import (
     PedidoTicketBeneficiario,
     PedidoTicketCadastroBeneficiario,
     PedidoTicketEmpresa,
+    PedidoTicketContrato,
     PedidoTicketUnidadeEntrega,
     PedidoTicketTabelaValor,
 )
@@ -222,8 +223,11 @@ def index():
         empresas_ativas=PedidoTicketEmpresa.query.filter_by(ativo=True).order_by(PedidoTicketEmpresa.numero_pedido.desc(), PedidoTicketEmpresa.nome_empresa).limit(100).all(),
         empresas_para_pedido=empresas_para_pedido,
         editar_empresa=_get_por_parametro(PedidoTicketEmpresa, "editar_empresa"),
-        empresas_unidades=PedidoTicketEmpresa.query.order_by(PedidoTicketEmpresa.nome_empresa, PedidoTicketEmpresa.numero_contrato).limit(100).all(),
-        empresas_unidades_ativas=PedidoTicketEmpresa.query.filter_by(ativo=True).order_by(PedidoTicketEmpresa.nome_empresa, PedidoTicketEmpresa.numero_contrato).limit(100).all(),
+        contratos=PedidoTicketContrato.query.order_by(PedidoTicketContrato.nome_empresa, PedidoTicketContrato.numero_contrato, PedidoTicketContrato.produto).limit(200).all(),
+        contratos_ativos=PedidoTicketContrato.query.filter_by(ativo=True).order_by(PedidoTicketContrato.nome_empresa, PedidoTicketContrato.numero_contrato, PedidoTicketContrato.produto).limit(200).all(),
+        editar_contrato=_get_por_parametro(PedidoTicketContrato, "editar_contrato"),
+        empresas_unidades=PedidoTicketContrato.query.order_by(PedidoTicketContrato.nome_empresa, PedidoTicketContrato.numero_contrato).limit(100).all(),
+        empresas_unidades_ativas=PedidoTicketContrato.query.filter_by(ativo=True).order_by(PedidoTicketContrato.nome_empresa, PedidoTicketContrato.numero_contrato).limit(100).all(),
         unidades=PedidoTicketUnidadeEntrega.query.order_by(PedidoTicketUnidadeEntrega.nome_unidade).limit(100).all(),
         unidades_ativas=unidades_ativas,
         editar_unidade=_get_por_parametro(PedidoTicketUnidadeEntrega, "editar_unidade"),
@@ -244,14 +248,14 @@ def index():
         calculo_beneficiario_por_colaborador=calculo_beneficiario_por_colaborador,
         valores_por_empresa_pedido=valores_por_empresa_pedido,
         contratos_para_valores=db.session.query(
-            PedidoTicketEmpresa.cnpj,
-            PedidoTicketEmpresa.nome_empresa,
-            PedidoTicketEmpresa.numero_contrato,
-            PedidoTicketEmpresa.produto,
-        ).filter_by(ativo=True).distinct().order_by(
-            PedidoTicketEmpresa.nome_empresa,
-            PedidoTicketEmpresa.numero_contrato,
-            PedidoTicketEmpresa.produto,
+            PedidoTicketContrato.cnpj,
+            PedidoTicketContrato.nome_empresa,
+            PedidoTicketContrato.numero_contrato,
+            PedidoTicketContrato.produto,
+        ).filter(PedidoTicketContrato.ativo.is_(True)).order_by(
+            PedidoTicketContrato.nome_empresa,
+            PedidoTicketContrato.numero_contrato,
+            PedidoTicketContrato.produto,
         ).all() if aba == "valores" else [],
         tabelas_valores=PedidoTicketTabelaValor.query.order_by(
             PedidoTicketTabelaValor.cnpj,
@@ -473,102 +477,155 @@ def enviar_pedido_ticket(pedido_id):
             caminho.unlink(missing_ok=True)
 
 
-def _proximo_numero_pedido(empresa):
-    existentes = PedidoTicketEmpresa.query.filter(
-        PedidoTicketEmpresa.id != empresa.id
-    ).with_entities(
-        PedidoTicketEmpresa.id,
-        PedidoTicketEmpresa.numero_pedido,
-    ).all()
-    numeros = [
-        int(numero) for _, numero in existentes
+def _proximo_numero_pedido():
+    numeros_empresa = PedidoTicketEmpresa.query.with_entities(PedidoTicketEmpresa.numero_pedido).all()
+    numeros_pedido = PedidoTicketPedido.query.with_entities(PedidoTicketPedido.numero_pedido).all()
+    existentes = [
+        int(numero) for (numero,) in numeros_empresa + numeros_pedido
         if str(numero).isdigit()
     ]
-    maior_numero = max(numeros, default=0)
-    maior_id = max((registro_id for registro_id, _ in existentes), default=0)
-    deslocamento = max(maior_numero - maior_id, 0)
-    proximo = deslocamento + empresa.id
+    proximo = max(existentes, default=0) + 1
     if proximo > 9_999_999_999:
         raise ValueError("O limite de numeração de pedidos foi atingido.")
     return f"{proximo:010d}"
 
 
-def _dados_empresa_form(empresa=None):
-    numero_pedido = empresa.numero_pedido if empresa else None
+def _dados_contrato_form(contrato=None):
     cnpj = request.form.get("cnpj", "").strip().upper()
     nome = request.form.get("nome_empresa", "").strip()
-    contrato = _digitos(request.form.get("numero_contrato", ""))
+    numero_contrato = _digitos(request.form.get("numero_contrato", ""))
     produto = request.form.get("produto", "").strip().upper()
-    data_credito = _data_form("data_credito")
 
     if not (1 <= len(cnpj) <= 14 and cnpj.isalnum()):
         raise ValueError("Confira o CNPJ/CPF da empresa.")
-    if not nome or len(nome) > 26 or not (1 <= len(contrato) <= 10) or produto not in PRODUTOS:
+    if not nome or len(nome) > 26 or not (1 <= len(numero_contrato) <= 10) or produto not in PRODUTOS:
         raise ValueError("Confira o nome, o contrato e o produto da empresa.")
 
-    duplicado = PedidoTicketEmpresa.query.filter_by(
-        cnpj=cnpj, numero_contrato=contrato, produto=produto, data_credito=data_credito
+    duplicado = PedidoTicketContrato.query.filter_by(
+        cnpj=cnpj, numero_contrato=numero_contrato, produto=produto
     )
-    if empresa:
-        duplicado = duplicado.filter(PedidoTicketEmpresa.id != empresa.id)
-    if duplicado.first():
-        raise ValueError("Esse contrato e produto já foram cadastrados para a mesma data de crédito.")
-
-    if empresa:
-        chave_antiga = f"{empresa.numero_contrato} - {empresa.produto}"
+    if contrato:
+        duplicado = duplicado.filter(PedidoTicketContrato.id != contrato.id)
         identidade_mudou = (
-            numero_pedido != empresa.numero_pedido
-            or contrato != empresa.numero_contrato
-            or produto != empresa.produto
+            cnpj != contrato.cnpj
+            or numero_contrato != contrato.numero_contrato
+            or produto != contrato.produto
         )
-        if identidade_mudou and PedidoTicketBeneficiario.query.filter_by(
-            numero_pedido=empresa.numero_pedido, contrato_produto=chave_antiga
-        ).first():
-            raise ValueError("Não altere o pedido, contrato ou produto: já há beneficiários vinculados.")
-        if cnpj != empresa.cnpj and PedidoTicketUnidadeEntrega.query.filter_by(cnpj=empresa.cnpj).first():
+        if identidade_mudou and PedidoTicketEmpresa.query.filter_by(contrato_id=contrato.id).first():
+            raise ValueError("Este contrato já possui pedidos vinculados. Cadastre um novo contrato para preservar o histórico.")
+        if cnpj != contrato.cnpj and PedidoTicketUnidadeEntrega.query.filter_by(cnpj=contrato.cnpj).first():
             raise ValueError("Não altere o CNPJ enquanto houver unidades vinculadas a ele.")
+    if duplicado.first():
+        raise ValueError("Este contrato e produto já estão cadastrados para esta empresa.")
 
-    if not empresa or data_credito != empresa.data_credito:
-        outros = PedidoTicketEmpresa.query.filter_by(numero_pedido=numero_pedido)
-        if empresa:
-            outros = outros.filter(PedidoTicketEmpresa.id != empresa.id)
-        prazo_dias = 7 if outros.count() == 0 else 3
-        if data_credito < _somar_dias_uteis(date.today(), prazo_dias):
-            raise ValueError(f"A data de crédito deve respeitar o prazo mínimo de {prazo_dias} dias úteis.")
-
-    dados = {
+    return {
         "cnpj": cnpj,
         "nome_empresa": nome,
-        "numero_contrato": contrato,
+        "numero_contrato": numero_contrato,
         "produto": produto,
-        "data_credito": data_credito,
-        "ativo": True if empresa is None else request.form.get("ativo") == "on",
     }
-    if empresa:
-        dados["numero_pedido"] = empresa.numero_pedido
-    return dados
+
+
+@pedido_tiquete_bp.route("/contratos", methods=["POST"])
+@module_permission_required("departamento_pessoal", "pedido_tiquete", "criar")
+def criar_contrato():
+    _exigir_feature_ativa()
+    try:
+        db.session.add(PedidoTicketContrato(**_dados_contrato_form()))
+        db.session.commit()
+        flash("Contrato permanente cadastrado. Ele poderá ser reutilizado em novos pedidos.", "success")
+    except (ValueError, TypeError) as erro:
+        db.session.rollback()
+        flash(str(erro) or "Confira os dados do contrato.", "danger")
+    except IntegrityError:
+        db.session.rollback()
+        flash("Este contrato e produto já estão cadastrados para esta empresa.", "warning")
+    return redirect(url_for("pedido_tiquete.index", aba="empresas"))
+
+
+@pedido_tiquete_bp.route("/contratos/<int:contrato_id>/editar", methods=["GET", "POST"])
+@module_permission_required("departamento_pessoal", "pedido_tiquete", "editar")
+def editar_contrato(contrato_id):
+    _exigir_feature_ativa()
+    contrato = db.session.get(PedidoTicketContrato, contrato_id)
+    if not contrato:
+        abort(404)
+    if request.method == "GET":
+        return redirect(url_for("pedido_tiquete.index", aba="empresas", editar_contrato=contrato.id))
+    try:
+        for campo, valor in _dados_contrato_form(contrato).items():
+            setattr(contrato, campo, valor)
+        db.session.commit()
+        flash("Cadastro permanente do contrato atualizado.", "success")
+    except (ValueError, TypeError) as erro:
+        db.session.rollback()
+        flash(str(erro) or "Confira os dados do contrato.", "danger")
+    except IntegrityError:
+        db.session.rollback()
+        flash("Este contrato e produto já estão cadastrados para esta empresa.", "warning")
+    return redirect(url_for("pedido_tiquete.index", aba="empresas"))
+
+
+@pedido_tiquete_bp.route("/contratos/<int:contrato_id>/status", methods=["POST"])
+@module_permission_required("departamento_pessoal", "pedido_tiquete", "editar")
+def alternar_status_contrato(contrato_id):
+    _exigir_feature_ativa()
+    contrato = db.session.get(PedidoTicketContrato, contrato_id)
+    if not contrato:
+        abort(404)
+    contrato.ativo = not contrato.ativo
+    db.session.commit()
+    flash("Contrato permanente ativado." if contrato.ativo else "Contrato permanente inativado.", "success")
+    return redirect(url_for("pedido_tiquete.index", aba="empresas"))
 
 
 @pedido_tiquete_bp.route("/empresas", methods=["POST"])
 @module_permission_required("departamento_pessoal", "pedido_tiquete", "criar")
 def criar_empresa():
+    """Cria um pedido associado a um contrato permanente já cadastrado."""
     _exigir_feature_ativa()
     try:
-        empresa = PedidoTicketEmpresa(numero_pedido="", **_dados_empresa_form())
+        contrato_id = request.form.get("contrato_id", type=int)
+        contrato = db.session.get(PedidoTicketContrato, contrato_id) if contrato_id else None
+        if not contrato or not contrato.ativo:
+            raise ValueError("Selecione um contrato permanente ativo.")
+        data_credito = _data_form("data_credito")
+        duplicado = PedidoTicketEmpresa.query.filter_by(
+            contrato_id=contrato.id, data_credito=data_credito
+        ).first()
+        if duplicado:
+            raise ValueError("Este contrato já possui um pedido para essa data de crédito.")
+
+        prazo_dias = 7 if PedidoTicketEmpresa.query.count() == 0 else 3
+        if data_credito < _somar_dias_uteis(date.today(), prazo_dias):
+            raise ValueError(f"A data de crédito deve respeitar o prazo mínimo de {prazo_dias} dias úteis.")
+
+        empresa = PedidoTicketEmpresa(
+            contrato_id=contrato.id,
+            numero_pedido=_proximo_numero_pedido(),
+            cnpj=contrato.cnpj,
+            nome_empresa=contrato.nome_empresa,
+            numero_contrato=contrato.numero_contrato,
+            produto=contrato.produto,
+            data_credito=data_credito,
+            ativo=True,
+        )
         db.session.add(empresa)
-        db.session.flush()
-        empresa.numero_pedido = _proximo_numero_pedido(empresa)
         db.session.commit()
-        flash("Empresa/contrato cadastrado com sucesso.", "success")
-    except (ValueError, TypeError):
+        flash(f"Pedido {empresa.numero_pedido} criado para o contrato. Agora inclua os beneficiários na aba Novo pedido.", "success")
+    except (ValueError, TypeError) as erro:
         db.session.rollback()
-        flash("Não foi possível cadastrar. Confira os campos, a unicidade e o prazo da data de crédito.", "danger")
+        flash(str(erro) or "Confira o contrato e a data de crédito.", "danger")
+    except IntegrityError:
+        db.session.rollback()
+        flash("Já existe um pedido para este contrato e data de crédito.", "warning")
     return redirect(url_for("pedido_tiquete.index", aba="empresas"))
 
 
 @pedido_tiquete_bp.route("/empresas/<int:empresa_id>/editar", methods=["GET", "POST"])
 @module_permission_required("departamento_pessoal", "pedido_tiquete", "editar")
 def editar_empresa(empresa_id):
+    """Edita a data de crédito/situação de um pedido, preservando o contrato."""
     _exigir_feature_ativa()
     empresa = db.session.get(PedidoTicketEmpresa, empresa_id)
     if not empresa:
@@ -576,13 +633,24 @@ def editar_empresa(empresa_id):
     if request.method == "GET":
         return redirect(url_for("pedido_tiquete.index", aba="empresas", editar_empresa=empresa.id))
     try:
-        for campo, valor in _dados_empresa_form(empresa).items():
-            setattr(empresa, campo, valor)
+        data_credito = _data_form("data_credito")
+        beneficiarios_vinculados = PedidoTicketBeneficiario.query.filter_by(
+            numero_pedido=empresa.numero_pedido
+        ).first()
+        if data_credito != empresa.data_credito and beneficiarios_vinculados:
+            raise ValueError("A data de crédito não pode ser alterada após incluir beneficiários no pedido.")
+        if data_credito != empresa.data_credito:
+            outros_pedidos = PedidoTicketEmpresa.query.filter(PedidoTicketEmpresa.id != empresa.id).count()
+            prazo_dias = 7 if outros_pedidos == 0 else 3
+            if data_credito < _somar_dias_uteis(date.today(), prazo_dias):
+                raise ValueError(f"A data de crédito deve respeitar o prazo mínimo de {prazo_dias} dias úteis.")
+        empresa.data_credito = data_credito
+        empresa.ativo = request.form.get("ativo") == "on"
         db.session.commit()
-        flash("Empresa/contrato atualizado com sucesso.", "success")
-    except (ValueError, TypeError):
+        flash("Pedido atualizado; o contrato permanente foi mantido.", "success")
+    except (ValueError, TypeError) as erro:
         db.session.rollback()
-        flash("Não foi possível atualizar. Confira os campos, os vínculos e a unicidade do contrato.", "danger")
+        flash(str(erro) or "Confira a data de crédito.", "danger")
     return redirect(url_for("pedido_tiquete.index", aba="empresas"))
 
 
@@ -595,12 +663,13 @@ def alternar_status_empresa(empresa_id):
         abort(404)
     empresa.ativo = not empresa.ativo
     db.session.commit()
-    flash("Empresa/contrato ativado." if empresa.ativo else "Empresa/contrato desativado.", "success")
+    flash("Pedido ativado." if empresa.ativo else "Pedido inativado.", "success")
     return redirect(url_for("pedido_tiquete.index", aba="empresas"))
+
 
 def _dados_unidade_form(unidade=None):
     empresa_id = request.form.get("empresa_id", type=int)
-    empresa = db.session.get(PedidoTicketEmpresa, empresa_id) if empresa_id else None
+    empresa = db.session.get(PedidoTicketContrato, empresa_id) if empresa_id else None
     dados = {campo: request.form.get(campo, "").strip() for campo in (
         "codigo_unidade", "nome_unidade", "tipo_logradouro", "logradouro", "numero",
         "complemento", "bairro", "estado", "cidade", "cep", "interlocutor", "cpf_interlocutor",
@@ -1027,7 +1096,7 @@ def criar_tabela_valor():
         cnpj, numero_contrato, tipo_beneficio = partes
         if tipo_beneficio not in PRODUTOS:
             raise ValueError("Selecione um tipo de benefício válido.")
-        contrato = PedidoTicketEmpresa.query.filter_by(
+        contrato = PedidoTicketContrato.query.filter_by(
             cnpj=cnpj,
             numero_contrato=numero_contrato,
             produto=tipo_beneficio,

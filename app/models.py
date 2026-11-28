@@ -4369,10 +4369,36 @@ class PedidoTicketPedido(db.Model):
     atualizado_em = db.Column(db.DateTime, default=agora_brasil, onupdate=agora_brasil, nullable=False)
 
 
+class PedidoTicketContrato(db.Model):
+    __tablename__ = "dp_pedido_ticket_contratos"
+
+    id = db.Column(db.Integer, primary_key=True)
+    cnpj = db.Column(db.String(14), nullable=False, index=True)
+    nome_empresa = db.Column(db.String(26), nullable=False)
+    numero_contrato = db.Column(db.String(10), nullable=False)
+    produto = db.Column(db.String(3), nullable=False)
+    ativo = db.Column(db.Boolean, default=True, nullable=False)
+    criado_em = db.Column(db.DateTime, default=agora_brasil, nullable=False)
+    atualizado_em = db.Column(db.DateTime, default=agora_brasil, onupdate=agora_brasil, nullable=False)
+
+    __table_args__ = (
+        db.CheckConstraint(
+            "produto in ('TAE', 'TRE', 'TKE', 'TFE')",
+            name="ck_dp_ticket_contrato_produto",
+        ),
+        db.UniqueConstraint(
+            "cnpj", "numero_contrato", "produto",
+            name="uq_dp_ticket_contrato_identidade",
+        ),
+    )
+
+
 class PedidoTicketEmpresa(db.Model):
     __tablename__ = "dp_pedido_ticket_empresas"
 
     id = db.Column(db.Integer, primary_key=True)
+    contrato_id = db.Column(db.Integer, db.ForeignKey("dp_pedido_ticket_contratos.id", ondelete="RESTRICT"), nullable=True, index=True)
+    contrato = db.relationship("PedidoTicketContrato")
     numero_pedido = db.Column(db.String(10), nullable=False, index=True)
     cnpj = db.Column(db.String(14), nullable=False, index=True)
     nome_empresa = db.Column(db.String(26), nullable=False)
