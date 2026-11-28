@@ -1001,6 +1001,19 @@ def atualizar_calculo_cadastro_beneficiario(cadastro_id):
     return redirect(url_for("pedido_tiquete.index", aba="cadastro_beneficiarios"))
 
 
+@pedido_tiquete_bp.route("/cadastro-beneficiarios/<int:cadastro_id>/status", methods=["POST"])
+@module_permission_required("departamento_pessoal", "pedido_tiquete", "editar")
+def alternar_status_cadastro_beneficiario(cadastro_id):
+    _exigir_feature_ativa()
+    cadastro = db.session.get(PedidoTicketCadastroBeneficiario, cadastro_id)
+    if not cadastro:
+        abort(404)
+    cadastro.ativo = not cadastro.ativo
+    db.session.commit()
+    flash("Cadastro de benefício ativado." if cadastro.ativo else "Cadastro de benefício inativado.", "success")
+    return redirect(url_for("pedido_tiquete.index", aba="cadastro_beneficiarios"))
+
+
 @pedido_tiquete_bp.route("/valores", methods=["POST"])
 @module_permission_required("departamento_pessoal", "pedido_tiquete", "criar")
 def criar_tabela_valor():
