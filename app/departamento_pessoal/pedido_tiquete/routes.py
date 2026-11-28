@@ -868,6 +868,7 @@ def criar_cadastro_beneficiario():
     _exigir_feature_ativa()
     colaborador_id = request.form.get("colaborador_id", type=int)
     tipo_beneficio = request.form.get("tipo_beneficio", "").strip().upper()
+    tipo_calculo = request.form.get("tipo_calculo", "").strip().upper()
     colaborador = db.session.get(Colaborador, colaborador_id) if colaborador_id else None
     if not colaborador or not colaborador.ativo:
         flash("Selecione um colaborador ativo do Cadastro de Colaboradores.", "danger")
@@ -875,6 +876,19 @@ def criar_cadastro_beneficiario():
     if tipo_beneficio not in PRODUTOS:
         flash("Selecione um tipo de benefício válido.", "danger")
         return redirect(url_for("pedido_tiquete.index", aba="cadastro_beneficiarios"))
+    if tipo_calculo not in FORMAS_CALCULO_IDS:
+        flash("Selecione a forma de cálculo do benefício.", "danger")
+        return redirect(url_for("pedido_tiquete.index", aba="cadastro_beneficiarios"))
+
+    valor_fixo = None
+    if tipo_calculo == "FIXO":
+        try:
+            valor_fixo = _valor_monetario_form("valor_fixo_mensal", "valor fixo mensal")
+            if valor_fixo <= 0:
+                raise ValueError("O valor fixo mensal individual precisa ser maior que zero.")
+        except ValueError as erro:
+            flash(str(erro), "danger")
+            return redirect(url_for("pedido_tiquete.index", aba="cadastro_beneficiarios"))
 
     cadastro = PedidoTicketCadastroBeneficiario.query.filter_by(
         colaborador_id=colaborador.id,
@@ -884,27 +898,150 @@ def criar_cadastro_beneficiario():
         flash("Este colaborador já possui cadastro para esse benefício. Reative o existente se estiver inativo.", "warning")
         return redirect(url_for("pedido_tiquete.index", aba="cadastro_beneficiarios"))
 
-    db.session.add(PedidoTicketCadastroBeneficiario(colaborador_id=colaborador.id, tipo_beneficio=tipo_beneficio))
+    db.session.add(PedidoTicketCadastroBeneficiario(
+        colaborador_id=colaborador.id,
+        tipo_beneficio=tipo_beneficio,
+        tipo_calculo=tipo_calculo,
+        valor_fixo_mensal=valor_fixo,
+    ))
     try:
         db.session.commit()
-        flash("Beneficiário cadastrado com sucesso.", "success")
+        flash("Beneficiário cadastrado com a forma de cálculo.", "success")
     except IntegrityError:
         db.session.rollback()
         flash("O cadastro já existe. Atualize a página e confira a lista.", "warning")
     return redirect(url_for("pedido_tiquete.index", aba="cadastro_beneficiarios"))
 
 
-@pedido_tiquete_bp.route("/cadastro-beneficiarios/<int:cadastro_id>/status", methods=["POST"])
+@pedido_tiquete_bp.route("/cadastro-beneficiarios/<int:cadastro_id>/calculo", methods=["POST"])
 @module_permission_required("departamento_pessoal", "pedido_tiquete", "editar")
-def alternar_status_cadastro_beneficiario(cadastro_id):
+def atualizar_calculo_cadastro_beneficiario(cadastro_id):
     _exigir_feature_ativa()
     cadastro = db.session.get(PedidoTicketCadastroBeneficiario, cadastro_id)
     if not cadastro:
         abort(404)
-    cadastro.ativo = not cadastro.ativo
+    tipo_calculo = request.form.get("tipo_calculo", "").strip().upper()
+    if tipo_calculo not in FORMAS_CALCULO_IDS:
+        flash("Selecione uma forma de cálculo válida.", "danger")
+        return redirect(url_for("pedido_tiquete.index", aba="cadastro_beneficiarios"))
+
+    valor_fixo = None
+    if tipo_calculo == "FIXO":
+        try:
+            valor_fixo = _valor_monetario_form("valor_fixo_mensal", "valor fixo mensal")
+            if valor_fixo <= 0:
+                raise ValueError("O valor fixo mensal individual precisa ser maior que zero.")
+        except ValueError as erro:
+            flash(str(erro), "danger")
+            return redirect(url_for("pedido_tiquete.index", aba="cadastro_beneficiarios"))
+
+    cadastro.tipo_calculo = tipo_calculo
+    cadastro.valor_fixo_mensal = valor_fixo
     db.session.commit()
-    flash("Cadastro de benefício ativado." if cadastro.ativo else "Cadastro de benefício inativado.", "success")
+    flash("Forma de cálculo do beneficiário atualizada.", "success")
     return redirect(url_for("pedido_tiquete.index", aba="cadastro_beneficiarios"))
+
+
+@pedido_tiquete_bp.route("/valores", methods=["POST"])
+@module_permission_required("departamento_pessoal", "pedido_tiquete", "criar")
+def criar_tabela_valor():
+    _exigir_feature_ativa()
+    try:
+        chave = request.form.get("contrato_produto", "")
+        partes = chave.split("|")
+        if len(partes) != 3:
+            raise ValueError("Selecione um contrato e produto válidos.")
+        cnpj, numero_contrato, tipo_beneficio = partes
+        if tipo_beneficio not in PRODUTOS:
+            raise ValueError("Selecione um tipo de benefício válido.")
+        contrato = PedidoTicketEmpresa.query.filter_by(
+            cnpj=cnpj,
+            numero_contrato=numero_contrato,
+            produto=tipo_beneficio,
+            ativo=True,
+        ).first()
+        if not contrato:
+            raise ValueError("O contrato selecionado não está ativo.")
+
+        data_inicio = date.fromisoformat(request.form.get("data_inicio", ""))
+        fim_texto = request.form.get("data_fim", "").strip()
+        data_fim = date.fromisoformat(fim_texto) if fim_texto else None
+        if data_fim and data_fim < data_inicio:
+            raise ValueError("A data final da vigência não pode ser anterior à data inicial.")
+        valor_diaria = _valor_monetario_form("valor_diaria", "valor da diária")
+        valor_cesta = _valor_monetario_form("valor_cesta", "valor da cesta")
+        if valor_diaria == 0 and valor_cesta == 0:
+            raise ValueError("Informe ao menos um valor positivo: diária ou cesta.")
+
+        fim_intervalo = data_fim or date.max
+        sobreposicoes = PedidoTicketTabelaValor.query.filter_by(
+            cnpj=cnpj,
+            numero_contrato=numero_contrato,
+            tipo_beneficio=tipo_beneficio,
+            ativo=True,
+        ).filter(
+            PedidoTicketTabelaValor.data_inicio <= fim_intervalo,
+            or_(
+                PedidoTicketTabelaValor.data_fim.is_(None),
+                PedidoTicketTabelaValor.data_fim >= data_inicio,
+            ),
+        ).all()
+        for tabela_existente in sobreposicoes:
+            if tabela_existente.data_inicio >= data_inicio:
+                raise ValueError("A vigência se sobrepõe a um valor já cadastrado. Confira as datas ou inative a tabela anterior.")
+            if tabela_existente.data_fim is None:
+                tabela_existente.data_fim = data_inicio - timedelta(days=1)
+            else:
+                raise ValueError("A vigência se sobrepõe a um valor já cadastrado. Confira as datas da tabela anterior.")
+
+        db.session.add(PedidoTicketTabelaValor(
+            cnpj=cnpj,
+            numero_contrato=numero_contrato,
+            tipo_beneficio=tipo_beneficio,
+            data_inicio=data_inicio,
+            data_fim=data_fim,
+            valor_diaria=valor_diaria,
+            valor_cesta=valor_cesta,
+            criado_por_usuario_id=current_user.id,
+        ))
+        db.session.commit()
+        flash("Tabela de valores cadastrada com vigência.", "success")
+    except (ValueError, TypeError, InvalidOperation) as erro:
+        db.session.rollback()
+        flash(str(erro) or "Confira os valores e o período informado.", "danger")
+    except IntegrityError:
+        db.session.rollback()
+        flash("Já existe uma tabela com estes dados e data inicial.", "warning")
+    return redirect(url_for("pedido_tiquete.index", aba="valores"))
+
+
+@pedido_tiquete_bp.route("/valores/<int:tabela_id>/status", methods=["POST"])
+@module_permission_required("departamento_pessoal", "pedido_tiquete", "editar")
+def alternar_status_tabela_valor(tabela_id):
+    _exigir_feature_ativa()
+    tabela = db.session.get(PedidoTicketTabelaValor, tabela_id)
+    if not tabela:
+        abort(404)
+    if not tabela.ativo:
+        sobreposicao = PedidoTicketTabelaValor.query.filter(
+            PedidoTicketTabelaValor.id != tabela.id,
+            PedidoTicketTabelaValor.cnpj == tabela.cnpj,
+            PedidoTicketTabelaValor.numero_contrato == tabela.numero_contrato,
+            PedidoTicketTabelaValor.tipo_beneficio == tabela.tipo_beneficio,
+            PedidoTicketTabelaValor.ativo.is_(True),
+            PedidoTicketTabelaValor.data_inicio <= (tabela.data_fim or date.max),
+            or_(
+                PedidoTicketTabelaValor.data_fim.is_(None),
+                PedidoTicketTabelaValor.data_fim >= tabela.data_inicio,
+            ),
+        ).first()
+        if sobreposicao:
+            flash("Não é possível ativar: existe outra tabela ativa com vigência sobreposta.", "warning")
+            return redirect(url_for("pedido_tiquete.index", aba="valores"))
+    tabela.ativo = not tabela.ativo
+    db.session.commit()
+    flash("Tabela de valores ativada." if tabela.ativo else "Tabela de valores inativada.", "success")
+    return redirect(url_for("pedido_tiquete.index", aba="valores"))
 
 
 @pedido_tiquete_bp.route("/beneficiarios", methods=["POST"])
