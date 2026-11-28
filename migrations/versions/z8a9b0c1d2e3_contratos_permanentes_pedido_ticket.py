@@ -39,7 +39,7 @@ def upgrade():
 
     contratos = sa.table(
         "dp_pedido_ticket_contratos",
-        sa.column("id", sa.Integer(), primary_key=True),
+        sa.column("id", sa.Integer()),
         sa.column("cnpj", sa.String()),
         sa.column("nome_empresa", sa.String()),
         sa.column("numero_contrato", sa.String()),
@@ -88,15 +88,17 @@ def upgrade():
         contrato_id = ids_por_identidade.get(identidade)
         if contrato_id is None:
             result = bind.execute(
-                contratos.insert().values(
+                contratos.insert()
+                .values(
                     cnpj=linha.cnpj,
                     nome_empresa=linha.nome_empresa,
                     numero_contrato=linha.numero_contrato,
                     produto=linha.produto,
                     ativo=bool(linha.ativo),
                 )
+                .returning(contratos.c.id)
             )
-            contrato_id = result.inserted_primary_key[0]
+            contrato_id = result.scalar_one()
             ids_por_identidade[identidade] = contrato_id
         elif linha.ativo:
             bind.execute(
