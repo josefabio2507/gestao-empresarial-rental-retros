@@ -83,7 +83,7 @@ def gerar_planilha_pedido(modelo: Path, numero_pedido, empresas, unidades, benef
         if not empresa or not unidade:
             raise ValueError("Um beneficiário está sem vínculo válido de contrato ou unidade.")
         values = (
-            item.matricula,
+            item.cpf,  # No Portal Tícket, a matrícula deve ser o CPF sem pontuação.
             item.cpf,
             item.nome,
             item.data_nascimento,
