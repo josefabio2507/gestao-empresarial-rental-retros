@@ -252,7 +252,7 @@ def index():
             PedidoTicketContrato.nome_empresa,
             PedidoTicketContrato.numero_contrato,
             PedidoTicketContrato.produto,
-        ).filter_by(ativo=True).order_by(
+        ).filter(PedidoTicketContrato.ativo.is_(True)).order_by(
             PedidoTicketContrato.nome_empresa,
             PedidoTicketContrato.numero_contrato,
             PedidoTicketContrato.produto,
