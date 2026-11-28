@@ -363,39 +363,47 @@
         <h2 class="section-title">Localizar colaboradores</h2>
         <div class="form-grid">
             <div class="form-group"><label for="busca">Nome, matrícula ou CPF</label><input id="busca" name="busca" value="{{ busca_colaborador }}" maxlength="80"></div>
-            <div class="form-group"><label for="tipo_beneficio">Tipo de Benefício</label><select id="tipo_beneficio" name="tipo_beneficio"><option value="">Todos os tipos</option>{% for produto in produtos %}<option value="{{ produto }}" {% if tipo_beneficio_filtro == produto %}selected{% endif %}>{{ produto }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="tipo_beneficio">Tipo de Benefício</label><select id="tipo_beneficio" name="tipo_beneficio" required><option value="" disabled {% if not tipo_beneficio_filtro %}selected{% endif %}>Selecione o tipo</option>{% for produto in produtos %}<option value="{{ produto }}" {% if tipo_beneficio_filtro == produto %}selected{% endif %}>{{ produto }}</option>{% endfor %}</select></div>
         </div>
-        <p class="form-help">A lista inclui somente colaboradores ativos com cadastro ativo de beneficiário. Para criar o pedido, selecione o tipo correspondente ao produto do contrato.</p>
+        <p class="form-help">Escolha o benefício para listar somente colaboradores ativos com cadastro ativo desse tipo. O tipo deve corresponder ao produto do contrato.</p>
         <button class="btn btn-secondary" type="submit">Aplicar filtros</button>
     </form>
     <form id="form-novo-pedido" class="form-card" method="post" action="{{ url_for('pedido_tiquete.criar_pedido_rascunho') }}">
         {% if pedido_edicao %}<input type="hidden" name="pedido_id" value="{{ pedido_edicao.id }}">{% endif %}
         <h2 class="section-title">{% if pedido_edicao %}Adicionar colaboradores ao rascunho{% else %}Criar rascunho de pedido{% endif %}</h2>
         <div class="form-grid">
-            <div class="form-group"><label for="empresa_id">Pedido, empresa, contrato e produto</label><select id="empresa_id" name="empresa_id" required><option value="">Selecione</option>{% for empresa in empresas_para_pedido %}<option value="{{ empresa.id }}" data-cnpj="{{ empresa.cnpj }}" {% if pedido_edicao and empresa.numero_pedido == pedido_edicao.numero_pedido and loop.first %}selected{% endif %}>Pedido {{ empresa.numero_pedido }} — {{ empresa.nome_empresa }} — {{ empresa.numero_contrato }} / {{ empresa.produto }}</option>{% endfor %}</select></div>
+            <div class="form-group"><label for="empresa_id">Pedido, empresa, contrato e produto</label><select id="empresa_id" name="empresa_id" required><option value="">Selecione</option>{% for empresa in empresas_para_pedido %}<option value="{{ empresa.id }}" data-cnpj="{{ empresa.cnpj }}" data-produto="{{ empresa.produto }}" {% if pedido_edicao and empresa.numero_pedido == pedido_edicao.numero_pedido and loop.first %}selected{% endif %}>Pedido {{ empresa.numero_pedido }} — {{ empresa.nome_empresa }} — {{ empresa.numero_contrato }} / {{ empresa.produto }}</option>{% endfor %}</select></div>
             <div class="form-group"><label for="unidade_id">Unidade de entrega</label><select id="unidade_id" name="unidade_id" required><option value="">Selecione</option>{% for unidade in unidades_pedido %}<option value="{{ unidade.id }}" data-cnpj="{{ unidade.cnpj }}">{{ unidade.codigo_unidade }} — {{ unidade.nome_unidade }} — {{ unidade.cnpj }}</option>{% endfor %}</select></div>
         </div>
-        <p class="form-help">Nome, matrícula e CPF vêm do Cadastro de Colaboradores; somente pessoas com cadastro ativo de beneficiário aparecem. A equipe será usada como departamento na planilha. Informe nascimento e valor mensal de cada selecionado. Capacidade do modelo: {{ limite_beneficiarios }} colaboradores por pedido.</p>
-        <div class="table-wrapper"><table><thead><tr><th>Selecionar</th><th>Matrícula</th><th>Colaborador</th><th>CPF</th><th>Equipe</th><th>Nascimento</th><th>Valor mensal</th><th>Parcelas</th></tr></thead><tbody>
+        <p class="form-help">Nome, matrícula e CPF vêm do Cadastro de Colaboradores. A forma de cálculo vem do Cadastro de Beneficiários; diária e cesta vêm da tabela de valores vigente na data de crédito. Informe as diárias e o nascimento quando solicitados. Capacidade: {{ limite_beneficiarios }} colaboradores.</p>
+        <p id="ticket-aviso-valores" class="form-help" role="status" hidden>Não há valores de diária/cesta vigentes para este contrato e data de crédito. Cadastre a tabela ou selecione um benefício com valor fixo individual.</p>
+        <div class="table-wrapper"><table><thead><tr><th>Selecionar</th><th>Matrícula</th><th>Colaborador / cálculo</th><th>CPF</th><th>Equipe</th><th>Nascimento</th><th>Diárias</th><th>Valor diária</th><th>Cesta</th><th>Valor fixo</th><th>Valor mensal</th><th>Parcelas</th></tr></thead><tbody>
             {% for colaborador in colaboradores %}
-            <tr class="{% if colaborador.id in colaboradores_no_pedido %}muted{% endif %}">
-                <td><label><input class="pedido-colaborador-check" type="checkbox" name="colaborador_ids" value="{{ colaborador.id }}" {% if colaborador.id in colaboradores_no_pedido %}disabled{% endif %}>Selecionar{% if colaborador.id in colaboradores_no_pedido %} (já incluído){% endif %}</label></td>
-                <td>{{ colaborador.cpf|replace('.', '')|replace('/', '')|replace('-', '') }}</td><td>{{ colaborador.nome }}</td><td>{{ colaborador.cpf }}</td><td>{{ colaborador.equipe.nome }}</td>
-                <td><input class="pedido-colaborador-input" data-obrigatorio="true" type="date" value="{{ colaborador.data_nascimento.isoformat() if colaborador.data_nascimento else '' }}" name="data_nascimento_{{ colaborador.id }}" max="{{ data_hoje }}" aria-label="Nascimento de {{ colaborador.nome }}" disabled></td>
-                <td><input class="pedido-colaborador-input pedido-valor" data-obrigatorio="true" type="number" min="0" step="0.01" name="valor_mensal_{{ colaborador.id }}" aria-label="Valor mensal de {{ colaborador.nome }}" disabled></td>
-                <td><input class="pedido-colaborador-input" type="number" min="1" step="1" name="numero_parcelas_{{ colaborador.id }}" value="1" aria-label="Parcelas de {{ colaborador.nome }}" disabled></td>
+            {% set calculo = calculo_beneficiario_por_colaborador.get(colaborador.id, {}) %}
+            <tr class="{% if colaborador.id in colaboradores_no_pedido %}muted{% endif %}" data-colaborador-id="{{ colaborador.id }}" data-tipo-calculo="{{ calculo.get('tipo_calculo', '') }}" data-valor-fixo="{{ calculo.get('valor_fixo_mensal', '0') }}">
+                <td><label><input class="pedido-colaborador-check" type="checkbox" name="colaborador_ids" value="{{ colaborador.id }}" data-bloqueado="{% if colaborador.id in colaboradores_no_pedido %}true{% else %}false{% endif %}" {% if colaborador.id in colaboradores_no_pedido %}disabled{% endif %}>Selecionar{% if colaborador.id in colaboradores_no_pedido %} (já incluído){% endif %}</label></td>
+                <td>{{ colaborador.cpf|replace('.', '')|replace('/', '')|replace('-', '') }}</td><td>{{ colaborador.nome }}<br><small>{% if calculo.get('tipo_calculo') == 'DIARIA' %}Diária{% elif calculo.get('tipo_calculo') == 'CESTA' %}Cesta básica{% elif calculo.get('tipo_calculo') == 'CESTA_DIARIA' %}Cesta + diária{% elif calculo.get('tipo_calculo') == 'FIXO' %}Fixo individual{% else %}Configuração pendente{% endif %}</small></td><td>{{ colaborador.cpf }}</td><td>{{ colaborador.equipe.nome }}</td>
+                <td><input class="pedido-colaborador-input" data-tipo="nascimento" type="date" value="{{ colaborador.data_nascimento.isoformat() if colaborador.data_nascimento else '' }}" name="data_nascimento_{{ colaborador.id }}" max="{{ data_hoje }}" aria-label="Nascimento de {{ colaborador.nome }}" disabled></td>
+                <td><input class="pedido-colaborador-input" data-tipo="diarias" type="number" min="1" max="31" step="1" name="quantidade_diarias_{{ colaborador.id }}" aria-label="Quantidade de diárias de {{ colaborador.nome }}" disabled></td>
+                <td><output class="pedido-valor-diaria">—</output></td>
+                <td><output class="pedido-valor-cesta">—</output></td>
+                <td><output class="pedido-valor-fixo">—</output></td>
+                <td><output class="pedido-valor-mensal">R$ 0,00</output></td>
+                <td><input class="pedido-colaborador-input" data-tipo="parcelas" type="number" min="1" step="1" name="numero_parcelas_{{ colaborador.id }}" value="1" aria-label="Parcelas de {{ colaborador.nome }}" disabled></td>
             </tr>
-            {% else %}<tr><td colspan="8">Nenhum colaborador ativo com cadastro de beneficiário encontrado para os filtros aplicados.</td></tr>{% endfor %}
+            {% else %}<tr><td colspan="12">{% if not tipo_beneficio_filtro %}Selecione um tipo de benefício e aplique o filtro para carregar os colaboradores.{% else %}Nenhum colaborador ativo com cadastro de beneficiário encontrado para os filtros aplicados.{% endif %}</td></tr>{% endfor %}
         </tbody></table></div>
-        <p class="form-help">Selecionados: <strong id="pedido-qtd-selecionados">0</strong> · Total mensal: <strong id="pedido-valor-total">R$ 0,00</strong></p>
+        <p class="form-help">Selecionados: <strong id="pedido-qtd-selecionados">0</strong> · Total mensal calculado: <strong id="pedido-valor-total">R$ 0,00</strong></p>
         <button class="btn btn-primary" type="submit">{% if pedido_edicao %}Salvar no rascunho{% else %}Criar rascunho{% endif %}</button>
     </form>
     <script>
     (() => {
         const empresa = document.getElementById("empresa_id");
         const unidade = document.getElementById("unidade_id");
+        const politicas = {{ valores_por_empresa_pedido|tojson }};
         const linhas = Array.from(document.querySelectorAll("#form-novo-pedido tbody tr"));
         const checks = Array.from(document.querySelectorAll(".pedido-colaborador-check"));
+        const dinheiro = new Intl.NumberFormat("pt-BR", {style:"currency",currency:"BRL"});
         const atualizarUnidades = () => {
             const cnpj = empresa?.selectedOptions?.[0]?.dataset?.cnpj || "";
             if (!unidade) return;
@@ -409,28 +417,69 @@
         const atualizarTotais = () => {
             let quantidade = 0;
             let total = 0;
+            let requerPolitica = false;
             linhas.forEach((linha) => {
                 const check = linha.querySelector(".pedido-colaborador-check");
-                const inputs = Array.from(linha.querySelectorAll(".pedido-colaborador-input"));
                 if (!check) return;
-                inputs.forEach((input) => {
-                    input.disabled = !check.checked;
-                    input.required = check.checked && input.dataset.obrigatorio === "true";
-                });
+                const calculo = linha.dataset.tipoCalculo || "";
+                const diario = calculo === "DIARIA" || calculo === "CESTA_DIARIA";
+                const cesta = calculo === "CESTA" || calculo === "CESTA_DIARIA";
+                const fixo = calculo === "FIXO";
+                const valorIndividual = Number(linha.dataset.valorFixo || 0);
+                const politica = politicas[String(empresa?.value || "")] || null;
+                const valorDiaria = diario && politica ? Number(politica.valor_diaria || 0) : 0;
+                const valorCesta = cesta && politica ? Number(politica.valor_cesta || 0) : 0;
+                const politicaValida = (!diario || valorDiaria > 0) && (!cesta || valorCesta > 0);
+                const formaValida = !!calculo && (!fixo || valorIndividual > 0);
+                const pronto = formaValida && (fixo || !empresa?.value || politicaValida);
+                const bloqueado = check.dataset.bloqueado === "true";
+                check.disabled = bloqueado || !pronto;
+                if (check.disabled && check.checked) check.checked = false;
+
+                const dias = linha.querySelector('[data-tipo="diarias"]');
+                const nascimento = linha.querySelector('[data-tipo="nascimento"]');
+                const parcelas = linha.querySelector('[data-tipo="parcelas"]');
+                if (dias) {
+                    dias.disabled = !check.checked || !diario;
+                    dias.required = check.checked && diario;
+                }
+                if (nascimento) {
+                    nascimento.disabled = !check.checked;
+                    nascimento.required = check.checked;
+                }
+                if (parcelas) {
+                    parcelas.disabled = !check.checked;
+                    parcelas.required = false;
+                }
+
+                const quantidadeDiarias = diario ? Number(dias?.value || 0) : 0;
+                const valorFixo = fixo ? valorIndividual : 0;
+                const subtotal = valorDiaria * quantidadeDiarias + valorCesta + valorFixo;
+                const saidaDiaria = linha.querySelector(".pedido-valor-diaria");
+                const saidaCesta = linha.querySelector(".pedido-valor-cesta");
+                const saidaFixo = linha.querySelector(".pedido-valor-fixo");
+                const saidaMensal = linha.querySelector(".pedido-valor-mensal");
+                if (saidaDiaria) saidaDiaria.textContent = diario ? (politica ? dinheiro.format(valorDiaria) : "Sem tabela") : "—";
+                if (saidaCesta) saidaCesta.textContent = cesta ? (politica ? dinheiro.format(valorCesta) : "Sem tabela") : "—";
+                if (saidaFixo) saidaFixo.textContent = fixo ? dinheiro.format(valorFixo) : "—";
+                if (saidaMensal) saidaMensal.textContent = dinheiro.format(subtotal);
+
+                if ((diario || cesta) && empresa?.value && !politicaValida) requerPolitica = true;
                 if (check.checked) {
                     quantidade += 1;
-                    const valor = Number(linha.querySelector(".pedido-valor")?.value || 0);
-                    if (Number.isFinite(valor)) total += valor;
+                    total += subtotal;
                 }
             });
+            const alerta = document.getElementById("ticket-aviso-valores");
             const qtd = document.getElementById("pedido-qtd-selecionados");
             const soma = document.getElementById("pedido-valor-total");
+            if (alerta) alerta.hidden = !requerPolitica;
             if (qtd) qtd.textContent = String(quantidade);
-            if (soma) soma.textContent = new Intl.NumberFormat("pt-BR", {style:"currency",currency:"BRL"}).format(total);
+            if (soma) soma.textContent = dinheiro.format(total);
         };
         checks.forEach((check) => check.addEventListener("change", atualizarTotais));
-        document.querySelectorAll(".pedido-valor").forEach((campo) => campo.addEventListener("input", atualizarTotais));
-        empresa?.addEventListener("change", atualizarUnidades);
+        document.querySelectorAll('[data-tipo="diarias"]').forEach((campo) => campo.addEventListener("input", atualizarTotais));
+        empresa?.addEventListener("change", () => { atualizarUnidades(); atualizarTotais(); });
         atualizarUnidades();
         atualizarTotais();
     })();
