@@ -437,6 +437,58 @@
     </script>
     {% endif %}
 
+    {% if aba == 'valores' %}
+    <div class="details-card">
+        <h2 class="section-title">Valores dos benefícios</h2>
+        <p>Cadastre diária e cesta por empresa, contrato, tipo de benefício e vigência. O valor fixo mensal é individual e configurado no Cadastro de Beneficiários. A vigência usada no pedido é verificada pela data de crédito.</p>
+    </div>
+    {% if pode_criar %}
+    <form class="form-card" method="post" action="{{ url_for('pedido_tiquete.criar_tabela_valor') }}">
+        <h2 class="section-title">Nova tabela de valores</h2>
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="contrato_produto_valores">Empresa, contrato e benefício</label>
+                <select id="contrato_produto_valores" name="contrato_produto" required>
+                    <option value="">Selecione</option>
+                    {% for contrato in contratos_para_valores %}
+                    <option value="{{ contrato.cnpj }}|{{ contrato.numero_contrato }}|{{ contrato.produto }}">{{ contrato.nome_empresa }} — contrato {{ contrato.numero_contrato }} — {{ contrato.produto }} — CNPJ {{ contrato.cnpj }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group"><label for="valor_data_inicio">Início da vigência</label><input id="valor_data_inicio" name="data_inicio" type="date" required></div>
+            <div class="form-group"><label for="valor_data_fim">Fim da vigência (opcional)</label><input id="valor_data_fim" name="data_fim" type="date"></div>
+            <div class="form-group"><label for="valor_diaria">Valor da diária (R$)</label><input id="valor_diaria" name="valor_diaria" type="number" min="0" step="0.01" value="0.00" required></div>
+            <div class="form-group"><label for="valor_cesta">Valor da cesta básica (R$)</label><input id="valor_cesta" name="valor_cesta" type="number" min="0" step="0.01" value="0.00" required></div>
+        </div>
+        <p class="form-help">Informe diária, cesta ou ambos. Ao cadastrar uma nova vigência futura, a tabela ativa sem data final anterior será encerrada no dia anterior ao início da nova.</p>
+        <button class="btn btn-primary" type="submit">Cadastrar valores</button>
+    </form>
+    {% endif %}
+    <div class="details-card">
+        <h2 class="section-title">Tabelas de valores cadastradas</h2>
+        <div class="table-wrapper"><table>
+            <thead><tr><th>CNPJ</th><th>Contrato</th><th>Benefício</th><th>Início</th><th>Fim</th><th>Diária</th><th>Cesta</th><th>Situação</th>{% if pode_editar %}<th>Ações</th>{% endif %}</tr></thead>
+            <tbody>
+            {% for tabela in tabelas_valores %}
+                <tr>
+                    <td>{{ tabela.cnpj }}</td>
+                    <td>{{ tabela.numero_contrato }}</td>
+                    <td>{{ tabela.tipo_beneficio }}</td>
+                    <td>{{ tabela.data_inicio.strftime('%d/%m/%Y') }}</td>
+                    <td>{{ tabela.data_fim.strftime('%d/%m/%Y') if tabela.data_fim else 'Sem data final' }}</td>
+                    <td>R$ {{ '%.2f'|format(tabela.valor_diaria) }}</td>
+                    <td>R$ {{ '%.2f'|format(tabela.valor_cesta) }}</td>
+                    <td>{{ 'Ativa' if tabela.ativo else 'Inativa' }}</td>
+                    {% if pode_editar %}<td><form method="post" action="{{ url_for('pedido_tiquete.alternar_status_tabela_valor', tabela_id=tabela.id) }}"><button class="btn btn-secondary" type="submit">{{ 'Inativar' if tabela.ativo else 'Reativar' }}</button></form></td>{% endif %}
+                </tr>
+            {% else %}
+                <tr><td colspan="{{ 9 if pode_editar else 8 }}">Nenhuma tabela de valores cadastrada.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table></div>
+    </div>
+    {% endif %}
+
     {% if aba == 'empresas' %}
     <div class="details-card"><h2 class="section-title">Empresas e contratos cadastrados</h2><div class="table-wrapper"><table><thead><tr><th>Pedido</th><th>Empresa</th><th>CNPJ/CPF</th><th>Contrato</th><th>Produto</th><th>Crédito</th><th>Situação</th>{% if pode_editar %}<th>Ações</th>{% endif %}</tr></thead><tbody>{% for item in empresas %}<tr><td>{{ item.numero_pedido }}</td><td>{{ item.nome_empresa }}</td><td>{{ item.cnpj }}</td><td>{{ item.numero_contrato }}</td><td>{{ item.produto }}</td><td>{{ item.data_credito.strftime('%d/%m/%Y') }}</td><td>{{ 'Ativa' if item.ativo else 'Inativa' }}</td>{% if pode_editar %}<td><a class="btn btn-secondary" href="{{ url_for('pedido_tiquete.editar_empresa', empresa_id=item.id) }}">Editar</a><form method="post" action="{{ url_for('pedido_tiquete.alternar_status_empresa', empresa_id=item.id) }}" style="display:inline"><button class="btn btn-secondary" type="submit">{{ 'Desativar' if item.ativo else 'Reativar' }}</button></form></td>{% endif %}</tr>{% else %}<tr><td colspan="{{ 8 if pode_editar else 7 }}">Nenhuma empresa cadastrada.</td></tr>{% endfor %}</tbody></table></div></div>
     {% if pode_criar and pedidos %}
