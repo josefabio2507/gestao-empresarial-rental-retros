@@ -18,6 +18,9 @@ def executar_migrations_startup(app):
         with app.app_context():
             upgrade(directory="migrations", revision="head")
         logger.info("Migrations aplicadas no startup.")
-    except Exception:
+    except Exception as erro:
+        # fileConfig do Alembic pode desabilitar loggers existentes; stderr evita
+        # perder a causa original quando o processo de startup encerra no Render.
+        print(f"Falha ao aplicar migrations no startup: {erro!r}", file=sys.stderr, flush=True)
         logger.exception("Falha ao aplicar migrations no startup.")
         raise
