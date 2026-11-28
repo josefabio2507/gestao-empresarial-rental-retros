@@ -39,7 +39,7 @@ def upgrade():
 
     contratos = sa.table(
         "dp_pedido_ticket_contratos",
-        sa.column("id", sa.Integer()),
+        sa.column("id", sa.Integer(), primary_key=True),
         sa.column("cnpj", sa.String()),
         sa.column("nome_empresa", sa.String()),
         sa.column("numero_contrato", sa.String()),
